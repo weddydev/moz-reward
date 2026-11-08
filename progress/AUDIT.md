@@ -28,7 +28,7 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 
 | Task | Verdict |
 |---|---|
-| P0-01 Scaffold | PARTIAL |
+| P0-01 Scaffold | **MET** (8 Nov 2026) — ticked |
 | P0-02 Local infra + env | PARTIAL |
 | P0-03 Database | PARTIAL |
 | P0-04 Background jobs | MISSING |
@@ -40,7 +40,7 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 | P0-10 … P0-16 | MISSING |
 | P0-17 Test infrastructure | **MET** (8 Nov 2026, see below) — ticked |
 
-**Fully met: 1 (P0-17) · Partial: 7 · Missing: 8.** Only P0-17 is ticked in `docs/PHASES.md`.
+**Fully met: 2 (P0-01, P0-17) · Partial: 6 · Missing: 8.** P0-01 and P0-17 are ticked in `docs/PHASES.md`.
 
 ## P0-17 · Test infrastructure and self-verification tooling — MET (Syedbadeshah76, 8 Nov 2026)
 
@@ -100,7 +100,9 @@ Each sub-phase ends with a `code-reviewer` pass.
 
 Commands run by the reviewer: `pnpm check` exit 0 (170 tests); `pnpm build` ✓; production server (`APP_ENV=production`) + `curl -I /`, `/dev/ui`, `/api/dev/outbox`; temporary lint probe (`"use client"` file importing `@/server/env` + hex colours) → ESLint exit **0**; temporary coverage probe → coverage test failed, then passed after removal; `pnpm db:migrate:test` re-run (no-op); `psql \d audit_logs`; `tsc --exactOptionalPropertyTypes` → 4 errors; grep of `.next/static` for server env names.
 
-### P0-01 · Skills check and repository scaffold — PARTIAL
+### P0-01 · Skills check and repository scaffold — MET (re-audited 8 Nov 2026, Syedbadeshah76)
+
+**Rework evidence:** fresh clone (no `.env.local`) → `pnpm install` → `pnpm check` ✅ 123 unit; with `.env.local` from `.env.example` + generated secret, `next dev` serves `/` (200, h1 "Moz Rewards"). Client file importing `@/server/env` and `../../server/auth/auth` fails lint (`moz/no-server-in-client`); hex in inline style and Tailwind arbitrary value fails lint; hex in a CSS file fails `pnpm lint`; server module without `server-only` fails lint. strictTypeChecked + projectService, import order, explicit boundary types, `exactOptionalPropertyTypes`, Node 24.x pin, lefthook (prettier, eslint, gitleaks; fake AWS key blocked). Versions in DECISIONS. E2E smoke 5 projects 37/37. Table below is the original audit.
 
 | Criterion | Status | Evidence | Fix needed |
 |---|---|---|---|

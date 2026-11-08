@@ -56,3 +56,8 @@ Next: security hotfix (MFA bypass, safeReturnTo), then audit fix plan P0-01 → 
 Done: audit #1 critical staff/admin MFA bypass (email link/Google → passkey) closed in the session-create hook + no email links for privileged accounts + passkey registration needs MFA; #6 passkey user verification required; #3 safeReturnTo checks the normalised path. Commit dfcb50d.
 Evidence: mfa-bypass.test.ts 5/5 and session-guard.test.ts 11/11 (all seen failing first, bypass reproduced); return-to 19/19 (+6 cases seen failing); pnpm check 235 ✅; regression unit 117 / integration 23 / authz 95.
 Open: WebKit E2E intermittent under full load (3 in ~10 runs, not reproducible since; see PROGRESS Blockers). Security #5/#7/#8 with P0-06/03/07 rework.
+
+## 2026-11-08 — P0 — P0-01 rework (Syedbadeshah76)
+Done: exactOptionalPropertyTypes; Node 24.x pin; `pnpm check` = typecheck + lint + unit (`check:full` adds integration); typescript-eslint strictTypeChecked, import order, explicit boundary types, `moz/no-server-in-client`, `moz/require-server-only`, hex ban (TS + CSS); server-only in all server modules; lefthook pre-commit (prettier, eslint, gitleaks); versions in DECISIONS. Rule findings fixed at source (clipboard rejection unhandled, FormData File stringified, dead checks, `!` assertions, hex → tokens).
+Evidence (P0-01 ticked): fresh clone → install → check ✅ (no .env.local; fixed tests that silently needed it); fresh clone dev serves / 200; lint probes (server import in client, hex in TSX/CSS, missing server-only) all fail; staged fake AWS key blocked; pre-commit ran on real commits; e2e 37/37, test:int 120.
+Next: P0-02 rework.

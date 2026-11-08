@@ -13,7 +13,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 
 **P0-A · Repository, tooling, local infrastructure**
 
-- [ ] P0-01 · Skills check and repository scaffold
+- [x] P0-01 · Skills check and repository scaffold
 - [ ] P0-02 · Local infrastructure and environment validation
 - [ ] P0-03 · Database foundation
 - [ ] P0-04 · Background jobs infrastructure

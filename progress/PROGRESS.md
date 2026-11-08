@@ -18,10 +18,10 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - **Production:** not deployed
 
 ## Now
-- Security hotfix done (`dfcb50d`: audit #1 critical MFA bypass, #3 open redirect, #6 passkey UV); independent `security-reviewer` pass on it, then P0-01 rework.
+- P0-01 reworked and ticked (strict lint, boundaries, hex ban, server-only, pre-commit, versions; fresh-clone check). Next: P0-02 rework.
 
 ## Next (top 3)
-1. Fix audit gaps in task order starting with P0-01 (`progress/AUDIT.md` "Fix plan": server-only + lint boundaries, hex ban, strict-type-checked, exactOptionalPropertyTypes, pre-commit, versions), each with evidence; then P0-02, P0-03 … P0-09, then P0-04/05, then P0-10+. P0-17 tooling is available for all of them (TESTING §8 loop: `shoot()`, guard, `signInAs`).
+1. P0-02 rework (`progress/AUDIT.md` P0-02 table: server/client env split + fail-fast, README local setup incl. creating `.env.local` from `.env.example` with generated secrets, env tests, MinIO criteria), then P0-03 … P0-09, then P0-04/05, then P0-10+. Each with evidence; P0-17 tooling available.
 2. Remaining security items: magic-link response timing for staff vs customers (low, fix by queueing email in P0-04); #5 first-enrolment takeover (with P0-06), #7 separate DB roles for append-only tables (with P0-03), #8 Better Auth account endpoints for stale staff sessions (with P0-07).
 3. Close sub-phases only with `/subphase-complete` (needs CI + staging: P0-14/15 and H-05/06/07).
 
@@ -54,7 +54,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Configs: `vitest.config.mts`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc.json`, `pnpm-workspace.yaml`
 
 ## Last verified
-- `pnpm check`: ✅ 2026-11-08 after the security hotfix (235 tests)
+- `pnpm check` (typecheck + lint + unit, no Docker): ✅ 2026-11-08 123 unit, also on a fresh clone without `.env.local`; `pnpm test:int` ✅ 120; e2e ✅ 37/37
 - `pnpm test:regression`: unit 117 ✅, integration 23 ✅, authz 95 ✅; e2e 36/37 in that run (WebKit intermittent, see Blockers), then 5 consecutive full E2E runs 37/37 ✅
 - `pnpm test:mutation`: ✅ 90.1% (break 80); `pnpm test:live`: storage ✅, email skipped (H-04); `pnpm test:load:smoke`: runs (Docker k6), checks 100%, action p95 458 ms on `next dev` (not meaningful; staging gate)
 - `pnpm test:titles --strict`: ✅ every test tagged

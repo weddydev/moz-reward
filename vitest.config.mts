@@ -21,6 +21,9 @@ const testEnv = {
   EMAIL_PROVIDER: "smtp",
   SMTP_HOST: process.env.SMTP_HOST ?? "localhost",
   REDIS_URL: process.env.REDIS_URL_TEST ?? "redis://:moz@localhost:6379/1",
+  // Fixed, obviously fake values: tests must pass on a fresh clone and never use a developer's real secrets.
+  AUTH_SECRET: "test-only-auth-secret-not-used-anywhere-else",
+  EMAIL_FROM: "Moz Rewards Test <test@test.moz.invalid>",
 };
 
 export default defineConfig({
