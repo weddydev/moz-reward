@@ -1,0 +1,39 @@
+# Local development services only (staging/prod compose files live in infra/).
+# Start: docker compose up -d   ·   Stop: docker compose down   ·   Wipe data: docker compose down -v
+name: moz-rewards
+
+services:
+  postgres:
+    # Multi-arch (amd64 + arm64) build of the official PostGIS image; postgis/postgis is amd64-only.
+    image: imresamu/postgis:17-3.5
+    environment:
+      POSTGRES_USER: moz
+      POSTGRES_PASSWORD: moz
+      POSTGRES_DB: moz
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/local/postgres-init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moz -d moz"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "moz", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "moz", "--no-auth-warning", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata:
+  redisdata:

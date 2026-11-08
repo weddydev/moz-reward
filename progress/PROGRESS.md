@@ -15,18 +15,18 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Do first (env vars, migrations, seeds): —
 
 ## Status
-- **Phase:** P0 — Foundation and design system (in progress, 2 of 15 tasks)
+- **Phase:** P0 — Foundation and design system (in progress, 3 of 15 tasks)
 - **Last updated:** 2026-11-08, talha.syed session
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
 ## Now
-- P0 task 3: Docker Compose (Postgres + PostGIS, Redis) and `.env.example` complete.
+- P0 task 4: Drizzle setup + first migration.
 
 ## Next (top 3)
-1. Docker Compose for local Postgres (PostGIS) + Redis
-2. Drizzle + first migration
-3. Auth (Better Auth: Google, magic link, staff/admin password + TOTP)
+1. Drizzle + first migration
+2. Auth (Better Auth: Google, magic link, staff/admin password + TOTP)
+3. Authz test harness (`tests/authz/`)
 
 ## Blockers
 - Human: none 🔴. 🟠 for end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-10 Sentry.
@@ -37,6 +37,8 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - `src/worker/index.ts` — worker entry (stub; BullMQ from P1)
 - `tests/setup.ts` — Vitest setup (jest-dom); unit tests live next to code as `*.test.ts(x)`
 - `tests/e2e/` — Playwright specs (chromium, webkit, pixel-7, iphone-14)
+- `docker-compose.yml` — local Postgres 17 + PostGIS 3.5 (`moz`, `moz_test` DBs) and Redis 7 (password `moz`); init SQL in `infra/local/`
+- `.env.local` — generated locally from `.env.example` with random secrets (never committed; share via H-02)
 - Configs: `vitest.config.mts`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc.json`, `pnpm-workspace.yaml` (allowed install scripts)
 
 ## Last verified
