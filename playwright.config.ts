@@ -37,15 +37,18 @@ export default defineConfig({
     { name: "iphone14", use: { ...devices["iPhone 14"] } },
     { name: "desktop1440", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
   ],
-  webServer: isRemote
-    ? undefined
+  // Remote targets (staging) are already running: no local web server at all.
+  ...(isRemote
+    ? {}
     : {
-        command: `pnpm exec tsx tests/e2e/support/prepare-server.ts && pnpm exec next dev --port ${E2E_PORT}`,
-        url: baseURL,
-        reuseExistingServer: !process.env.CI,
-        timeout: 180_000,
-        env: e2eServerEnv(),
-        stdout: "ignore",
-        stderr: "pipe",
-      },
+        webServer: {
+          command: `pnpm exec tsx tests/e2e/support/prepare-server.ts && pnpm exec next dev --port ${E2E_PORT}`,
+          url: baseURL,
+          reuseExistingServer: !process.env.CI,
+          timeout: 180_000,
+          env: e2eServerEnv(),
+          stdout: "ignore" as const,
+          stderr: "pipe" as const,
+        },
+      }),
 });

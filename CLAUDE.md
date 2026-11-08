@@ -106,7 +106,8 @@ pnpm test:load:smoke # k6 smoke (local k6 or Docker image); BASE_URL/VUS/DURATIO
 pnpm test:live      # real-provider smoke (staging, phase end); skips providers without keys
 pnpm db:migrate     # drizzle migrations
 pnpm db:seed        # demo data (Brew & Bloom Café etc.)
-pnpm check          # typecheck + lint + test (run before every commit)
+pnpm check          # typecheck + lint + unit (no Docker; run before every commit)
+pnpm check:full     # typecheck + lint + unit + integration (needs services:up)
 pnpm format         # prettier --write (format:check in CI)
 pnpm test:coverage  # vitest with coverage thresholds
 pnpm db:migrate:test # migrate the moz_test DB (vitest globalSetup also does this)

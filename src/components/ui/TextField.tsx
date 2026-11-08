@@ -6,7 +6,7 @@ const FIELD =
   "transition-[border-color,background-color] duration-fast " +
   "focus-visible:border-gold-500 focus-visible:bg-surface aria-invalid:border-danger";
 
-type Common = { label: string; hint?: string; error?: string; className?: string };
+type Common = { label: string; hint?: string | undefined; error?: string | undefined; className?: string | undefined };
 
 function Wrapper({
   id,

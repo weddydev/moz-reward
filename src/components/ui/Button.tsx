@@ -23,7 +23,7 @@ export function buttonClasses({
   size = 48,
   block = false,
   className,
-}: { variant?: ButtonVariant; size?: ButtonSize; block?: boolean; className?: string } = {}) {
+}: { variant?: ButtonVariant; size?: ButtonSize; block?: boolean | undefined; className?: string | undefined } = {}): string {
   return cx(
     "relative inline-flex select-none items-center justify-center font-semibold whitespace-nowrap",
     "disabled:cursor-not-allowed disabled:opacity-55 aria-disabled:cursor-not-allowed aria-disabled:opacity-55",

@@ -15,7 +15,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "e2e": "playwright test",
-    "check": "pnpm typecheck && pnpm lint && pnpm test",
+    "check": "pnpm typecheck && pnpm lint && pnpm test:unit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/server/db/migrate.ts",
     "db:migrate:test": "tsx src/server/db/migrate.ts --test",
@@ -28,7 +28,8 @@
     "test:mutation": "stryker run",
     "test:load:smoke": "tsx scripts/load-smoke.ts",
     "test:live": "vitest run --config vitest.live.config.mts",
-    "test:titles": "tsx scripts/check-test-titles.ts"
+    "test:titles": "tsx scripts/check-test-titles.ts",
+    "check:full": "pnpm typecheck && pnpm lint && pnpm test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1164.0",
@@ -81,6 +82,6 @@
   },
   "packageManager": "pnpm@12.18.0",
   "engines": {
-    "node": ">=24"
+    "node": "24.x"
   }
 }
