@@ -9,6 +9,5 @@ import { FLAG_KEYS, setFlag } from "@/server/services/flags";
 export const setFeatureFlag = defineAction({
   input: z.object({ key: z.enum(FLAG_KEYS), enabled: z.boolean() }).strict(),
   authorize: () => requireAdminRole(["owner"]),
-  handler: ({ key, enabled }, actor) =>
-    setFlag({ key, enabled, actorId: actor.userId, actorRole: `admin:${actor.role}` }),
+  handler: ({ key, enabled }, actor) => setFlag(actor, { key, enabled }),
 });

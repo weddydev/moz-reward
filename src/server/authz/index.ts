@@ -11,8 +11,25 @@ import {
   decideShopRole,
 } from "./policies";
 import { currentPrincipal } from "./principal";
+import {
+  type AdminScope,
+  type CustomerScope,
+  mintAdminScope,
+  mintCustomerScope,
+  mintShopScope,
+  type ShopScope,
+} from "./scope";
 
 export * from "./policies";
+export {
+  type AdminScope,
+  auditActor,
+  type CustomerScope,
+  type Scope,
+  type ShopScope,
+  type SystemScope,
+  systemScope,
+} from "./scope";
 
 const MESSAGES: Record<DenyReason, [AppError["code"], string]> = {
   unauthenticated: ["UNAUTHENTICATED", "Please sign in to continue."],
@@ -27,25 +44,28 @@ function unwrap<T>(d: Decision<T>): T {
   throw new AppError(code, message);
 }
 
-/** Every server action / route handler calls one of these before touching data. */
-export async function requireCustomer(principal?: Principal | null): Promise<{ userId: string }> {
+/**
+ * Every server action / route handler calls one of these before touching data. Each returns a branded scope,
+ * the only thing repositories accept (src/server/repos/_base.ts).
+ */
+export async function requireCustomer(principal?: Principal | null): Promise<CustomerScope> {
   const p = principal === undefined ? await currentPrincipal() : principal;
-  return unwrap(decideCustomer(p));
+  return mintCustomerScope(unwrap(decideCustomer(p)));
 }
 
 export async function requireShopRole(
   shopId: string,
   roles: ReadonlyArray<ShopRole>,
   principal?: Principal | null,
-): Promise<{ userId: string; shopId: string; role: ShopRole }> {
+): Promise<ShopScope> {
   const p = principal === undefined ? await currentPrincipal() : principal;
-  return unwrap(decideShopRole(p, shopId, roles));
+  return mintShopScope(unwrap(decideShopRole(p, shopId, roles)));
 }
 
 export async function requireAdminRole(
   roles: ReadonlyArray<AdminRole>,
   principal?: Principal | null,
-): Promise<{ userId: string; role: AdminRole }> {
+): Promise<AdminScope> {
   const p = principal === undefined ? await currentPrincipal() : principal;
-  return unwrap(decideAdminRole(p, roles));
+  return mintAdminScope(unwrap(decideAdminRole(p, roles)));
 }

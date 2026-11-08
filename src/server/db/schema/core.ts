@@ -6,7 +6,6 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
-  geometry,
   index,
   integer,
   jsonb,
@@ -17,7 +16,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { id, timestamps, tz } from "./_columns";
+import { geographyPoint, id, timestamps, tz } from "./_columns";
 import { users } from "./auth";
 
 export const shopStatus = pgEnum("shop_status", [
@@ -76,7 +75,7 @@ export const shops = pgTable(
     addressLine2: text(),
     town: text(),
     postcode: text(),
-    location: geometry({ type: "point", mode: "xy", srid: 4326 }),
+    location: geographyPoint(),
     googlePlaceId: text(),
     phone: text(),
     logoUrl: text(),
@@ -112,6 +111,7 @@ export const shopStaff = pgTable(
   (t) => [
     uniqueIndex("shop_staff_shop_user_uq").on(t.shopId, t.userId),
     index("shop_staff_user_id_idx").on(t.userId),
+    index("shop_staff_invited_by_idx").on(t.invitedBy),
     check(
       "shop_staff_per_award_limit_positive",
       sql`${t.perAwardLimit} IS NULL OR ${t.perAwardLimit} > 0`,
@@ -120,15 +120,19 @@ export const shopStaff = pgTable(
 );
 
 /** Platform team. One row per admin user; deny by default when absent or inactive. */
-export const adminMembers = pgTable("admin_members", {
-  userId: uuid()
-    .primaryKey()
-    .references(() => users.id, { onDelete: "cascade" }),
-  role: adminRole().notNull(),
-  active: boolean().notNull().default(true),
-  invitedBy: uuid().references(() => users.id, { onDelete: "set null" }),
-  ...timestamps(),
-});
+export const adminMembers = pgTable(
+  "admin_members",
+  {
+    userId: uuid()
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: adminRole().notNull(),
+    active: boolean().notNull().default(true),
+    invitedBy: uuid().references(() => users.id, { onDelete: "set null" }),
+    ...timestamps(),
+  },
+  (t) => [index("admin_members_invited_by_idx").on(t.invitedBy)],
+);
 
 export const memberships = pgTable(
   "memberships",
@@ -177,10 +181,33 @@ export const auditLogs = pgTable(
   ],
 );
 
-export const featureFlags = pgTable("feature_flags", {
-  key: text().primaryKey(),
-  enabled: boolean().notNull().default(false),
-  description: text(),
-  updatedBy: uuid().references(() => users.id, { onDelete: "set null" }),
-  ...timestamps(),
-});
+export const featureFlags = pgTable(
+  "feature_flags",
+  {
+    key: text().primaryKey(),
+    enabled: boolean().notNull().default(false),
+    description: text(),
+    updatedBy: uuid().references(() => users.id, { onDelete: "set null" }),
+    ...timestamps(),
+  },
+  (t) => [index("feature_flags_updated_by_idx").on(t.updatedBy)],
+);
+
+/**
+ * Admin-editable content (ARCHITECTURE §4: feedback chips, keywords, templates, shop categories).
+ * One JSON document per key; each consumer validates its value with its own Zod schema on read.
+ */
+export const contentSettings = pgTable(
+  "content_settings",
+  {
+    key: text().primaryKey(),
+    value: jsonb().$type<unknown>().notNull(),
+    description: text(),
+    updatedBy: uuid().references(() => users.id, { onDelete: "set null" }),
+    ...timestamps(),
+  },
+  (t) => [
+    index("content_settings_updated_by_idx").on(t.updatedBy),
+    check("content_settings_key_format", sql`${t.key} ~ '^[a-z][a-z0-9_]{1,62}$'`),
+  ],
+);

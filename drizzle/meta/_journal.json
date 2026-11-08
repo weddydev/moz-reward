@@ -15,6 +15,20 @@
       "when": 1794131775314,
       "tag": "0001_audit_logs_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794154336046,
+      "tag": "0002_schema_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794154354618,
+      "tag": "0003_triggers_and_roles",
+      "breakpoints": true
     }
   ]
 }

@@ -4,6 +4,7 @@ import "server-only";
  * (`/api/test/*`, APP_ENV=test only). Every factory builds exactly what it is asked for, with
  * unique, obviously fake data (never real personal data).
  */
+import { eq } from "drizzle-orm";
 import { withUniqueCode } from "@/lib/codes";
 import { newId } from "@/lib/id";
 import { hashPassword } from "@/server/auth/password";
@@ -14,6 +15,7 @@ import {
   customerProfiles,
   featureFlags,
   memberships,
+  sessions,
   shopStaff,
   shops,
   users,
@@ -184,4 +186,13 @@ export async function makeActor(
       throw new Error(`Unknown role ${String(unreachable)}`);
     }
   }
+}
+
+/**
+ * Marks a test session as MFA-verified, exactly like a real TOTP sign-in would. The session create hook in
+ * auth.ts keeps forcing mfaVerified=false for any non-MFA path, so production can never be tricked into it;
+ * only the 404-gated test API calls this.
+ */
+export async function markSessionMfaVerified(token: string): Promise<void> {
+  await db().update(sessions).set({ mfaVerified: true }).where(eq(sessions.token, token));
 }

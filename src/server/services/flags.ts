@@ -1,7 +1,7 @@
 import "server-only";
-import { eq } from "drizzle-orm";
-import { db } from "@/server/db/client";
-import { featureFlags } from "@/server/db/schema";
+import { type AdminScope, auditActor, systemScope } from "@/server/authz/scope";
+import { transaction } from "@/server/repos/_base";
+import { findFlagEnabled, upsertFlag } from "@/server/repos/flags";
 import { recordAudit } from "./audit";
 
 /** Known flags (ARCHITECTURE §3). Env override: FLAG_<KEY>=true|false wins over the DB. */
@@ -23,38 +23,23 @@ export function envOverride(
   return undefined;
 }
 
+const FLAG_READ = systemScope("feature flags are global configuration, readable by every request");
+
 export async function isEnabled(key: FlagKey): Promise<boolean> {
   const forced = envOverride(key);
   if (forced !== undefined) return forced;
-  const [row] = await db()
-    .select({ enabled: featureFlags.enabled })
-    .from(featureFlags)
-    .where(eq(featureFlags.key, key));
-  return row?.enabled ?? false;
+  return (await findFlagEnabled(FLAG_READ, key)) ?? false;
 }
 
-export async function setFlag(input: {
-  key: FlagKey;
-  enabled: boolean;
-  actorId: string;
-  actorRole: string;
-}): Promise<{ key: FlagKey; enabled: boolean }> {
-  return db().transaction(async (tx) => {
-    await tx
-      .insert(featureFlags)
-      .values({
-        key: input.key,
-        enabled: input.enabled,
-        description: FLAGS[input.key],
-        updatedBy: input.actorId,
-      })
-      .onConflictDoUpdate({
-        target: featureFlags.key,
-        set: { enabled: input.enabled, updatedBy: input.actorId, updatedAt: new Date() },
-      });
+/** Admin toggles a flag; the change and its audit row commit together. */
+export async function setFlag(
+  scope: AdminScope,
+  input: { key: FlagKey; enabled: boolean },
+): Promise<{ key: FlagKey; enabled: boolean }> {
+  return transaction(scope, async (tx) => {
+    await upsertFlag(scope, { ...input, description: FLAGS[input.key] }, tx);
     await recordAudit(tx, {
-      actorId: input.actorId,
-      actorRole: input.actorRole,
+      ...auditActor(scope),
       action: "feature_flag.set",
       entity: "feature_flag",
       entityId: input.key,

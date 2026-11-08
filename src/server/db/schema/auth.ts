@@ -3,19 +3,24 @@
  * uuid ids (UUIDv7 via advanced.database.generateId) and timestamptz everywhere.
  * If you add an auth plugin, regenerate to a scratch file and merge the diff by hand.
  */
-import { relations } from "drizzle-orm";
-import { boolean, index, integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { boolean, index, integer, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { id, timestamps, tz } from "./_columns";
 
-export const users = pgTable("users", {
-  id: id(),
-  name: text().notNull(),
-  email: text().notNull().unique(),
-  emailVerified: boolean().default(false).notNull(),
-  image: text(),
-  twoFactorEnabled: boolean().default(false),
-  ...timestamps(),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: id(),
+    name: text().notNull(),
+    email: text().notNull().unique(),
+    emailVerified: boolean().default(false).notNull(),
+    image: text(),
+    twoFactorEnabled: boolean().default(false).notNull(),
+    ...timestamps(),
+  },
+  // Case-insensitive uniqueness in the DB (ENGINEERING §6): Better Auth lowercases, raw inserts might not.
+  (t) => [uniqueIndex("users_email_lower_uq").on(sql`lower(${t.email})`)],
+);
 
 export const sessions = pgTable(
   "sessions",
@@ -28,7 +33,7 @@ export const sessions = pgTable(
     userId: uuid()
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    mfaVerified: boolean().default(false),
+    mfaVerified: boolean().default(false).notNull(),
     ...timestamps(),
   },
   (t) => [index("sessions_user_id_idx").on(t.userId)],

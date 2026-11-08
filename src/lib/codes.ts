@@ -16,14 +16,25 @@ export class CodeCollisionError extends Error {
 
 /** Crypto-random code of `length` characters (uniform: randomInt avoids modulo bias). */
 export function generateCode(length: number): string {
+  if (!Number.isInteger(length) || length < 4 || length > 32)
+    throw new RangeError("code length must be an integer between 4 and 32");
   let out = "";
   for (let i = 0; i < length; i++) out += CODE_ALPHABET.charAt(randomInt(CODE_ALPHABET.length));
   return out;
 }
 
+/** Display format: groups of `group` characters joined by `separator` ("K7Q42MXA", 4 → "K7Q4-2MXA"). */
+export function formatCode(code: string, opts: { group: number; separator?: string }): string {
+  if (!Number.isInteger(opts.group) || opts.group < 1)
+    throw new RangeError("group must be a positive integer");
+  const parts: string[] = [];
+  for (let i = 0; i < code.length; i += opts.group) parts.push(code.slice(i, i + opts.group));
+  return parts.join(opts.separator ?? "-");
+}
+
 /** "K7Q42M" → "K7Q-42M" (display only; stored without the dash). */
 export function formatMemberId(code: string): string {
-  return `${code.slice(0, 3)}-${code.slice(3)}`;
+  return formatCode(code, { group: 3 });
 }
 
 function isUniqueViolation(err: unknown): boolean {

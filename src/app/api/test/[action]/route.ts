@@ -1,12 +1,16 @@
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/server/auth/auth";
-import { db } from "@/server/db/client";
-import { sessions } from "@/server/db/schema";
 import { fakeAi } from "@/server/integrations/ai";
 import { fakePushSink } from "@/server/integrations/push";
-import { ACTOR_ROLES, TEST_PASSWORD, fakeEmail, makeActor, makeUser } from "@/server/testing/factories";
+import {
+  ACTOR_ROLES,
+  TEST_PASSWORD,
+  fakeEmail,
+  makeActor,
+  makeUser,
+  markSessionMfaVerified,
+} from "@/server/testing/factories";
 import { testApiEnabled } from "@/server/testing/test-api";
 
 /**
@@ -17,11 +21,28 @@ const notFound = (): Response => new Response("Not found", { status: 404 });
 
 const sessionInput = z.object({ role: z.enum(ACTOR_ROLES), shopId: z.uuid().optional() }).strict();
 
-type TestCookie = { name: string; value: string; path: string; httpOnly?: boolean; secure?: boolean; sameSite?: "Lax" | "Strict" | "None"; expires?: number };
-type TestHelpers = { login(opts: { userId: string }): Promise<{ token: string; cookies: TestCookie[] }> };
+type TestCookie = {
+  name: string;
+  value: string;
+  path: string;
+  httpOnly?: boolean;
+  secure?: boolean;
+  sameSite?: "Lax" | "Strict" | "None";
+  expires?: number;
+};
+type TestHelpers = {
+  login(opts: { userId: string }): Promise<{ token: string; cookies: TestCookie[] }>;
+};
 
 /** A password user with no session: lets E2E drive real sign-in/enrolment flows through the UI. */
-const userInput = z.object({ label: z.string().regex(/^[a-z0-9-]{1,40}$/).default("e2e-user") }).strict();
+const userInput = z
+  .object({
+    label: z
+      .string()
+      .regex(/^[a-z0-9-]{1,40}$/)
+      .default("e2e-user"),
+  })
+  .strict();
 
 const fakesInput = z
   .object({
@@ -47,7 +68,11 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
     case "user": {
       const parsed = userInput.safeParse(body ?? {});
       if (!parsed.success) return invalid();
-      const user = await makeUser({ email: fakeEmail(parsed.data.label), name: "Test Staff", password: TEST_PASSWORD });
+      const user = await makeUser({
+        email: fakeEmail(parsed.data.label),
+        name: "Test Staff",
+        password: TEST_PASSWORD,
+      });
       return NextResponse.json({ userId: user.id, email: user.email, password: TEST_PASSWORD });
     }
     case "fakes": {
@@ -76,19 +101,23 @@ async function createSession(body: unknown): Promise<Response> {
   const parsed = sessionInput.safeParse(body);
   if (!parsed.success) return invalid();
 
-  const actor = await makeActor(parsed.data.role, parsed.data.shopId ? { shopId: parsed.data.shopId } : {});
+  const actor = await makeActor(
+    parsed.data.role,
+    parsed.data.shopId ? { shopId: parsed.data.shopId } : {},
+  );
   const helpers = ((await auth.$context) as unknown as { test?: TestHelpers }).test;
   if (!helpers) return NextResponse.json({ error: "test utilities unavailable" }, { status: 500 });
 
   const login = await helpers.login({ userId: actor.user.id });
-  // Staff/admin sessions must be MFA-verified, exactly like a real TOTP sign-in. The session create hook
-  // in auth.ts deliberately forces mfaVerified=false for any non-MFA path (so production can never
-  // be tricked into it), so set it here on the row, in this test-only, 404-gated route.
-  if (parsed.data.role !== "customer") {
-    await db().update(sessions).set({ mfaVerified: true }).where(eq(sessions.token, login.token));
-  }
+  // Staff/admin sessions must be MFA-verified, exactly like a real TOTP sign-in.
+  if (parsed.data.role !== "customer") await markSessionMfaVerified(login.token);
 
-  const res = NextResponse.json({ userId: actor.user.id, email: actor.user.email, shopId: actor.shopId, role: parsed.data.role });
+  const res = NextResponse.json({
+    userId: actor.user.id,
+    email: actor.user.email,
+    shopId: actor.shopId,
+    role: parsed.data.role,
+  });
   for (const c of login.cookies) {
     res.cookies.set(c.name, c.value, {
       path: c.path,

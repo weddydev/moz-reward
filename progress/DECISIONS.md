@@ -13,6 +13,27 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-08 — Scoped data access: branded scopes + repositories (P0-03)
+Decision: `requireCustomer` / `requireShopRole` / `requireAdminRole` now return branded, frozen scopes (`src/server/authz/scope.ts`). Repositories (`src/server/repos/*`) reach the DB only through `dbFor(scope)` / `transaction(scope, fn)`, and build tenant filters with `inShop(col, scope)` / `ownedBy(col, scope)`. Work no user asked for uses `systemScope("why")`. ESLint enforces three rules: only repos, `db/`, `auth/`, `authz/principal.ts` and `testing/` may import `db`; only `authz/` (and testing) may mint scopes; `as …Scope` casts are banned. A plain object does not type-check as a scope.
+Why: the brief asks that unscoped access be awkward. A brand, a lint rule and filters built from the scope make a cross-shop query take deliberate effort, and the effort shows up in review.
+Consequence: new data access means a repo function taking a scope. Services call repos and take the scope from the action's `authorize`. `setFlag(scope, input)` is the first example; it records `admin:<role>` in the audit log through `auditActor(scope)`.
+
+## 2026-11-08 — DB foundation details (P0-03)
+Decision:
+- `shops.location` is `geography(Point,4326)`, through a custom column (`geographyPoint`, `{ lng, lat }`, EWKT in, EWKB out, ranges validated).
+- `prevent_update_delete()` is replaced by the brief's generic `reject_mutation()` in a new migration (0003), because merged migrations are never edited.
+- A `set_updated_at()` trigger is attached to every table with `updated_at`.
+- Group role `moz_app` (NOLOGIN) has DML on all tables but no UPDATE/DELETE/TRUNCATE on append-only tables, plus default privileges for future tables. Each environment's login role is granted `moz_app` (H-05 steps).
+- Local `DATABASE_URL` stays the owner role for now. The restricted role is proven by integration tests using `SET ROLE moz_app`, and staging runs as `moz_app_login`.
+- Destructive migrations need a `-- contract: <why>` line, enforced by `scripts/check-migrations.ts` in `pnpm lint`.
+- `db:seed` (P0-03) is the idempotent baseline: feature flags and marketplace categories, insert-only, refused in production. P0-16 adds the demo shops and per-role accounts.
+- `db:reset` is local-only (APP_ENV=local and localhost). It drops the schemas, because audit_logs blocks TRUNCATE by design.
+Why: these are ENGINEERING §6 and SECURITY §11 requirements. Geography gives distances in metres for "Near me · 5 km", with no projection maths.
+Consequence:
+- Append-only tables need `REVOKE UPDATE, DELETE, TRUNCATE ON <t> FROM moz_app` plus both `reject_mutation` triggers. New tables need a `set_updated_at` trigger.
+- `tests/integration/db-foundation.test.ts` fails if any of these is missed.
+- drizzle-kit emits `"undefined"."geography(...)"` for custom types, so hand-fix the generated SQL and add a `USING` cast.
+
 ## 2026-11-08 — Local infrastructure and env layout (P0-02)
 Decision: **Local Postgres 17** + PostGIS 3.5 (`imresamu/postgis:17-3.5`, multi-arch) instead of the brief's 16; compose file at `infra/docker-compose.dev.yml` as the brief says (moved from the repo root; `pnpm services:up` wraps it with a Docker and port pre-flight check). MinIO's healthcheck creates the `moz-rewards` bucket with the image's own `mc`, so `up --wait` only returns once the bucket exists: no extra init container or script.
 Why: production will run whatever managed Postgres (Neon, H-05) offers, and 17 is current there. PostGIS image `postgis/postgis` is amd64-only and the second developer's Mac is arm64. A healthcheck-created bucket works with plain `docker compose … up --wait` too.

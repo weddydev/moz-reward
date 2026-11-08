@@ -28,10 +28,10 @@ describe("[P0-03] audit_logs (append-only)", () => {
     expect(row?.action).toBe("test.append_only");
   });
 
-  it("stores shop locations as SRID 4326 points", async () => {
+  it("stores shop locations as SRID 4326 geography points", async () => {
     const result = await db().execute<{ type: string }>(
       sql`SELECT format_type(atttypid, atttypmod) AS type FROM pg_attribute WHERE attrelid = 'shops'::regclass AND attname = 'location'`,
     );
-    expect(result[0]?.type).toBe("geometry(Point,4326)");
+    expect(result[0]?.type).toBe("geography(Point,4326)");
   });
 });

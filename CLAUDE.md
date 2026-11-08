@@ -105,7 +105,8 @@ pnpm test:mutation  # stryker on rules modules (phase end)
 pnpm test:load:smoke # k6 smoke (local k6 or Docker image); BASE_URL/VUS/DURATION
 pnpm test:live      # real-provider smoke (staging, phase end); skips providers without keys
 pnpm db:migrate     # drizzle migrations
-pnpm db:seed        # demo data (Brew & Bloom Café etc.)
+pnpm db:seed        # idempotent baseline (flags, content settings); demo shops arrive with P0-16; refused in production
+pnpm db:reset       # LOCAL only: drop schemas, migrate, seed
 pnpm check          # typecheck + lint + unit (no Docker; run before every commit)
 pnpm check:full     # typecheck + lint + unit + integration (needs services:up)
 pnpm format         # prettier --write (format:check in CI)

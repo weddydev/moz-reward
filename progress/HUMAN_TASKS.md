@@ -49,11 +49,15 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 5. Tell Claude the IP. Claude will write the server hardening script (deploy user, firewall, fail2ban) and ask you to add the private key to GitHub secrets with one `gh` command.
 
 ### H-05 — Staging database (Neon)
-1. neon.tech → sign up → New project → name `moz-rewards-staging`, Postgres 16+, region **AWS Europe (London) eu-west-2** (or Frankfurt if London is unavailable).
+1. neon.tech → sign up → New project → name `moz-rewards-staging`, **Postgres 17** (same major as local), region **AWS Europe (London) eu-west-2** (or Frankfurt if London is unavailable).
 2. SQL Editor → run `CREATE EXTENSION IF NOT EXISTS postgis;`
 3. Dashboard → Connection details → copy the **pooled** connection string (for the app) and the **direct** one (for migrations).
 4. Keep both in your password manager; Claude will tell you the exact `gh secret set` commands when the deploy workflow is ready.
-5. (Audit security #7) Claude will add a migration creating a separate least-privilege app role; you will only need to put that role's connection string in the app secret.
+5. App login role (audit security #7). The migrations already create the group role `moz_app`, which may read and write but can never change or delete audit history.
+   1. Give Claude the **direct** (owner) string first. Claude runs `pnpm db:migrate` against it once, which creates `moz_app`.
+   2. Neon → your project → **Roles** → **New role** → name `moz_app_login` → save the generated password in your password manager.
+   3. Neon → **SQL Editor** → run: `GRANT moz_app TO moz_app_login;`
+   4. Connection details → choose role `moz_app_login` → copy its **pooled** string. This is the app's `DATABASE_URL`. The owner's **direct** string is `DATABASE_URL_MIGRATIONS` (migrations only, never the running app).
 
 ### H-03 — Google OAuth client
 1. console.cloud.google.com → create project `Moz Rewards`.
