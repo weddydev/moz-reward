@@ -10,3 +10,7 @@ Rules for Claude Code:
 - `docs/DESIGN.md` wins on colours, typography, spacing, radii, components, copy, content and motion.
 - Ignore anything in an image that is not in `docs/PRODUCT.md`.
 - Missing images are fine: design from DESIGN.md and the nearest screen.
+
+## What is here (8 Nov 2026)
+
+- `desktop-view/` (17 images) and `mobile-view/` (11 images) use descriptive file names (e.g. `Moz Rewards Gold Sign-In Page.png`), not the `m01`/`d01` numbering above. Match an image to its DESIGN.md §15 screen by name; the rules above still apply.
