@@ -10,7 +10,7 @@ import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { env } from "@/server/env";
 import { sendEmail } from "@/server/integrations/email";
-import { PASSKEY_REGISTRATION_PATHS, isMfaSessionPath, privilegedSessionAllowed } from "./mfa";
+import { PASSKEY_REGISTRATION_PATHS, PRIVILEGED_FORBIDDEN_PATHS, isMfaSessionPath, privilegedSessionAllowed } from "./mfa";
 import { isPrivilegedEmail, isPrivilegedUser } from "./privileged";
 import { hashPassword, verifyPassword } from "./password";
 
@@ -60,6 +60,13 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      if (PRIVILEGED_FORBIDDEN_PATHS.has(ctx.path)) {
+        const current = await getSessionFromCtx(ctx);
+        if (current && (await isPrivilegedUser(current.user.id))) {
+          throw new APIError("FORBIDDEN", { message: "Two-step verification is required for staff and admin accounts." });
+        }
+        return;
+      }
       if (!PASSKEY_REGISTRATION_PATHS.has(ctx.path)) return;
       // A passkey is a second factor, so only a session that already passed MFA may add one (audit security #1).
       const current = await getSessionFromCtx(ctx);

@@ -9,8 +9,14 @@ const MFA_SESSION_PATHS = new Set([
 export const isMfaSessionPath = (path: string | undefined | null): boolean =>
   path != null && MFA_SESSION_PATHS.has(path);
 
-/** Password sign-in: the only non-MFA way in for staff/admins (it becomes a TOTP challenge once enrolled). */
-const PASSWORD_SIGN_IN_PATH = "/sign-in/email";
+/**
+ * Non-MFA endpoints that may issue a staff/admin session: password sign-in (a TOTP challenge once enrolled) and
+ * change-password (which re-issues the caller's session). Both produce `mfaVerified=false` sessions.
+ */
+const PRIVILEGED_NON_MFA_PATHS = new Set(["/sign-in/email", "/change-password"]);
+
+/** Staff/admins must keep a second factor (SECURITY §2): Better Auth would delete it before failing. */
+export const PRIVILEGED_FORBIDDEN_PATHS = new Set(["/two-factor/disable"]);
 
 /**
  * Whether a staff/admin account may get a session from `path` (audit security #1). Email links, Google and
@@ -19,7 +25,7 @@ const PASSWORD_SIGN_IN_PATH = "/sign-in/email";
  */
 export function privilegedSessionAllowed(path: string | undefined | null, opts: { testEnv: boolean }): boolean {
   if (path == null) return opts.testEnv;
-  return path === PASSWORD_SIGN_IN_PATH || isMfaSessionPath(path);
+  return PRIVILEGED_NON_MFA_PATHS.has(path) || isMfaSessionPath(path);
 }
 
 /** Passkeys are a second factor: registering one needs a session that already passed MFA. */

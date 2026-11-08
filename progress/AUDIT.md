@@ -68,6 +68,7 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 | #4 tokens in logs | **fixed** (P0-17 merge: console email + dev outbox removed) | — |
 | #6 passkey without user verification | **fixed** | register options return `userVerification: "required"` (same test file); enforced on verify by `@better-auth/passkey` |
 | #5, #7, #8 | open (medium) | with P0-06 / P0-03 / P0-07 rework |
+| Review of the hotfix (security-reviewer) | #1 #3 #6 confirmed closed (all session-creating endpoints checked; 16 redirect probes) | new: staff `/two-factor/disable` deleted TOTP then failed and change-password failed half-way → **fixed** (`mfa-bypass.test.ts`, seen failing first); magic-link timing leak (low) → P0-04 queue; legacy passkeys → none can exist (no deployment) |
 
 P0-06 and P0-07 stay PARTIAL: route-group guards, friendly expired-link page, role-home fallback, first-enrolment takeover (#5) and the other criteria in their tables are still open.
 

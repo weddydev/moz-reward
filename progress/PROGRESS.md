@@ -22,7 +22,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 
 ## Next (top 3)
 1. Fix audit gaps in task order starting with P0-01 (`progress/AUDIT.md` "Fix plan": server-only + lint boundaries, hex ban, strict-type-checked, exactOptionalPropertyTypes, pre-commit, versions), each with evidence; then P0-02, P0-03 … P0-09, then P0-04/05, then P0-10+. P0-17 tooling is available for all of them (TESTING §8 loop: `shoot()`, guard, `signInAs`).
-2. Remaining medium security items: #5 first-enrolment takeover (with P0-06), #7 separate DB roles for append-only tables (with P0-03), #8 Better Auth account endpoints for stale staff sessions (with P0-07).
+2. Remaining security items: magic-link response timing for staff vs customers (low, fix by queueing email in P0-04); #5 first-enrolment takeover (with P0-06), #7 separate DB roles for append-only tables (with P0-03), #8 Better Auth account endpoints for stale staff sessions (with P0-07).
 3. Close sub-phases only with `/subphase-complete` (needs CI + staging: P0-14/15 and H-05/06/07).
 
 ## Blockers

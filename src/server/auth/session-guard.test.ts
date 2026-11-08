@@ -11,6 +11,10 @@ describe("[P0-06] privileged session creation (audit security #1)", () => {
     expect(privilegedSessionAllowed("/sign-in/email", { testEnv: false })).toBe(true);
   });
 
+  it("allows change-password to re-issue the caller's session (non-MFA)", () => {
+    expect(privilegedSessionAllowed("/change-password", { testEnv: false })).toBe(true);
+  });
+
   it.each(["/magic-link/verify", "/callback/google", "/oauth2/callback/google", "/sign-in/social", "/update-session", "/anything-else"])(
     "refuses non-MFA path %s for staff and admins",
     (path) => expect(privilegedSessionAllowed(path, { testEnv: false })).toBe(false),
