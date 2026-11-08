@@ -12,6 +12,7 @@ if (!isRemote) Object.assign(process.env, e2eServerEnv());
 export default defineConfig({
   testDir: "./tests/e2e",
   outputDir: "test-results",
+  globalSetup: "./tests/e2e/support/warm-up.ts",
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,

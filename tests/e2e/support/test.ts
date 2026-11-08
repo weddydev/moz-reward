@@ -2,6 +2,7 @@
  * Shared Playwright fixtures (TESTING §6, §8). Every spec imports `test`/`expect` from here, never
  * from @playwright/test directly, so the console/network guard is always on.
  */
+import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { test as base, expect, type Page, type TestInfo } from "@playwright/test";
@@ -18,10 +19,16 @@ type Options = {
 };
 
 type SignedIn = { userId: string; email: string; shopId: string | null; role: ActorRole };
+type CreatedUser = { userId: string; email: string; password: string };
+
+/** Unique, undeliverable address (`.invalid` TLD); Mailpit still captures it. Specs never import server code. */
+export const uniqueEmail = (label: string): string => `${label}.${randomUUID().slice(0, 12)}@test.moz.invalid`;
 
 type Fixtures = {
   guard: { problems: GuardProblem[] };
   signInAs: (role: ActorRole, opts?: { shopId?: string }) => Promise<SignedIn>;
+  /** A password user with no session, via `/api/test/user` (for flows that sign in through the UI). */
+  createUser: (label?: string) => Promise<CreatedUser>;
   /** Freezes the page clock at an ISO instant (Europe/London is the app's zone; pass an explicit offset). */
   freezeTime: (iso: string) => Promise<void>;
   /** Screenshot to `.artifacts/screens/<task-id>/<name>--<project>.png`; returns the path to inspect. */
@@ -97,6 +104,14 @@ export const test = base.extend<Fixtures & Options>({
       const res = await page.request.post("/api/test/session", { data: { role, ...opts } });
       expect(res.status(), `test session for ${role}`).toBe(200);
       return (await res.json()) as SignedIn;
+    });
+  },
+
+  createUser: async ({ request }, provide) => {
+    await provide(async (label = "e2e-user") => {
+      const res = await request.post("/api/test/user", { data: { label } });
+      expect(res.status(), "test user").toBe(200);
+      return (await res.json()) as CreatedUser;
     });
   },
 

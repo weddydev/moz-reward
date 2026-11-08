@@ -6,7 +6,7 @@ import { db } from "@/server/db/client";
 import { sessions } from "@/server/db/schema";
 import { fakeAi } from "@/server/integrations/ai";
 import { fakePushSink } from "@/server/integrations/push";
-import { ACTOR_ROLES, makeActor } from "@/server/testing/factories";
+import { ACTOR_ROLES, TEST_PASSWORD, fakeEmail, makeActor, makeUser } from "@/server/testing/factories";
 import { testApiEnabled } from "@/server/testing/test-api";
 
 /**
@@ -19,6 +19,9 @@ const sessionInput = z.object({ role: z.enum(ACTOR_ROLES), shopId: z.uuid().opti
 
 type TestCookie = { name: string; value: string; path: string; httpOnly?: boolean; secure?: boolean; sameSite?: "Lax" | "Strict" | "None"; expires?: number };
 type TestHelpers = { login(opts: { userId: string }): Promise<{ token: string; cookies: TestCookie[] }> };
+
+/** A password user with no session: lets E2E drive real sign-in/enrolment flows through the UI. */
+const userInput = z.object({ label: z.string().regex(/^[a-z0-9-]{1,40}$/).default("e2e-user") }).strict();
 
 const fakesInput = z
   .object({
@@ -41,6 +44,12 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
   switch (action) {
     case "session":
       return createSession(body);
+    case "user": {
+      const parsed = userInput.safeParse(body ?? {});
+      if (!parsed.success) return invalid();
+      const user = await makeUser({ email: fakeEmail(parsed.data.label), name: "Test Staff", password: TEST_PASSWORD });
+      return NextResponse.json({ userId: user.id, email: user.email, password: TEST_PASSWORD });
+    }
     case "fakes": {
       const parsed = fakesInput.safeParse(body);
       if (!parsed.success) return invalid();

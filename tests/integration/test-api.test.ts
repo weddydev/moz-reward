@@ -53,6 +53,21 @@ describe("[P0-17] test-only seeding API", () => {
     expect(get.status).toBe(404);
   });
 
+  it("creates a password user without a session (for sign-in flows driven through the UI)", async () => {
+    const route = await import("@/app/api/test/[action]/route");
+    const res = await call(route, { label: "e2e-staff" }, "user");
+    expect(res.status).toBe(200);
+    expect(res.headers.getSetCookie()).toEqual([]);
+    const body = (await res.json()) as { userId: string; email: string; password: string };
+    expect(body.email).toMatch(/^e2e-staff.*@/);
+    expect(body.password.length).toBeGreaterThanOrEqual(12);
+
+    const { db } = await import("@/server/db/client");
+    const { sessions } = await import("@/server/db/schema");
+    expect(await db().select().from(sessions).where(eq(sessions.userId, body.userId))).toEqual([]);
+    expect((await call(route, { label: "x".repeat(100) }, "user")).status).toBe(400);
+  });
+
   it("exposes recorded push payloads and lets tests script and reset the fakes", async () => {
     const route = await import("@/app/api/test/[action]/route");
     const { sendPush } = await import("@/server/integrations/push");
