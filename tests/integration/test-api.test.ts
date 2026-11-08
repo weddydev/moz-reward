@@ -18,7 +18,11 @@ describe("[P0-17] test-only seeding API", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { userId: string; shopId: string | null };
     expect(body.shopId).toBeTruthy();
-    expect(res.headers.getSetCookie().some((c) => c.includes("session_token="))).toBe(true);
+    const sessionCookie = res.headers.getSetCookie().find((c) => c.includes("session_token="));
+    expect(sessionCookie).toBeTruthy();
+    // Regression: Better Auth gives `expires` in seconds; treating it as ms dated the cookie 1970 (browser dropped it).
+    const expires = /expires=([^;]+)/i.exec(sessionCookie!)?.[1];
+    expect(expires && new Date(expires).getTime()).toBeGreaterThan(Date.now() + 60 * 60 * 1000);
 
     const { db } = await import("@/server/db/client");
     const { sessions } = await import("@/server/db/schema");

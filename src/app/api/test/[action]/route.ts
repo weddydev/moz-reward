@@ -86,7 +86,8 @@ async function createSession(body: unknown): Promise<Response> {
       httpOnly: c.httpOnly ?? true,
       secure: c.secure ?? false,
       sameSite: (c.sameSite ?? "Lax").toLowerCase() as "lax" | "strict" | "none",
-      ...(c.expires ? { expires: new Date(c.expires) } : {}),
+      // Better Auth's test cookie uses Playwright's convention: `expires` in seconds since the epoch.
+      ...(c.expires ? { expires: new Date(c.expires * 1000) } : {}),
     });
   }
   return res;

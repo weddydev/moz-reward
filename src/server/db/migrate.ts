@@ -2,6 +2,7 @@ import "../../../scripts/load-env";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
+import { isDirectRun } from "../../lib/is-direct-run";
 
 /** Usage: `pnpm db:migrate` (app DB) or `pnpm db:migrate --test` (DATABASE_URL_TEST). */
 export async function runMigrations(url: string): Promise<void> {
@@ -26,7 +27,7 @@ async function main() {
   );
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isDirectRun(import.meta.url)) {
   main().catch((err: unknown) => {
     console.error("[db] migration failed:", err);
     process.exit(1);

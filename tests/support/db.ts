@@ -58,6 +58,20 @@ export async function prepareWorkerDatabases(workers = INTEGRATION_WORKERS): Pro
   });
 }
 
+export const e2eDbName = (): string => `${baseName()}_e2e`;
+export const e2eDbUrl = (): string => withDatabase(baseTestUrl(), e2eDbName());
+
+/** Fresh, fully migrated database for the E2E server (run only when that server is being started). */
+export async function prepareE2eDatabase(): Promise<void> {
+  await assertDatabaseReachable();
+  const name = e2eDbName();
+  await admin(async (sql) => {
+    await sql.unsafe(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
+    await sql.unsafe(`CREATE DATABASE "${name}"`);
+  });
+  await runMigrations(e2eDbUrl());
+}
+
 /** Empties every app table (triggers disabled for the session so append-only tables can be reset). */
 export async function truncateAll(url: string): Promise<void> {
   const sql = postgres(url, { max: 1, onnotice: () => {} });
