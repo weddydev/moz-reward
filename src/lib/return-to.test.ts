@@ -6,6 +6,7 @@ describe("[P0-06] safeReturnTo", () => {
     ["/wallet", "/wallet"],
     ["/s/K7Q42M?src=qr", "/s/K7Q42M?src=qr"],
     ["/shops/abc#vault", "/shops/abc#vault"],
+    ["/shops/./abc/../xyz", "/shops/xyz"],
   ])("keeps internal path %s", (input, expected) => {
     expect(safeReturnTo(input)).toBe(expected);
   });
@@ -20,6 +21,12 @@ describe("[P0-06] safeReturnTo", () => {
     ["\\\\evil.example"],
     ["javascript:alert(1)"],
     ["wallet"],
+    // Audit security #3: dot-segments normalise to a protocol-relative URL that router.push follows off-site.
+    ["/.//evil.example/x"],
+    ["/a/..//evil.example"],
+    ["/%2e//evil.example"],
+    ["/./%2F/evil.example"],
+    ["/\tevil"],
   ])("falls back for unsafe value %s", (input) => {
     expect(safeReturnTo(input)).toBe("/wallet");
   });
