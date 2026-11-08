@@ -76,3 +76,7 @@ Next: P0-04 background jobs.
 Done: bullmq 6.4.2 + ioredis 6.0.0; queue registry; typed enqueue (after-commit guard); DLQ to failed_jobs (redacted); London schedules (upsert + prune); heartbeat; graceful worker; migration 0004.
 Evidence (P0-04 ticked): jobs.test.ts 11 with real Redis (restart, in-flight close, crash recovery, backoff, DLQ after 3, scheduler idempotency); worker log + heartbeat row; unit 175, integration 148, e2e 37/37.
 Next: /subphase-complete for P0-A (CI/staging parts blocked on P0-14/15 + H-05/06/07).
+
+## 2026-11-08 22:38 — P0 — /subphase-complete P0-A started, handoff (Syedbadeshah76)
+Done: resume (pull, install, services:up, db:migrate, check 175 ✅). Completeness: P0-01…04 ticked with evidence. code-reviewer: APPROVE WITH FIXES (1 HIGH: DLQ misses stalled-limit jobs and recordFailedJob errors; 4 MED; 8 LOW). security-reviewer: no BLOCK/HIGH (5 MED incl. redaction gaps and case-sensitive privileged-email check; 4 LOW). All findings are listed in PROGRESS "P0-A review findings".
+Not done: fixes, full regression ×3 + exploratory QA (agent stopped part-way because the usage limit ran out; no failures reported before it stopped), push verification. No code changed. P0-A not ticked.
