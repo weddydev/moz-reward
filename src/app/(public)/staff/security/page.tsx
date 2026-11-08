@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AuthCard } from "@/features/auth/AuthCard";
 import { EnrolTotp } from "@/features/auth/EnrolTotp";
 import { SignOutButton } from "@/features/auth/SignOutButton";
 import { getSession } from "@/server/auth/session";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Two-step verification" };
 
@@ -25,7 +25,7 @@ async function SecurityContent() {
   return <EnrolTotp />;
 }
 
-export default function StaffSecurityPage() {
+export default function StaffSecurityPage(): React.JSX.Element {
   return (
     <AuthCard title="Two-step verification">
       <Suspense

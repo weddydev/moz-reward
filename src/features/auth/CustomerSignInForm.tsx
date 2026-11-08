@@ -7,7 +7,11 @@ import { safeReturnTo } from "@/lib/return-to";
 import { formValue, useHydrated } from "@/lib/use-hydrated";
 import { inputClass, primaryButtonClass, secondaryButtonClass } from "./AuthCard";
 
-export function CustomerSignInForm({ googleEnabled }: { googleEnabled: boolean }) {
+export function CustomerSignInForm({
+  googleEnabled,
+}: {
+  googleEnabled: boolean;
+}): React.JSX.Element {
   const returnTo = safeReturnTo(useSearchParams().get("returnTo"));
   const emailId = useId();
   const errorId = useId();
@@ -16,7 +20,7 @@ export function CustomerSignInForm({ googleEnabled }: { googleEnabled: boolean }
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState<string | null>(null);
 
-  async function sendLink(e: React.FormEvent<HTMLFormElement>) {
+  async function sendLink(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const email = formValue(e.currentTarget, "email");
     if (!email) {
@@ -57,7 +61,9 @@ export function CustomerSignInForm({ googleEnabled }: { googleEnabled: boolean }
         <button
           type="button"
           className={secondaryButtonClass}
-          onClick={() => authClient.signIn.social({ provider: "google", callbackURL: returnTo })}
+          onClick={() =>
+            void authClient.signIn.social({ provider: "google", callbackURL: returnTo })
+          }
         >
           Continue with Google
         </button>
@@ -67,7 +73,12 @@ export function CustomerSignInForm({ googleEnabled }: { googleEnabled: boolean }
           or
         </p>
       ) : null}
-      <form method="post" onSubmit={sendLink} className="flex flex-col gap-3" noValidate>
+      <form
+        method="post"
+        onSubmit={(e) => void sendLink(e)}
+        className="flex flex-col gap-3"
+        noValidate
+      >
         <label htmlFor={emailId} className="text-sm font-semibold">
           Email
         </label>

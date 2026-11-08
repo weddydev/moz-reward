@@ -15,7 +15,7 @@ export function KpiCard({
   /** e.g. "+12% vs last week" — always text, never colour alone. */
   change?: { text: string; direction: "up" | "down" | "flat" };
   trend?: ReadonlyArray<number>;
-}) {
+}): React.JSX.Element {
   return (
     <Card className="flex flex-col gap-2 p-4">
       <p className="text-small text-ink-2">{label}</p>

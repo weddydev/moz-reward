@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AuthCard } from "@/features/auth/AuthCard";
 import { StaffSignInForm } from "@/features/auth/StaffSignInForm";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Staff sign in" };
 
-export default function StaffSignInPage() {
+export default function StaffSignInPage(): React.JSX.Element {
   return (
     <AuthCard title="Staff sign in" subtitle="For shop teams and Moz Rewards admins.">
       <Suspense

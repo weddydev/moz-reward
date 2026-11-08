@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { cx } from "@/lib/cx";
+import type { ReactNode } from "react";
 
 export type BadgeTone =
   "open" | "closed" | "happy-hour" | "featured" | "private" | "business" | "neutral" | "warning";
@@ -25,7 +25,7 @@ export function Badge({
   icon?: ReactNode;
   children: ReactNode;
   className?: string;
-}) {
+}): React.JSX.Element {
   return (
     <span
       className={cx(

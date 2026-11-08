@@ -37,7 +37,7 @@ export async function setFlag(input: {
   enabled: boolean;
   actorId: string;
   actorRole: string;
-}) {
+}): Promise<{ key: FlagKey; enabled: boolean }> {
   return db().transaction(async (tx) => {
     await tx
       .insert(featureFlags)

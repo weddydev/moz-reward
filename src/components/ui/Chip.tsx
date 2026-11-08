@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { cx } from "@/lib/cx";
+import type { ReactNode } from "react";
 
 /** Selectable chip (toggle button). Use in a <ChipGroup> with a label for screen readers. */
 export function Chip({
@@ -14,7 +14,7 @@ export function Chip({
   onToggle: () => void;
   children: ReactNode;
   icon?: ReactNode;
-}) {
+}): React.JSX.Element {
   return (
     <button
       type="button"
@@ -39,7 +39,7 @@ export function ChipGroup({
   label: string;
   children: ReactNode;
   wrap?: boolean;
-}) {
+}): React.JSX.Element {
   return (
     <div
       role="group"

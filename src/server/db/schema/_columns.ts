@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types -- Drizzle column builders: the inferred builder generics ARE the API (spelling them out is brittle and adds nothing). */
 import { timestamp, uuid } from "drizzle-orm/pg-core";
 import { newId } from "@/lib/id";
 

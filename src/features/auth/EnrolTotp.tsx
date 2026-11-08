@@ -1,16 +1,17 @@
 "use client";
 
-import QRCode from "qrcode";
 import { useRouter, useSearchParams } from "next/navigation";
+import QRCode from "qrcode";
 import { useId, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { safeReturnTo } from "@/lib/return-to";
-import { formValue, useHydrated } from "@/lib/use-hydrated";
+import { formString, formValue, useHydrated } from "@/lib/use-hydrated";
+import { colourTokens } from "@/styles/tokens";
 import { inputClass, primaryButtonClass, secondaryButtonClass } from "./AuthCard";
 
 type Enrolment = { qr: string; secret: string; backupCodes: string[] };
 
-export function EnrolTotp() {
+export function EnrolTotp(): React.JSX.Element {
   const router = useRouter();
   const returnTo = safeReturnTo(useSearchParams().get("returnTo"), "/dashboard");
   const ids = { password: useId(), code: useId(), error: useId() };
@@ -20,10 +21,10 @@ export function EnrolTotp() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function start(e: React.FormEvent<HTMLFormElement>) {
+  async function start(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
-    const password = String(new FormData(form).get("password") ?? "");
+    const password = formString(new FormData(form).get("password"));
     if (!password) {
       setError("Please confirm your password.");
       return;
@@ -32,7 +33,7 @@ export function EnrolTotp() {
     setError(null);
     const { data, error: err } = await authClient.twoFactor.enable({ password });
     setBusy(false);
-    if (err || !data || !("totpURI" in data)) {
+    if (err || !("totpURI" in data)) {
       setError("Password is incorrect.");
       return;
     }
@@ -40,13 +41,13 @@ export function EnrolTotp() {
     const qr = await QRCode.toDataURL(data.totpURI, {
       margin: 1,
       width: 220,
-      color: { dark: "#1C1A17", light: "#FFFFFF" },
+      color: { dark: colourTokens.ink, light: colourTokens.surface },
     });
     form.reset();
     setEnrolment({ qr, secret, backupCodes: data.backupCodes });
   }
 
-  async function confirm(e: React.FormEvent<HTMLFormElement>) {
+  async function confirm(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const code = formValue(e.currentTarget, "code");
     if (code.replace(/\s/g, "").length < 6) {
@@ -68,7 +69,12 @@ export function EnrolTotp() {
 
   if (!enrolment) {
     return (
-      <form method="post" onSubmit={start} className="flex flex-col gap-3" noValidate>
+      <form
+        method="post"
+        onSubmit={(e) => void start(e)}
+        className="flex flex-col gap-3"
+        noValidate
+      >
         <p className="text-ink-2">
           Staff and admin accounts need two-step verification. You&apos;ll need an authenticator app
           such as Google Authenticator, Microsoft Authenticator or 1Password.
@@ -129,15 +135,27 @@ export function EnrolTotp() {
         <button
           type="button"
           className={`${secondaryButtonClass} mt-2`}
-          onClick={async () => {
-            await navigator.clipboard.writeText(enrolment.backupCodes.join("\n"));
-            setSavedCodes(true);
+          onClick={() => {
+            navigator.clipboard.writeText(enrolment.backupCodes.join("\n")).then(
+              () => {
+                setSavedCodes(true);
+              },
+              // Clipboard permission denied or unavailable: say so instead of failing silently.
+              () => {
+                setError("Couldn't copy. Select the codes above and copy them manually.");
+              },
+            );
           }}
         >
           {savedCodes ? "Copied" : "Copy backup codes"}
         </button>
       </div>
-      <form method="post" onSubmit={confirm} className="flex flex-col gap-3" noValidate>
+      <form
+        method="post"
+        onSubmit={(e) => void confirm(e)}
+        className="flex flex-col gap-3"
+        noValidate
+      >
         <label htmlFor={ids.code} className="text-sm font-semibold">
           6-digit code
         </label>

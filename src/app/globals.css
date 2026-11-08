@@ -209,7 +209,12 @@
 
   /* Skeleton shimmer ≤ 1.2s loop; static under reduced motion. */
   .skeleton {
-    background: linear-gradient(90deg, var(--surface-2) 0%, #faf5ea 50%, var(--surface-2) 100%);
+    background: linear-gradient(
+      90deg,
+      var(--surface-2) 0%,
+      color-mix(in oklab, var(--surface-2), var(--surface)) 50%,
+      var(--surface-2) 100%
+    );
     background-size: 200% 100%;
     animation: moz-shimmer 1.2s linear infinite;
   }

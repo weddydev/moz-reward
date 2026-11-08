@@ -4,12 +4,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useId, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { safeReturnTo } from "@/lib/return-to";
-import { formValue, useHydrated } from "@/lib/use-hydrated";
+import { formString, formValue, useHydrated } from "@/lib/use-hydrated";
 import { inputClass, primaryButtonClass } from "./AuthCard";
 
 const GENERIC = "Email or password is incorrect.";
 
-export function StaffSignInForm() {
+export function StaffSignInForm(): React.JSX.Element {
   const router = useRouter();
   const params = useSearchParams();
   const returnTo = safeReturnTo(params.get("returnTo"), "/dashboard");
@@ -20,10 +20,10 @@ export function StaffSignInForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function submitPassword(e: React.FormEvent<HTMLFormElement>) {
+  async function submitPassword(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const email = formValue(e.currentTarget, "email");
-    const password = String(new FormData(e.currentTarget).get("password") ?? "");
+    const password = formString(new FormData(e.currentTarget).get("password"));
     if (!email || !password) {
       setError("Please enter your email and password.");
       return;
@@ -32,8 +32,8 @@ export function StaffSignInForm() {
     setError(null);
     const { data, error: err } = await authClient.signIn.email({ email, password });
     setBusy(false);
-    if (err || !data) {
-      setError(err?.status === 429 ? "Too many attempts — please wait and try again." : GENERIC);
+    if (err) {
+      setError(err.status === 429 ? "Too many attempts — please wait and try again." : GENERIC);
       return;
     }
     if ("twoFactorRedirect" in data && data.twoFactorRedirect) {
@@ -44,7 +44,7 @@ export function StaffSignInForm() {
     router.push(`/staff/security?returnTo=${encodeURIComponent(returnTo)}`);
   }
 
-  async function submitCode(e: React.FormEvent<HTMLFormElement>) {
+  async function submitCode(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const code = formValue(e.currentTarget, "code");
     if (!code) {
@@ -73,7 +73,12 @@ export function StaffSignInForm() {
 
   if (step === "code") {
     return (
-      <form method="post" onSubmit={submitCode} className="flex flex-col gap-3" noValidate>
+      <form
+        method="post"
+        onSubmit={(e) => void submitCode(e)}
+        className="flex flex-col gap-3"
+        noValidate
+      >
         <label htmlFor={ids.code} className="text-sm font-semibold">
           {useBackup ? "Backup code" : "6-digit code from your authenticator app"}
         </label>
@@ -108,7 +113,12 @@ export function StaffSignInForm() {
   }
 
   return (
-    <form method="post" onSubmit={submitPassword} className="flex flex-col gap-3" noValidate>
+    <form
+      method="post"
+      onSubmit={(e) => void submitPassword(e)}
+      className="flex flex-col gap-3"
+      noValidate
+    >
       {params.get("enrolled") ? (
         <p role="status" className="bg-gold-100 rounded-md p-3 text-sm">
           Two-step verification is on. Please sign in again with your code.

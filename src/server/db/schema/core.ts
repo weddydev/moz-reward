@@ -17,8 +17,8 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { users } from "./auth";
 import { id, timestamps, tz } from "./_columns";
+import { users } from "./auth";
 
 export const shopStatus = pgEnum("shop_status", [
   "pending",

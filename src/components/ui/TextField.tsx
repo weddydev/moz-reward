@@ -6,7 +6,12 @@ const FIELD =
   "transition-[border-color,background-color] duration-fast " +
   "focus-visible:border-gold-500 focus-visible:bg-surface aria-invalid:border-danger";
 
-type Common = { label: string; hint?: string | undefined; error?: string | undefined; className?: string | undefined };
+type Common = {
+  label: string;
+  hint?: string | undefined;
+  error?: string | undefined;
+  className?: string | undefined;
+};
 
 function Wrapper({
   id,
@@ -46,7 +51,7 @@ export function TextField({
   className,
   id: idProp,
   ...input
-}: Common & InputHTMLAttributes<HTMLInputElement>) {
+}: Common & InputHTMLAttributes<HTMLInputElement>): React.JSX.Element {
   const auto = useId();
   const id = idProp ?? auto;
   return (
@@ -70,7 +75,7 @@ export function TextArea({
   id: idProp,
   rows = 4,
   ...input
-}: Common & TextareaHTMLAttributes<HTMLTextAreaElement>) {
+}: Common & TextareaHTMLAttributes<HTMLTextAreaElement>): React.JSX.Element {
   const auto = useId();
   const id = idProp ?? auto;
   return (

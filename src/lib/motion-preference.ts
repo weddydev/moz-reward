@@ -33,7 +33,9 @@ export function setMotionPreference(pref: MotionPreference): void {
     /* storage blocked: still apply for this page */
   }
   applyMotionPreference(pref);
-  listeners.forEach((l) => l());
+  listeners.forEach((l) => {
+    l();
+  });
 }
 
 /** Pure decision, exported for tests. */

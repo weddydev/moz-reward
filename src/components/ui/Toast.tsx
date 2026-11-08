@@ -16,7 +16,11 @@ const EXIT_MS = 160;
 let items: ToastItem[] = [];
 let nextId = 1;
 const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((l) => l());
+const emit = () => {
+  listeners.forEach((l) => {
+    l();
+  });
+};
 
 export function toast(message: string, tone: ToastTone = "info"): number {
   const id = nextId++;
@@ -25,7 +29,7 @@ export function toast(message: string, tone: ToastTone = "info"): number {
   return id;
 }
 
-export function dismissToast(id: number) {
+export function dismissToast(id: number): void {
   items = items.map((t) => (t.id === id ? { ...t, leaving: true } : t));
   emit();
   setTimeout(() => {
@@ -35,7 +39,7 @@ export function dismissToast(id: number) {
 }
 
 /** Test helper. */
-export function __resetToasts() {
+export function __resetToasts(): void {
   items = [];
   emit();
 }
@@ -57,7 +61,9 @@ function ToastView({ item }: { item: ToastItem }) {
     const start = () => {
       if (paused.current || document.hidden) return;
       startedAt.current = Date.now();
-      timer.current = setTimeout(() => dismissToast(item.id), remaining.current);
+      timer.current = setTimeout(() => {
+        dismissToast(item.id);
+      }, remaining.current);
     };
     const stop = () => {
       if (timer.current === undefined) return;
@@ -65,7 +71,10 @@ function ToastView({ item }: { item: ToastItem }) {
       timer.current = undefined;
       remaining.current -= Date.now() - startedAt.current;
     };
-    const onVisibility = () => (document.hidden ? stop() : start());
+    const onVisibility = () => {
+      if (document.hidden) stop();
+      else start();
+    };
     start();
     document.addEventListener("visibilitychange", onVisibility);
     const el = document.getElementById(`toast-${item.id}`);
@@ -110,7 +119,9 @@ function ToastView({ item }: { item: ToastItem }) {
       <span className="flex-1">{item.message}</span>
       <button
         type="button"
-        onClick={() => dismissToast(item.id)}
+        onClick={() => {
+          dismissToast(item.id);
+        }}
         className="pressable grid size-11 place-items-center rounded-sm"
         aria-label="Dismiss"
       >
@@ -120,7 +131,7 @@ function ToastView({ item }: { item: ToastItem }) {
   );
 }
 
-export function Toaster() {
+export function Toaster(): React.JSX.Element {
   const list = useSyncExternalStore(
     subscribe,
     () => items,

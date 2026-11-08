@@ -1,6 +1,6 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cx } from "@/lib/cx";
 import { Spinner } from "./Spinner";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
 export type ButtonSize = 40 | 48 | 56;
@@ -23,7 +23,12 @@ export function buttonClasses({
   size = 48,
   block = false,
   className,
-}: { variant?: ButtonVariant; size?: ButtonSize; block?: boolean | undefined; className?: string | undefined } = {}): string {
+}: {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  block?: boolean | undefined;
+  className?: string | undefined;
+} = {}): string {
   return cx(
     "relative inline-flex select-none items-center justify-center font-semibold whitespace-nowrap",
     "disabled:cursor-not-allowed disabled:opacity-55 aria-disabled:cursor-not-allowed aria-disabled:opacity-55",
@@ -56,7 +61,7 @@ export function Button({
   type = "button",
   onClick,
   ...rest
-}: Props) {
+}: Props): React.JSX.Element {
   return (
     <button
       {...rest}
@@ -66,7 +71,13 @@ export function Button({
       aria-disabled={loading || undefined}
       aria-busy={loading || undefined}
       // While loading: stay focusable (no `disabled`) but swallow clicks and form submits.
-      onClick={loading ? (e) => e.preventDefault() : onClick}
+      onClick={
+        loading
+          ? (e) => {
+              e.preventDefault();
+            }
+          : onClick
+      }
     >
       <span className={cx("inline-flex items-center gap-[inherit]", loading && "opacity-0")}>
         {icon}

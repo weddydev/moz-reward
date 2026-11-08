@@ -18,7 +18,7 @@ export function Tabs<T extends string>({
   value: T;
   onChange: (value: T) => void;
   children: ReactNode;
-}) {
+}): React.JSX.Element {
   const base = useId();
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
   const index = Math.max(
@@ -40,7 +40,9 @@ export function Tabs<T extends string>({
               : -1;
     if (next < 0) return;
     e.preventDefault();
-    onChange(items[next]!.value);
+    const target = items[next];
+    if (!target) return;
+    onChange(target.value);
     refs.current[next]?.focus();
   }
 
@@ -66,7 +68,9 @@ export function Tabs<T extends string>({
               aria-selected={selected}
               aria-controls={`${base}-panel`}
               tabIndex={selected ? 0 : -1}
-              onClick={() => onChange(t.value)}
+              onClick={() => {
+                onChange(t.value);
+              }}
               className={cx(
                 "text-small duration-fast relative h-11 shrink-0 px-3 font-semibold transition-colors",
                 selected ? "text-ink" : "text-ink-2 [@media(hover:hover)]:hover:text-ink",

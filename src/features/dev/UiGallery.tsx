@@ -78,7 +78,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-export function UiGallery() {
+export function UiGallery(): React.JSX.Element {
   const [chips, setChips] = useState<string[]>(["Great coffee"]);
   const [range, setRange] = useState<"7" | "30" | "90">("30");
   const [tab, setTab] = useState<"pending" | "approved" | "expired">("pending");
@@ -141,7 +141,9 @@ export function UiGallery() {
             loading={loading}
             onClick={() => {
               setLoading(true);
-              setTimeout(() => setLoading(false), 1500);
+              setTimeout(() => {
+                setLoading(false);
+              }, 1500);
             }}
           >
             Approve request
@@ -230,9 +232,9 @@ export function UiGallery() {
             <Chip
               key={c}
               selected={chips.includes(c)}
-              onToggle={() =>
-                setChips((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]))
-              }
+              onToggle={() => {
+                setChips((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]));
+              }}
             >
               {c}
             </Chip>

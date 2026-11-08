@@ -8,7 +8,7 @@
     "start": "next start",
     "worker": "tsx src/worker/index.ts",
     "typecheck": "next typegen && tsc --noEmit",
-    "lint": "eslint --max-warnings=0",
+    "lint": "eslint --max-warnings=0 && tsx scripts/check-css-hex.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
@@ -78,6 +78,7 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
+    "typescript-eslint": "^8.72.1",
     "vitest": "^5.1.0"
   },
   "packageManager": "pnpm@12.18.0",

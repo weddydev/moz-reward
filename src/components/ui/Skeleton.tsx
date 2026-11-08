@@ -7,7 +7,7 @@ export function Skeleton({
 }: {
   className?: string;
   rounded?: "sm" | "md" | "lg" | "pill";
-}) {
+}): React.JSX.Element {
   const r = { sm: "rounded-sm", md: "rounded-md", lg: "rounded-lg", pill: "rounded-pill" }[rounded];
   return <div aria-hidden="true" className={cx("skeleton", r, className)} />;
 }

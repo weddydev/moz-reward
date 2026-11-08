@@ -27,7 +27,7 @@ export function Table<Row>({
   rowKey: (row: Row) => string;
   onRowClick?: (row: Row) => void;
   empty?: ReactNode;
-}) {
+}): React.JSX.Element {
   const [compact, setCompact] = useState(false);
   return (
     <div className="border-line bg-surface overflow-hidden rounded-md border">
@@ -36,7 +36,9 @@ export function Table<Row>({
         <button
           type="button"
           aria-pressed={compact}
-          onClick={() => setCompact((c) => !c)}
+          onClick={() => {
+            setCompact((c) => !c);
+          }}
           className="pressable text-caption text-ink-2 h-9 rounded-sm px-3 font-semibold"
         >
           {compact ? "Comfortable" : "Compact"}
@@ -77,7 +79,13 @@ export function Table<Row>({
               rows.map((row) => (
                 <tr
                   key={rowKey(row)}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  onClick={
+                    onRowClick
+                      ? () => {
+                          onRowClick(row);
+                        }
+                      : undefined
+                  }
                   className={cx(
                     "border-line duration-fast [@media(hover:hover)]:hover:bg-gold-100/40 border-t transition-colors",
                     onRowClick && "cursor-pointer",

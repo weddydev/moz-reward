@@ -10,7 +10,7 @@ async function DevGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export default function DevLayout({ children }: LayoutProps<"/dev">) {
+export default function DevLayout({ children }: LayoutProps<"/dev">): React.JSX.Element {
   return (
     <Suspense fallback={null}>
       <DevGate>{children}</DevGate>

@@ -30,43 +30,75 @@ const uniq = (): string => newId().slice(-12);
 /** Unique, obviously fake email (the `.invalid` TLD can never be delivered). */
 export const fakeEmail = (label = "user"): string => `${label}.${uniq()}@test.moz.invalid`;
 
-export async function makeUser(over: { email?: string; name?: string; password?: string | null } = {}): Promise<UserRow> {
+export async function makeUser(
+  over: { email?: string; name?: string; password?: string | null } = {},
+): Promise<UserRow> {
   const [user] = await db()
     .insert(users)
-    .values({ email: (over.email ?? fakeEmail()).toLowerCase(), name: over.name ?? "Test User", emailVerified: true })
+    .values({
+      email: (over.email ?? fakeEmail()).toLowerCase(),
+      name: over.name ?? "Test User",
+      emailVerified: true,
+    })
     .returning();
   if (!user) throw new Error("makeUser: insert returned no row");
   if (over.password !== null) {
     await db()
       .insert(accounts)
-      .values({ userId: user.id, providerId: "credential", accountId: user.id, password: await hashPassword(over.password ?? TEST_PASSWORD) });
+      .values({
+        userId: user.id,
+        providerId: "credential",
+        accountId: user.id,
+        password: await hashPassword(over.password ?? TEST_PASSWORD),
+      });
   }
   return user;
 }
 
-export async function makeCustomerProfile(userId: string, over: Partial<typeof customerProfiles.$inferInsert> = {}) {
-  return withUniqueCode(async (memberId) => {
-    const [row] = await db()
-      .insert(customerProfiles)
-      .values({ userId, fullName: "Aisha Khan", memberId, ...over })
-      .returning();
-    if (!row) throw new Error("makeCustomerProfile: no row");
-    return row;
-  }, { length: 6 });
+export async function makeCustomerProfile(
+  userId: string,
+  over: Partial<typeof customerProfiles.$inferInsert> = {},
+): Promise<typeof customerProfiles.$inferSelect> {
+  return withUniqueCode(
+    async (memberId) => {
+      const [row] = await db()
+        .insert(customerProfiles)
+        .values({ userId, fullName: "Aisha Khan", memberId, ...over })
+        .returning();
+      if (!row) throw new Error("makeCustomerProfile: no row");
+      return row;
+    },
+    { length: 6 },
+  );
 }
 
 export async function makeShop(over: Partial<typeof shops.$inferInsert> = {}): Promise<ShopRow> {
-  return withUniqueCode(async (shopCode) => {
-    const [row] = await db()
-      .insert(shops)
-      .values({ slug: `shop-${uniq()}`, shopCode, name: "Brew & Bloom Café", category: "cafe", status: "active", ...over })
-      .returning();
-    if (!row) throw new Error("makeShop: no row");
-    return row;
-  }, { length: 6 });
+  return withUniqueCode(
+    async (shopCode) => {
+      const [row] = await db()
+        .insert(shops)
+        .values({
+          slug: `shop-${uniq()}`,
+          shopCode,
+          name: "Brew & Bloom Café",
+          category: "cafe",
+          status: "active",
+          ...over,
+        })
+        .returning();
+      if (!row) throw new Error("makeShop: no row");
+      return row;
+    },
+    { length: 6 },
+  );
 }
 
-export async function makeStaff(shopId: string, userId: string, role: StaffRole = "staff", over: Partial<typeof shopStaff.$inferInsert> = {}) {
+export async function makeStaff(
+  shopId: string,
+  userId: string,
+  role: StaffRole = "staff",
+  over: Partial<typeof shopStaff.$inferInsert> = {},
+): Promise<typeof shopStaff.$inferSelect> {
   const [row] = await db()
     .insert(shopStaff)
     .values({ shopId, userId, role, perAwardLimit: role === "staff" ? 200 : null, ...over })
@@ -75,19 +107,36 @@ export async function makeStaff(shopId: string, userId: string, role: StaffRole 
   return row;
 }
 
-export async function makeAdmin(userId: string, role: AdminRole, over: Partial<typeof adminMembers.$inferInsert> = {}) {
-  const [row] = await db().insert(adminMembers).values({ userId, role, ...over }).returning();
+export async function makeAdmin(
+  userId: string,
+  role: AdminRole,
+  over: Partial<typeof adminMembers.$inferInsert> = {},
+): Promise<typeof adminMembers.$inferSelect> {
+  const [row] = await db()
+    .insert(adminMembers)
+    .values({ userId, role, ...over })
+    .returning();
   if (!row) throw new Error("makeAdmin: no row");
   return row;
 }
 
-export async function makeMembership(userId: string, shopId: string, over: Partial<typeof memberships.$inferInsert> = {}) {
-  const [row] = await db().insert(memberships).values({ userId, shopId, ...over }).returning();
+export async function makeMembership(
+  userId: string,
+  shopId: string,
+  over: Partial<typeof memberships.$inferInsert> = {},
+): Promise<typeof memberships.$inferSelect> {
+  const [row] = await db()
+    .insert(memberships)
+    .values({ userId, shopId, ...over })
+    .returning();
   if (!row) throw new Error("makeMembership: no row");
   return row;
 }
 
-export async function makeFeatureFlag(key: string, enabled = false) {
+export async function makeFeatureFlag(
+  key: string,
+  enabled = false,
+): Promise<typeof featureFlags.$inferSelect> {
   const [row] = await db().insert(featureFlags).values({ key, enabled }).returning();
   if (!row) throw new Error("makeFeatureFlag: no row");
   return row;
@@ -105,8 +154,15 @@ export const ACTOR_ROLES = [
 export type ActorRole = (typeof ACTOR_ROLES)[number];
 
 /** Builds a ready-to-use actor for a role: user (+ profile/shop/staff/admin rows as needed). */
-export async function makeActor(role: ActorRole, opts: { shopId?: string } = {}): Promise<{ user: UserRow; shopId: string | null }> {
-  const user = await makeUser({ email: fakeEmail(role), name: `Test ${role}`, password: role === "customer" ? null : TEST_PASSWORD });
+export async function makeActor(
+  role: ActorRole,
+  opts: { shopId?: string } = {},
+): Promise<{ user: UserRow; shopId: string | null }> {
+  const user = await makeUser({
+    email: fakeEmail(role),
+    name: `Test ${role}`,
+    password: role === "customer" ? null : TEST_PASSWORD,
+  });
   switch (role) {
     case "customer":
       await makeCustomerProfile(user.id);

@@ -14,7 +14,7 @@ export function SegmentedControl<T extends string>({
   options: ReadonlyArray<{ value: T; label: string }>;
   value: T;
   onChange: (value: T) => void;
-}) {
+}): React.JSX.Element {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
   const index = Math.max(
     0,
@@ -31,7 +31,9 @@ export function SegmentedControl<T extends string>({
     if (!delta) return;
     e.preventDefault();
     const next = (index + delta + options.length) % options.length;
-    onChange(options[next]!.value);
+    const target = options[next];
+    if (!target) return;
+    onChange(target.value);
     refs.current[next]?.focus();
   }
 
@@ -61,7 +63,9 @@ export function SegmentedControl<T extends string>({
           role="radio"
           aria-checked={o.value === value}
           tabIndex={o.value === value ? 0 : -1}
-          onClick={() => onChange(o.value)}
+          onClick={() => {
+            onChange(o.value);
+          }}
           className={cx(
             "rounded-pill text-small duration-fast relative z-10 h-10 px-3 font-semibold transition-colors",
             o.value === value ? "text-ink" : "text-ink-2",

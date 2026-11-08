@@ -1,7 +1,7 @@
 import { MapPin } from "lucide-react";
-import type { ReactNode } from "react";
 import { Card } from "./Card";
 import { ProgressBar } from "./ProgressBar";
+import type { ReactNode } from "react";
 
 /** Wallet shop card (DESIGN §6): 64px photo, name, 1-line address, 4px gold progress, label, badges. */
 export function ShopCard({
@@ -19,7 +19,7 @@ export function ShopCard({
   progress: number;
   progressLabel: string;
   badges?: ReactNode;
-}) {
+}): React.JSX.Element {
   return (
     <Card className="flex w-full min-w-0 gap-3 p-3">
       <div className="bg-surface-2 size-16 shrink-0 overflow-hidden rounded-md">{photo}</div>

@@ -27,7 +27,7 @@ function unwrap<T>(d: Decision<T>): T {
 }
 
 /** Every server action / route handler calls one of these before touching data. */
-export async function requireCustomer(principal?: Principal | null) {
+export async function requireCustomer(principal?: Principal | null): Promise<{ userId: string }> {
   const p = principal === undefined ? await currentPrincipal() : principal;
   return unwrap(decideCustomer(p));
 }
@@ -36,7 +36,7 @@ export async function requireShopRole(
   shopId: string,
   roles: ReadonlyArray<ShopRole>,
   principal?: Principal | null,
-) {
+): Promise<{ userId: string; shopId: string; role: ShopRole }> {
   const p = principal === undefined ? await currentPrincipal() : principal;
   return unwrap(decideShopRole(p, shopId, roles));
 }
@@ -44,7 +44,7 @@ export async function requireShopRole(
 export async function requireAdminRole(
   roles: ReadonlyArray<AdminRole>,
   principal?: Principal | null,
-) {
+): Promise<{ userId: string; role: AdminRole }> {
   const p = principal === undefined ? await currentPrincipal() : principal;
   return unwrap(decideAdminRole(p, roles));
 }

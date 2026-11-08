@@ -11,7 +11,7 @@ export function EmptyState({
   message?: string;
   action?: ReactNode;
   illustration?: ReactNode;
-}) {
+}): React.JSX.Element {
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
       <div className="text-gold-700" aria-hidden="true">

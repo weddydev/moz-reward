@@ -7,7 +7,7 @@ import type { GuardMode } from "./guard-modes";
  * Deliberately misbehaving page for the console/network guard self-tests (TESTING §8).
  * `ok` must stay clean; every other mode must make the guard fail the test.
  */
-export function GuardCheck({ mode }: { mode: GuardMode }) {
+export function GuardCheck({ mode }: { mode: GuardMode }): React.JSX.Element {
   const [status, setStatus] = useState("idle");
 
   useEffect(() => {
@@ -24,13 +24,18 @@ export function GuardCheck({ mode }: { mode: GuardMode }) {
         void Promise.reject(new Error("guard-check: deliberate unhandled rejection"));
         break;
       case "fetch-500":
-        void fetch("/api/test/guard-500").then((r) => setStatus(`fetched ${r.status}`));
+        void fetch("/api/test/guard-500").then((r) => {
+          setStatus(`fetched ${r.status}`);
+        });
         return;
-      default:
+      case "ok":
+      case "hydration": // the mismatch is rendered below, nothing to do here
         break;
     }
     // Deferred so "ready" only shows after the misbehaviour above has run (tests wait for it).
-    queueMicrotask(() => setStatus("ready"));
+    queueMicrotask(() => {
+      setStatus("ready");
+    });
   }, [mode]);
 
   return (

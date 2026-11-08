@@ -5,14 +5,14 @@
  * The harness runs the action as each role with real DB-backed principals and asserts allow/deny.
  * `coverage.test.ts` fails if an exported action has no matrix entry.
  */
-import { describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { makeAdmin, makeShop, makeStaff, makeUser } from "../fixtures/factories";
+import { describe, expect, it } from "vitest";
+import type { ActionResult } from "@/server/actionTemplate";
+import type { AdminRole, Principal } from "@/server/authz/policies";
+import { loadPrincipal, runAsPrincipal } from "@/server/authz/principal";
 import { db } from "@/server/db/client";
 import { shops } from "@/server/db/schema";
-import type { ActionResult } from "@/server/actionTemplate";
-import { loadPrincipal, runAsPrincipal } from "@/server/authz/principal";
-import type { AdminRole, Principal } from "@/server/authz/policies";
+import { makeAdmin, makeShop, makeStaff, makeUser } from "../fixtures/factories";
 
 export const ROLES = [
   "anonymous",
@@ -48,7 +48,10 @@ async function principalFor(userId: string, mfaVerified = true) {
 }
 
 async function buildWorld(): Promise<World> {
-  const [shopA, shopB] = await Promise.all([makeShop({ name: "Authz A" }), makeShop({ name: "Authz B" })]);
+  const [shopA, shopB] = await Promise.all([
+    makeShop({ name: "Authz A" }),
+    makeShop({ name: "Authz B" }),
+  ]);
   const user = async () => (await makeUser()).id;
 
   const ids = {
@@ -68,7 +71,7 @@ async function buildWorld(): Promise<World> {
   const admins: Partial<Record<AdminRole, string>> = {};
   for (const role of ["owner", "support", "moderator", "finance"] as const) {
     admins[role] = await user();
-    await makeAdmin(admins[role]!, role);
+    await makeAdmin(admins[role], role);
   }
 
   return {

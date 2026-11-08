@@ -11,6 +11,10 @@ export function useHydrated(): boolean {
   );
 }
 
+/** A FormData entry as text; a File (never expected in our text fields) becomes "". */
+export const formString = (value: FormDataEntryValue | null): string =>
+  typeof value === "string" ? value : "";
+
 /** Reads a trimmed string field from a submitted form. */
 export const formValue = (form: HTMLFormElement, name: string): string =>
-  String(new FormData(form).get(name) ?? "").trim();
+  formString(new FormData(form).get(name)).trim();

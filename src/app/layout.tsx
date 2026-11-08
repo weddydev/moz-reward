@@ -1,6 +1,7 @@
-import type { Metadata, Viewport } from "next";
 import { ApplyPreferences } from "@/components/system/ApplyPreferences";
 import { fraunces, manrope } from "@/styles/fonts";
+import { colourTokens } from "@/styles/tokens";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,10 +13,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#FBF8F1",
+  themeColor: colourTokens.bg,
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: LayoutProps<"/">): React.JSX.Element {
   return (
     <html lang="en-GB" className={`${fraunces.variable} ${manrope.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">

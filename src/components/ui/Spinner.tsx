@@ -1,7 +1,13 @@
 import { cx } from "@/lib/cx";
 
 /** Inline spinner (fast spin feels faster — 700ms). Decorative: pair with text or aria-busy. */
-export function Spinner({ className, size = 18 }: { className?: string; size?: number }) {
+export function Spinner({
+  className,
+  size = 18,
+}: {
+  className?: string;
+  size?: number;
+}): React.JSX.Element {
   return (
     <svg
       aria-hidden="true"

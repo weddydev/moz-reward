@@ -17,7 +17,7 @@ export class CodeCollisionError extends Error {
 /** Crypto-random code of `length` characters (uniform: randomInt avoids modulo bias). */
 export function generateCode(length: number): string {
   let out = "";
-  for (let i = 0; i < length; i++) out += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
+  for (let i = 0; i < length; i++) out += CODE_ALPHABET.charAt(randomInt(CODE_ALPHABET.length));
   return out;
 }
 
@@ -27,9 +27,11 @@ export function formatMemberId(code: string): string {
 }
 
 function isUniqueViolation(err: unknown): boolean {
-  const code = (e: unknown): unknown => (typeof e === "object" && e !== null ? (e as { code?: unknown }).code : undefined);
+  const code = (e: unknown): unknown =>
+    typeof e === "object" && e !== null ? (e as { code?: unknown }).code : undefined;
   if (code(err) === "23505") return true;
-  const cause = typeof err === "object" && err !== null ? (err as { cause?: unknown }).cause : undefined;
+  const cause =
+    typeof err === "object" && err !== null ? (err as { cause?: unknown }).cause : undefined;
   return code(cause) === "23505";
 }
 
@@ -37,7 +39,10 @@ function isUniqueViolation(err: unknown): boolean {
  * Runs `insert(code)` with fresh codes until it succeeds, retrying only on unique violations (23505),
  * at most 5 times. The DB unique constraint is the source of truth, not a read-before-write.
  */
-export async function withUniqueCode<T>(insert: (code: string) => Promise<T>, opts: { length: number }): Promise<T> {
+export async function withUniqueCode<T>(
+  insert: (code: string) => Promise<T>,
+  opts: { length: number },
+): Promise<T> {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       return await insert(generateCode(opts.length));

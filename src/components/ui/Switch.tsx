@@ -16,7 +16,7 @@ export function Switch({
   label: string;
   description?: string;
   disabled?: boolean;
-}) {
+}): React.JSX.Element {
   const id = useId();
   return (
     <div className="flex min-h-11 items-center justify-between gap-4">
@@ -37,7 +37,9 @@ export function Switch({
         aria-checked={checked}
         aria-describedby={description ? `${id}-d` : undefined}
         disabled={disabled}
-        onClick={() => onCheckedChange(!checked)}
+        onClick={() => {
+          onCheckedChange(!checked);
+        }}
         className={cx(
           "pressable rounded-pill border-line bg-surface-2 relative h-7 w-12 shrink-0 overflow-hidden border disabled:opacity-55",
         )}

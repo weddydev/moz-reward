@@ -28,7 +28,7 @@ export function Sparkline({
   values: ReadonlyArray<number>;
   width?: number;
   height?: number;
-}) {
+}): React.JSX.Element {
   const d = sparklinePath(values, width, height);
   return (
     <svg

@@ -18,10 +18,11 @@ export interface EmailProvider {
 const TIMEOUT_MS = 10_000;
 
 function parseFrom(from: string): { name?: string; email: string } {
-  const m = from.match(/^\s*"?([^"<]*)"?\s*<([^>]+)>\s*$/);
-  if (!m) return { email: from.trim() };
-  const name = m[1]?.trim();
-  return name ? { name, email: m[2]!.trim() } : { email: m[2]!.trim() };
+  const m = /^\s*"?([^"<]*)"?\s*<([^>]+)>\s*$/.exec(from);
+  const address = m?.[2]?.trim();
+  if (!address) return { email: from.trim() };
+  const name = m?.[1]?.trim();
+  return name ? { name, email: address } : { email: address };
 }
 
 let smtpTransport: Transporter | undefined;
@@ -48,7 +49,11 @@ const smtpProvider: EmailProvider = {
   },
 };
 
-async function postJson(url: string, headers: Record<string, string>, body: unknown): Promise<void> {
+async function postJson(
+  url: string,
+  headers: Record<string, string>,
+  body: unknown,
+): Promise<void> {
   const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json", ...headers },
@@ -64,7 +69,13 @@ const resendProvider: EmailProvider = {
     await postJson(
       "https://api.resend.com/emails",
       { authorization: `Bearer ${e.EMAIL_API_KEY ?? ""}` },
-      { from: e.EMAIL_FROM, to: [message.to], subject: message.subject, text: message.text, ...(message.html ? { html: message.html } : {}) },
+      {
+        from: e.EMAIL_FROM,
+        to: [message.to],
+        subject: message.subject,
+        text: message.text,
+        ...(message.html ? { html: message.html } : {}),
+      },
     );
   },
 };
@@ -75,7 +86,13 @@ const brevoProvider: EmailProvider = {
     await postJson(
       "https://api.brevo.com/v3/smtp/email",
       { "api-key": e.EMAIL_API_KEY ?? "" },
-      { sender: parseFrom(e.EMAIL_FROM), to: [{ email: message.to }], subject: message.subject, textContent: message.text, ...(message.html ? { htmlContent: message.html } : {}) },
+      {
+        sender: parseFrom(e.EMAIL_FROM),
+        to: [{ email: message.to }],
+        subject: message.subject,
+        textContent: message.text,
+        ...(message.html ? { htmlContent: message.html } : {}),
+      },
     );
   },
 };

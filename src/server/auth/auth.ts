@@ -10,9 +10,14 @@ import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { env } from "@/server/env";
 import { sendEmail } from "@/server/integrations/email";
-import { PASSKEY_REGISTRATION_PATHS, PRIVILEGED_FORBIDDEN_PATHS, isMfaSessionPath, privilegedSessionAllowed } from "./mfa";
-import { isPrivilegedEmail, isPrivilegedUser } from "./privileged";
+import {
+  PASSKEY_REGISTRATION_PATHS,
+  PRIVILEGED_FORBIDDEN_PATHS,
+  isMfaSessionPath,
+  privilegedSessionAllowed,
+} from "./mfa";
 import { hashPassword, verifyPassword } from "./password";
+import { isPrivilegedEmail, isPrivilegedUser } from "./privileged";
 
 const e = env();
 const appUrl = new URL(e.APP_URL);
@@ -50,8 +55,14 @@ export const auth = betterAuth({
         before: async (session, ctx) => {
           // Staff/admins: password + second factor only. Email links, Google and anything else are refused
           // even if a link was issued before the account became staff (audit security #1).
-          if (!privilegedSessionAllowed(ctx?.path, { testEnv: isTest }) && (await isPrivilegedUser(session.userId))) {
-            throw new APIError("FORBIDDEN", { message: "Staff and admin accounts sign in with a password and two-step verification." });
+          if (
+            !privilegedSessionAllowed(ctx?.path, { testEnv: isTest }) &&
+            (await isPrivilegedUser(session.userId))
+          ) {
+            throw new APIError("FORBIDDEN", {
+              message:
+                "Staff and admin accounts sign in with a password and two-step verification.",
+            });
           }
           return { data: { ...session, mfaVerified: isMfaSessionPath(ctx?.path) } };
         },
@@ -63,7 +74,9 @@ export const auth = betterAuth({
       if (PRIVILEGED_FORBIDDEN_PATHS.has(ctx.path)) {
         const current = await getSessionFromCtx(ctx);
         if (current && (await isPrivilegedUser(current.user.id))) {
-          throw new APIError("FORBIDDEN", { message: "Two-step verification is required for staff and admin accounts." });
+          throw new APIError("FORBIDDEN", {
+            message: "Two-step verification is required for staff and admin accounts.",
+          });
         }
         return;
       }
@@ -71,7 +84,9 @@ export const auth = betterAuth({
       // A passkey is a second factor, so only a session that already passed MFA may add one (audit security #1).
       const current = await getSessionFromCtx(ctx);
       if (!current?.session.mfaVerified) {
-        throw new APIError("FORBIDDEN", { message: "Turn on two-step verification before adding a passkey." });
+        throw new APIError("FORBIDDEN", {
+          message: "Turn on two-step verification before adding a passkey.",
+        });
       }
     }),
   },

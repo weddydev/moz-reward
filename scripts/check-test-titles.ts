@@ -25,16 +25,36 @@ function classify(expr: ts.Expression): { base: string; isDescribe: boolean } | 
   const names: string[] = [];
   let e: ts.Expression = expr;
   for (;;) {
-    if (ts.isCallExpression(e)) e = e.expression; // it.each([...])("title")
+    if (ts.isCallExpression(e))
+      e = e.expression; // it.each([...])("title")
     else if (ts.isPropertyAccessExpression(e)) {
       names.unshift(e.name.text);
       e = e.expression;
     } else break;
   }
   if (!ts.isIdentifier(e) || !CALLEES.has(e.text)) return null;
-  if (names.some((n) => ["beforeEach", "afterEach", "beforeAll", "afterAll", "use", "skip", "fail", "setTimeout", "step"].includes(n)) && !names.includes("describe")) {
+  if (
+    names.some((n) =>
+      [
+        "beforeEach",
+        "afterEach",
+        "beforeAll",
+        "afterAll",
+        "use",
+        "skip",
+        "fail",
+        "setTimeout",
+        "step",
+      ].includes(n),
+    ) &&
+    !names.includes("describe")
+  ) {
     // test.skip(...) with a string title is still a test; bare test.use/test.beforeEach are not.
-    if (!(names.length === 1 && (names[0] === "skip" || names[0] === "only" || names[0] === "fail"))) return null;
+    if (!(
+      names.length === 1 &&
+      (names[0] === "skip" || names[0] === "only" || names[0] === "fail")
+    ))
+      return null;
   }
   return { base: e.text, isDescribe: e.text === "describe" || names.includes("describe") };
 }
@@ -42,12 +62,19 @@ function classify(expr: ts.Expression): { base: string; isDescribe: boolean } | 
 const titleOf = (arg: ts.Expression | undefined): string | null => {
   if (!arg) return null;
   if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) return arg.text;
-  if (ts.isTemplateExpression(arg)) return arg.head.text + arg.templateSpans.map((s) => `\${}${s.literal.text}`).join("");
+  if (ts.isTemplateExpression(arg))
+    return arg.head.text + arg.templateSpans.map((s) => `\${}${s.literal.text}`).join("");
   return null;
 };
 
 export function untaggedTests(file: string, source: string): string[] {
-  const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, file.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const sf = ts.createSourceFile(
+    file,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    file.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
   const problems: string[] = [];
   const visit = (node: ts.Node, tagged: boolean): void => {
     if (ts.isCallExpression(node)) {
@@ -55,12 +82,19 @@ export function untaggedTests(file: string, source: string): string[] {
       const title = titleOf(node.arguments[0]);
       if (kind && title !== null) {
         const here = tagged || TAG.test(title);
-        if (!kind.isDescribe && !here) problems.push(`${file}:${sf.getLineAndCharacterOfPosition(node.getStart()).line + 1}  ${title}`);
-        node.arguments.forEach((a) => visit(a, here));
+        if (!kind.isDescribe && !here)
+          problems.push(
+            `${file}:${sf.getLineAndCharacterOfPosition(node.getStart()).line + 1}  ${title}`,
+          );
+        node.arguments.forEach((a) => {
+          visit(a, here);
+        });
         return;
       }
     }
-    ts.forEachChild(node, (c) => visit(c, tagged));
+    ts.forEachChild(node, (c) => {
+      visit(c, tagged);
+    });
   };
   visit(sf, false);
   return problems;
@@ -68,12 +102,16 @@ export function untaggedTests(file: string, source: string): string[] {
 
 function main(): void {
   const strict = process.argv.includes("--strict");
-  const problems = ROOTS.flatMap((root) => [...walk(root)]).flatMap((f) => untaggedTests(f.replaceAll("\\", "/"), readFileSync(f, "utf8")));
+  const problems = ROOTS.flatMap((root) => [...walk(root)]).flatMap((f) =>
+    untaggedTests(f.replaceAll("\\", "/"), readFileSync(f, "utf8")),
+  );
   if (problems.length === 0) {
     console.warn("[titles] every test title carries a task or journey ID");
     return;
   }
-  console.warn(`[titles] ${problems.length} test(s) without [Pn-nn]/[Jn]/[S-nn] in their title or describe:\n${problems.map((p) => `  ${p}`).join("\n")}`);
+  console.warn(
+    `[titles] ${problems.length} test(s) without [Pn-nn]/[Jn]/[S-nn] in their title or describe:\n${problems.map((p) => `  ${p}`).join("\n")}`,
+  );
   if (strict) process.exit(1);
 }
 

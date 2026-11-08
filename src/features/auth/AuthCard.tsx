@@ -9,7 +9,7 @@ export function AuthCard({
   title: string;
   subtitle?: string;
   children: ReactNode;
-}) {
+}): React.JSX.Element {
   return (
     <main
       id="main"

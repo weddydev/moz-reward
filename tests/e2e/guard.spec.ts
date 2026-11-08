@@ -6,7 +6,9 @@ import { expect, test } from "./support/test";
  * One browser is enough to prove the fixture; the guard code is identical on every project.
  */
 test.describe("[P0-17] console/network guard", () => {
-  test.beforeEach(({}, info) => test.skip(info.project.name !== "chromium", "fixture self-test runs once"));
+  test.beforeEach(({}, info) => {
+    test.skip(info.project.name !== "chromium", "fixture self-test runs once");
+  });
 
   test("passes on a clean page", async ({ page }) => {
     await page.goto("/dev/guard-check?mode=ok");
@@ -24,7 +26,9 @@ test.describe("[P0-17] console/network guard", () => {
 
   test("fails on a 5xx response", async ({ page }) => {
     test.fail();
-    await page.route("**/api/test/guard-500", (route) => route.fulfill({ status: 500, body: "boom" }));
+    await page.route("**/api/test/guard-500", (route) =>
+      route.fulfill({ status: 500, body: "boom" }),
+    );
     await page.goto("/dev/guard-check?mode=fetch-500");
     await expect(page.getByTestId("guard-status")).toHaveText("fetched 500");
   });
@@ -33,7 +37,9 @@ test.describe("[P0-17] console/network guard", () => {
     test.use({ guardAllow: [/^http5xx: 500 GET .*\/api\/test\/guard-500$/] });
 
     test("passes when the 5xx is expected", async ({ page }) => {
-      await page.route("**/api/test/guard-500", (route) => route.fulfill({ status: 500, body: "boom" }));
+      await page.route("**/api/test/guard-500", (route) =>
+        route.fulfill({ status: 500, body: "boom" }),
+      );
       await page.goto("/dev/guard-check?mode=fetch-500");
       await expect(page.getByTestId("guard-status")).toHaveText("fetched 500");
     });
@@ -41,12 +47,25 @@ test.describe("[P0-17] console/network guard", () => {
 });
 
 test.describe("[P0-17] role fixtures and helpers", () => {
-  test.beforeEach(({}, info) => test.skip(info.project.name !== "chromium", "fixture self-test runs once"));
+  test.beforeEach(({}, info) => {
+    test.skip(info.project.name !== "chromium", "fixture self-test runs once");
+  });
 
-  for (const role of ["customer", "staff", "owner", "admin_owner", "admin_support", "admin_moderator", "admin_finance"] as const) {
+  for (const role of [
+    "customer",
+    "staff",
+    "owner",
+    "admin_owner",
+    "admin_support",
+    "admin_moderator",
+    "admin_finance",
+  ] as const) {
     test(`signInAs(${role}) creates a real session`, async ({ page, signInAs }) => {
       const who = await signInAs(role);
-      const session = (await (await page.request.get("/api/auth/get-session")).json()) as { user: { id: string }; session: { mfaVerified: boolean } };
+      const session = (await (await page.request.get("/api/auth/get-session")).json()) as {
+        user: { id: string };
+        session: { mfaVerified: boolean };
+      };
       expect(session.user.id).toBe(who.userId);
       expect(session.session.mfaVerified).toBe(role !== "customer");
     });
@@ -62,7 +81,9 @@ test.describe("[P0-17] role fixtures and helpers", () => {
     await page.goto("/dev/guard-check?mode=ok");
     await expect(page.getByTestId("guard-status")).toHaveText("ready");
     const file = await shoot("guard-ok");
-    expect(file.replaceAll("\\", "/")).toMatch(/\.artifacts\/screens\/P0-17\/guard-ok--chromium\.png$/);
+    expect(file.replaceAll("\\", "/")).toMatch(
+      /\.artifacts\/screens\/P0-17\/guard-ok--chromium\.png$/,
+    );
   });
 
   test("pushes reads the fake push sink", async ({ pushes }) => {

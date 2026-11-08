@@ -13,7 +13,9 @@ describe("[P0-03] audit_logs (append-only)", () => {
 
     // Drizzle wraps driver errors; the Postgres message is on `cause`.
     const appendOnly = {
-      cause: expect.objectContaining({ message: expect.stringMatching(/append-only/) }),
+      cause: expect.objectContaining({
+        message: expect.stringMatching(/append-only/) as unknown,
+      }) as unknown,
     };
     await expect(
       db().update(auditLogs).set({ action: "tampered" }).where(eq(auditLogs.id, rowId)),

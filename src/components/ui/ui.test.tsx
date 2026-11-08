@@ -28,7 +28,9 @@ describe("[P0-09] Button", () => {
   });
 
   it("does not submit a form while loading", async () => {
-    const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
+    const onSubmit = vi.fn((e: React.SyntheticEvent) => {
+      e.preventDefault();
+    });
     render(
       <form onSubmit={onSubmit}>
         <Button type="submit" loading>
@@ -149,7 +151,9 @@ describe("[P0-09] sparklinePath", () => {
 describe("[P0-09] toast", () => {
   afterEach(() => {
     vi.useRealTimers();
-    act(() => __resetToasts());
+    act(() => {
+      __resetToasts();
+    });
   });
 
   it("announces politely and auto-dismisses after 4s", () => {

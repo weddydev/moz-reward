@@ -15,8 +15,8 @@
  *     handler: ({ shopId, name }, actor) => shopService.rename({ shopId, name, actorId: actor.userId }),
  *   });
  */
-import type { z } from "zod";
 import { AppError, isAppError } from "@/server/errors";
+import type { z } from "zod";
 
 export type ActionResult<T> =
   | { ok: true; data: T }
