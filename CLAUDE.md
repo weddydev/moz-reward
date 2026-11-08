@@ -18,6 +18,15 @@ This file is loaded every session, so it is kept short. Detailed specs live in `
 1. Run the relevant checks (typecheck, lint, the tests you touched).
 2. Confirm with evidence (see §3 "Verification before done"), then commit with a Conventional Commit message (`feat(loyalty): ledger idempotency`).
 3. Update `progress/PROGRESS.md` (Now / Next / Blockers / Last verified) and tick the task in `docs/PHASES.md`.
+4. Commit the progress update and **push to `origin main`** (every task, so the human can stop or hand off at any moment).
+5. Play the soft task sound: `node .claude/hooks/notify.mjs task "<phase> task <n> done: <name>" < /dev/null`
+6. **Do not stop — start the next task immediately.** Mention in one line what finished.
+
+**Autopilot cadence (human's standing rule):**
+- Keep going task after task. After **3–5 completed tasks** (fewer when the tasks were large), **stop** for review.
+- **Always stop when a whole phase is complete** (after `/phase-complete`), even if fewer than 3 tasks ran.
+- When stopping: make sure everything is committed and pushed, then play the louder review sound `node .claude/hooks/notify.mjs review "<what was done>" < /dev/null` and reply with a short summary (done, verified, next, open 🔴/🟠 human tasks). The human then says "continue" or runs `/handoff`.
+- Also stop early (with the review sound) if blocked on a 🔴 human task with no other work available, or when context is getting heavy (`/checkpoint` first).
 
 **After every completed sub-phase (task group) and every phase:** update PROGRESS.md (including the Handoff note), review and update `progress/HUMAN_TASKS.md` (priorities and "needed by" dates), tick PHASES.md, append to SESSION_LOG.md, commit, and **push to `origin main`** so the other developer gets it on their next pull. Never leave finished work only on your machine.
 

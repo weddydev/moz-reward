@@ -11,13 +11,11 @@ import {
 function mockSystem(reduce: boolean) {
   vi.stubGlobal(
     "matchMedia",
-    vi
-      .fn()
-      .mockReturnValue({
-        matches: reduce,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      }),
+    vi.fn().mockReturnValue({
+      matches: reduce,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }),
   );
 }
 

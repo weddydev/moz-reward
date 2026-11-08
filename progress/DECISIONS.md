@@ -13,6 +13,16 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-08 — Autopilot cadence (human's rule)
+Decision: After each task: progress update, commit, push, soft "task" sound, continue. Stop for review after 3–5 tasks (by size) and always at phase end, with the louder two-tone "review" sound. Written into CLAUDE.md §1; sounds in `.claude/hooks/notify.mjs` (`task`, `review`).
+Why: the human wants to follow progress and be able to stop or hand off at any point without babysitting every task.
+Consequence: Every task ends pushed; `/handoff` is always possible.
+
+## 2026-11-08 — UI primitives
+Decision: Own primitives in `src/components/ui/` (no component library): Button (+`buttonClasses` for links), Card/HeroCard, Badge, ProgressBar, Skeleton, EmptyState, TextField/TextArea, Switch, Chip/ChipGroup, SegmentedControl, Tabs, Toast (`toast()` + `<Toaster/>`), Sparkline, KpiCard, Table, ShopCard. Icons: `lucide-react` (per-icon imports, 1.5 stroke). Sheet/Modal/SidePanel come with the motion primitives (task 9). `/dev/*` is 404 only in production so the gallery can be demoed on staging.
+Why: DESIGN §6 is specific enough that a library would mostly be overridden; keeps bundles small.
+Consequence: axe found and we fixed: hidden loading label (use opacity, not visibility), ink-3 is not for readable text (placeholders/decoration only), success badge tint 6%, focusable scroll regions, and grid items need `min-w-0` (ShopCard caused page overflow on phones). The gallery E2E asserts zero serious axe issues and no horizontal overflow.
+
 ## 2026-11-08 — Authz matrix harness
 Decision: `tests/authz/harness.ts` builds real DB principals for 13 roles (anonymous, customer, other-shop staff/owner, own-shop staff/owner, owner without MFA, inactive staff, 4 admin roles, admin without MFA) and `authzMatrix("<action>", { allow, run })` asserts allow/deny for each. `coverage.test.ts` fails if any `export const x = defineAction(` lacks a matrix entry. Actions are run as a role via `runAsPrincipal()` (AsyncLocalStorage), which throws unless `APP_ENV=test`.
 Why: SECURITY §3 makes the matrix mandatory; real principals also exercise `loadPrincipal` (active flags, roles).

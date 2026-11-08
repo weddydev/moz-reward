@@ -66,6 +66,8 @@ Both machines need: the same Node LTS, pnpm and Docker; the same `.env.local` va
 - **Claude needs you** — asking for a permission or waiting for your input (macOS "Glass", Windows "Exclamation")
 - **Claude finished** a response or task (macOS "Hero", Windows "Asterisk")
 - **Claude logged a decision** in `progress/DECISIONS.md` (macOS "Pop", Windows "Beep")
+- **Claude finished a task and is carrying on** — soft single sound (macOS "Tink")
+- **Claude stopped for your review** (every 3–5 tasks and at every phase end) — louder two-tone (macOS "Glass" + "Hero"); reply "continue" or run `/handoff`
 
 Works on macOS, Windows (Git Bash/PowerShell) and Linux (PulseAudio); Node must be on your PATH. To mute temporarily, start Claude Code with `CLAUDE_SOUNDS=off claude`. To customise, edit `.claude/hooks/notify.mjs`. On macOS, allow notifications for your terminal app in System Settings → Notifications if no banner appears.
 - Check `progress/HUMAN_TASKS.md`: your to-do list from Claude, marked 🔴 blocking now / 🟠 needed soon / 🟢 later, each with exact steps and when it's needed. When you finish one, tell Claude ("H-03 done").

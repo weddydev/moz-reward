@@ -17,7 +17,7 @@ Every phase's definition of done includes: `pnpm check` green, CI green, staging
 - [x] Auth: customer Google OAuth + magic link; staff/admin email+password + mandatory TOTP; session helpers; `server/authz` policies; action template
 - [x] Authz test harness (`tests/authz/`) with the role matrix pattern
 - [x] Design tokens, fonts (Fraunces + Manrope via next/font), Tailwind theme, globals, reduced-motion handling
-- [ ] UI primitives (DESIGN.md §6) + `/dev/ui` gallery
+- [x] UI primitives (DESIGN.md §6) + `/dev/ui` gallery
 - [ ] Motion primitives: page transition wrapper (View Transitions + fallback), press feedback, sheet/modal, skeletons; `/dev/motion` gallery skeleton
 - [ ] Sound module (Web Audio synthesis, unlock on first gesture, toggle) + haptics helper
 - [ ] App shells: customer (mobile bottom nav + desktop rail), shop dashboard (sidebar + mobile nav), admin (sidebar) with placeholder pages

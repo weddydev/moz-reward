@@ -169,3 +169,100 @@
   transition-duration: 150ms !important;
   scroll-behavior: auto !important;
 }
+
+/* ---- UI primitives (DESIGN §6–7) ---- */
+@layer components {
+  /* Press feedback: scale .97, 120ms, springs back (ease-out). Everyday motion stays < 300ms. */
+  .pressable {
+    transition:
+      transform var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-fast) var(--ease-out),
+      background-color var(--dur-fast) ease,
+      opacity var(--dur-fast) ease;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .pressable:active:not(:disabled):not([aria-disabled="true"]) {
+    transform: scale(0.97);
+  }
+
+  /* Primary button: gold gradient with a soft sheen on desktop hover (gradient position shift). */
+  .btn-gold {
+    background-image: var(--gold-gradient);
+    background-size: 200% 100%;
+    background-position: 0% 0%;
+    box-shadow: var(--shadow-gold);
+    transition:
+      transform var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-fast) var(--ease-out),
+      background-position 600ms var(--ease-in-out),
+      opacity var(--dur-fast) ease;
+  }
+  .btn-gold:active:not(:disabled):not([aria-disabled="true"]) {
+    box-shadow: 0 3px 10px rgba(201, 162, 74, 0.22);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn-gold:hover:not(:disabled) {
+      background-position: 20% 0%;
+    }
+  }
+
+  /* Skeleton shimmer ≤ 1.2s loop; static under reduced motion. */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface-2) 0%, #faf5ea 50%, var(--surface-2) 100%);
+    background-size: 200% 100%;
+    animation: moz-shimmer 1.2s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion="full"]) .skeleton {
+      animation: none;
+      background: var(--surface-2);
+    }
+  }
+  :root[data-motion="reduce"] .skeleton {
+    animation: none;
+    background: var(--surface-2);
+  }
+
+  /* Foil texture overlay for hero cards and the member card (opacity ≤ .06). */
+  .foil::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Toast: slide up 12px + fade (transitions, interruptible). */
+  .toast {
+    transition:
+      transform var(--dur-base) var(--ease-out),
+      opacity var(--dur-base) var(--ease-out);
+    @starting-style {
+      transform: translateY(12px);
+      opacity: 0;
+    }
+  }
+  .toast[data-leaving="true"] {
+    transform: translateY(12px);
+    opacity: 0;
+    transition-duration: 160ms;
+  }
+}
+
+@keyframes moz-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes moz-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

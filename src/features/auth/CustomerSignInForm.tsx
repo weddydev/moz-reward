@@ -63,7 +63,7 @@ export function CustomerSignInForm({ googleEnabled }: { googleEnabled: boolean }
         </button>
       ) : null}
       {googleEnabled ? (
-        <p className="text-ink-3 text-center text-sm" aria-hidden="true">
+        <p className="text-ink-2 text-center text-sm" aria-hidden="true">
           or
         </p>
       ) : null}
