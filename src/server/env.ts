@@ -1,10 +1,12 @@
 import "server-only";
 import { z } from "zod";
+import { formatEnvError } from "@/lib/env";
 
 /**
- * Server-only environment, validated once on first use (and at startup via instrumentation).
- * Fails closed: APP_ENV and APP_URL are required, and test/dev conveniences are only possible on localhost.
- * Error messages list variable NAMES only, never values.
+ * Server-only environment (P0-02), validated at startup (`src/instrumentation.ts`, worker entry) and cached.
+ * Fails closed: APP_ENV and APP_URL are required, test/dev conveniences are only possible on localhost, and
+ * staging/production must run a production build. Error messages list variable NAMES only, never values.
+ * Browser-safe `NEXT_PUBLIC_*` variables live in `@/lib/env` (clientEnv) and are never declared here.
  */
 const optional = z
   .string()
@@ -56,7 +58,6 @@ export const serverEnvSchema = z
       .transform((v) => v === "true"),
     S3_PUBLIC_BASE_URL: optional,
 
-    TURNSTILE_SITE_KEY: optional,
     TURNSTILE_SECRET_KEY: optional,
     SENTRY_DSN: optional,
     LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
@@ -67,16 +68,39 @@ export const serverEnvSchema = z
     const appUrl = URL.canParse(e.APP_URL) ? new URL(e.APP_URL) : undefined;
     const isLocalEnv = e.APP_ENV === "local" || e.APP_ENV === "test";
     if (appUrl && isLocalEnv && !LOCAL_HOSTS.has(appUrl.hostname)) {
-      ctx.addIssue({ code: "custom", path: ["APP_ENV"], message: "local/test are only allowed when APP_URL is localhost" });
+      ctx.addIssue({
+        code: "custom",
+        path: ["APP_ENV"],
+        message: "local/test are only allowed when APP_URL is localhost",
+      });
+    }
+    if (!isLocalEnv && e.NODE_ENV !== "production") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["NODE_ENV"],
+        message: "must be production when APP_ENV is staging/production",
+      });
     }
     if (appUrl && !isLocalEnv && appUrl.protocol !== "https:") {
-      ctx.addIssue({ code: "custom", path: ["APP_URL"], message: "must use https outside local/test" });
+      ctx.addIssue({
+        code: "custom",
+        path: ["APP_URL"],
+        message: "must use https outside local/test",
+      });
     }
     if (e.EMAIL_PROVIDER === "smtp" && !e.SMTP_HOST) {
-      ctx.addIssue({ code: "custom", path: ["SMTP_HOST"], message: "required when EMAIL_PROVIDER=smtp" });
+      ctx.addIssue({
+        code: "custom",
+        path: ["SMTP_HOST"],
+        message: "required when EMAIL_PROVIDER=smtp",
+      });
     }
     if ((e.EMAIL_PROVIDER === "resend" || e.EMAIL_PROVIDER === "brevo") && !e.EMAIL_API_KEY) {
-      ctx.addIssue({ code: "custom", path: ["EMAIL_API_KEY"], message: `required when EMAIL_PROVIDER=${e.EMAIL_PROVIDER}` });
+      ctx.addIssue({
+        code: "custom",
+        path: ["EMAIL_API_KEY"],
+        message: `required when EMAIL_PROVIDER=${e.EMAIL_PROVIDER}`,
+      });
     }
   });
 
@@ -86,8 +110,7 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
 export function parseServerEnv(source: Record<string, string | undefined>): ServerEnv {
   const parsed = serverEnvSchema.safeParse(source);
   if (parsed.success) return parsed.data;
-  const issues = parsed.error.issues.map((i) => `  - ${i.path.join(".") || "(env)"}: ${i.message}`);
-  throw new Error(`Invalid server environment:\n${issues.join("\n")}`);
+  throw formatEnvError("server", parsed.error);
 }
 
 let cached: ServerEnv | undefined;

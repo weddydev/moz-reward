@@ -1,6 +1,6 @@
 node_modules/
 .next/
-.next-e2e/
+.next-*/
 .stryker-tmp/
 out/
 dist/

@@ -1,5 +1,8 @@
-# Local development services only (staging/prod compose files live in infra/).
-# Start: docker compose up -d   ·   Stop: docker compose down   ·   Wipe data: docker compose down -v
+# Local development and test services (P0-02, TESTING §9). Staging/production compose files live next to this one.
+# Start: pnpm services:up (Docker pre-flight, then `docker compose -f infra/docker-compose.dev.yml up -d --wait`)
+# Stop: pnpm services:down   ·   Wipe data: docker compose -f infra/docker-compose.dev.yml down -v
+# Ports bind to 127.0.0.1 only. Port conflicts: see README "Local setup".
+# Postgres 17 (not 16): see DECISIONS "Local Postgres 17".
 name: moz-rewards
 
 services:
@@ -14,7 +17,7 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./infra/local/postgres-init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+      - ./local/postgres-init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U moz -d moz"]
       interval: 2s
@@ -61,6 +64,17 @@ services:
       - "127.0.0.1:9001:9001"
     volumes:
       - miniodata:/data
+    healthcheck:
+      # Healthy only once the app bucket exists: creates it on first start (idempotent), so `up --wait` leaves
+      # MinIO ready for `pnpm dev` and the tests. Uses the mc binary shipped in the image.
+      test:
+        - CMD-SHELL
+        - >-
+          MC_CONFIG_DIR=/tmp/.mc MC_HOST_local=http://moz:moz-minio-local@127.0.0.1:9000
+          mc mb --ignore-existing local/moz-rewards >/dev/null
+      interval: 2s
+      timeout: 5s
+      retries: 30
 
 volumes:
   pgdata:

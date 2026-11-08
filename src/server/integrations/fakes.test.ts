@@ -9,9 +9,15 @@ describe("[P0-17] fake push sink", () => {
   it("records every payload and clears on reset", async () => {
     const { sendPush, fakePushSink } = await import("./push");
     fakePushSink.reset();
-    await sendPush({ endpoint: "https://push.example/abc" }, { title: "Points credited", body: "+20 gold", url: "/wallet" });
+    await sendPush(
+      { endpoint: "https://push.example/abc" },
+      { title: "Points credited", body: "+20 gold", url: "/wallet" },
+    );
     expect(fakePushSink.list()).toEqual([
-      { subscription: { endpoint: "https://push.example/abc" }, payload: { title: "Points credited", body: "+20 gold", url: "/wallet" } },
+      {
+        subscription: { endpoint: "https://push.example/abc" },
+        payload: { title: "Points credited", body: "+20 gold", url: "/wallet" },
+      },
     ]);
     fakePushSink.reset();
     expect(fakePushSink.list()).toEqual([]);
@@ -31,13 +37,17 @@ describe("[P0-17] fake AI provider", () => {
   it("returns the scripted text", async () => {
     const { complete, fakeAi } = await import("./ai");
     fakeAi.script({ mode: "ok", text: "Lovely flat white." });
-    await expect(complete({ purpose: "review-help", prompt: "x" })).resolves.toEqual({ text: "Lovely flat white." });
+    await expect(complete({ purpose: "review-help", prompt: "x" })).resolves.toEqual({
+      text: "Lovely flat white.",
+    });
   });
 
   it("supports error, timeout and empty failure modes", async () => {
     const { complete, fakeAi, AiUnavailableError } = await import("./ai");
     fakeAi.script({ mode: "error" });
-    await expect(complete({ purpose: "review-help", prompt: "x" })).rejects.toBeInstanceOf(AiUnavailableError);
+    await expect(complete({ purpose: "review-help", prompt: "x" })).rejects.toBeInstanceOf(
+      AiUnavailableError,
+    );
     fakeAi.script({ mode: "timeout" });
     await expect(complete({ purpose: "review-help", prompt: "x" })).rejects.toThrow(/timed out/);
     fakeAi.script({ mode: "empty" });
@@ -71,17 +81,22 @@ describe("[P0-17] fixture Places provider", () => {
 });
 
 describe("[P0-17] fakes fail closed outside local/test", () => {
-  it.each(["push", "ai", "postcodes", "places"] as const)("%s refuses to use a fake in staging", async (name) => {
-    vi.stubEnv("APP_ENV", "staging");
-    vi.stubEnv("APP_URL", "https://staging.mozrewards.co.uk");
-    vi.stubEnv("EMAIL_PROVIDER", "resend");
-    vi.stubEnv("EMAIL_API_KEY", "re_test_key");
-    const calls = {
-      push: async () => (await import("./push")).sendPush({ endpoint: "e" }, { title: "t", body: "b" }),
-      ai: async () => (await import("./ai")).complete({ purpose: "review-help", prompt: "x" }),
-      postcodes: async () => (await import("./postcodes")).lookupPostcode("NW1 7JR"),
-      places: async () => (await import("./places")).searchPlaces("brew"),
-    };
-    await expect(calls[name]()).rejects.toThrow(/not configured/);
-  });
+  it.each(["push", "ai", "postcodes", "places"] as const)(
+    "%s refuses to use a fake in staging",
+    async (name) => {
+      vi.stubEnv("NODE_ENV", "production"); // staging runs a production build (env cross-check)
+      vi.stubEnv("APP_ENV", "staging");
+      vi.stubEnv("APP_URL", "https://staging.mozrewards.co.uk");
+      vi.stubEnv("EMAIL_PROVIDER", "resend");
+      vi.stubEnv("EMAIL_API_KEY", "re_test_key");
+      const calls = {
+        push: async () =>
+          (await import("./push")).sendPush({ endpoint: "e" }, { title: "t", body: "b" }),
+        ai: async () => (await import("./ai")).complete({ purpose: "review-help", prompt: "x" }),
+        postcodes: async () => (await import("./postcodes")).lookupPostcode("NW1 7JR"),
+        places: async () => (await import("./places")).searchPlaces("brew"),
+      };
+      await expect(calls[name]()).rejects.toThrow(/not configured/);
+    },
+  );
 });

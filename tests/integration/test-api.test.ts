@@ -1,10 +1,20 @@
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const call = (mod: { POST: (req: Request, ctx: { params: Promise<{ action: string }> }) => Promise<Response> }, body: unknown, action = "session") =>
-  mod.POST(new Request("http://localhost:3000/api/test/session", { method: "POST", body: JSON.stringify(body) }), {
-    params: Promise.resolve({ action }),
-  });
+const call = (
+  mod: { POST: (req: Request, ctx: { params: Promise<{ action: string }> }) => Promise<Response> },
+  body: unknown,
+  action = "session",
+) =>
+  mod.POST(
+    new Request("http://localhost:3000/api/test/session", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+    {
+      params: Promise.resolve({ action }),
+    },
+  );
 
 describe("[P0-17] test-only seeding API", () => {
   afterEach(() => {
@@ -42,6 +52,7 @@ describe("[P0-17] test-only seeding API", () => {
     ["production", "https://mozrewards.co.uk"],
   ])("returns 404 when APP_ENV=%s", async (appEnv, url) => {
     vi.resetModules();
+    vi.stubEnv("NODE_ENV", "production"); // staging/production run a production build (env cross-check)
     vi.stubEnv("APP_ENV", appEnv);
     vi.stubEnv("APP_URL", url);
     vi.stubEnv("EMAIL_PROVIDER", "resend");
@@ -49,7 +60,9 @@ describe("[P0-17] test-only seeding API", () => {
     const route = await import("@/app/api/test/[action]/route");
     const res = await call(route, { role: "admin_owner" });
     expect(res.status).toBe(404);
-    const get = await route.GET(new Request("http://localhost:3000/api/test/push"), { params: Promise.resolve({ action: "push" }) });
+    const get = await route.GET(new Request("http://localhost:3000/api/test/push"), {
+      params: Promise.resolve({ action: "push" }),
+    });
     expect(get.status).toBe(404);
   });
 
@@ -72,7 +85,10 @@ describe("[P0-17] test-only seeding API", () => {
     const route = await import("@/app/api/test/[action]/route");
     const { sendPush } = await import("@/server/integrations/push");
     const { complete } = await import("@/server/integrations/ai");
-    const get = (action: string) => route.GET(new Request(`http://localhost:3000/api/test/${action}`), { params: Promise.resolve({ action }) });
+    const get = (action: string) =>
+      route.GET(new Request(`http://localhost:3000/api/test/${action}`), {
+        params: Promise.resolve({ action }),
+      });
 
     expect((await call(route, {}, "reset-fakes")).status).toBe(200);
     await sendPush({ endpoint: "e1" }, { title: "Points credited", body: "+20" });

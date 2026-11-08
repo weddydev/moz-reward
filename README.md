@@ -41,6 +41,53 @@ This folder contains everything Claude Code needs to build Moz Rewards from scra
 6. Install Claude Code and open it in the folder: `claude`. Run `/skills` (or ask "which skills are available?") to confirm the four skills show up.
 7. Paste the kickoff prompt below.
 
+## Local setup (run the app on a machine)
+
+Do this once per machine, from a fresh clone. Every step was followed literally on Windows 11 (P0-02).
+
+**You need:** Node.js 24 (see `.nvmrc`), pnpm 12 (`corepack enable` picks the pinned version from `package.json`), Git, and Docker Desktop **running**.
+
+1. Clone and install (this also installs the pre-commit hook):
+   ```
+   git clone https://github.com/weddydev/moz-reward.git
+   cd moz-reward
+   pnpm install
+   ```
+2. Create your local environment file. This copies `.env.example` to `.env.local` and generates fresh local secrets (`AUTH_SECRET`, `DATA_ENCRYPTION_KEY`, `BLIND_INDEX_KEY`, `MEMBER_QR_SIGNING_KEY`). It never overwrites an existing `.env.local` and never prints values:
+   ```
+   pnpm setup:env
+   ```
+   Leave the provider keys (Google, Resend, Turnstile, Sentry…) empty until a HUMAN_TASKS item asks for them; the app runs locally without them.
+3. Start the local services (Postgres 17 + PostGIS, Redis 7, Mailpit, MinIO with the `moz-rewards` bucket created automatically):
+   ```
+   pnpm services:up
+   ```
+   This checks Docker and the ports first, then runs `docker compose -f infra/docker-compose.dev.yml up -d --wait`.
+4. Create the database tables: `pnpm db:migrate`
+5. Start the app: `pnpm dev`, then open http://localhost:3000.
+6. Check everything works: `pnpm check` (no Docker needed), `pnpm check:full` (adds integration tests). For browser tests, run `pnpm exec playwright install` once, then `pnpm e2e`.
+
+**Local services** (bound to `127.0.0.1` only):
+
+| Service | Port | Use |
+|---|---|---|
+| Postgres | 5432 | app DB `moz`, test DB `moz_test` (user/password `moz`/`moz`) |
+| Redis | 6379 | password `moz` |
+| Mailpit | 1025 (SMTP), 8025 (web) | every email the app sends locally: http://localhost:8025 |
+| MinIO | 9000 (S3 API), 9001 (console) | file storage: http://localhost:9001 (`moz` / `moz-minio-local`) |
+
+Stop the services with `pnpm services:down`. Wipe all local data with `docker compose -f infra/docker-compose.dev.yml down -v`.
+
+**Port conflicts.** If `pnpm services:up` says a port is already in use, another program holds it. The usual one is a locally installed PostgreSQL on 5432.
+- Find it. Windows: `netstat -ano | findstr :5432`, then look up the PID in Task Manager. macOS: `lsof -i :5432`.
+- Windows PostgreSQL service: open *Services*, find `postgresql-x64-…`, click **Stop** and set *Startup type* to **Manual**. Or, in an admin PowerShell: `Get-Service postgresql* | Stop-Service`.
+- macOS Homebrew: `brew services stop postgresql`.
+- Do not change the ports in the compose file: `.env.example` and the test setup expect these defaults.
+
+**Troubleshooting.**
+- *"Docker is installed but not running"*: start Docker Desktop, wait until it says *running*, and run the command again.
+- *"Invalid server environment. Fix these variables"*: the app checks its configuration at startup and stops, naming each missing or invalid variable (never its value). Compare `.env.local` with `.env.example`. After a pull that adds variables to `.env.example`, copy the new lines into `.env.local` yourself (`pnpm setup:env` will not overwrite it).
+
 ## Kickoff prompt (paste into Claude Code)
 
 ```

@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "worker": "tsx src/worker/index.ts",
+    "worker": "tsx --conditions=react-server --env-file-if-exists=.env.local src/worker/index.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint --max-warnings=0 && tsx scripts/check-css-hex.ts",
     "format": "prettier --write .",
@@ -20,8 +20,9 @@
     "db:migrate": "tsx src/server/db/migrate.ts",
     "db:migrate:test": "tsx src/server/db/migrate.ts --test",
     "db:studio": "drizzle-kit studio",
-    "services:up": "docker compose up -d --wait",
-    "services:down": "docker compose down",
+    "setup:env": "tsx scripts/setup-env.ts",
+    "services:up": "tsx scripts/services.ts up",
+    "services:down": "tsx scripts/services.ts down",
     "test:unit": "vitest run --project unit",
     "test:int": "vitest run --project integration",
     "test:regression": "tsx scripts/test-regression.ts",
@@ -30,6 +31,7 @@
     "test:live": "vitest run --config vitest.live.config.mts",
     "test:titles": "tsx scripts/check-test-titles.ts",
     "check:full": "pnpm typecheck && pnpm lint && pnpm test",
+    "check:bundle": "tsx scripts/check-client-bundle.ts",
     "prepare": "lefthook install"
   },
   "dependencies": {

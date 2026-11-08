@@ -92,7 +92,7 @@ Installed in `.claude/skills/`: `emil-design-eng`, `animation-performance`, `mob
 
 ```
 pnpm dev            # local app
-pnpm worker         # background jobs
+pnpm worker         # background jobs (validates env at start)
 pnpm typecheck      # tsc --noEmit
 pnpm lint           # eslint
 pnpm test           # vitest unit + integration
@@ -111,7 +111,10 @@ pnpm check:full     # typecheck + lint + unit + integration (needs services:up)
 pnpm format         # prettier --write (format:check in CI)
 pnpm test:coverage  # vitest with coverage thresholds
 pnpm db:migrate:test # migrate the moz_test DB (vitest globalSetup also does this)
-pnpm services:up    # docker compose up -d --wait (Postgres, Redis, Mailpit, MinIO)
+pnpm services:up    # Docker/port pre-flight, then infra/docker-compose.dev.yml up -d --wait (Postgres, Redis, Mailpit, MinIO + bucket)
+pnpm services:down  # stop local services
+pnpm setup:env      # create .env.local from .env.example with generated local secrets (never overwrites)
+pnpm check:bundle   # after `pnpm build`: fail if server-only env var names appear in .next/static
 ```
 Update this list if scripts change.
 

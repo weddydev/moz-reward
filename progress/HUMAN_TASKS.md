@@ -80,7 +80,7 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 ### H-08 — R2 + Turnstile
 1. Cloudflare → R2 → enable (free tier) → Create bucket `moz-rewards`, location hint Europe.
 2. R2 → Manage API tokens → Create token → Object Read & Write, this bucket only → copy Account ID, Access Key ID, Secret → `.env.local` (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`).
-3. Cloudflare → Turnstile → Add site → domains `localhost`, `staging.<domain>` → Managed → copy Site key and Secret key → `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`.
+3. Cloudflare → Turnstile → Add site → domains `localhost`, `staging.<domain>` → Managed → copy Site key and Secret key → `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`.
 
 ### H-09 — Gemini key
 1. aistudio.google.com → Get API key → create in the `Moz Rewards` project → `.env.local` as `AI_API_KEY`.
