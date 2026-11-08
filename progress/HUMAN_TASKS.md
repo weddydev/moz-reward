@@ -7,40 +7,90 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 - 🟠 **Needed soon**: needed within the current or next phase
 - 🟢 **Later**: needed before launch or a later phase; do it whenever convenient
 
+**Nothing is blocking right now.** Local development uses stand-ins (test Google sign-in, sign-in links printed to the terminal) until the real accounts exist. When you finish one, tell Claude e.g. "H-03 done" and put any keys in `.env.local` yourself (never paste secrets into chat or Git).
+
 ## Open
 
 | ID | Priority | Task | Needed by | Why | Est. time |
 |---|---|---|---|---|---|
-| H-01 | 🟠 | Create private GitHub repo and push the kit | P0 start | Code hosting, CI, handovers | 10 min |
-| H-02 | 🟠 | Share `.env.local` values between both devs via a password manager | P0 | Same setup on both machines | 10 min |
-| H-03 | 🟠 | Google Cloud OAuth client (web) for sign-in | P0 auth | Google sign-in | 15 min |
-| H-04 | 🟠 | Email provider account (Resend or Brevo) + API key | P0 auth | Magic-link emails | 15 min (+ domain verification later) |
-| H-05 | 🟠 | Postgres database (Neon or Supabase, EU/UK region) for staging | P0 staging | Staging data | 10 min |
-| H-06 | 🟠 | Staging VPS (London) + SSH access for deploys | P0 staging | Weekly client demos | 30 min |
-| H-07 | 🟠 | Buy domain; Cloudflare account; point DNS to Cloudflare | P0 staging | Staging URL, CDN | 30 min |
-| H-08 | 🟢 | Cloudflare R2 bucket + API token; Turnstile site + secret keys | P2 uploads / registration | Images, bot protection | 15 min |
-| H-09 | 🟢 | AI provider API key (e.g. Gemini) | P3 reviews | AI review help | 5 min |
-| H-10 | 🟢 | Sentry project (DSN) | P0–P1 | Error tracking | 5 min |
-| H-11 | 🟢 | Production VPS + production database | P5 | Launch | 30 min |
-| H-12 | 🟢 | Google Play Console account ($25 one-time) | P5 | Android app | 20 min + Google verification |
-| H-13 | 🟢 | Test each demo on a real Android phone and real iPhone | Every phase end | Real-device check | 15 min / phase |
+| H-07 | 🟠 | Buy domain; Cloudflare account; move DNS to Cloudflare | 13 Nov 2026 (end of P0) | Staging URL `staging.<domain>`, email domain, CDN | 30 min (+ up to 24 h DNS) |
+| H-06 | 🟠 | Staging VPS (London) + SSH access | 13 Nov 2026 (end of P0) | Demo 1 runs on staging | 30 min |
+| H-05 | 🟠 | Postgres database for staging (Neon, London/EU) | 13 Nov 2026 (end of P0) | Staging data | 10 min |
+| H-03 | 🟠 | Google Cloud OAuth client (web) | 13 Nov 2026 (Demo 1 shows real Google sign-in) | Customer Google sign-in | 15 min |
+| H-04 | 🟠 | Email provider (Resend) + API key + domain verification | 13 Nov 2026 (Demo 1 shows email-link sign-in) | Magic-link and invite emails | 15 min (+ DNS wait) |
+| H-10 | 🟠 | Sentry project (DSN) | 13 Nov 2026 | Error tracking on staging | 5 min |
+| H-02 | 🟢 | Share `.env.local` with your partner via a password manager | Before partner's first session | Same setup on both machines | 10 min |
+| H-08 | 🟢 | Cloudflare R2 bucket + API token; Turnstile keys | P2 start (~16 Nov 2026) | Image uploads, bot protection | 15 min |
+| H-09 | 🟢 | AI provider API key (Google Gemini) | P3 start (~23 Nov 2026) | AI review help | 5 min |
+| H-11 | 🟢 | Production VPS + production database | P5 (~7 Dec 2026) | Launch | 30 min |
+| H-12 | 🟢 | Google Play Console account ($25 one-time) — start early, verification takes days | P5 (~7 Dec 2026); **start by 23 Nov** | Android app | 20 min + Google verification |
+| H-13 | 🟢 | Test each demo on a real Android phone and a real iPhone | Every phase end | Real-device check | 15 min / phase |
 | H-14 | 🟢 | Send the client the demo notes and collect feedback | Every phase end | Client sign-off | — |
 | H-15 | 🟢 | Client's solicitor reviews the legal page drafts | P5 | Launch | Client side |
-
-_Claude: add detailed numbered steps under "Steps" for each task when it becomes 🟠 or 🔴._
+| H-16 | 🟢 | Optional: AI-generated reference images in `design/reference/` | Any time (helps from P0 UI work) | Visual guide for screens | — |
 
 ## Steps
 
-### H-01 — GitHub repo
-1. github.com → New repository → name `moz-rewards`, Private, no template.
-2. In the project folder: `git init`, `git add .`, `git commit -m "chore: kit"`, `git branch -M main`, `git remote add origin <url>`, `git push -u origin main`.
-3. Add your partner as a collaborator (Settings → Collaborators).
-4. Tell Claude "H-01 done".
+### H-07 — Domain + Cloudflare (do this first: H-04 and H-06 depend on the domain)
+1. Buy a domain (e.g. `mozrewards.co.uk`) — Cloudflare Registrar (dash.cloudflare.com → Domain Registration) is simplest because DNS is then already on Cloudflare.
+2. If bought elsewhere: Cloudflare → Add a site → enter the domain → Free plan → copy the two nameservers → set them at your registrar.
+3. Tell Claude the domain name. Claude will list the exact DNS records (staging A record, email records) once H-06 and H-04 exist.
 
-_(Claude fills in further steps as tasks become due.)_
+### H-06 — Staging VPS
+1. Create a VPS in **London**: e.g. Hetzner (no London — use DigitalOcean/Vultr/Linode London), Ubuntu 24.04 LTS, 2 vCPU / 4 GB RAM.
+2. During creation add your SSH public key (`cat ~/.ssh/id_ed25519.pub`; if missing run `ssh-keygen -t ed25519`).
+3. Note the server's public IPv4.
+4. Create a separate deploy key for GitHub Actions: `ssh-keygen -t ed25519 -f ~/.ssh/moz_deploy -N ""`, then `ssh-copy-id -i ~/.ssh/moz_deploy.pub root@<IP>`.
+5. Tell Claude the IP. Claude will write the server hardening script (deploy user, firewall, fail2ban) and ask you to add the private key to GitHub secrets with one `gh` command.
+
+### H-05 — Staging database (Neon)
+1. neon.tech → sign up → New project → name `moz-rewards-staging`, Postgres 16+, region **AWS Europe (London) eu-west-2** (or Frankfurt if London is unavailable).
+2. SQL Editor → run `CREATE EXTENSION IF NOT EXISTS postgis;`
+3. Dashboard → Connection details → copy the **pooled** connection string (for the app) and the **direct** one (for migrations).
+4. Keep both in your password manager; Claude will tell you the exact `gh secret set` commands when the deploy workflow is ready.
+
+### H-03 — Google OAuth client
+1. console.cloud.google.com → create project `Moz Rewards`.
+2. APIs & Services → OAuth consent screen → External → app name "Moz Rewards", support email, scopes `openid`, `email`, `profile` only → add yourself and your partner as test users.
+3. Credentials → Create credentials → OAuth client ID → Web application.
+4. Authorised JavaScript origins: `http://localhost:3000` and `https://staging.<domain>`.
+5. Authorised redirect URIs: `http://localhost:3000/api/auth/callback/google` and `https://staging.<domain>/api/auth/callback/google`.
+6. Copy Client ID and Client secret into `.env.local` as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Tell Claude "H-03 done".
+
+### H-04 — Email provider (Resend)
+1. resend.com → sign up → API Keys → Create key (sending access) → put it in `.env.local` as `EMAIL_API_KEY`.
+2. Domains → Add domain → use `mail.<domain>` → add the DNS records it shows in Cloudflare (DNS only / grey cloud) → wait for "Verified".
+3. Set `EMAIL_FROM="Moz Rewards <hello@mail.<domain>>"` in `.env.local`. Tell Claude "H-04 done".
+
+### H-10 — Sentry
+1. sentry.io → sign up (EU data region) → Create project → Next.js → name `moz-rewards`.
+2. Copy the DSN into `.env.local` as `SENTRY_DSN`. Tell Claude "H-10 done".
+
+### H-02 — Share `.env.local`
+1. Claude creates `.env.local` locally with generated secrets (never committed).
+2. Copy its full contents into a shared password-manager note (1Password/Bitwarden) named "Moz Rewards .env.local".
+3. Partner pastes it into `.env.local` in their copy of the project. Update the note whenever you add a key.
+
+### H-08 — R2 + Turnstile
+1. Cloudflare → R2 → enable (free tier) → Create bucket `moz-rewards`, location hint Europe.
+2. R2 → Manage API tokens → Create token → Object Read & Write, this bucket only → copy Account ID, Access Key ID, Secret → `.env.local` (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`).
+3. Cloudflare → Turnstile → Add site → domains `localhost`, `staging.<domain>` → Managed → copy Site key and Secret key → `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`.
+
+### H-09 — Gemini key
+1. aistudio.google.com → Get API key → create in the `Moz Rewards` project → `.env.local` as `AI_API_KEY`.
+
+### H-12 — Google Play Console
+1. play.google.com/console → sign up as an organisation (needs a D-U-N-S number for the client's company) or individual → pay $25.
+2. Complete identity verification (can take several days — start early).
+3. Tell Claude when the account is verified; the TWA listing assets are prepared in P5.
+
+### H-16 — Reference images (optional)
+1. Save images as `design/reference/m03-wallet.png`, `d15-shop-dashboard.png` etc. (numbers from `docs/DESIGN.md` §15).
+2. Commit them or tell Claude to commit them.
 
 ## Done
 
 | ID | Task | Done by | Date |
 |---|---|---|---|
-| — | — | — | — |
+| H-01 | Private GitHub repo `weddydev/moz-reward` pushed; collaborators added; `gh` signed in as `weddydev` | talha.syed | 8 Nov 2026 |
+| — | Local tools: pnpm 12.18, Docker 29.9, gh 2.103, Node 26.11 (installed by Claude) | Claude | 8 Nov 2026 |

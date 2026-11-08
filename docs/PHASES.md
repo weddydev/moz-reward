@@ -10,7 +10,7 @@ Every phase's definition of done includes: `pnpm check` green, CI green, staging
 
 ## P0 — Foundation and design system (week 1)
 
-- [ ] Confirm the Emil Kowalski skills are present in `.claude/skills/` (`emil-design-eng`, `animation-performance`, `mobile-native`, `review-animations`); if missing, add a 🔴 task to `progress/HUMAN_TASKS.md` asking the human to run the install commands in README
+- [x] Confirm the Emil Kowalski skills are present in `.claude/skills/` (`emil-design-eng`, `animation-performance`, `mobile-native`, `review-animations`); if missing, add a 🔴 task to `progress/HUMAN_TASKS.md` asking the human to run the install commands in README
 - [ ] Scaffold Next.js (App Router, TS strict), pnpm, ESLint, Prettier, Vitest, Playwright, path aliases; scripts from CLAUDE.md §6
 - [ ] Docker Compose for local Postgres (PostGIS) + Redis; `.env.example` complete
 - [ ] Drizzle setup, first migration (users/auth tables, customer_profiles, shops, shop_staff, memberships, audit_logs, feature_flags)
