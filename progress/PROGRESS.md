@@ -8,21 +8,21 @@ Baton: held by Syedbadeshah76 since 2026-11-08 17:36
 ## Handoff note
 _Overwritten by `/handoff`. The next developer reads this first._
 - **Current state (Syedbadeshah76, 2026-11-08, mid-session — not a handoff yet):** security hotfix `dfcb50d` pushed (audit #1, #3, #6). Before that, P0-17 finished on `wip/p0-17-test-infra`, merged into `main` and ticked with evidence (SESSION_LOG). The branch is fully merged and can be deleted (`git push origin --delete wip/p0-17-test-infra`); do not work on it. Nothing half-done.
-- **Before your next session on either laptop:** `pnpm install --frozen-lockfile` (new dev deps: Stryker), `pnpm services:up` (Mailpit :8025, MinIO :9000/:9001), `.env.local` must use `EMAIL_PROVIDER=smtp` + the SMTP/MAILPIT/S3 keys from `.env.example` (old `R2_*` keys are gone), Playwright browsers: `pnpm exec playwright install chromium webkit`. **Since P0-02:** compose moved to `infra/docker-compose.dev.yml` (`pnpm services:up` handles it); `.env.local` keys `TURNSTILE_SITE_KEY`/`VAPID_PUBLIC_KEY` are now `NEXT_PUBLIC_TURNSTILE_SITE_KEY`/`NEXT_PUBLIC_VAPID_PUBLIC_KEY` (rename if you set them), and remove any `NODE_ENV=` line.
+- **Before your next session on either laptop:** `pnpm install --frozen-lockfile` (new dev deps: Stryker), `pnpm services:up` (Mailpit :8025, MinIO :9000/:9001), `.env.local` must use `EMAIL_PROVIDER=smtp` + the SMTP/MAILPIT/S3 keys from `.env.example` (old `R2_*` keys are gone), Playwright browsers: `pnpm exec playwright install chromium webkit`. **Since P0-02:** compose moved to `infra/docker-compose.dev.yml` (`pnpm services:up` handles it); `.env.local` keys `TURNSTILE_SITE_KEY`/`VAPID_PUBLIC_KEY` are now `NEXT_PUBLIC_TURNSTILE_SITE_KEY`/`NEXT_PUBLIC_VAPID_PUBLIC_KEY` (rename if you set them), and remove any `NODE_ENV=` line. **Since P0-03:** run `pnpm db:migrate` (migrations 0002/0003).
 - **Windows laptop note:** `.env.local` in place (H-02, 8 Nov); `SENTRY_DSN` added (H-10): add it to the Mac copy via the shared note.
 
 ## Status
-- **Phase:** P0 — Foundation and design system. Audit (`progress/AUDIT.md`): P0-01, P0-02, P0-17 met; 5 partial (P0-03/06/07/08/09), 8 missing. Fixing gaps in task order.
-- **Last updated:** 2026-11-08 22:10, Syedbadeshah76
+- **Phase:** P0 — Foundation and design system. Audit (`progress/AUDIT.md`): P0-01, P0-02, P0-03, P0-17 met; 4 partial (P0-06/07/08/09), 8 missing. Fixing gaps in task order.
+- **Last updated:** 2026-11-08 23:30, Syedbadeshah76
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
 ## Now
-- P0-02 reworked and ticked (compose in `infra/`, MinIO bucket auto-created, env split + startup validation, `services:up` pre-flight, `setup:env`, `check:bundle`, README "Local setup" followed literally from a fresh GitHub clone). Next: P0-03 rework.
+- P0-03 reworked and ticked (migrations 0002/0003: content_settings, geography location, `reject_mutation()`, `set_updated_at()`, `moz_app` role = security #7; branded scopes + `src/server/repos`; `db:seed`/`db:reset`; PostGIS pre-check; expand-only migration check). Next: P0-04 (background jobs).
 
 ## Next (top 3)
-1. P0-03 rework (`progress/AUDIT.md` P0-03 table: db:seed/db:reset, `set_updated_at()` trigger, `content_settings`, geography(Point), trigger naming, separate DB roles = security #7), then P0-04 … P0-09, then P0-04/05, then P0-10+. Each with evidence; P0-17 tooling available.
-2. Remaining security items: magic-link response timing for staff vs customers (low, fix by queueing email in P0-04); #5 first-enrolment takeover (with P0-06), #7 separate DB roles for append-only tables (with P0-03), #8 Better Auth account endpoints for stale staff sessions (with P0-07).
+1. P0-04 background jobs (MISSING in AUDIT: BullMQ queues, worker, schedules; also queue magic-link email = low timing finding), then P0-05 … P0-09, then P0-10+. Each with evidence; P0-17 tooling available.
+2. Remaining security items: magic-link response timing for staff vs customers (low, fix by queueing email in P0-04); #5 first-enrolment takeover (with P0-06), #8 Better Auth account endpoints for stale staff sessions (with P0-07).
 3. Close sub-phases only with `/subphase-complete` (needs CI + staging: P0-14/15 and H-05/06/07).
 
 ## Blockers
@@ -36,8 +36,9 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - `progress/AUDIT.md` — per-task audit vs `docs/phases/P0.md`; `docs/phases/*.md` = task briefs; `docs/ENGINEERING.md` = definition of done
 - `infra/docker-compose.dev.yml` (via `pnpm services:up`, pre-flight in `scripts/services.ts`) — Postgres 17 + PostGIS 3.5, Redis 7 (password `moz`), Mailpit (:1025 SMTP, :8025 UI/API), MinIO (:9000 S3, :9001 console; healthcheck creates bucket `moz-rewards`); init SQL in `infra/local/`
 - `.env.local` — local secrets (never committed; share via H-02); `src/server/env.ts` — fail-closed server env (`APP_ENV`/`APP_URL` required; staging/prod need NODE_ENV=production), validated at startup in `src/instrumentation.ts` + worker; `src/lib/env.ts` — `clientEnv` (`NEXT_PUBLIC_*` only); `pnpm setup:env` creates `.env.local`
-- `src/server/db/` — Drizzle client (`db()`), schema (`schema/auth.ts`, `schema/core.ts`), `migrate.ts` (entry check via `src/lib/is-direct-run.ts`, Windows-safe)
-- `drizzle/` — SQL migrations (0000 init, 0001 append-only trigger `prevent_update_delete()`)
+- `src/server/db/` — Drizzle client (`db()`), schema (`schema/auth.ts`, `schema/core.ts`, `_columns.ts` incl. `geographyPoint`), `migrate.ts` (PostGIS pre-check), `seed.ts` (`db:seed`), `reset.ts` (`db:reset`, local only)
+- `src/server/authz/scope.ts` — branded scopes from `require*`; `src/server/repos/` — the only DB access for features (`_base.ts`: `dbFor`, `transaction`, `inShop`, `ownedBy`; ESLint-enforced)
+- `drizzle/` — SQL migrations (0000 init, 0001 append-only trigger, 0002 hardening + geography, 0003 `reject_mutation()`/`set_updated_at()`/`moz_app` role); destructive statements need `-- contract:` (`scripts/check-migrations.ts`)
 - `src/server/integrations/` — `email/` (SMTP→Mailpit, Resend, Brevo), `storage/` (S3: MinIO/R2), fakes `push/`, `ai/`, `postcodes/`, `places/` (fail closed outside local/test), `fake-support.ts`
 - `src/server/auth/` — Better Auth `auth.ts` (Google, magic link, staff password Argon2id, TOTP, passkey, HIBP, testUtils only in `APP_ENV=test`), `session.ts`, `mfa.ts`
 - `src/server/authz/` — pure `decide*` policies + `requireCustomer/requireShopRole/requireAdminRole`

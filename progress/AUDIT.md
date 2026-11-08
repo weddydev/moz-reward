@@ -30,7 +30,7 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 |---|---|
 | P0-01 Scaffold | **MET** (8 Nov 2026) — ticked |
 | P0-02 Local infra + env | **MET** (8 Nov 2026) — ticked |
-| P0-03 Database | PARTIAL |
+| P0-03 Database | **MET** (8 Nov 2026) — ticked |
 | P0-04 Background jobs | MISSING |
 | P0-05 Security baseline | MISSING |
 | P0-06 Authentication | PARTIAL |
@@ -40,7 +40,7 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 | P0-10 … P0-16 | MISSING |
 | P0-17 Test infrastructure | **MET** (8 Nov 2026, see below) — ticked |
 
-**Fully met: 3 (P0-01, P0-02, P0-17) · Partial: 5 · Missing: 8.** P0-01, P0-02 and P0-17 are ticked in `docs/PHASES.md`.
+**Fully met: 4 (P0-01, P0-02, P0-03, P0-17) · Partial: 4 · Missing: 8.** P0-01, P0-02, P0-03 and P0-17 are ticked in `docs/PHASES.md`.
 
 ## P0-17 · Test infrastructure and self-verification tooling — MET (Syedbadeshah76, 8 Nov 2026)
 
@@ -67,7 +67,8 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 | #3 open redirect via dot-segments | **fixed** | `return-to.test.ts`: `/.//evil.example/x`, `/a/..//evil.example`, `/%2e//evil.example`, `/./%2F/evil.example`, control chars → fallback |
 | #4 tokens in logs | **fixed** (P0-17 merge: console email + dev outbox removed) | — |
 | #6 passkey without user verification | **fixed** | register options return `userVerification: "required"` (same test file); enforced on verify by `@better-auth/passkey` |
-| #5, #7, #8 | open (medium) | with P0-06 / P0-03 / P0-07 rework |
+| #7 append-only tables writable by the app's DB role | **fixed** (P0-03, `13c2e05`) | group role `moz_app`: DML everywhere, no UPDATE/DELETE/TRUNCATE on append-only tables, default privileges for future tables; `tests/integration/db-foundation.test.ts` (privilege matrix over every table, `SET ROLE moz_app` UPDATE on audit_logs → 42501); staging login role steps in H-05 |
+| #5, #8 | open (medium) | with P0-06 / P0-07 rework |
 | Review of the hotfix (security-reviewer) | #1 #3 #6 confirmed closed (all session-creating endpoints checked; 16 redirect probes) | new: staff `/two-factor/disable` deleted TOTP then failed and change-password failed half-way → **fixed** (`mfa-bypass.test.ts`, seen failing first); magic-link timing leak (low) → P0-04 queue; legacy passkeys → none can exist (no deployment) |
 
 P0-06 and P0-07 stay PARTIAL: route-group guards, friendly expired-link page, role-home fallback, first-enrolment takeover (#5) and the other criteria in their tables are still open.
@@ -159,7 +160,20 @@ Table below is the original audit.
 | Test: env schema unit tests | missing | no `env.test.ts` | add |
 | Safe defaults | **high risk** | `APP_ENV` defaults to `local` → testUtils, dev outbox, console email could run in a misconfigured prod | required, cross-checked with NODE_ENV |
 
-### P0-03 · Database foundation — PARTIAL
+### P0-03 · Database foundation — MET (re-audited 8 Nov 2026, Syedbadeshah76)
+
+**Rework evidence (commit 13c2e05):**
+- Migrations: 0002 (content_settings, FK indexes on invited_by ×2 / updated_by ×2, NOT NULL `sessions.mfa_verified` + `users.two_factor_enabled` backfilled first, `lower(email)` unique, `shops.location` → `geography(Point,4326)`), 0003 (`reject_mutation()`, `set_updated_at()` on all 11 updated_at tables, `moz_app` role). Applied to an empty DB (`db:reset` on a throwaway DB, twice: identical counts 3 flags / 1 content setting / 4 migrations) and re-run is a no-op (integration test + 2nd `db:migrate`).
+- `d audit_logs`: `audit_logs_append_only BEFORE DELETE OR UPDATE … reject_mutation()`, `audit_logs_no_truncate BEFORE TRUNCATE … reject_mutation()`. UPDATE/DELETE rejected (`audit-log.test.ts`), TRUNCATE → 23001, app role UPDATE → 42501 (`db-foundation.test.ts`).
+- Codes: `src/lib/codes.test.ts` (alphabet, length + guard, 10k distribution, retry on 23505 incl. wrapped cause, gives up after 5, configurable format).
+- Scoped access: branded scopes from `require*`, `repos/_base.ts` (`dbFor`, `transaction`, `inShop`, `ownedBy`). Probes: client-side `db` import, scope mint import and `as ShopScope` cast each fail lint; a plain object passed to `dbFor` fails typecheck (also pinned by `@ts-expect-error` in `scope.test.ts`).
+- Edge: Postgres without PostGIS → "Postgres extension not available on this server: postgis. Locally run `pnpm services:up`…", exit 1. Expand-only: `scripts/check-migrations.ts` in `pnpm lint` (destructive statements need `-- contract: <why>`; 14 tests).
+- Constraint tests: membership and staff uniqueness, case-insensitive email, shop code unique + alphabet check, content key check, NOT NULL, geography round-trip + Camden→Leicester distance in metres, seed idempotency (keeps admin edits).
+- `db:reset` refused for APP_ENV=staging; `db:seed` refused in production.
+- Suites: unit 167, integration 137, E2E 37/37.
+- Not in this brief, still open: `src/lib/time.ts` (ENGINEERING §8) before P1 business-time rules; demo shops/accounts in the seed are P0-16.
+
+Table below is the original audit.
 
 | Criterion | Status | Evidence | Fix needed |
 |---|---|---|---|
