@@ -62,12 +62,14 @@ export const serverEnvSchema = z
     LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
   })
   .superRefine((e, ctx) => {
-    const host = new URL(e.APP_URL).hostname;
+    // Zod 4 still runs object refinements after a field failed; `z.url()` has already reported a bad
+    // APP_URL, so skip the URL-based checks rather than letting `new URL()` throw a bare TypeError.
+    const appUrl = URL.canParse(e.APP_URL) ? new URL(e.APP_URL) : undefined;
     const isLocalEnv = e.APP_ENV === "local" || e.APP_ENV === "test";
-    if (isLocalEnv && !LOCAL_HOSTS.has(host)) {
+    if (appUrl && isLocalEnv && !LOCAL_HOSTS.has(appUrl.hostname)) {
       ctx.addIssue({ code: "custom", path: ["APP_ENV"], message: "local/test are only allowed when APP_URL is localhost" });
     }
-    if (!isLocalEnv && new URL(e.APP_URL).protocol !== "https:") {
+    if (appUrl && !isLocalEnv && appUrl.protocol !== "https:") {
       ctx.addIssue({ code: "custom", path: ["APP_URL"], message: "must use https outside local/test" });
     }
     if (e.EMAIL_PROVIDER === "smtp" && !e.SMTP_HOST) {

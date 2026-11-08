@@ -30,6 +30,8 @@ export default defineConfig({
         ...shared,
         test: {
           name: "unit",
+          // Projects with different maxWorkers must run in separate groups: unit first, then integration.
+          sequence: { groupOrder: 0 },
           environment: "node",
           include: ["src/**/*.test.{ts,tsx}"],
           setupFiles: ["./tests/setup.ts"],
@@ -42,12 +44,15 @@ export default defineConfig({
         ...shared,
         test: {
           name: "integration",
+          sequence: { groupOrder: 1 },
           environment: "node",
           include: ["tests/integration/**/*.test.ts", "tests/authz/**/*.test.ts"],
           globalSetup: ["./tests/global-setup.integration.ts"],
           setupFiles: ["./tests/setup.ts", "./tests/setup.integration.ts"],
           restoreMocks: true,
           maxWorkers: 4, // must match INTEGRATION_WORKERS in tests/support/db.ts
+          // Cold imports of Better Auth + DB client take 2–6 s under 4 parallel workers (Windows); unit stays 5 s.
+          testTimeout: 15_000,
           env: testEnv,
         },
       },

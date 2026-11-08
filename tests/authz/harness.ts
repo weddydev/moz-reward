@@ -59,15 +59,11 @@ async function buildWorld(): Promise<World> {
     ownerA: await user(),
     staffAInactive: await user(),
   };
-  await db()
-    .insert(shopStaff)
-    .values([
-      { shopId: shopB.id, userId: ids.staffB, role: "staff", perAwardLimit: 200 },
-      { shopId: shopB.id, userId: ids.ownerB, role: "owner" },
-      { shopId: shopA.id, userId: ids.staffA, role: "staff", perAwardLimit: 200 },
-      { shopId: shopA.id, userId: ids.ownerA, role: "owner" },
-      { shopId: shopA.id, userId: ids.staffAInactive, role: "staff", active: false },
-    ]);
+  await makeStaff(shopB.id, ids.staffB, "staff", { perAwardLimit: 200 });
+  await makeStaff(shopB.id, ids.ownerB, "owner");
+  await makeStaff(shopA.id, ids.staffA, "staff", { perAwardLimit: 200 });
+  await makeStaff(shopA.id, ids.ownerA, "owner");
+  await makeStaff(shopA.id, ids.staffAInactive, "staff", { active: false });
 
   const admins: Partial<Record<AdminRole, string>> = {};
   for (const role of ["owner", "support", "moderator", "finance"] as const) {

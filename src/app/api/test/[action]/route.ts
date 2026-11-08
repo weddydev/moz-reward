@@ -1,6 +1,9 @@
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/server/auth/auth";
+import { db } from "@/server/db/client";
+import { sessions } from "@/server/db/schema";
 import { ACTOR_ROLES, makeActor } from "@/server/testing/factories";
 import { testApiEnabled } from "@/server/testing/test-api";
 
@@ -13,7 +16,7 @@ const notFound = (): Response => new Response("Not found", { status: 404 });
 const sessionInput = z.object({ role: z.enum(ACTOR_ROLES), shopId: z.uuid().optional() }).strict();
 
 type TestCookie = { name: string; value: string; path: string; httpOnly?: boolean; secure?: boolean; sameSite?: "Lax" | "Strict" | "None"; expires?: number };
-type TestHelpers = { login(opts: { userId: string; session?: Record<string, unknown> }): Promise<{ cookies: TestCookie[] }> };
+type TestHelpers = { login(opts: { userId: string }): Promise<{ token: string; cookies: TestCookie[] }> };
 
 export async function POST(req: Request, ctx: { params: Promise<{ action: string }> }): Promise<Response> {
   if (!testApiEnabled()) return notFound();
@@ -27,11 +30,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ action: string
   const helpers = ((await auth.$context) as unknown as { test?: TestHelpers }).test;
   if (!helpers) return NextResponse.json({ error: "test utilities unavailable" }, { status: 500 });
 
-  const login = await helpers.login({
-    userId: actor.user.id,
-    // Staff/admin sessions are created as MFA-verified, exactly like a real TOTP sign-in.
-    session: { mfaVerified: parsed.data.role !== "customer" },
-  });
+  const login = await helpers.login({ userId: actor.user.id });
+  // Staff/admin sessions must be MFA-verified, exactly like a real TOTP sign-in. The session create hook
+  // in auth.ts deliberately forces mfaVerified=false for any non-MFA path (so production can never
+  // be tricked into it), so set it here on the row, in this test-only, 404-gated route.
+  if (parsed.data.role !== "customer") {
+    await db().update(sessions).set({ mfaVerified: true }).where(eq(sessions.token, login.token));
+  }
 
   const res = NextResponse.json({ userId: actor.user.id, email: actor.user.email, shopId: actor.shopId, role: parsed.data.role });
   for (const c of login.cookies) {
