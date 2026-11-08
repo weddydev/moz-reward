@@ -15,12 +15,25 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "e2e": "playwright test",
-    "check": "pnpm typecheck && pnpm lint && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm test",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/server/db/migrate.ts",
+    "db:migrate:test": "tsx src/server/db/migrate.ts --test",
+    "db:studio": "drizzle-kit studio",
+    "services:up": "docker compose up -d --wait",
+    "services:down": "docker compose down"
   },
   "dependencies": {
+    "@better-auth/passkey": "^1.7.18",
+    "better-auth": "^1.7.18",
+    "drizzle-orm": "^0.45.4",
     "next": "16.4.5",
+    "postgres": "^4.1.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "server-only": "^0.0.1",
+    "uuid": "^14.0.3",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
@@ -35,6 +48,9 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.2.1",
     "@vitest/coverage-v8": "^5.1.0",
+    "auth": "1.7.18",
+    "dotenv": "^18.0.9",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.4.5",
     "eslint-config-prettier": "^10.1.8",

@@ -13,7 +13,7 @@ Every phase's definition of done includes: `pnpm check` green, CI green, staging
 - [x] Confirm the Emil Kowalski skills are present in `.claude/skills/` (`emil-design-eng`, `animation-performance`, `mobile-native`, `review-animations`); if missing, add a 🔴 task to `progress/HUMAN_TASKS.md` asking the human to run the install commands in README
 - [x] Scaffold Next.js (App Router, TS strict), pnpm, ESLint, Prettier, Vitest, Playwright, path aliases; scripts from CLAUDE.md §6
 - [x] Docker Compose for local Postgres (PostGIS) + Redis; `.env.example` complete
-- [ ] Drizzle setup, first migration (users/auth tables, customer_profiles, shops, shop_staff, memberships, audit_logs, feature_flags)
+- [x] Drizzle setup, first migration (users/auth tables, customer_profiles, shops, shop_staff, memberships, audit_logs, feature_flags)
 - [ ] Auth: customer Google OAuth + magic link; staff/admin email+password + mandatory TOTP; session helpers; `server/authz` policies; action template
 - [ ] Authz test harness (`tests/authz/`) with the role matrix pattern
 - [ ] Design tokens, fonts (Fraunces + Manrope via next/font), Tailwind theme, globals, reduced-motion handling
