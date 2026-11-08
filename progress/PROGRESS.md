@@ -9,7 +9,7 @@ Baton: held by Syedbadeshah76 since 2026-11-08 17:36
 _Overwritten by `/handoff`. The next developer reads this first._
 - **Current state (Syedbadeshah76, 2026-11-08, mid-session — not a handoff yet):** security hotfix `dfcb50d` pushed (audit #1, #3, #6). Before that, P0-17 finished on `wip/p0-17-test-infra`, merged into `main` and ticked with evidence (SESSION_LOG). The branch is fully merged and can be deleted (`git push origin --delete wip/p0-17-test-infra`); do not work on it. Nothing half-done.
 - **Before your next session on either laptop:** `pnpm install --frozen-lockfile` (new dev deps: Stryker), `pnpm services:up` (Mailpit :8025, MinIO :9000/:9001), `.env.local` must use `EMAIL_PROVIDER=smtp` + the SMTP/MAILPIT/S3 keys from `.env.example` (old `R2_*` keys are gone), Playwright browsers: `pnpm exec playwright install chromium webkit`.
-- **Windows laptop note:** no `.env.local` yet (H-02). Tests ran with `.env.example` values + throwaway secrets exported in the shell (never written to disk).
+- **Windows laptop note:** `.env.local` in place (H-02, 8 Nov); `SENTRY_DSN` added (H-10): add it to the Mac copy via the shared note.
 
 ## Status
 - **Phase:** P0 — Foundation and design system. Audit (`progress/AUDIT.md`): P0-17 met; 7 partial (P0-01/02/03/06/07/08/09), 8 missing. Fixing gaps in task order.
@@ -26,7 +26,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 3. Close sub-phases only with `/subphase-complete` (needs CI + staging: P0-14/15 and H-05/06/07).
 
 ## Blockers
-- Human: 🔴 none blocking code work. 🟠 H-02 `.env.local` for the Windows laptop; end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-10 Sentry.
+- Human: 🔴 none blocking code work. 🟠 end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend.
 - Technical: **intermittent WebKit E2E failures under full parallel load** (TESTING §7: open, not quarantined): 3 failures in ~10 full runs on the Windows laptop (staff TOTP spec once: stayed on `/staff/sign-in` after "Continue"; UI gallery twice in a row), never in isolation (`--repeat-each 4`) or in the last 5 consecutive full runs. Root cause not yet found; no speculative fix. Next occurrence: run with `--trace retain-on-failure` and read the trace in `test-results/`. Must be resolved before `/subphase-complete`.
 - Technical: audit HIGH findings in `progress/AUDIT.md` (top risks). 14 surviving Stryker mutants (codes 7, return-to 3, policies 4) to review at phase end (TESTING §2).
 

@@ -18,8 +18,6 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 | H-05 | 🟠 | Postgres database for staging (Neon, London/EU) | 13 Nov 2026 (end of P0) | Staging data | 10 min |
 | H-03 | 🟠 | Google Cloud OAuth client (web) | 13 Nov 2026 (Demo 1 shows real Google sign-in) | Customer Google sign-in | 15 min |
 | H-04 | 🟠 | Email provider (Resend) + API key + domain verification | 13 Nov 2026 (Demo 1 shows email-link sign-in) | Magic-link and invite emails | 15 min (+ DNS wait) |
-| H-10 | 🟠 | Sentry project (DSN) | 13 Nov 2026 | Error tracking on staging | 5 min |
-| H-02 | 🟠 | Share `.env.local` with your partner via a password manager (Windows laptop has none yet; talha.syed to share). Tests run without it; needed for `pnpm dev` with the shared secrets | Next Windows session (by 10 Nov 2026) | Same setup on both machines | 10 min |
 | H-08 | 🟢 | Cloudflare R2 bucket + API token; Turnstile keys | P2 start (~16 Nov 2026) | Image uploads, bot protection | 15 min |
 | H-09 | 🟢 | AI provider API key (Google Gemini) | P3 start (~23 Nov 2026) | AI review help | 5 min |
 | H-11 | 🟢 | Production VPS + production database | P5 (~7 Dec 2026) | Launch | 30 min |
@@ -112,6 +110,8 @@ Tell Claude "H-18 done on <machine>".
 |---|---|---|---|
 | H-01 | Private GitHub repo `weddydev/moz-reward` pushed; collaborators added; `gh` signed in as `weddydev` | talha.syed | 8 Nov 2026 |
 | — | Local tools: pnpm 12.18, Docker 29.9, gh 2.103, Node 26.11 (installed by Claude) | Claude | 8 Nov 2026 |
+| H-02 | `.env.local` on the Windows laptop (all keys set, app env check passes, `pnpm dev` serves /, /sign-in, /staff/sign-in, session API with it; verified by Claude, names only) | Syedbadeshah76 | 8 Nov 2026 |
+| H-10 | Sentry org `mozereward` + project; `SENTRY_DSN` in `.env.local` (shape verified). Keep the shared password-manager note updated so the Mac gets it; staging gets it with P0-15 | Syedbadeshah76 | 8 Nov 2026 |
 | H-18 | GitHub CLI on both laptops: Mac (8 Nov) and Windows (gh 2.103.3, signed in as `weddydev`, repo admin; verified by Claude 8 Nov) | both developers | 8 Nov 2026 |
 | H-19 | Windows laptop: local PostgreSQL services stopped, port 5432 free for Docker | Syedbadeshah76 | 8 Nov 2026 |
 | H-16 | Reference images: 17 desktop + 11 mobile screenshots in `design/reference/desktop-view/` and `mobile-view/` (descriptive names, not m01/d01 numbering) | Syedbadeshah76 | 8 Nov 2026 |
