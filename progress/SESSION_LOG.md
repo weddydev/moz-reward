@@ -26,3 +26,10 @@ Commits: 37e4068 9e7b01f 0593a34
 Tests: pnpm check ✅ 136 tests; pnpm e2e ✅ 12/12 on 4 projects; pnpm build ✅; mutation check showed the matrix catches a removed MFA rule.
 Left off: start P0 task 7 — design tokens (src/styles/tokens.css per DESIGN §3), Fraunces + Manrope via next/font, Tailwind theme, reduced-motion handling; then restyle auth pages with the primitives in task 8.
 Notes: `pnpm services:up` before tests. Never pipe `pnpm check` into grep before `&&` commit (hides failures). Forms: uncontrolled + useHydrated (see DECISIONS).
+
+## 2026-11-08 18:00 — P0 — checkpoint: tokens + UI primitives done (8/15)
+Done: P0 task 7 (tokens, fonts, Tailwind theme, reduced motion, contrast test) and task 8 (UI primitives + /dev/ui gallery, component tests, axe + overflow E2E). New standing rule in CLAUDE.md §1: push after every task, soft `task` sound, stop for review every 3–5 tasks and at phase end with the `review` sound.
+Commits: fbeace3 f92b32f
+Tests: pnpm check ✅ 170 tests; gallery E2E ✅ 4/4 projects (axe clean, no overflow); pnpm build ✅
+Left off: start P0 task 9 — motion primitives (View Transitions wrapper + fallback, press feedback, Sheet/Modal/SidePanel, skeletons) and `/dev/motion`. Load `emil-design-eng` + `mobile-native`; run `review-animations` on the diff.
+Notes: Testing Library cleanup is explicit in tests/setup.ts (globals off). Grid items holding truncating text need `min-w-0`. ink-3 is never for readable text.
