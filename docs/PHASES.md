@@ -14,7 +14,7 @@ Every phase's definition of done includes: `pnpm check` green, CI green, staging
 - [x] Scaffold Next.js (App Router, TS strict), pnpm, ESLint, Prettier, Vitest, Playwright, path aliases; scripts from CLAUDE.md §6
 - [x] Docker Compose for local Postgres (PostGIS) + Redis; `.env.example` complete
 - [x] Drizzle setup, first migration (users/auth tables, customer_profiles, shops, shop_staff, memberships, audit_logs, feature_flags)
-- [ ] Auth: customer Google OAuth + magic link; staff/admin email+password + mandatory TOTP; session helpers; `server/authz` policies; action template
+- [x] Auth: customer Google OAuth + magic link; staff/admin email+password + mandatory TOTP; session helpers; `server/authz` policies; action template
 - [ ] Authz test harness (`tests/authz/`) with the role matrix pattern
 - [ ] Design tokens, fonts (Fraunces + Manrope via next/font), Tailwind theme, globals, reduced-motion handling
 - [ ] UI primitives (DESIGN.md §6) + `/dev/ui` gallery

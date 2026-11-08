@@ -13,16 +13,24 @@ export interface EmailProvider {
   send(message: EmailMessage): Promise<void>;
 }
 
-/** Local/test provider: prints the email to the terminal so sign-in links work without an account. */
+// Kept on globalThis so the dev outbox survives Next.js hot reloads.
+const g = globalThis as unknown as { __mozOutbox?: EmailMessage[] };
+const outbox: EmailMessage[] = (g.__mozOutbox ??= []);
+const OUTBOX_LIMIT = 50;
+
+/** Local provider: prints the email to the terminal and keeps it for the dev-only outbox (E2E). */
 export const consoleProvider: EmailProvider = {
   async send(message) {
+    outbox.push(message);
+    if (outbox.length > OUTBOX_LIMIT) outbox.shift();
     console.warn(
       `\n[email:${message.kind}] to=${message.to}\nSubject: ${message.subject}\n\n${message.text}\n`,
     );
   },
 };
 
-const outbox: EmailMessage[] = [];
+/** Messages captured by the console/memory providers (local + test only). */
+export const devOutbox = (): ReadonlyArray<EmailMessage> => outbox;
 
 /** Test provider: keeps messages in memory for assertions. */
 export const memoryProvider: EmailProvider & { outbox: EmailMessage[]; clear(): void } = {

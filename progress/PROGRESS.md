@@ -15,18 +15,18 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Do first (env vars, migrations, seeds): —
 
 ## Status
-- **Phase:** P0 — Foundation and design system (in progress, 4 of 15 tasks)
+- **Phase:** P0 — Foundation and design system (in progress, 5 of 15 tasks)
 - **Last updated:** 2026-11-08, talha.syed session
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
 ## Now
-- P0 task 5: Auth — config skeleton exists in `src/server/auth/auth.ts`; next: Argon2id, mfaVerified hook, session helpers, `server/authz` policies, action template, sign-in pages.
+- P0 task 6: authz test harness (`tests/authz/`) with the role-matrix pattern.
 
 ## Next (top 3)
-1. Auth (Better Auth: Google, magic link, staff/admin password + TOTP)
-2. Authz test harness (`tests/authz/`)
-3. Design tokens + fonts
+1. Authz test harness (`tests/authz/`)
+2. Design tokens + fonts (Fraunces + Manrope), Tailwind theme, reduced motion
+3. UI primitives + `/dev/ui` gallery
 
 ## Blockers
 - Human: none 🔴. 🟠 for end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-10 Sentry.
@@ -42,18 +42,24 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - `src/server/db/` — Drizzle client (`db()`), schema (`schema/auth.ts` Better Auth tables, `schema/core.ts` domain), `migrate.ts`
 - `drizzle/` — SQL migrations (0000 init, 0001 append-only trigger `prevent_update_delete()`)
 - `src/server/env.ts` — Zod-validated server env (`env()`); `src/server/integrations/email/` — console/memory/real providers
-- `src/server/auth/auth.ts` — Better Auth instance (Google, magic link, password for staff, TOTP, passkey, HIBP)
+- `src/server/auth/` — Better Auth instance `auth.ts` (Google, magic link, staff password Argon2id, TOTP, passkey, HIBP, testUtils in local/test), `session.ts`, `mfa.ts`
+- `src/server/authz/` — pure `decide*` policies + `requireCustomer/requireShopRole/requireAdminRole` (MFA + 12 h/2 h limits)
+- `src/server/actionTemplate.ts` — `defineAction({input, authorize, handler})`; `src/server/errors.ts` AppError
+- `src/features/auth/` + `src/app/(public)/sign-in`, `/staff/sign-in`, `/staff/security` — sign-in UI (temporary styling)
+- `src/app/api/auth/[...all]` Better Auth handler; `src/app/api/dev/outbox` dev-only email reader
+- `tests/fixtures/auth.ts` — `createPasswordUser`, `totpFromUri`, `testEmail`
 - `tests/integration/` — DB-backed tests (test DB `moz_test`, migrated by `tests/global-setup.ts`)
 - Configs: `vitest.config.mts`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc.json`, `pnpm-workspace.yaml` (allowed install scripts)
 
 ## Last verified
-- `pnpm check`: ✅ 2026-11-08 (typecheck, lint, 3 tests incl. append-only integration test)
+- `pnpm check`: ✅ 2026-11-08 (41 tests: authz policies, actions, Argon2id, auth flow integration)
 - `pnpm db:migrate` + `drizzle-kit check`: ✅ 2026-11-08, no drift
 - `pnpm build`: ✅ 2026-11-08
-- `pnpm e2e`: ✅ 2026-11-08 smoke, 4/4 projects
+- `pnpm e2e`: ✅ 2026-11-08 12/12 (smoke, magic link, staff TOTP enrol + sign-in) on chromium, webkit, pixel-7, iphone-14
 - CI on main: — (not set up yet)
 - Staging deploy: —
 - E2E smoke on staging: —
 
 ## Open questions / assumptions
+- Not yet tested: Google OAuth (needs H-03), passkey sign-in (needs a real device), real email provider (needs H-04).
 - Domain name not chosen yet (H-07); staging URLs written as `staging.<domain>` until then.

@@ -13,6 +13,21 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-08 — Auth flows, MFA enforcement and session limits
+Decision: Customers: Google + magic link only. Staff/admin: email+password (Argon2id via `@node-rs/argon2`, HIBP check on password set) then mandatory TOTP or passkey; a password-only session goes straight to `/staff/security` to enrol, and enrolment ends with sign-out + fresh sign-in so the portal session is MFA-verified. `requireShopRole`/`requireAdminRole` deny unless `session.mfaVerified`; staff sessions are capped at 12 h and admin at 2 h **absolute** from sign-in (stricter than the idle timeout in SECURITY §5, and simple to prove).
+Why: one users table per PRODUCT §2 (customer can also be staff) means 2FA must be checked per session, not per account.
+Consequence: A staff member signed in as a customer (Google) must sign in again via `/staff/sign-in` to use the dashboard — that is the "explicit switch". Better Auth's built-in rate limiter is still in-memory; moved to Redis in the rate-limit task. `__Host-` cookie prefix is handled in the security-headers task (`useSecureCookies` gives `__Secure-` on https today).
+
+## 2026-11-08 — Forms are uncontrolled until submit
+Decision: Auth forms use uncontrolled inputs read with `FormData` on submit, `method="post"`, and a `useHydrated()` gate on the submit button. Apply the same pattern to every form typed into on first load.
+Why: E2E on iPhone emulation showed React resetting controlled inputs on hydration, wiping what a fast typist had entered; a pre-hydration native GET submit could also put a password in the URL.
+Consequence: Use `formValue()` from `src/lib/use-hydrated.ts`; validate on submit (and server-side, always).
+
+## 2026-11-08 — Dev-only email outbox
+Decision: `EMAIL_PROVIDER=console` prints emails and keeps the last 50 in memory; `/api/dev/outbox?to=` returns the latest one, and 404s unless `APP_ENV` is `local` or `test`. `env()` refuses `console` in production.
+Why: E2E and local demos need sign-in links without a real email account (H-04 not done yet).
+Consequence: Staging must use a real provider (Resend) — staging E2E reads links via provider test inbox or seeded sessions instead.
+
 ## 2026-11-08 — Database layer
 Decision: Drizzle 0.45 + postgres.js (`prepare: false` for Neon/PgBouncer pooling), `casing: "snake_case"`, UUIDv7 ids generated in app (`src/lib/id.ts`, `uuid` pkg; Better Auth uses the same via `advanced.database.generateId`), all timestamps `timestamptz`. Local image `imresamu/postgis:17-3.5` (official `postgis/postgis` is amd64-only; same maintainers' multi-arch build). Tests run against a separate `moz_test` DB migrated by Vitest globalSetup; `pnpm test` needs `pnpm services:up`.
 Why: ARCHITECTURE §3/§4; native arm64 speed on dev Macs; integration tests on a real Postgres (TESTING §1).
