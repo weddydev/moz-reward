@@ -4,6 +4,9 @@
 
 Method: each task's acceptance criteria, edge cases, required tests and build notes were checked with evidence gathered in this session (commands run, file:line, test names, live measurements on `/dev/ui`, production-mode `curl`, proof-of-concept tests against the test DB). Reviewers were read-only; temporary probe files were deleted and the working tree stayed clean.
 
+
+> **Kit v3 update (8 Nov 2026):** ENGINEERING §1 tightened (test-first evidence, self-verification loop with inspected screenshots, unhappy paths, side effects) and P0-17 added. Re-check of ticked tasks: **none were ticked**, so nothing to untick; every partial task above must also meet the new §1 items 3 and 6–8 before ticking. New criteria not yet in the tables: P0-02 now includes MinIO (bucket auto-created); P0-14 adds CodeQL, migration test, bundle report, Renovate, staging smoke, console guard on smoke, `gh run watch`. P0-17 is in progress on branch `wip/p0-17-test-infra`. Fixed on that branch (not yet on `main`): security #2 fail-open env defaults and #4 tokens in logs (console email + dev outbox removed).
+
 ## Work mapped to the new task IDs
 
 | New ID | Built under the old kit | Commits |
