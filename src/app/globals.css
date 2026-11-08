@@ -1,6 +1,171 @@
 @import "tailwindcss";
+@import "../styles/tokens.css";
 
-body {
-  background: #fbf8f1;
-  color: #1c1a17;
+/* Expose tokens to Tailwind (runtime CSS variables, so reduced motion can retune durations). */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-gold-700: var(--gold-700);
+  --color-gold-500: var(--gold-500);
+  --color-gold-300: var(--gold-300);
+  --color-gold-100: var(--gold-100);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-pill: var(--r-pill);
+
+  --shadow-1: var(--shadow-1);
+  --shadow-2: var(--shadow-2);
+  --shadow-gold: var(--shadow-gold);
+
+  --ease-out: var(--ease-out);
+  --ease-in-out: var(--ease-in-out);
+}
+
+/* Type scale (mobile / desktop ≥1024px) — DESIGN §4 */
+@utility text-display {
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  @media (width >= 1024px) {
+    font-size: 48px;
+  }
+}
+@utility text-h1 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 600;
+  @media (width >= 1024px) {
+    font-size: 36px;
+  }
+}
+@utility text-h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 600;
+  @media (width >= 1024px) {
+    font-size: 28px;
+  }
+}
+@utility text-h3 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 550;
+  @media (width >= 1024px) {
+    font-size: 20px;
+  }
+}
+@utility text-body {
+  font-size: 16px;
+  line-height: 1.5;
+}
+@utility text-small {
+  font-size: 14px;
+  line-height: 1.5;
+}
+@utility text-caption {
+  font-size: 12px;
+  line-height: 1.4;
+}
+@utility bg-gold-gradient {
+  background-image: var(--gold-gradient);
+}
+@utility duration-fast {
+  transition-duration: var(--dur-fast);
+}
+@utility duration-base {
+  transition-duration: var(--dur-base);
+}
+@utility duration-slow {
+  transition-duration: var(--dur-slow);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 100dvh;
+    -webkit-tap-highlight-color: transparent;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+  button,
+  [role="button"],
+  a {
+    touch-action: manipulation;
+  }
+  /* Inputs ≥16px so iOS Safari never zooms (DESIGN §4, §11). */
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+  /* Focus ring: ink with a 2px gold outer ring (DESIGN §3). */
+  :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--gold-500);
+    border-radius: inherit;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  ::selection {
+    background: var(--gold-100);
+    color: var(--ink);
+  }
+}
+
+/* Global reduced-motion safety net (DESIGN §7): no long movement anywhere. */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion="full"]) *,
+  :root:not([data-motion="full"]) *::before,
+  :root:not([data-motion="full"]) *::after {
+    animation-duration: 150ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 150ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation-duration: 150ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 150ms !important;
+  scroll-behavior: auto !important;
 }

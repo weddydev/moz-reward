@@ -12,7 +12,8 @@ function walk(dir: string, opts: { includeTests: boolean }, out: string[] = []):
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
     if (statSync(full).isDirectory()) walk(full, opts, out);
-    else if (/\.(ts|tsx)$/.test(name) && (opts.includeTests || !/\.test\.tsx?$/.test(name))) out.push(full);
+    else if (/\.(ts|tsx)$/.test(name) && (opts.includeTests || !/\.test\.tsx?$/.test(name)))
+      out.push(full);
   }
   return out;
 }

@@ -10,7 +10,7 @@ export default function StaffSignInPage() {
     <AuthCard title="Staff sign in" subtitle="For shop teams and Moz Rewards admins.">
       <Suspense
         fallback={
-          <div className="h-48 animate-pulse rounded-[14px] bg-[#F4EEE2] motion-reduce:animate-none" />
+          <div className="bg-surface-2 h-48 animate-pulse rounded-md motion-reduce:animate-none" />
         }
       >
         <StaffSignInForm />

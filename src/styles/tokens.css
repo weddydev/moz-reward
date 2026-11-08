@@ -1,0 +1,72 @@
+/*
+ * Design tokens — docs/DESIGN.md §3, §4, §7. Single source of truth for colour, radius,
+ * elevation and motion. Components use these via the Tailwind theme (globals.css); never hard-code.
+ */
+:root {
+  /* Colour */
+  --bg: #fbf8f1;
+  --surface: #ffffff;
+  --surface-2: #f4eee2;
+  --ink: #1c1a17;
+  --ink-2: #5c564c;
+  --ink-3: #8e877b;
+  --line: #e8dfce;
+  --gold-700: #8a6a1f;
+  --gold-500: #c9a24a;
+  --gold-300: #e9d08a;
+  --gold-100: #f7edd0;
+  --gold-gradient: linear-gradient(
+    135deg,
+    #8c6a1f 0%,
+    #c9a24a 35%,
+    #f3de8a 55%,
+    #c49a3a 75%,
+    #8c6a1f 100%
+  );
+  --success: #2f7d5b;
+  --warning: #b7791f;
+  --danger: #b3432f;
+
+  /* Radius */
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 22px;
+  --r-pill: 999px;
+
+  /* Elevation (warm) */
+  --shadow-1: 0 1px 2px rgba(60, 45, 20, 0.06), 0 2px 8px rgba(60, 45, 20, 0.05);
+  --shadow-2: 0 8px 24px rgba(60, 45, 20, 0.1);
+  --shadow-gold: 0 6px 20px rgba(201, 162, 74, 0.28);
+
+  /* Motion */
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --dur-slow: 380ms;
+  --dur-hero: 1200ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Layout */
+  --rail-w: 72px;
+  --rail-w-open: 220px;
+  --sidebar-w: 248px;
+  --bottom-nav-h: 64px;
+  --content-max: 560px;
+  --content-max-desktop: 1280px;
+}
+
+/* Reduced motion: system setting, unless the user chose "full" in Me; or the user forced "reduce". */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion="full"]) {
+    --dur-fast: 0ms;
+    --dur-base: 150ms;
+    --dur-slow: 150ms;
+    --dur-hero: 150ms;
+  }
+}
+:root[data-motion="reduce"] {
+  --dur-fast: 0ms;
+  --dur-base: 150ms;
+  --dur-slow: 150ms;
+  --dur-hero: 150ms;
+}

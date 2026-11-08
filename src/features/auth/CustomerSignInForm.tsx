@@ -41,9 +41,9 @@ export function CustomerSignInForm({ googleEnabled }: { googleEnabled: boolean }
 
   if (state === "sent") {
     return (
-      <div role="status" className="rounded-[14px] bg-[#F7EDD0] p-4">
+      <div role="status" className="bg-gold-100 rounded-md p-4">
         <p className="font-semibold">Check your email</p>
-        <p className="mt-1 text-[#5C564C]">
+        <p className="text-ink-2 mt-1">
           We&apos;ve sent a sign-in link to <span className="font-semibold">{email}</span>. It works
           once and expires in 15 minutes.
         </p>
@@ -63,7 +63,7 @@ export function CustomerSignInForm({ googleEnabled }: { googleEnabled: boolean }
         </button>
       ) : null}
       {googleEnabled ? (
-        <p className="text-center text-sm text-[#8E877B]" aria-hidden="true">
+        <p className="text-ink-3 text-center text-sm" aria-hidden="true">
           or
         </p>
       ) : null}
@@ -84,7 +84,7 @@ export function CustomerSignInForm({ googleEnabled }: { googleEnabled: boolean }
           aria-invalid={error ? true : undefined}
         />
         {error ? (
-          <p id={errorId} role="alert" className="text-sm text-[#B3432F]">
+          <p id={errorId} role="alert" className="text-danger text-sm">
             {error}
           </p>
         ) : null}

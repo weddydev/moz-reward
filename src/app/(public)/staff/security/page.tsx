@@ -14,7 +14,7 @@ async function SecurityContent() {
   if (session.user.twoFactorEnabled) {
     return (
       <>
-        <p role="status" className="rounded-[14px] bg-[#F7EDD0] p-3">
+        <p role="status" className="bg-gold-100 rounded-md p-3">
           Two-step verification is on for{" "}
           <span className="font-semibold">{session.user.email}</span>.
         </p>
@@ -30,7 +30,7 @@ export default function StaffSecurityPage() {
     <AuthCard title="Two-step verification">
       <Suspense
         fallback={
-          <div className="h-48 animate-pulse rounded-[14px] bg-[#F4EEE2] motion-reduce:animate-none" />
+          <div className="bg-surface-2 h-48 animate-pulse rounded-md motion-reduce:animate-none" />
         }
       >
         <SecurityContent />

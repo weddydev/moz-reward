@@ -69,7 +69,7 @@ export function EnrolTotp() {
   if (!enrolment) {
     return (
       <form method="post" onSubmit={start} className="flex flex-col gap-3" noValidate>
-        <p className="text-[#5C564C]">
+        <p className="text-ink-2">
           Staff and admin accounts need two-step verification. You&apos;ll need an authenticator app
           such as Google Authenticator, Microsoft Authenticator or 1Password.
         </p>
@@ -86,7 +86,7 @@ export function EnrolTotp() {
           aria-describedby={error ? ids.error : undefined}
         />
         {error ? (
-          <p id={ids.error} role="alert" className="text-sm text-[#B3432F]">
+          <p id={ids.error} role="alert" className="text-danger text-sm">
             {error}
           </p>
         ) : null}
@@ -99,7 +99,7 @@ export function EnrolTotp() {
 
   return (
     <div className="flex flex-col gap-4">
-      <ol className="list-decimal space-y-1 pl-5 text-[#5C564C]">
+      <ol className="text-ink-2 list-decimal space-y-1 pl-5">
         <li>Scan this code with your authenticator app.</li>
         <li>Save your backup codes somewhere safe.</li>
         <li>Enter the 6-digit code the app shows.</li>
@@ -110,18 +110,16 @@ export function EnrolTotp() {
         width={220}
         height={220}
         alt="QR code for your authenticator app"
-        className="self-center rounded-[14px]"
+        className="self-center rounded-md"
       />
       <details className="text-sm">
         <summary className="cursor-pointer font-semibold">Can&apos;t scan? Enter this key</summary>
-        <code className="mt-2 block rounded-[8px] bg-[#F4EEE2] p-2 break-all">
-          {enrolment.secret}
-        </code>
+        <code className="bg-surface-2 mt-2 block rounded-sm p-2 break-all">{enrolment.secret}</code>
       </details>
       <div>
         <p className="text-sm font-semibold">Backup codes (each works once)</p>
         <ul
-          className="mt-2 grid grid-cols-2 gap-1 rounded-[14px] bg-[#F4EEE2] p-3 font-mono text-sm tabular-nums"
+          className="bg-surface-2 mt-2 grid grid-cols-2 gap-1 rounded-md p-3 font-mono text-sm tabular-nums"
           data-testid="backup-codes"
         >
           {enrolment.backupCodes.map((c) => (
@@ -155,7 +153,7 @@ export function EnrolTotp() {
           aria-describedby={error ? ids.error : undefined}
         />
         {error ? (
-          <p id={ids.error} role="alert" className="text-sm text-[#B3432F]">
+          <p id={ids.error} role="alert" className="text-danger text-sm">
             {error}
           </p>
         ) : null}

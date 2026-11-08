@@ -66,7 +66,7 @@ export function StaffSignInForm() {
   }
 
   const errorEl = error ? (
-    <p id={ids.error} role="alert" className="text-sm text-[#B3432F]">
+    <p id={ids.error} role="alert" className="text-danger text-sm">
       {error}
     </p>
   ) : null;
@@ -95,7 +95,7 @@ export function StaffSignInForm() {
         </button>
         <button
           type="button"
-          className="text-sm font-semibold text-[#8A6A1F] underline-offset-4 hover:underline"
+          className="text-gold-700 text-sm font-semibold underline-offset-4 hover:underline"
           onClick={() => {
             setUseBackup((v) => !v);
             setError(null);
@@ -110,7 +110,7 @@ export function StaffSignInForm() {
   return (
     <form method="post" onSubmit={submitPassword} className="flex flex-col gap-3" noValidate>
       {params.get("enrolled") ? (
-        <p role="status" className="rounded-[14px] bg-[#F7EDD0] p-3 text-sm">
+        <p role="status" className="bg-gold-100 rounded-md p-3 text-sm">
           Two-step verification is on. Please sign in again with your code.
         </p>
       ) : null}

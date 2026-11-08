@@ -16,7 +16,7 @@ Every phase's definition of done includes: `pnpm check` green, CI green, staging
 - [x] Drizzle setup, first migration (users/auth tables, customer_profiles, shops, shop_staff, memberships, audit_logs, feature_flags)
 - [x] Auth: customer Google OAuth + magic link; staff/admin email+password + mandatory TOTP; session helpers; `server/authz` policies; action template
 - [x] Authz test harness (`tests/authz/`) with the role matrix pattern
-- [ ] Design tokens, fonts (Fraunces + Manrope via next/font), Tailwind theme, globals, reduced-motion handling
+- [x] Design tokens, fonts (Fraunces + Manrope via next/font), Tailwind theme, globals, reduced-motion handling
 - [ ] UI primitives (DESIGN.md §6) + `/dev/ui` gallery
 - [ ] Motion primitives: page transition wrapper (View Transitions + fallback), press feedback, sheet/modal, skeletons; `/dev/motion` gallery skeleton
 - [ ] Sound module (Web Audio synthesis, unlock on first gesture, toggle) + haptics helper

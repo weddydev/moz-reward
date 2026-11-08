@@ -20,7 +20,7 @@ export default function SignInPage() {
     <AuthCard title="Sign in" subtitle="Collect gold with every visit. No password needed.">
       <Suspense
         fallback={
-          <div className="h-28 animate-pulse rounded-[14px] bg-[#F4EEE2] motion-reduce:animate-none" />
+          <div className="bg-surface-2 h-28 animate-pulse rounded-md motion-reduce:animate-none" />
         }
       >
         <SignInForm />
