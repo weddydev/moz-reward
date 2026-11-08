@@ -7,7 +7,7 @@ Baton: held by Syedbadeshah76 since 2026-11-08 17:36
 
 ## Handoff note
 _Overwritten by `/handoff`. The next developer reads this first._
-- **Current state (Syedbadeshah76, 2026-11-08 19:40, mid-session — not a handoff yet):** P0-17 finished on `wip/p0-17-test-infra`, merged into `main` and ticked with evidence (SESSION_LOG). Branch deleted. Nothing half-done.
+- **Current state (Syedbadeshah76, 2026-11-08 19:40, mid-session — not a handoff yet):** P0-17 finished on `wip/p0-17-test-infra`, merged into `main` and ticked with evidence (SESSION_LOG). The branch is fully merged and can be deleted (`git push origin --delete wip/p0-17-test-infra`); do not work on it. Nothing half-done.
 - **Before your next session on either laptop:** `pnpm install --frozen-lockfile` (new dev deps: Stryker), `pnpm services:up` (Mailpit :8025, MinIO :9000/:9001), `.env.local` must use `EMAIL_PROVIDER=smtp` + the SMTP/MAILPIT/S3 keys from `.env.example` (old `R2_*` keys are gone), Playwright browsers: `pnpm exec playwright install chromium webkit`.
 - **Windows laptop note:** no `.env.local` yet (H-02). Tests ran with `.env.example` values + throwaway secrets exported in the shell (never written to disk).
 
