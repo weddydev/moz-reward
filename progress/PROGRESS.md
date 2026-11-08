@@ -15,32 +15,37 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Do first (env vars, migrations, seeds): —
 
 ## Status
-- **Phase:** P0 — Foundation and design system (not started)
-- **Last updated:** (date, by session)
+- **Phase:** P0 — Foundation and design system (in progress, 2 of 15 tasks)
+- **Last updated:** 2026-11-08, talha.syed session
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
 ## Now
-- Nothing in progress. Start with the first unticked task in `docs/PHASES.md` → P0.
+- P0 task 3: Docker Compose (Postgres + PostGIS, Redis) and `.env.example` complete.
 
 ## Next (top 3)
-1. Scaffold the project (P0 task 1)
-2. Local Docker (Postgres + Redis) and `.env.example`
-3. Drizzle + first migration
+1. Docker Compose for local Postgres (PostGIS) + Redis
+2. Drizzle + first migration
+3. Auth (Better Auth: Google, magic link, staff/admin password + TOTP)
 
 ## Blockers
-- Human tasks live in `progress/HUMAN_TASKS.md` (🔴 blocking now / 🟠 soon / 🟢 later). List only the 🔴 IDs here, e.g. "H-03 blocks Google sign-in".
-- Technical blockers (not human): —
+- Human: none 🔴. 🟠 for end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-10 Sentry.
+- Technical: —
 
 ## Map of the codebase
-_Fill in as the project grows: one line per important area so future sessions don't need to search._
-- (empty)
+- `src/app/` — Next.js App Router (Next 16: `proxy.ts` not middleware; async request APIs; read `node_modules/next/dist/docs/`)
+- `src/worker/index.ts` — worker entry (stub; BullMQ from P1)
+- `tests/setup.ts` — Vitest setup (jest-dom); unit tests live next to code as `*.test.ts(x)`
+- `tests/e2e/` — Playwright specs (chromium, webkit, pixel-7, iphone-14)
+- Configs: `vitest.config.mts`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc.json`, `pnpm-workspace.yaml` (allowed install scripts)
 
 ## Last verified
-- `pnpm check`: —
-- CI on main: —
+- `pnpm check`: ✅ 2026-11-08 (typecheck, lint, 1 unit test)
+- `pnpm build`: ✅ 2026-11-08
+- `pnpm e2e`: ✅ 2026-11-08 smoke, 4/4 projects
+- CI on main: — (not set up yet)
 - Staging deploy: —
 - E2E smoke on staging: —
 
 ## Open questions / assumptions
-- (empty)
+- Domain name not chosen yet (H-07); staging URLs written as `staging.<domain>` until then.

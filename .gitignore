@@ -13,3 +13,10 @@ test-results/
 .DS_Store
 twa/*.keystore
 twa/*.jks
+.pnp
+.pnp.*
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+pnpm-debug.log*

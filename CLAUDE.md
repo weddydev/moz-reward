@@ -89,6 +89,8 @@ pnpm e2e            # playwright (chromium + webkit + mobile)
 pnpm db:migrate     # drizzle migrations
 pnpm db:seed        # demo data (Brew & Bloom Café etc.)
 pnpm check          # typecheck + lint + test (run before every commit)
+pnpm format         # prettier --write (format:check in CI)
+pnpm test:coverage  # vitest with coverage thresholds
 ```
 Update this list if scripts change.
 
