@@ -51,3 +51,8 @@ Done: integration suite fixed (harness leftover insert, Zod 4 superRefine TypeEr
 Evidence (P0-17 ticked): isolation a/b on moz_test_w2/w1 in separate pids, same PK, both pass; guard.spec 17/17 incl. test.fail for every bad mode; test API 404 in staging/production; test:regression PASS unit 100 / integration 18 / authz 95 / e2e 37 (5 projects, 0 flaky); mutation 90.1%; build ✅.
 Fixed on the way: db:migrate no-op on Windows; session cookie expiring in 1970; dev badge in screenshots; Chromium-only cold-compile timeouts (route warm-up, not longer timeouts).
 Next: security hotfix (MFA bypass, safeReturnTo), then audit fix plan P0-01 → P0-09.
+
+## 2026-11-08 — P0 — security hotfix (Syedbadeshah76)
+Done: audit #1 critical staff/admin MFA bypass (email link/Google → passkey) closed in the session-create hook + no email links for privileged accounts + passkey registration needs MFA; #6 passkey user verification required; #3 safeReturnTo checks the normalised path. Commit dfcb50d.
+Evidence: mfa-bypass.test.ts 5/5 and session-guard.test.ts 11/11 (all seen failing first, bypass reproduced); return-to 19/19 (+6 cases seen failing); pnpm check 235 ✅; regression unit 117 / integration 23 / authz 95.
+Open: WebKit E2E intermittent under full load (3 in ~10 runs, not reproducible since; see PROGRESS Blockers). Security #5/#7/#8 with P0-06/03/07 rework.

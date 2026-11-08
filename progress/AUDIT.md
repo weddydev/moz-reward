@@ -58,9 +58,22 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 
 **Kit v3 re-audit of ticked tasks against ENGINEERING §1 (items 3, 6–8):** before P0-17 nothing was ticked, so nothing to untick. P0-17 itself: test-first evidence (fakes, storage, test API, title checker, isDirectRun: each seen failing first), §1.6 n/a (no product UI; `/dev/guard-check` screenshot inspected), §1.7 unhappy paths (AI error/timeout/empty, storage missing key/unsafe key/not configured, test API invalid input/404), §1.8 side effects (DB session rows, MinIO objects, push sink, Mailpit). Remaining open items for later tasks: P0-14 must run E2E against `next build` and enforce `test:titles --strict`; 14 surviving mutants reviewed at phase end.
 
+## Security hotfix (Syedbadeshah76, 8 Nov 2026, `dfcb50d`)
+
+| Finding | Status | Evidence |
+|---|---|---|
+| #1 critical staff/admin MFA bypass | **fixed** | `tests/integration/mfa-bypass.test.ts` (reproduced first: staff got a link, pre-promotion link signed in, passkey register 200 on non-MFA sessions): no link to staff/admin, pre-promotion link refused (no session row), passkey register 403 for password-only staff and email-link customers, 200 on MFA session; `session-guard.test.ts` (11 path cases) |
+| #2 fail-open env | **fixed** (P0-17 merge) | `src/server/env.test.ts` |
+| #3 open redirect via dot-segments | **fixed** | `return-to.test.ts`: `/.//evil.example/x`, `/a/..//evil.example`, `/%2e//evil.example`, `/./%2F/evil.example`, control chars → fallback |
+| #4 tokens in logs | **fixed** (P0-17 merge: console email + dev outbox removed) | — |
+| #6 passkey without user verification | **fixed** | register options return `userVerification: "required"` (same test file); enforced on verify by `@better-auth/passkey` |
+| #5, #7, #8 | open (medium) | with P0-06 / P0-03 / P0-07 rework |
+
+P0-06 and P0-07 stay PARTIAL: route-group guards, friendly expired-link page, role-home fallback, first-enrolment takeover (#5) and the other criteria in their tables are still open.
+
 ## Top risks
 
-1. **Critical — staff/admin MFA bypass** (email link or Google → register passkey → passkey sign-in counts as 2FA). Proven by PoC. Fix first.
+1. ~~**Critical — staff/admin MFA bypass**~~ **fixed 8 Nov 2026** (`dfcb50d`, see "Security hotfix" above).
 2. **Fail-open environment defaults** — a deploy missing `APP_ENV` would expose the dev outbox (read anyone's sign-in link), test utilities, console email and non-Secure cookies.
 3. **No security headers / CSP**, `X-Powered-By` exposed; `/dev/*` answers 200 (not 404) in production.
 4. **No production rate limiting or login throttling** (Better Auth limiter is in-memory and production-only).

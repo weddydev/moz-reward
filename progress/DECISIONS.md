@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-08 — Staff/admin sign-in is password + second factor only; passkeys need MFA to register
+Decision: Accounts with a staff row, admin row or password credential can get a session only from `/sign-in/email` or an MFA endpoint (session-create hook); they never receive email links (silent, same response). Registering a passkey requires an MFA-verified session for everyone, and passkeys require user verification.
+Why: audit security #1 (critical bypass via email link/Google → passkey) and #6; SECURITY §2 makes staff/admin MFA mandatory, and passkeys are not a customer feature.
+Consequence: staff add a passkey only after TOTP is on. A customer later invited as staff loses email-link/Google sign-in for that account (invite flow must explain this, P2). Remaining medium items #5 (first-enrolment takeover) and #8 (Better Auth account endpoints for stale staff sessions) are fixed with P0-06/P0-07 rework.
+
 ## 2026-11-08 — P0-17 test infrastructure choices
 Decision: E2E runs its own `next dev` on port 3100 (`APP_ENV=test`, DB `moz_test_e2e` recreated on server start, build dir `.next-e2e`), with a globalSetup that warms routes; specs create data only via the 404-gated `/api/test/*` API (`session`, `user`, `fakes`, `reset-fakes`, `GET push`). Fakes for push/AI/postcodes/Places keep state on `globalThis` and fail closed outside local/test until real providers land. SMTP→Mailpit replaces the console email provider and the dev outbox.
 Why: run beside `pnpm dev`; Playwright can't import `server-only` code; cold on-demand compilation under 5 parallel projects caused Chromium-only timeouts (fixed at the cause, not by widening timeouts); no Redis client exists before P0-04.

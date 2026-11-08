@@ -7,7 +7,7 @@ Baton: held by Syedbadeshah76 since 2026-11-08 17:36
 
 ## Handoff note
 _Overwritten by `/handoff`. The next developer reads this first._
-- **Current state (Syedbadeshah76, 2026-11-08 19:40, mid-session — not a handoff yet):** P0-17 finished on `wip/p0-17-test-infra`, merged into `main` and ticked with evidence (SESSION_LOG). The branch is fully merged and can be deleted (`git push origin --delete wip/p0-17-test-infra`); do not work on it. Nothing half-done.
+- **Current state (Syedbadeshah76, 2026-11-08, mid-session — not a handoff yet):** security hotfix `dfcb50d` pushed (audit #1, #3, #6). Before that, P0-17 finished on `wip/p0-17-test-infra`, merged into `main` and ticked with evidence (SESSION_LOG). The branch is fully merged and can be deleted (`git push origin --delete wip/p0-17-test-infra`); do not work on it. Nothing half-done.
 - **Before your next session on either laptop:** `pnpm install --frozen-lockfile` (new dev deps: Stryker), `pnpm services:up` (Mailpit :8025, MinIO :9000/:9001), `.env.local` must use `EMAIL_PROVIDER=smtp` + the SMTP/MAILPIT/S3 keys from `.env.example` (old `R2_*` keys are gone), Playwright browsers: `pnpm exec playwright install chromium webkit`.
 - **Windows laptop note:** no `.env.local` yet (H-02). Tests ran with `.env.example` values + throwaway secrets exported in the shell (never written to disk).
 
@@ -18,15 +18,16 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - **Production:** not deployed
 
 ## Now
-- Security hotfix from the audit (critical staff/admin MFA bypass + `safeReturnTo` dot-segment bypass).
+- Security hotfix done (`dfcb50d`: audit #1 critical MFA bypass, #3 open redirect, #6 passkey UV); independent `security-reviewer` pass on it, then P0-01 rework.
 
 ## Next (top 3)
-1. Security hotfix: refuse magic link + Google for staff/admin accounts, require an MFA session to register passkeys, `userVerification: "required"`; fix `safeReturnTo` dot-segment bypass. Test first (failing PoC tests).
-2. Fix audit gaps in task order P0-01 → P0-09 (`progress/AUDIT.md` "Fix plan"), each with evidence; then P0-04/05, then P0-10+. P0-17 tooling is available for all of them (TESTING §8 loop: `shoot()`, guard, `signInAs`).
+1. Fix audit gaps in task order starting with P0-01 (`progress/AUDIT.md` "Fix plan": server-only + lint boundaries, hex ban, strict-type-checked, exactOptionalPropertyTypes, pre-commit, versions), each with evidence; then P0-02, P0-03 … P0-09, then P0-04/05, then P0-10+. P0-17 tooling is available for all of them (TESTING §8 loop: `shoot()`, guard, `signInAs`).
+2. Remaining medium security items: #5 first-enrolment takeover (with P0-06), #7 separate DB roles for append-only tables (with P0-03), #8 Better Auth account endpoints for stale staff sessions (with P0-07).
 3. Close sub-phases only with `/subphase-complete` (needs CI + staging: P0-14/15 and H-05/06/07).
 
 ## Blockers
 - Human: 🔴 none blocking code work. 🟠 H-02 `.env.local` for the Windows laptop; H-18 `gh` on the Windows laptop; end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-10 Sentry.
+- Technical: **intermittent WebKit E2E failures under full parallel load** (TESTING §7: open, not quarantined): 3 failures in ~10 full runs on the Windows laptop (staff TOTP spec once: stayed on `/staff/sign-in` after "Continue"; UI gallery twice in a row), never in isolation (`--repeat-each 4`) or in the last 5 consecutive full runs. Root cause not yet found; no speculative fix. Next occurrence: run with `--trace retain-on-failure` and read the trace in `test-results/`. Must be resolved before `/subphase-complete`.
 - Technical: audit HIGH findings in `progress/AUDIT.md` (top risks). 14 surviving Stryker mutants (codes 7, return-to 3, policies 4) to review at phase end (TESTING §2).
 
 ## Map of the codebase
@@ -53,8 +54,8 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Configs: `vitest.config.mts`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc.json`, `pnpm-workspace.yaml`
 
 ## Last verified
-- `pnpm check`: ✅ 2026-11-08 19:35 (22 files, 213 tests) on the merged branch
-- `pnpm test:regression`: ✅ 2026-11-08 — unit 100, integration 18, authz 95, e2e 37 (5 projects), 0 flaky
+- `pnpm check`: ✅ 2026-11-08 after the security hotfix (235 tests)
+- `pnpm test:regression`: unit 117 ✅, integration 23 ✅, authz 95 ✅; e2e 36/37 in that run (WebKit intermittent, see Blockers), then 5 consecutive full E2E runs 37/37 ✅
 - `pnpm test:mutation`: ✅ 90.1% (break 80); `pnpm test:live`: storage ✅, email skipped (H-04); `pnpm test:load:smoke`: runs (Docker k6), checks 100%, action p95 458 ms on `next dev` (not meaningful; staging gate)
 - `pnpm test:titles --strict`: ✅ every test tagged
 - `pnpm db:migrate`: ✅ 2026-11-08 (Windows; was silently skipped before the fix)
