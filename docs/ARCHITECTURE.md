@@ -119,6 +119,7 @@ Core tables (snake_case). Columns abbreviated; add `created_at`, `updated_at` ev
 - **data_requests**: id, user_id, kind (export/delete), due_at, status
 - **audit_logs** (append-only): id, actor_id, actor_role, action, entity, entity_id, meta, ip_hash, at
 - **feature_flags**, **content_settings** (chips, keywords, templates, categories)
+- **integrity_issues**: id, check, entity, details, detected_at, resolved_at
 
 Indexes: every FK; `memberships(user_id, shop_id)` unique; `point_requests(membership_id) WHERE status='pending'` partial unique; `offers(shop_id, kind, starts_at)`; GiST on `shops.location`; `listings(status, category, created_at)`.
 
@@ -155,7 +156,7 @@ All jobs idempotent, with retries + exponential backoff and a dead-letter queue 
 
 | Env | URL | Deploys | Data |
 |---|---|---|---|
-| Local | localhost:3000 | `pnpm dev` + Docker (postgres, redis) | Seed |
+| Local | localhost:3000 | `pnpm dev` + Docker (postgres, redis, Mailpit, MinIO) | Seed |
 | Staging | `staging.<domain>` | Auto on every green push to `main` | Seed demo data, reset weekly |
 | Production | `<domain>` (+ `cdn.`) | Git tag `v*` + manual approval in GitHub | Real |
 

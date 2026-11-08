@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-08 — Kit v3: testing and self-verification
+Decision: Kit v3: test-first for logic, self-verification loop with console/network guard and screenshot inspection, `/subphase-complete` regression + post-push CI/staging verification, mutation testing for rules modules, reconciliation job, synthetic monitoring.
+Why: agency-grade reliability for a large-scale SaaS.
+Consequence: P0-17 (test infrastructure) is done before any other unfinished task and existing tests migrate onto it; sub-phases close only via `/subphase-complete`; PHASES gained P0-17, P1-17 (reconciliation), P1-18 (hardening) and close lines.
+
 ## 2026-11-08 — Kit upgrade and audit
 Decision: Kit upgraded to detailed phase briefs, ENGINEERING.md standards and code-reviewer; prior work audited against new task IDs.
 Why: the earlier kit had one-line tasks; the new briefs define acceptance criteria, edge cases and required tests per task (P0-01 … P0-16).

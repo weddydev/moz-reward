@@ -29,7 +29,7 @@ This file is loaded every session, so it is kept short. Detailed specs live in `
 - When stopping: make sure everything is committed and pushed, then play the louder review sound `node .claude/hooks/notify.mjs review "<what was done>" < /dev/null` and reply with a short summary (done, verified, next, open 🔴/🟠 human tasks). The human then says "continue" or runs `/handoff`.
 - Also stop early (with the review sound) if blocked on a 🔴 human task with no other work available, or when context is getting heavy (`/checkpoint` first).
 
-**After every completed sub-phase (task group) and every phase:** run the `code-reviewer` subagent on the sub-phase diff (plus `security-reviewer` / `design-reviewer` where the phase file says) and fix high findings; then update PROGRESS.md (including the Handoff note), review and update `progress/HUMAN_TASKS.md` (priorities and "needed by" dates), tick PHASES.md, append to SESSION_LOG.md, commit, and **push to `origin main`** so the other developer gets it on their next pull. Never leave finished work only on your machine.
+**After every completed sub-phase (task group):** run `/subphase-complete` — full regression of everything built so far, exploratory QA, `code-reviewer` + the reviewers the phase file names, progress updates (PROGRESS incl. Handoff note, HUMAN_TASKS, SESSION_LOG), push, then verify CI, the staging deploy, the staging smoke and Sentry. **After every phase:** `/phase-complete`. Never leave finished work only on your machine.
 
 **Before context gets heavy:** `/checkpoint` (saves and pushes). **When the human is stopping for the day or handing over:** `/handoff` (verifies, writes the handoff note, frees the baton, pushes). A fresh session on either machine must be able to continue with zero re-discovery.
 
@@ -112,7 +112,8 @@ Update this list if scripts change.
 - `/resume` — pull, take the baton, verify, continue
 - `/checkpoint` — save and push progress so the session can be cleared safely
 - `/handoff` — end the session cleanly for the other developer (verify, handoff note, free baton, push)
-- `/phase-complete` — run phase gates, deploy staging, write demo notes
+- `/subphase-complete` — close a sub-phase: full regression, exploratory QA, reviews, push, CI + staging + Sentry verification
+- `/phase-complete` — all phase gates, demo dry run on staging with video, client demo notes
 - `/security-review` — run the security checklist on recent changes
 - `/demo` — prepare the client demo script for what's on staging
 
@@ -129,6 +130,6 @@ Update this list if scripts change.
 | `docs/DESIGN.md` | Building any UI, animation or sound |
 | `docs/ARCHITECTURE.md` | Structure, data model, flows, deployment |
 | `docs/SECURITY.md` | Auth, data access, uploads, headers, any server code |
-| `docs/TESTING.md` | Writing tests, phase gates |
+| `docs/TESTING.md` | §7–8 for every task (test first, self-verification loop); §4 at sub-phase and phase close |
 | `docs/COMPLIANCE.md` | Reviews, notifications, marketplace, game, data rights |
 | `progress/DECISIONS.md` | Before changing an established pattern |

@@ -1,14 +1,22 @@
 ---
-description: Run phase gates, deploy staging, prepare the client demo
+description: Close a phase with full gates, staging verification, demo dry run and client demo notes
 ---
 
-Close the current phase (see `docs/PHASES.md` and `docs/TESTING.md` §4):
+Close the current phase ($ARGUMENTS, e.g. "P1"). Follow `docs/TESTING.md` §4 "Phase done" and the phase's "definition of done" in `docs/phases/<phase>.md`. Never mark a gate passed that you did not run.
 
-1. Confirm every task in the phase is ticked in `docs/PHASES.md`, and check the phase's "definition of done" in `docs/phases/<phase>.md`. Run the `code-reviewer` subagent over the whole phase (all task IDs) and resolve every BLOCK/high finding; list anything not done and why.
-2. Run the phase gates: `pnpm check`, full E2E on staging (all configured browsers/devices), axe checks, visual snapshots for screens built so far, Lighthouse CI on customer routes, Semgrep/OSV/gitleaks, ZAP baseline (from P3 onwards). Use a subagent (`qa-engineer`) to run and summarise long outputs.
-3. Run `/security-review` on the phase's changes (via the `security-reviewer` subagent). If the phase added or changed UI or motion, run the `design-reviewer` subagent and the `review-animations` skill on those changes; fix anything it blocks.
-4. Fix failures. Anything deferred must have a DECISIONS.md entry and appear in PROGRESS.md.
-5. Confirm staging is deployed from the latest green `main` and seeded with demo data relevant to this phase.
-6. Run `/demo` to write the client demo notes.
-7. Update `progress/HUMAN_TASKS.md` for the next phase: add everything the human must prepare (with exact steps), set priorities and needed-by. Update PROGRESS.md (phase done, next phase first task) and SESSION_LOG.md; commit and push.
-8. Reply with: gate results table (pass/fail/deferred), staging URL, demo summary, and the open HUMAN_TASKS list grouped 🔴 / 🟠 / 🟢.
+1. **Completeness:** every task and sub-phase in the phase is ticked in `docs/PHASES.md`, and the last sub-phase went through `/subphase-complete`. List anything not done and why; finish it first.
+2. **Whole-phase review:** `code-reviewer` over all task IDs in the phase; `security-reviewer` via `/security-review`; `design-reviewer` + `review-animations` if the phase has UI or motion. Resolve every BLOCK/high finding.
+3. **Gates** (run via the `qa-engineer` subagent; save reports in `.artifacts/<phase>/`):
+   - full regression: unit, integration, authz + coverage, every E2E journey built so far on all Playwright projects, on staging as well as locally
+   - axe on all routes built so far; visual snapshots for key screens built so far
+   - Lighthouse CI on customer routes (judgment rule)
+   - mutation testing (Stryker) on rules modules touched in this phase (TESTING §2)
+   - k6 smoke (P1, P3) or full load test (P5) per TESTING §5
+   - ZAP baseline (from P3; authenticated scan in P5)
+   - data-integrity reconciliation run on staging: zero mismatches
+   - `pnpm test:live` against real providers on staging (from P2)
+4. Fix failures at the root cause. Anything deferred needs a DECISIONS.md entry, a PROGRESS.md note and, if the client must know, a HUMAN_TASKS item.
+5. **Staging:** confirm the latest green `main` is deployed, the demo seed is fresh, and Sentry shows no new errors for this release.
+6. **Demo dry run:** run `/demo` (it rehearses the demo script on staging with video before writing notes).
+7. **Progress:** update HUMAN_TASKS.md for the next phase (everything the human must prepare, with steps and needed-by), PROGRESS.md (phase done, next phase's first task), SESSION_LOG.md (gate summary). Commit, push, and verify CI + staging again.
+8. **Reply** with: gate results table (pass / fail / deferred with reason), staging URL, demo summary, and open human tasks grouped 🔴 / 🟠 / 🟢.

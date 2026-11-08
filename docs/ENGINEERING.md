@@ -11,15 +11,18 @@ Sections: [1 Definition of done](#1-definition-of-done) · [2 TypeScript](#2-typ
 A task is done only when **all** of these are true, with evidence in the session:
 1. Every acceptance criterion in the task's phase file is met.
 2. Every listed edge case is handled and covered by a test or a documented manual check.
-3. Required tests exist, are meaningful (they would fail if the behaviour broke) and pass.
+3. Required tests exist, are meaningful (they would fail if the behaviour broke) and pass. For services, rules and bug fixes they were written **first** and seen failing (TESTING §7). Test titles carry the task ID (`[P1-11] …`).
 4. Authorisation matrix entries exist for every new action/route.
 5. `pnpm check` passes; no new lint suppressions without a justification comment.
-6. UI tasks: checked at 390×844 (Chromium + WebKit) and 1440×900, keyboard-navigable, reduced-motion verified, loading/empty/error states present.
-7. No TODO/FIXME left in the task's code unless it references a ticket in PROGRESS.md.
-8. The `code-reviewer` subagent has reviewed the task group with no unresolved high findings.
-9. Docs updated where behaviour or structure changed (PROGRESS map, DECISIONS, `.env.example`).
+6. UI tasks: the self-verification loop in TESTING §8 was run — app exercised in Playwright with the console/network guard clean; screenshots at 320, 390 (Chromium + WebKit) and 1440 captured **and inspected by you**; keyboard-navigable; reduced motion verified; loading, empty and error states present; exploratory "try to break it" checks done.
+7. Unhappy paths for the task work: server error, offline, double submit, expired session or token where relevant.
+8. Side effects verified: DB rows, audit log, queued jobs, emails (Mailpit), push payloads (fake sink).
+9. No TODO/FIXME left in the task's code unless it references an item in PROGRESS.md.
+10. Docs updated where behaviour or structure changed (PROGRESS map, DECISIONS, `.env.example`).
 
-"It works on the happy path" is never done.
+A **sub-phase** is done only after `/subphase-complete` (TESTING §4): full regression of everything built so far, exploratory QA, reviewer subagents with no BLOCK/high findings, push, and post-push verification (CI green, staging deployed, staging smoke passed, no new Sentry errors).
+
+"It works on the happy path" is never done. "The tests I just wrote pass" is never enough on its own.
 
 ## 2. TypeScript
 

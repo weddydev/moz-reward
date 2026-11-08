@@ -29,7 +29,12 @@
       "Bash(head:*)",
       "Bash(wc:*)",
       "Bash(date:*)",
-      "Bash(curl -s http://localhost:*)"
+      "Bash(curl -s http://localhost:*)",
+      "Bash(gh run:*)",
+      "Bash(gh workflow:*)",
+      "Bash(gh auth status:*)",
+      "Bash(npx stryker:*)",
+      "Bash(k6:*)"
     ],
     "deny": [
       "Read(./.env)",
@@ -48,14 +53,20 @@
     "Notification": [
       {
         "hooks": [
-          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/notify.mjs\" attention" }
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/notify.mjs\" attention"
+          }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/notify.mjs\" done" }
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/notify.mjs\" done"
+          }
         ]
       }
     ],
@@ -63,7 +74,10 @@
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/notify.mjs\" decision" }
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/notify.mjs\" decision"
+          }
         ]
       }
     ]

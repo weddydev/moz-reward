@@ -27,6 +27,7 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 | H-13 | 🟢 | Test each demo on a real Android phone and a real iPhone | Every phase end | Real-device check | 15 min / phase |
 | H-14 | 🟢 | Send the client the demo notes and collect feedback | Every phase end | Client sign-off | — |
 | H-15 | 🟢 | Client's solicitor reviews the legal page drafts | P5 | Launch | Client side |
+| H-18 | 🟠 | Install GitHub CLI and run `gh auth login` on **both** developers' machines (this Mac: done 8 Nov 2026 as `weddydev`; second developer laptop: pending) | Before P0-14 CI (~12 Nov 2026) and before the other developer's first `/subphase-complete` | Lets Claude watch CI (`gh run watch`) and staging after every push | 5 min per machine |
 | H-17 | 🟠 | Decide whether to tighten Claude Code permissions in `.claude/settings.json` (audit security #17: `node:*`/`pnpm:*` run anything without a prompt; `cat` can read `.env*`) | Before staging secrets exist (~13 Nov 2026) | Tooling safety; Claude will not change its own permissions | 5 min |
 | H-16 | 🟢 | Optional: AI-generated reference images in `design/reference/` | Any time (helps from P0 UI work) | Visual guide for screens | — |
 
@@ -85,6 +86,11 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 1. play.google.com/console → sign up as an organisation (needs a D-U-N-S number for the client's company) or individual → pay $25.
 2. Complete identity verification (can take several days — start early).
 3. Tell Claude when the account is verified; the TWA listing assets are prepared in P5.
+
+### H-18 — GitHub CLI on both machines
+**macOS:** 1. `brew install gh` 2. `gh auth login` → GitHub.com → HTTPS → "Login with a web browser" → sign in as an account with write access to `weddydev/moz-reward` 3. Check: `gh auth status` and `gh repo view weddydev/moz-reward`.
+**Windows:** 1. `winget install --id GitHub.cli` (or download from cli.github.com) 2. Reopen the terminal, then `gh auth login` as above 3. Check with `gh auth status`.
+Tell Claude "H-18 done on <machine>".
 
 ### H-17 — Claude Code permissions (your decision)
 1. Open `.claude/settings.json`.

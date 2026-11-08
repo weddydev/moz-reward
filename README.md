@@ -28,7 +28,7 @@ This folder contains everything Claude Code needs to build Moz Rewards from scra
 
 1. Create an empty folder (e.g. `moz-rewards`) and copy **all** files from this kit into it, including the hidden `.claude/` folder, `.gitignore` and `.env.example`.
 2. Put your reference images in `design/reference/` using the names described there.
-3. Install Node.js LTS, pnpm (`npm i -g pnpm`), Docker Desktop and Git.
+3. Install Node.js LTS, pnpm (`npm i -g pnpm`, or `brew install pnpm` on macOS), Docker Desktop, Git and the GitHub CLI (`brew install gh` / `winget install GitHub.cli`), then run `gh auth login` so Claude can watch CI and staging after every push.
 4. `git init` and create a private GitHub repository; push the initial commit.
 5. Install the four Emil Kowalski design skills into this project (run inside the project folder; when asked, choose **Claude Code** and **project** scope so they land in `.claude/skills/` and get committed):
    ```
@@ -85,6 +85,7 @@ Both machines need: the same Node LTS, pnpm and Docker; the same `.env.local` va
 
 Works on macOS, Windows (Git Bash/PowerShell) and Linux (PulseAudio); Node must be on your PATH. To mute temporarily, start Claude Code with `CLAUDE_SOUNDS=off claude`. To customise, edit `.claude/hooks/notify.mjs`. On macOS, allow notifications for your terminal app in System Settings → Notifications if no banner appears.
 - Check `progress/HUMAN_TASKS.md`: your to-do list from Claude, marked 🔴 blocking now / 🟠 needed soon / 🟢 later, each with exact steps and when it's needed. When you finish one, tell Claude ("H-03 done").
+- End of each sub-phase: `/subphase-complete` → full regression of everything built so far, exploratory QA, reviews, push, then CI + staging + Sentry checks.
 - End of each phase (about weekly): `/phase-complete` → it runs all checks, deploys staging and writes `progress/DEMO_NOTES.md` you can send to the client.
 
 ## Things only you can do (Claude Code will ask, with steps)
