@@ -11,7 +11,7 @@ Resume Moz Rewards. Two developers take turns; the repo files are the only share
    - Held by the other developer → stop and tell the human: "<name> still holds the baton since <time>. Continue anyway?" Only continue if they confirm.
 4. Set `Baton: held by <you> since <date time>`, commit (`chore(progress): baton <you>`) and push immediately so the other developer sees it.
 5. Read `progress/HUMAN_TASKS.md` (open items only). Ask the human whether any open tasks were completed since the last session; move confirmed ones to Done.
-6. Read the **Handoff note**, the last SESSION_LOG.md entry, and only the current phase section of `docs/PHASES.md`.
+6. Read the **Handoff note**, the last SESSION_LOG.md entry, `docs/PHASES.md` to find the next unticked task, and that task's section in `docs/phases/<phase>.md` (plus the phase's "How to work this phase" header).
 7. Bring the local environment in line: `pnpm install --frozen-lockfile`, start Docker services, `pnpm db:migrate`, `pnpm db:seed` if the note says so. If `.env.example` gained variables, list them for the human.
 8. Run `pnpm check` (and any tests named under "Not yet tested" in the handoff note). If anything fails, fix it first (root cause first) and record it.
 9. State in 3–5 lines: phase, what the other developer finished, what you will do next, and any 🔴 human tasks.

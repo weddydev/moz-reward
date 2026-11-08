@@ -1,118 +1,198 @@
-# Delivery phases — Moz Rewards
+# Delivery phases — task index
 
-Six build phases (about one week each), then a stabilisation period. Every phase ends on **staging** with a client demo. Tick tasks here as you finish them (`- [x]`). Work top to bottom inside a phase unless a dependency says otherwise.
+This file is the **checklist**. The detail for every task (read list, build notes, acceptance criteria, edge cases, tests, verification) lives in `docs/phases/<phase>.md`. Always open the phase file section for the task you are doing.
 
-Phase index: [P0 Foundation](#p0--foundation-and-design-system-week-1) · [P1 Core loyalty](#p1--core-loyalty-week-2) · [P2 Shop + admin core](#p2--shop-dashboard-registration-and-admin-core-week-3) · [P3 Engagement](#p3--engagement-week-4) · [P4 Marketplace, game, trust](#p4--marketplace-game-moderation-fraud-week-5) · [P5 Hardening and release](#p5--hardening-pwa-play-store-release-candidate-week-6) · [S Stabilisation](#s--stabilisation-and-launch)
-
-Every phase's definition of done includes: `pnpm check` green, CI green, staging deployed, PHASES ticks updated, PROGRESS.md updated, `progress/DEMO_NOTES.md` written via `/demo`.
-
----
+Rules:
+- Tick `- [x]` only when every acceptance criterion in the phase file has evidence from the session (ENGINEERING.md §1). Add the evidence summary to SESSION_LOG.md.
+- At the end of every **sub-phase**: `code-reviewer` subagent (plus `security-reviewer` / `design-reviewer` where the phase file says), then update PROGRESS.md + HUMAN_TASKS.md, commit, push.
+- At the end of every **phase**: `/phase-complete` (gates, staging, demo notes).
 
 ## P0 — Foundation and design system (week 1)
+Details: [`docs/phases/P0.md`](phases/P0.md)
 
-- [x] Confirm the Emil Kowalski skills are present in `.claude/skills/` (`emil-design-eng`, `animation-performance`, `mobile-native`, `review-animations`); if missing, add a 🔴 task to `progress/HUMAN_TASKS.md` asking the human to run the install commands in README
-- [x] Scaffold Next.js (App Router, TS strict), pnpm, ESLint, Prettier, Vitest, Playwright, path aliases; scripts from CLAUDE.md §6
-- [x] Docker Compose for local Postgres (PostGIS) + Redis; `.env.example` complete
-- [x] Drizzle setup, first migration (users/auth tables, customer_profiles, shops, shop_staff, memberships, audit_logs, feature_flags)
-- [x] Auth: customer Google OAuth + magic link; staff/admin email+password + mandatory TOTP; session helpers; `server/authz` policies; action template
-- [x] Authz test harness (`tests/authz/`) with the role matrix pattern
-- [x] Design tokens, fonts (Fraunces + Manrope via next/font), Tailwind theme, globals, reduced-motion handling
-- [x] UI primitives (DESIGN.md §6) + `/dev/ui` gallery
-- [ ] Motion primitives: page transition wrapper (View Transitions + fallback), press feedback, sheet/modal, skeletons; `/dev/motion` gallery skeleton
-- [ ] Sound module (Web Audio synthesis, unlock on first gesture, toggle) + haptics helper
-- [ ] App shells: customer (mobile bottom nav + desktop rail), shop dashboard (sidebar + mobile nav), admin (sidebar) with placeholder pages
-- [ ] Security headers + CSP nonce middleware; rate-limit utility (Redis); Turnstile component
-- [ ] GitHub Actions CI (typecheck, lint, unit, integration, build, Semgrep, gitleaks, OSV)
-- [ ] Staging infra: Dockerfile(s), compose for staging, Caddy, deploy workflow, basic auth on staging, `/api/health`, Sentry
-- [ ] Seed script (demo shops, customers) — expanded each phase
+**P0-A · Repository, tooling, local infrastructure**
 
-**Demo 1:** design system gallery on staging; sign in as customer (Google + email link), as shop owner and admin (with 2FA); all three portal shells navigable on phone and desktop; page transitions and press feedback visible.
+- [ ] P0-01 · Skills check and repository scaffold
+- [ ] P0-02 · Local infrastructure and environment validation
+- [ ] P0-03 · Database foundation
+- [ ] P0-04 · Background jobs infrastructure
+
+**P0-B · Security baseline, auth, authorisation**
+
+- [ ] P0-05 · Security baseline
+- [ ] P0-06 · Authentication for all roles
+- [ ] P0-07 · Authorisation layer, action template, error model
+
+**P0-C · Design system, motion, sound**
+
+- [ ] P0-08 · Tokens, fonts, global styles, motion preference
+- [ ] P0-09 · UI primitives and gallery
+- [ ] P0-10 · Motion primitives and page transitions
+- [ ] P0-11 · Sound and haptics
+
+**P0-D · Portal shells**
+
+- [ ] P0-12 · App shells, navigation and route groups
+
+**P0-E · Observability, CI, staging, seeds**
+
+- [ ] P0-13 · Observability and analytics foundation
+- [ ] P0-14 · CI pipeline
+- [ ] P0-15 · Staging environment and deployment
+- [ ] P0-16 · Seeds and factories
+- [ ] P0 definition of done met and demo delivered
 
 ## P1 — Core loyalty (week 2)
+Details: [`docs/phases/P1.md`](phases/P1.md)
 
-- [ ] Shop codes, QR generation, NFC tag records; `/s/[code]` landing (RSC, cached) per DESIGN screen 1
-- [ ] **Gilded Gate** entry animation (DESIGN §8.1) with skip + reduced motion
-- [ ] Sign-in return flow + membership auto-join + Complete profile (name, phone encrypted, birthday, opt-in) + member ID
-- [ ] Wallet (screen 3) with sorting rules, summary strip, pull-to-refresh
-- [ ] Shop page (screen 4) with Directions/Call, hours, Open now
-- [ ] Loyalty programme model + default templates + basic programme settings page in dashboard
-- [ ] **Ingot component** + pour-on-view (DESIGN §8.3); Gold Vault page (screen 5)
-- [ ] Points request action + limits + expiry job; SSE infra (`/api/sse/me`, `/api/sse/shop/[id]`) with Redis pub/sub
-- [ ] Approve/reject actions with ledger transaction, idempotency, happy-hour-ready calculation hook, streaks, milestones, overflow; receipts rows
-- [ ] **Points credited** (DESIGN §8.2), **Reward unlocked** (§8.4), **Receipt generated** (§8.5) moments
-- [ ] Member QR (signed rotating token) on Me + shop page; offline caching of member card
-- [ ] Rewards + redemption codes (§8.6) + staff confirmation
-- [ ] Unit tests for all loyalty services; integration test request→approve→ledger; authz matrix for new actions
-- [ ] E2E journeys 1–3
+**P1-A · Shops and entry**
 
-**Demo 2:** scan a printed QR on a phone → Gilded Gate → sign in → request points → approve from the dashboard on a laptop → celebration and ingot pour on the phone → fill an ingot → redeem.
+- [ ] P1-01 · Shop entities, codes, hours, NFC records
+- [ ] P1-02 · Shop landing page `/s/[code]`
+- [ ] P1-03 · Gilded Gate entry animation
+- [ ] P1-04 · Join flow, profile completion, member ID
 
-## P2 — Shop dashboard, registration and admin core (week 3)
+**P1-B · Loyalty engine, Wallet, Vault**
 
-- [ ] Dashboard home (screen 15) with live queue, KPIs, sparklines
-- [ ] Requests page (screen 18) + approve side panel + member QR scanning (BarcodeDetector + lazy fallback)
-- [ ] Customers table + segments + customer profile (screen 16) + notes
-- [ ] Staff management (invite, roles, per-award limit, deactivate)
-- [ ] Shop settings: profile, photos (upload pipeline v1), hours, closures, location pin via postcode, Google Place ID, VAT details
-- [ ] QR & NFC kit: poster + table tent PDFs (worker)
-- [ ] Public registration page (screen 14) + Turnstile + confirmation email
-- [ ] Admin: overview (screen 19), applications + review/activation (screen 20), record payments, plans, invoices PDF, plan state machine + reminder jobs + restricted mode
-- [ ] Admin: shops list/detail, view-as-shop (read-only, logged), customers lookup, team management with 2FA status, audit log viewer
-- [ ] Email templates (React Email): magic link, invites, application received, activation, plan reminders
-- [ ] Tests: plan state machine units, authz matrix for all dashboard/admin actions, E2E journeys 4, 10, 11
+- [ ] P1-05 · Loyalty programme model and basic settings
+- [ ] P1-06 · Loyalty engine (pure services)
+- [ ] P1-07 · Wallet
+- [ ] P1-08 · Ingot component, pour-on-view, Gold Vault page
+- [ ] P1-09 · Shop page (customer)
 
-**Demo 3:** a new café applies on the registration page → admin records payment and activates → owner receives invite, signs in with 2FA, sets hours and photos, prints the QR poster → staff approve requests from the requests page and by scanning a member QR.
+**P1-C · Requests, approvals, realtime**
+
+- [ ] P1-10 · Realtime (SSE) infrastructure
+- [ ] P1-11 · Points requests (customer)
+- [ ] P1-12 · Approve / reject, owner approval, reversals, receipts
+- [ ] P1-13 · Points expiry job
+
+**P1-D · Celebrations, member QR, rewards**
+
+- [ ] P1-14 · Member QR and offline member card
+- [ ] P1-15 · Celebrations: points credited, reward unlocked, receipt
+- [ ] P1-16 · Rewards and redemption
+- [ ] P1-17 · Phase hardening
+- [ ] P1 definition of done met and demo delivered
+
+## P2 — Shop dashboard, onboarding and admin core (week 3)
+Details: [`docs/phases/P2.md`](phases/P2.md)
+
+**P2-A · Shop operations**
+
+- [ ] P2-01 · Dashboard home
+- [ ] P2-02 · Requests page and member QR scanning
+- [ ] P2-03 · Customers, segments, customer profile, export
+- [ ] P2-04 · Staff management
+- [ ] P2-05 · Shop settings and upload pipeline v1
+- [ ] P2-06 · QR & NFC kit
+- [ ] P2-07 · Analytics page
+
+**P2-B · Onboarding and billing**
+
+- [ ] P2-08 · Public registration page
+- [ ] P2-09 · Applications, activation, payments, invoices
+- [ ] P2-10 · Plan state machine and restricted mode
+- [ ] P2-11 · Email templates
+
+**P2-C · Admin core**
+
+- [ ] P2-12 · Admin shops: list, detail, suspend, close, view-as-shop
+- [ ] P2-13 · Admin customers: lookup, recovery, data requests, blocking
+- [ ] P2-14 · Admin QR & NFC batches
+- [ ] P2-15 · Admin team, audit log, overview, system page
+- [ ] P2-16 · Phase hardening
+- [ ] P2 definition of done met and demo delivered
 
 ## P3 — Engagement (week 4)
+Details: [`docs/phases/P3.md`](phases/P3.md)
 
-- [ ] Rate your visit (screen 6) with chips, AI help (provider interface + rate limit), Google hand-off, private feedback; low-rating alert; feedback inbox + replies
-- [ ] Compliance test: identical review actions for ratings 1–5
-- [ ] Offers: model, create offer (screen 17) with banner builder templates, Daily Drop limit + repost, claims + staff confirm, end early
-- [ ] Offers feed (screen 7) with search, categories, Near me (postcodes.io + PostGIS), featured slots; offer detail (screen 8); saved offers + reminders
-- [ ] Private offers (one customer / segment) with Accept/Skip
-- [ ] Notifications: inbox (screen 13), Web Push (VAPID) subscribe flow incl. iOS Home Screen explanation, preferences, per-shop mute; email notifications
-- [ ] Announcements with 2-per-7-days cap + scheduling
-- [ ] Happy hour windows + multiplier applied by `requested_at` + badges
-- [ ] Suggestions inbox: birthday + win-back jobs, send/edit/skip
-- [ ] Referrals with caps and self-referral guard
-- [ ] Share cards (reward, ingot, recap) + Web Share/download; monthly recap job; weekly owner email job
-- [ ] Featured slots admin
-- [ ] Tests: offers limits, happy hour (incl. DST), caps, referral rules; E2E journeys 5–8
+**P3-A · Reviews and feedback**
 
-**Demo 4:** rate a visit both low and high (same options), use AI help, post to Google; shop publishes a Daily Drop with a template banner and it appears in Offers near me; happy hour doubles gold; birthday and win-back suggestions sent from the inbox; push notification arrives on Android and on an installed iPhone PWA.
+- [ ] P3-01 · Rate your visit (customer)
+- [ ] P3-02 · AI review help
+- [ ] P3-03 · Feedback inbox, replies, low-rating alerts, Google summary
 
-## P4 — Marketplace, game, moderation, fraud (week 5)
+**P3-B · Offers**
 
-- [ ] Marketplace home (screen 9), listing detail (screen 10), create listing (screen 11), my listings, expiry + renew
-- [ ] Upload pipeline hardened (magic bytes, re-encode, EXIF strip, pixel limits), separate cdn origin
-- [ ] Reveal number with rate limit + logging; safety tips; seller types; 18+ confirmation
-- [ ] Prohibited keyword filter + first-3-listings pre-moderation; reports + moderation queue + actions + appeals + strikes
-- [ ] Legal templates drafts: Marketplace Rules, Prohibited Items, Reporting and Complaints, OSA risk-assessment template
-- [ ] Stack the Gold game (canvas, lazy, 60 fps), personal best, weekly leaderboard per shop, server-side plausibility, optional shop reward with caps
-- [ ] Fraud monitor rules + flags UI; content settings (categories, keywords, chips, templates); broadcasts to shops
-- [ ] Tests: moderation flows, rate limits, game validation; E2E journey 9
+- [ ] P3-04 · Offers model, creation, banner builder, Daily Drop rules
+- [ ] P3-05 · Offers feed, near me, featured, offer detail
+- [ ] P3-06 · Claims, saved offers, reminders, private offers, admin removal
 
-**Demo 5:** list a bike with photos, admin approves it, buyer reveals the number; a prohibited item is held automatically; report and takedown; play Stack the Gold and appear on the shop leaderboard; fraud monitor shows a flagged pattern from seed data.
+**P3-C · Notifications and announcements**
 
-## P5 — Hardening, PWA, Play Store, release candidate (week 6)
+- [ ] P3-07 · Notifications: inbox, Web Push, email, preferences
+- [ ] P3-08 · Announcements
 
-- [ ] PWA: manifest, icons (maskable), service worker (offline shell, member card, wallet snapshot), update prompt; install button everywhere + iOS guide sheet
-- [ ] Android TWA with Bubblewrap; Digital Asset Links; Play listing assets (icons, screenshots, short/long descriptions, privacy policy URL) in `twa/listing/`
-- [ ] Remaining screens: Me (screen 12) complete, privacy & data (export, delete), help & legal pages (all templates from COMPLIANCE §8)
-- [ ] Complete SECURITY.md checklist; optional RLS decision; ZAP baseline clean
-- [ ] Performance pass vs DESIGN §12 (judgment rule); image audit; bundle analysis
-- [ ] Accessibility pass (axe + keyboard + screen reader spot checks)
-- [ ] Visual regression baselines for 20 screens × 2
-- [ ] k6 load test on staging; fix bottlenecks
-- [ ] Production infra: compose, Caddy, Cloudflare, backups + restore drill, uptime monitors, alerting; `docs/RUNBOOK.md`
-- [ ] Release workflow (tag → approval → deploy) dry run to production with maintenance page
+**P3-D · Engagement suite**
 
-**Demo 6 (release candidate):** full walkthrough on a real Android phone (Play internal testing build) and a real iPhone (Safari + installed PWA), desktop dashboard and admin; security, performance and load-test summary.
+- [ ] P3-09 · Happy hour gold
+- [ ] P3-10 · Suggestions inbox: birthdays and win-back
+- [ ] P3-11 · Refer a friend
+- [ ] P3-12 · Share cards, monthly recap, weekly owner email
+- [ ] P3-13 · Featured slots (admin)
+- [ ] P3-14 · Phase hardening
+- [ ] P3 definition of done met and demo delivered
 
-## S — Stabilisation and launch
+## P4 — Marketplace, game, moderation and fraud (week 5)
+Details: [`docs/phases/P4.md`](phases/P4.md)
 
-- [ ] Client acceptance testing: log feedback in `progress/UAT.md`, triage (bug / polish / change request)
-- [ ] Fix bugs and polish; change requests only after human approval
-- [ ] Production launch; Play Store production rollout
-- [ ] Post-launch monitoring: errors, performance, queues, fraud flags; daily summary in PROGRESS.md for the first two weeks
-- [ ] Handover docs: README for operators, environment list, runbook, admin guide
+**P4-A · Marketplace**
+
+- [ ] P4-01 · Listings: create, browse, detail, manage
+- [ ] P4-02 · Upload pipeline hardening and CDN origin
+- [ ] P4-03 · Reveal number, seller types, 18+ confirmation
+- [ ] P4-04 · Moderation: keywords, pre-moderation, reports, actions, appeals, strikes
+- [ ] P4-05 · Marketplace legal drafts and OSA risk-assessment template
+
+**P4-B · Mini game**
+
+- [ ] P4-06 · Stack the Gold game
+- [ ] P4-07 · Leaderboards, game rewards, anti-cheat
+
+**P4-C · Trust and platform settings**
+
+- [ ] P4-08 · Fraud monitor
+- [ ] P4-09 · Content settings and broadcasts
+- [ ] P4-10 · Phase hardening
+- [ ] P4 definition of done met and demo delivered
+
+## P5 — Completeness, hardening, PWA, Play Store, release candidate (week 6)
+Details: [`docs/phases/P5.md`](phases/P5.md)
+
+**P5-A · Customer completeness and installable app**
+
+- [ ] P5-01 · Me, privacy and data, help
+- [ ] P5-02 · PWA: manifest, service worker, offline, updates
+- [ ] P5-03 · Install flows
+- [ ] P5-04 · Android app (Trusted Web Activity) and Play listing
+
+**P5-B · Legal and compliance completion**
+
+- [ ] P5-05 · Legal pages and cookie notice
+- [ ] P5-06 · Compliance audit
+
+**P5-C · Quality gates**
+
+- [ ] P5-07 · Security checklist completion
+- [ ] P5-08 · Performance pass
+- [ ] P5-09 · Accessibility pass
+- [ ] P5-10 · Visual regression baselines
+- [ ] P5-11 · Load test and cross-device verification
+
+**P5-D · Production readiness**
+
+- [ ] P5-12 · Production infrastructure, backups, monitoring
+- [ ] P5-13 · Runbook, operator docs, release workflow
+- [ ] P5-14 · Release candidate
+- [ ] P5 definition of done met and demo delivered
+
+## S — Stabilisation and launch (stabilisation period)
+Details: [`docs/phases/S.md`](phases/S.md)
+
+- [ ] S-01 · Client acceptance testing (UAT)
+- [ ] S-02 · Bug fixing and polish
+- [ ] S-03 · Launch
+- [ ] S-04 · Post-launch monitoring (first two weeks)
+- [ ] S-05 · Handover
+- [ ] Launch complete and handover done

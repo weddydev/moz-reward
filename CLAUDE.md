@@ -10,17 +10,18 @@ This file is loaded every session, so it is kept short. Detailed specs live in `
 
 **Start of every session (including after `/clear`):** use `/resume`. It pulls from `origin main`, checks and takes the baton, verifies the build and tests, then continues. If it was not used:
 1. `git pull --rebase origin main`, then read `progress/PROGRESS.md` — it is the single source of truth for where we are. If the baton is held by the other developer, stop and ask the human.
-2. Read only the current phase section of `docs/PHASES.md`.
-3. Read only the doc sections the next task needs (use the section index at the top of each doc).
+2. Find the next unticked task in `docs/PHASES.md`, then open **that task's section** in `docs/phases/<phase>.md` (plus the phase's "How to work this phase" header). The phase file is the task brief: Read list, Build notes, Acceptance criteria, Edge cases, Tests, Verify.
+3. Read exactly the doc sections the task's **Read** list names — no more, no less — plus `docs/ENGINEERING.md` §1 if you haven't this session.
 4. Do not scan the whole repo to "get oriented". PROGRESS.md tells you what exists and where.
 
 **After every completed task:**
 1. Run the relevant checks (typecheck, lint, the tests you touched).
-2. Confirm with evidence (see §3 "Verification before done"), then commit with a Conventional Commit message (`feat(loyalty): ledger idempotency`).
-3. Update `progress/PROGRESS.md` (Now / Next / Blockers / Last verified) and tick the task in `docs/PHASES.md`.
-4. Commit the progress update and **push to `origin main`** (every task, so the human can stop or hand off at any moment).
-5. Play the soft task sound: `node .claude/hooks/notify.mjs task "<phase> task <n> done: <name>" < /dev/null`
-6. **Do not stop — start the next task immediately.** Mention in one line what finished.
+2. Walk the task's **Acceptance criteria** one by one and produce evidence for each (command output, test names, screenshots, curl). Also confirm the **Edge cases** and **Tests** listed exist. If any criterion is unmet, the task is not done — keep working or record exactly what remains.
+3. Commit with a Conventional Commit message (`feat(loyalty): ledger idempotency`).
+4. Update `progress/PROGRESS.md` (Now / Next / Last verified), tick the task in `docs/PHASES.md`, and add a short evidence line to SESSION_LOG.md.
+5. Commit the progress update and **push to `origin main`** (every task, so the human can stop or hand off at any moment).
+6. Play the soft task sound: `node .claude/hooks/notify.mjs task "<task ID> done: <name>" < /dev/null`
+7. **Do not stop — start the next task immediately** (unless the cadence below says stop). Mention in one line what finished.
 
 **Autopilot cadence (human's standing rule):**
 - Keep going task after task. After **3–5 completed tasks** (fewer when the tasks were large), **stop** for review.
@@ -28,7 +29,7 @@ This file is loaded every session, so it is kept short. Detailed specs live in `
 - When stopping: make sure everything is committed and pushed, then play the louder review sound `node .claude/hooks/notify.mjs review "<what was done>" < /dev/null` and reply with a short summary (done, verified, next, open 🔴/🟠 human tasks). The human then says "continue" or runs `/handoff`.
 - Also stop early (with the review sound) if blocked on a 🔴 human task with no other work available, or when context is getting heavy (`/checkpoint` first).
 
-**After every completed sub-phase (task group) and every phase:** update PROGRESS.md (including the Handoff note), review and update `progress/HUMAN_TASKS.md` (priorities and "needed by" dates), tick PHASES.md, append to SESSION_LOG.md, commit, and **push to `origin main`** so the other developer gets it on their next pull. Never leave finished work only on your machine.
+**After every completed sub-phase (task group) and every phase:** run the `code-reviewer` subagent on the sub-phase diff (plus `security-reviewer` / `design-reviewer` where the phase file says) and fix high findings; then update PROGRESS.md (including the Handoff note), review and update `progress/HUMAN_TASKS.md` (priorities and "needed by" dates), tick PHASES.md, append to SESSION_LOG.md, commit, and **push to `origin main`** so the other developer gets it on their next pull. Never leave finished work only on your machine.
 
 **Before context gets heavy:** `/checkpoint` (saves and pushes). **When the human is stopping for the day or handing over:** `/handoff` (verifies, writes the handoff note, frees the baton, pushes). A fresh session on either machine must be able to continue with zero re-discovery.
 
@@ -46,6 +47,7 @@ When documents disagree, follow this order:
 
 ## 3. Working principles
 
+- **Agency-grade quality.** Build as a senior engineer at a top product agency would for a SaaS expected to run at scale for years. `docs/ENGINEERING.md` defines the standard and the definition of done (§1); its "forbidden shortcuts" (§17) are never acceptable. Speed comes from good structure, never from skipping acceptance criteria, edge cases or tests.
 - **Quality first, then speed, then token economy.** Never ship a shortcut that weakens security, accessibility or correctness.
 - **Judgment over rigid rules.** Budgets and targets (bundle size, Lighthouse, coverage) are targets, not tripwires. If something exceeds a budget by ≤15% for clear user value, accept it and log a one-line entry in `progress/DECISIONS.md`. Do not spend more than ~30 minutes of rework to shave a few KB. If it exceeds by more than 15%, optimise first; if still over, log it and flag it in PROGRESS.md.
 - **Minimise human work; track what remains in `progress/HUMAN_TASKS.md`.** Do everything you can yourself (CLI tools such as `gh` when authenticated, generated configs, scripts, docs). Only things that truly need a human (creating accounts, payments, secrets, DNS, store consoles, real-device testing, client contact) go into HUMAN_TASKS.md, each with ID, priority (🔴 blocking now / 🟠 needed soon / 🟢 later), what needs it and by when, why, time estimate, and exact numbered steps. Add tasks as early as you can foresee them, so the human can do them before they become blocking. When blocked, mark it 🔴, continue with any work that does not depend on it, and mention it in your reply. Move tasks to Done when the human confirms. Review the whole list at the end of every sub-phase and phase.
@@ -100,6 +102,8 @@ pnpm db:seed        # demo data (Brew & Bloom Café etc.)
 pnpm check          # typecheck + lint + test (run before every commit)
 pnpm format         # prettier --write (format:check in CI)
 pnpm test:coverage  # vitest with coverage thresholds
+pnpm db:migrate:test # migrate the moz_test DB (vitest globalSetup also does this)
+pnpm services:up    # docker compose up -d --wait (local Postgres + Redis)
 ```
 Update this list if scripts change.
 
@@ -118,7 +122,9 @@ Update this list if scripts change.
 |---|---|
 | `progress/PROGRESS.md` | Start of every session |
 | `progress/HUMAN_TASKS.md` | Start of every session (check for 🔴), end of every sub-phase/phase, whenever a new human dependency appears |
-| `docs/PHASES.md` | Planning or finishing a task |
+| `docs/PHASES.md` | Finding the next task; ticking finished ones |
+| `docs/phases/<phase>.md` | Before and while doing any task (that task's section) |
+| `docs/ENGINEERING.md` | §1 every session; other sections as the task's Read list says |
 | `docs/PRODUCT.md` | Building any feature (read that feature's section) |
 | `docs/DESIGN.md` | Building any UI, animation or sound |
 | `docs/ARCHITECTURE.md` | Structure, data model, flows, deployment |

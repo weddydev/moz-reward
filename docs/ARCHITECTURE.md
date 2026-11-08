@@ -97,7 +97,7 @@ Core tables (snake_case). Columns abbreviated; add `created_at`, `updated_at` ev
 - **nfc_tags**: id, shop_id, tag_uid, status, replaced_by
 - **memberships**: id, user_id, shop_id, joined_at, muted, marketing_opt_in, left_at, purchase_count, last_visit_at
 - **loyalty_programs**: id, shop_id, version, earn_mode, earn_rate, ingot_size, main_reward, milestones (jsonb), streak (jsonb), tiers (jsonb), expiry_months, active_from
-- **point_requests**: id, membership_id, status (pending/approved/rejected/expired), requested_at, decided_at, decided_by, amount_pence, items (jsonb), reject_reason, source (request/scan), idempotency_key (unique)
+- **point_requests**: id, membership_id, status (pending/awaiting_owner/approved/rejected/expired), seen_at, requested_at, decided_at, decided_by, amount_pence, items (jsonb), reject_reason, source (request/scan), idempotency_key (unique)
 - **ledger_entries** (append-only): id, membership_id, type, points, program_version, request_id, ref (jsonb), created_by, created_at — never updated or deleted (DB trigger blocks UPDATE/DELETE)
 - **rewards**: id, membership_id, kind (milestone/main/game/other), label, unlocked_at, redeemed_at
 - **redemption_codes**: id, reward_id or offer_claim_id, code, expires_at, confirmed_by, confirmed_at

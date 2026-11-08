@@ -13,11 +13,13 @@ This folder contains everything Claude Code needs to build Moz Rewards from scra
 | `docs/SECURITY.md` | Security checklist (OWASP ASVS L2–guided) |
 | `docs/TESTING.md` | Test strategy, critical journeys, gates |
 | `docs/COMPLIANCE.md` | UK rules the code must enforce (reviews, data, marketing, marketplace, game) |
-| `docs/PHASES.md` | Six weekly phases + stabilisation, with tasks and demo scripts |
+| `docs/PHASES.md` | Task checklist (92 tasks across six phases + stabilisation), ticked as work is verified |
+| `docs/phases/P0.md` … `P5.md`, `S.md` | Detailed task briefs: what to read, build notes, acceptance criteria, edge cases, required tests, verification, demo script |
+| `docs/ENGINEERING.md` | Senior-agency code standards and the strict definition of done |
 | `progress/` | PROGRESS (where we are), HUMAN_TASKS (your to-do list), DECISIONS, SESSION_LOG, DEMO_NOTES |
 | `design/reference/` | Drop your AI-generated UI images here (naming inside) |
 | `.claude/commands/` | `/resume`, `/checkpoint`, `/phase-complete`, `/security-review`, `/demo` |
-| `.claude/agents/` | `security-reviewer`, `qa-engineer`, `design-reviewer` subagents |
+| `.claude/agents/` | `code-reviewer`, `security-reviewer`, `qa-engineer`, `design-reviewer` subagents |
 | `.claude/settings.json` | Safe command permissions (blocks reading `.env`, force-push, hard reset) |
 | `.claude/skills/` (you install) | Emil Kowalski's design-engineering skills for animation quality — see Setup step 5 |
 | `.env.example` | Every environment variable the app will need |
@@ -42,11 +44,23 @@ This folder contains everything Claude Code needs to build Moz Rewards from scra
 ## Kickoff prompt (paste into Claude Code)
 
 ```
-Read CLAUDE.md, progress/PROGRESS.md and the P0 section of docs/PHASES.md.
+Read CLAUDE.md, docs/ENGINEERING.md §1, progress/PROGRESS.md, progress/HUMAN_TASKS.md, docs/PHASES.md and docs/phases/P0.md (header and first task).
 Then start Phase 0 and work through its tasks in order, following the session protocol in CLAUDE.md.
 Commit after each task and keep progress/PROGRESS.md current.
 When you need something only I can provide (accounts, keys, DNS), add it to progress/HUMAN_TASKS.md with priority and exact steps, and continue with other tasks.
 Run /checkpoint before your context gets heavy.
+```
+
+## Already started with the earlier kit? Upgrade and audit first
+
+If Claude Code has already built part of P0 using the earlier one-line phases:
+1. Copy the new files over your project (keep your `progress/` files, `design/reference/` and `.claude/skills/`; replace everything else from this kit). **Before replacing `docs/PHASES.md`, note which tasks were ticked.** Commit and push.
+2. In Claude Code, paste:
+```
+The kit was upgraded: detailed task briefs now live in docs/phases/, standards in docs/ENGINEERING.md, and docs/PHASES.md is a new task index with new task IDs.
+Pause new work. Audit everything built so far against docs/phases/P0.md: for each P0 task, check every acceptance criterion, edge case and required test, with evidence (file:line, test name, command output).
+Use the code-reviewer subagent. Write the result to progress/AUDIT_P0.md as a table (task, criterion, status met/partial/missing, evidence, fix needed).
+Tick in docs/PHASES.md only tasks whose criteria are all met. Update PROGRESS.md and HUMAN_TASKS.md, commit and push. Then fix the gaps in task order before starting new tasks.
 ```
 
 ## Daily routine (two developers taking turns)

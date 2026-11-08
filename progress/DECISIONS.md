@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-08 — Kit upgrade and audit
+Decision: Kit upgraded to detailed phase briefs, ENGINEERING.md standards and code-reviewer; prior work audited against new task IDs.
+Why: the earlier kit had one-line tasks; the new briefs define acceptance criteria, edge cases and required tests per task (P0-01 … P0-16).
+Consequence: Old PHASES ticks are void; results in `progress/AUDIT.md`. Project-specific additions to CLAUDE.md (autopilot cadence rule, extra scripts) and README (task/review sounds) were re-added on top of the new kit text.
+
 ## 2026-11-08 — Autopilot cadence (human's rule)
 Decision: After each task: progress update, commit, push, soft "task" sound, continue. Stop for review after 3–5 tasks (by size) and always at phase end, with the louder two-tone "review" sound. Written into CLAUDE.md §1; sounds in `.claude/hooks/notify.mjs` (`task`, `review`).
 Why: the human wants to follow progress and be able to stop or hand off at any point without babysitting every task.
