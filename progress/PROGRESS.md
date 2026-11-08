@@ -3,7 +3,7 @@
 _Keep under ~150 lines. Overwrite sections; move history to SESSION_LOG.md._
 
 ## Baton
-Baton: free — last held by (nobody yet)
+Baton: held by talha.syed since 2026-11-08 15:12
 
 ## Handoff note
 _Overwritten by `/handoff`. The next developer reads this first._
