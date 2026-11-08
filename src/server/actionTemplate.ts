@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Server action template — every mutation follows these steps (ARCHITECTURE §3):
  *   1. authenticate + 2. authorise  → `authorize` (calls requireCustomer/requireShopRole/requireAdminRole)

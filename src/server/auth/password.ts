@@ -1,3 +1,4 @@
+import "server-only";
 import { hash, verify } from "@node-rs/argon2";
 
 // Argon2id with OWASP-recommended parameters (19 MiB, t=2, p=1). SECURITY.md §2.

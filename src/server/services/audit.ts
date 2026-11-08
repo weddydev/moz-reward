@@ -1,3 +1,4 @@
+import "server-only";
 import { createHmac } from "node:crypto";
 import type { Database, Transaction } from "@/server/db/client";
 import { auditLogs } from "@/server/db/schema";

@@ -1,3 +1,4 @@
+import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import { featureFlags } from "@/server/db/schema";

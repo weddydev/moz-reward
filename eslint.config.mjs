@@ -52,6 +52,12 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/require-await": "off",
     },
   },
+  // ENGINEERING §3: server modules are unreachable from client bundles.
+  {
+    files: ["src/server/**/*.ts"],
+    ignores: ["**/*.test.ts", "src/server/db/schema/**", "src/server/db/migrate.ts"],
+    rules: { "moz/require-server-only": "error" },
+  },
   // Tests may use `!` (ENGINEERING §2) and don't export public APIs.
   {
     files: ["**/*.test.{ts,tsx}", "**/*.spec.ts", "tests/**/*.ts", "scripts/**/*.test.ts"],

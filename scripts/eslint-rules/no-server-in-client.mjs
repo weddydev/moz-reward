@@ -59,5 +59,32 @@ const rule = {
   },
 };
 
-const plugin = { rules: { "no-server-in-client": rule } };
+/**
+ * Every module under src/server imports "server-only" (ENGINEERING §3), so an accidental client import fails the
+ * build. Files that run in plain Node outside Next (drizzle-kit schema, the migrate CLI) are excluded in config.
+ * @type {import("eslint").Rule.RuleModule}
+ */
+const requireServerOnly = {
+  meta: {
+    type: "problem",
+    docs: { description: 'Require `import "server-only"` in server modules' },
+    messages: {
+      missing: 'Server modules must start with `import "server-only";` (ENGINEERING §3).',
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      Program(program) {
+        const has = program.body.some(
+          (s) => s.type === "ImportDeclaration" && s.source.value === "server-only",
+        );
+        if (!has)
+          context.report({ node: program, loc: { line: 1, column: 0 }, messageId: "missing" });
+      },
+    };
+  },
+};
+
+const plugin = { rules: { "no-server-in-client": rule, "require-server-only": requireServerOnly } };
 export default plugin;

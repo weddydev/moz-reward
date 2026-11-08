@@ -4,3 +4,4 @@ allowBuilds:
   unrs-resolver: false
   "@prisma/client": false
   better-sqlite3: false
+  lefthook: false # hooks are installed by the "prepare" script instead

@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Pure authorisation decisions (no I/O) so every role × action combination is unit-testable.
  * Deny by default. SECURITY.md §3.

@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-08 — Exact versions and lint/tooling baseline (P0-01)
+Decision: Node 24.x (`.nvmrc` 24, `engines` 24.x), pnpm 12.18.0, Next 16.4.5, React 19.3.0, TypeScript 5.9.3, Drizzle ORM 0.45.4 (+ drizzle-kit 0.31.11, postgres 4.1.0), Better Auth 1.7.18 (+ @better-auth/passkey 1.7.18), Zod 4.6.7, Tailwind 4.3.5, Vitest 5.1.0, Playwright 1.65.0, typescript-eslint 8.72.1, Stryker 10.1.1, lefthook 2.2.2. Motion: not installed yet (arrives with P0-10). ESLint: strictTypeChecked + explicit module boundary types + custom `moz/no-server-in-client` and `moz/require-server-only`; `require-await` off (async interface implementations); hex colours banned in TS/TSX and in CSS outside tokens.css. Pre-commit (lefthook): prettier + eslint on staged files, gitleaks on staged changes (local binary or pinned `zricethezav/gitleaks:v8.21.2`; blocks the commit if neither is available).
+Why: ENGINEERING §2–3 and the P0-01 brief; the audit found these missing.
+Consequence: `pnpm check` is typecheck + lint + unit (no Docker); `pnpm check:full` adds integration. `server-only` is required in `src/server/**` except `db/schema/**` and `db/migrate.ts` (they run in plain Node: drizzle-kit and the migrate CLI). Update this entry when a listed dependency moves a major version.
+
 ## 2026-11-08 — Staff/admin sign-in is password + second factor only; passkeys need MFA to register
 Decision: Accounts with a staff row, admin row or password credential can get a session only from `/sign-in/email` or an MFA endpoint (session-create hook); they never receive email links (silent, same response). Registering a passkey requires an MFA-verified session for everyone, and passkeys require user verification.
 Why: audit security #1 (critical bypass via email link/Google → passkey) and #6; SECURITY §2 makes staff/admin MFA mandatory, and passkeys are not a customer feature.

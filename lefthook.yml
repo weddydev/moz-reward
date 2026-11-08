@@ -1,0 +1,19 @@
+# Pre-commit (P0-01): format and lint only what is staged, then scan staged changes for secrets.
+# Installed by `pnpm install` (the "prepare" script). Skip once in an emergency with LEFTHOOK=0 git commit …
+pre-commit:
+  parallel: false
+  commands:
+    format:
+      glob: "*.{ts,tsx,mts,mjs,js,json,css,md,yml,yaml}"
+      exclude:
+        - "pnpm-lock.yaml"
+        - "docs/**"
+        - "progress/**"
+        - ".claude/skills/**"
+      run: pnpm exec prettier --write {staged_files}
+      stage_fixed: true
+    lint:
+      glob: "*.{ts,tsx,mts,mjs}"
+      run: pnpm exec eslint --max-warnings=0 {staged_files}
+    secrets:
+      run: pnpm exec tsx scripts/gitleaks-staged.ts
