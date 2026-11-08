@@ -45,5 +45,28 @@ describe("[P0-17] test-only seeding API", () => {
     const route = await import("@/app/api/test/[action]/route");
     const res = await call(route, { role: "admin_owner" });
     expect(res.status).toBe(404);
+    const get = await route.GET(new Request("http://localhost:3000/api/test/push"), { params: Promise.resolve({ action: "push" }) });
+    expect(get.status).toBe(404);
+  });
+
+  it("exposes recorded push payloads and lets tests script and reset the fakes", async () => {
+    const route = await import("@/app/api/test/[action]/route");
+    const { sendPush } = await import("@/server/integrations/push");
+    const { complete } = await import("@/server/integrations/ai");
+    const get = (action: string) => route.GET(new Request(`http://localhost:3000/api/test/${action}`), { params: Promise.resolve({ action }) });
+
+    expect((await call(route, {}, "reset-fakes")).status).toBe(200);
+    await sendPush({ endpoint: "e1" }, { title: "Points credited", body: "+20" });
+    const pushes = (await (await get("push")).json()) as { payload: { title: string } }[];
+    expect(pushes.map((p) => p.payload.title)).toEqual(["Points credited"]);
+
+    expect((await call(route, { ai: { mode: "error" } }, "fakes")).status).toBe(200);
+    await expect(complete({ purpose: "review-help", prompt: "x" })).rejects.toThrow(/unavailable/);
+    expect((await call(route, { ai: { mode: "nonsense" } }, "fakes")).status).toBe(400);
+
+    expect((await call(route, {}, "reset-fakes")).status).toBe(200);
+    expect(await (await get("push")).json()).toEqual([]);
+    await expect(complete({ purpose: "review-help", prompt: "x" })).resolves.toHaveProperty("text");
+    expect((await get("unknown")).status).toBe(404);
   });
 });

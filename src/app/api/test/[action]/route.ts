@@ -4,6 +4,8 @@ import { z } from "zod";
 import { auth } from "@/server/auth/auth";
 import { db } from "@/server/db/client";
 import { sessions } from "@/server/db/schema";
+import { fakeAi } from "@/server/integrations/ai";
+import { fakePushSink } from "@/server/integrations/push";
 import { ACTOR_ROLES, makeActor } from "@/server/testing/factories";
 import { testApiEnabled } from "@/server/testing/test-api";
 
@@ -18,13 +20,52 @@ const sessionInput = z.object({ role: z.enum(ACTOR_ROLES), shopId: z.uuid().opti
 type TestCookie = { name: string; value: string; path: string; httpOnly?: boolean; secure?: boolean; sameSite?: "Lax" | "Strict" | "None"; expires?: number };
 type TestHelpers = { login(opts: { userId: string }): Promise<{ token: string; cookies: TestCookie[] }> };
 
-export async function POST(req: Request, ctx: { params: Promise<{ action: string }> }): Promise<Response> {
+const fakesInput = z
+  .object({
+    ai: z
+      .discriminatedUnion("mode", [
+        z.object({ mode: z.literal("ok"), text: z.string().max(2000) }).strict(),
+        z.object({ mode: z.enum(["error", "timeout", "empty"]) }).strict(),
+      ])
+      .optional(),
+  })
+  .strict();
+
+type Ctx = { params: Promise<{ action: string }> };
+const invalid = (): Response => NextResponse.json({ error: "invalid input" }, { status: 400 });
+
+export async function POST(req: Request, ctx: Ctx): Promise<Response> {
   if (!testApiEnabled()) return notFound();
   const { action } = await ctx.params;
-  if (action !== "session") return notFound();
+  const body: unknown = await req.json().catch(() => null);
+  switch (action) {
+    case "session":
+      return createSession(body);
+    case "fakes": {
+      const parsed = fakesInput.safeParse(body);
+      if (!parsed.success) return invalid();
+      if (parsed.data.ai) fakeAi.script(parsed.data.ai);
+      return NextResponse.json({ ok: true });
+    }
+    case "reset-fakes":
+      fakePushSink.reset();
+      fakeAi.reset();
+      return NextResponse.json({ ok: true });
+    default:
+      return notFound();
+  }
+}
 
-  const parsed = sessionInput.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "invalid input" }, { status: 400 });
+/** GET /api/test/push → payloads recorded by the fake push sink. */
+export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
+  if (!testApiEnabled()) return notFound();
+  const { action } = await ctx.params;
+  return action === "push" ? NextResponse.json(fakePushSink.list()) : notFound();
+}
+
+async function createSession(body: unknown): Promise<Response> {
+  const parsed = sessionInput.safeParse(body);
+  if (!parsed.success) return invalid();
 
   const actor = await makeActor(parsed.data.role, parsed.data.shopId ? { shopId: parsed.data.shopId } : {});
   const helpers = ((await auth.$context) as unknown as { test?: TestHelpers }).test;
@@ -49,8 +90,4 @@ export async function POST(req: Request, ctx: { params: Promise<{ action: string
     });
   }
   return res;
-}
-
-export function GET(): Response {
-  return notFound();
 }
