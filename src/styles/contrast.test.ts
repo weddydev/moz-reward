@@ -47,7 +47,7 @@ const PAIRS: Array<[fg: string, bg: string, min: number, use: string]> = [
   ["warning", "surface", LARGE_OR_UI, "warning icons / large text"],
 ];
 
-describe("token contrast (WCAG AA)", () => {
+describe("[P0-08] token contrast (WCAG AA)", () => {
   it.each(PAIRS)("%s on %s ≥ %s (%s)", (fg, bg, min) => {
     expect(contrast(token(fg), token(bg))).toBeGreaterThanOrEqual(min);
   });

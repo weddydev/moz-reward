@@ -21,6 +21,7 @@ const eslintConfig = defineConfig([
   globalIgnores([
     ".next/**",
     ".next-e2e/**",
+    ".stryker-tmp/**",
     "out/**",
     "build/**",
     "coverage/**",

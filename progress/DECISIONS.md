@@ -13,6 +13,21 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-08 — P0-17 test infrastructure choices
+Decision: E2E runs its own `next dev` on port 3100 (`APP_ENV=test`, DB `moz_test_e2e` recreated on server start, build dir `.next-e2e`), with a globalSetup that warms routes; specs create data only via the 404-gated `/api/test/*` API (`session`, `user`, `fakes`, `reset-fakes`, `GET push`). Fakes for push/AI/postcodes/Places keep state on `globalThis` and fail closed outside local/test until real providers land. SMTP→Mailpit replaces the console email provider and the dev outbox.
+Why: run beside `pnpm dev`; Playwright can't import `server-only` code; cold on-demand compilation under 5 parallel projects caused Chromium-only timeouts (fixed at the cause, not by widening timeouts); no Redis client exists before P0-04.
+Consequence: add new top-level routes to `tests/e2e/support/warm-up.ts`. CI should run E2E against `next build && next start` (P0-14). Move the push sink to Redis once BullMQ lands if workers need to send pushes.
+
+## 2026-11-08 — Mutation testing and load tooling
+Decision: Stryker 10 (vitest runner) on rules modules (`authz/policies`, `lib/return-to`, `lib/codes`; extend per TESTING §2), break threshold 80. k6 smoke via local `k6` or pinned `grafana/k6:1.0.0` Docker image. `test:live` is a separate Vitest config, skipped per provider until credentials exist.
+Why: no extra installs needed on either laptop; live checks must never run in normal CI.
+Consequence: first run 90.1% (codes 86.8, return-to 82.6, policies 94.7; 14 survivors to review at phase end). k6 numbers from `next dev` are not meaningful (action p95 458 ms locally); the real gate runs against staging (TESTING §5).
+
+## 2026-11-08 — Session create hook stays strict; test API sets mfaVerified on the row
+Decision: `databaseHooks.session.create.before` keeps forcing `mfaVerified` from the request path; the test-only session API updates the row after `login()` instead.
+Why: loosening the hook would let any internal caller mint MFA sessions, the exact class of bug the audit flagged as critical.
+Consequence: if Better Auth test utils change, re-check `tests/integration/test-api.test.ts`.
+
 ## 2026-11-08 — Kit v3: testing and self-verification
 Decision: Kit v3: test-first for logic, self-verification loop with console/network guard and screenshot inspection, `/subphase-complete` regression + post-push CI/staging verification, mutation testing for rules modules, reconciliation job, synthetic monitoring.
 Why: agency-grade reliability for a large-scale SaaS.

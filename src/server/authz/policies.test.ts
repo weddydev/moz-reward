@@ -21,7 +21,7 @@ const principal = (over: Partial<Principal> = {}): Principal => ({
   ...over,
 });
 
-describe("decideCustomer", () => {
+describe("[P0-07] decideCustomer", () => {
   it("denies anonymous", () => {
     expect(decideCustomer(null)).toEqual({ ok: false, reason: "unauthenticated" });
   });
@@ -33,7 +33,7 @@ describe("decideCustomer", () => {
   });
 });
 
-describe("decideShopRole", () => {
+describe("[P0-07] decideShopRole", () => {
   const staffA = principal({ shopRoles: [{ shopId: SHOP_A, role: "staff" }] });
   const ownerA = principal({ shopRoles: [{ shopId: SHOP_A, role: "owner" }] });
 
@@ -86,7 +86,7 @@ describe("decideShopRole", () => {
   });
 });
 
-describe("decideAdminRole", () => {
+describe("[P0-07] decideAdminRole", () => {
   it("denies anonymous and non-admins", () => {
     expect(decideAdminRole(null, ["owner"], NOW)).toMatchObject({ reason: "unauthenticated" });
     expect(

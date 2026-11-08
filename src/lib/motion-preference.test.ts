@@ -19,7 +19,7 @@ function mockSystem(reduce: boolean) {
   );
 }
 
-describe("motion preference", () => {
+describe("[P0-08] motion preference", () => {
   beforeEach(() => {
     localStorage.clear();
     delete document.documentElement.dataset.motion;

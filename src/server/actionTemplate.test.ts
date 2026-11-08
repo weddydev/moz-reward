@@ -5,7 +5,7 @@ import { AppError } from "./errors";
 
 const input = z.object({ shopId: z.string().min(1), name: z.string().min(1).max(10) }).strict();
 
-describe("defineAction", () => {
+describe("[P0-07] defineAction", () => {
   it("validates, authorises with parsed input, then calls the handler", async () => {
     const authorize = vi.fn(async ({ shopId }: { shopId: string }) => ({ userId: "u1", shopId }));
     const handler = vi.fn(

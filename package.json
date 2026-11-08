@@ -21,7 +21,14 @@
     "db:migrate:test": "tsx src/server/db/migrate.ts --test",
     "db:studio": "drizzle-kit studio",
     "services:up": "docker compose up -d --wait",
-    "services:down": "docker compose down"
+    "services:down": "docker compose down",
+    "test:unit": "vitest run --project unit",
+    "test:int": "vitest run --project integration",
+    "test:regression": "tsx scripts/test-regression.ts",
+    "test:mutation": "stryker run",
+    "test:load:smoke": "tsx scripts/load-smoke.ts",
+    "test:live": "vitest run --config vitest.live.config.mts",
+    "test:titles": "tsx scripts/check-test-titles.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1164.0",
@@ -43,6 +50,8 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.65.0",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
     "@tailwindcss/turbopack": "^4",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",

@@ -46,6 +46,7 @@
     "node_modules",
     ".next",
     ".next-e2e",
+    ".stryker-tmp",
     "playwright-report",
     "test-results",
     "coverage"

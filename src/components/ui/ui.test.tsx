@@ -12,7 +12,7 @@ import { Tabs } from "./Tabs";
 import { TextField } from "./TextField";
 import { Toaster, __resetToasts, toast } from "./Toast";
 
-describe("Button", () => {
+describe("[P0-09] Button", () => {
   it("keeps its label for screen readers and swallows clicks while loading", async () => {
     const onClick = vi.fn();
     render(
@@ -41,7 +41,7 @@ describe("Button", () => {
   });
 });
 
-describe("TextField", () => {
+describe("[P0-09] TextField", () => {
   it("links the error message with aria-describedby and marks the input invalid", () => {
     render(<TextField label="Postcode" error="Please enter a full UK postcode." />);
     const input = screen.getByLabelText("Postcode");
@@ -56,7 +56,7 @@ describe("TextField", () => {
   });
 });
 
-describe("Tabs", () => {
+describe("[P0-09] Tabs", () => {
   function Harness() {
     const [v, setV] = useState<"a" | "b" | "c">("a");
     return (
@@ -88,7 +88,7 @@ describe("Tabs", () => {
   });
 });
 
-describe("SegmentedControl", () => {
+describe("[P0-09] SegmentedControl", () => {
   it("is a radiogroup with roving focus", async () => {
     function H() {
       const [v, setV] = useState<"7" | "30">("7");
@@ -113,7 +113,7 @@ describe("SegmentedControl", () => {
   });
 });
 
-describe("Switch", () => {
+describe("[P0-09] Switch", () => {
   it("exposes switch semantics and toggles", async () => {
     const onChange = vi.fn();
     render(<Switch label="Sounds" checked={false} onCheckedChange={onChange} />);
@@ -124,7 +124,7 @@ describe("Switch", () => {
   });
 });
 
-describe("ProgressBar", () => {
+describe("[P0-09] ProgressBar", () => {
   it("clamps and reports a percentage", () => {
     render(<ProgressBar value={1.4} label="Vault" />);
     expect(screen.getByRole("progressbar", { name: "Vault" })).toHaveAttribute(
@@ -134,7 +134,7 @@ describe("ProgressBar", () => {
   });
 });
 
-describe("sparklinePath", () => {
+describe("[P0-09] sparklinePath", () => {
   it("handles empty, single and flat series", () => {
     expect(sparklinePath([], 96, 28)).toBe("");
     expect(sparklinePath([5], 96, 28)).toBe("M2,14L94,14");
@@ -146,7 +146,7 @@ describe("sparklinePath", () => {
   });
 });
 
-describe("toast", () => {
+describe("[P0-09] toast", () => {
   afterEach(() => {
     vi.useRealTimers();
     act(() => __resetToasts());

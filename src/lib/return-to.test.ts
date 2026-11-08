@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { safeReturnTo } from "./return-to";
 
-describe("safeReturnTo", () => {
+describe("[P0-06] safeReturnTo", () => {
   it.each([
     ["/wallet", "/wallet"],
     ["/s/K7Q42M?src=qr", "/s/K7Q42M?src=qr"],

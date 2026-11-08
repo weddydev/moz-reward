@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isMfaSessionPath } from "./mfa";
 import { hashPassword, verifyPassword } from "./password";
 
-describe("password hashing", () => {
+describe("[P0-06] password hashing", () => {
   it("uses Argon2id and verifies only the right password", async () => {
     const h = await hashPassword("a-long-enough-password");
     expect(h.startsWith("$argon2id$")).toBe(true);
@@ -16,7 +16,7 @@ describe("password hashing", () => {
   });
 });
 
-describe("isMfaSessionPath", () => {
+describe("[P0-06] isMfaSessionPath", () => {
   it("marks only second-factor and passkey endpoints", () => {
     expect(isMfaSessionPath("/two-factor/verify-totp")).toBe(true);
     expect(isMfaSessionPath("/passkey/verify-authentication")).toBe(true);

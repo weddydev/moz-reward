@@ -96,14 +96,21 @@ pnpm worker         # background jobs
 pnpm typecheck      # tsc --noEmit
 pnpm lint           # eslint
 pnpm test           # vitest unit + integration
-pnpm e2e            # playwright (chromium + webkit + mobile)
+pnpm e2e            # playwright: own server on :3100 (APP_ENV=test), 5 projects, console/network guard
+pnpm test:unit      # vitest unit project only
+pnpm test:int       # vitest integration project (per-worker DBs, needs services:up)
+pnpm test:regression # unit + integration + authz + all E2E, per-suite counts (sub-phase gate)
+pnpm test:titles    # warn on tests without [Pn-nn]/[Jn]; --strict exits 1
+pnpm test:mutation  # stryker on rules modules (phase end)
+pnpm test:load:smoke # k6 smoke (local k6 or Docker image); BASE_URL/VUS/DURATION
+pnpm test:live      # real-provider smoke (staging, phase end); skips providers without keys
 pnpm db:migrate     # drizzle migrations
 pnpm db:seed        # demo data (Brew & Bloom Café etc.)
 pnpm check          # typecheck + lint + test (run before every commit)
 pnpm format         # prettier --write (format:check in CI)
 pnpm test:coverage  # vitest with coverage thresholds
 pnpm db:migrate:test # migrate the moz_test DB (vitest globalSetup also does this)
-pnpm services:up    # docker compose up -d --wait (local Postgres + Redis)
+pnpm services:up    # docker compose up -d --wait (Postgres, Redis, Mailpit, MinIO)
 ```
 Update this list if scripts change.
 
