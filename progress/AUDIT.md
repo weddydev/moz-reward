@@ -31,7 +31,7 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 | P0-01 Scaffold | **MET** (8 Nov 2026) — ticked |
 | P0-02 Local infra + env | **MET** (8 Nov 2026) — ticked |
 | P0-03 Database | **MET** (8 Nov 2026) — ticked |
-| P0-04 Background jobs | MISSING |
+| P0-04 Background jobs | **MET** (8 Nov 2026) — ticked |
 | P0-05 Security baseline | MISSING |
 | P0-06 Authentication | PARTIAL |
 | P0-07 Authz + action template | PARTIAL |
@@ -40,7 +40,7 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 | P0-10 … P0-16 | MISSING |
 | P0-17 Test infrastructure | **MET** (8 Nov 2026, see below) — ticked |
 
-**Fully met: 4 (P0-01, P0-02, P0-03, P0-17) · Partial: 4 · Missing: 8.** P0-01, P0-02, P0-03 and P0-17 are ticked in `docs/PHASES.md`.
+**Fully met: 5 (P0-01 … P0-04, P0-17) · Partial: 4 · Missing: 7.** P0-01 … P0-04 and P0-17 are ticked in `docs/PHASES.md`.
 
 ## P0-17 · Test infrastructure and self-verification tooling — MET (Syedbadeshah76, 8 Nov 2026)
 
@@ -197,7 +197,15 @@ Table below is the original audit.
 | ENG §6 constraints in DB | partial | `sessions.mfa_verified` nullable; case-sensitive `users.email` unique | NOT NULL; `lower(email)` unique |
 | ENG §8 `src/lib/time.ts` | missing | – | before P1 business-time rules |
 
-### P0-04 · Background jobs — MISSING
+### P0-04 · Background jobs — MET (built 8 Nov 2026, Syedbadeshah76; commit b673514)
+
+- BullMQ 6.4.2 + ioredis 6.0.0; registry of 7 queues (concurrency, Zod payloads); typed `enqueue` (validates; refuses inside a repo transaction, so jobs only follow commits).
+- Worker entry: one worker per queue, schedules registered at start, graceful shutdown (`createShutdown`: waits for in-flight jobs, ignores repeat signals, exits 1 after 45 s).
+- Retries: 3 attempts, exponential backoff; final failure → `failed_jobs` (redacted payload + error) inside the processor, before BullMQ marks it failed.
+- Scheduler: Europe/London, upsert by id + prune; `scheduled:heartbeat` every minute → `job_heartbeats`.
+- Evidence: `tests/integration/jobs.test.ts` (11, real Redis): end-to-end heartbeat; enqueue in transaction refused; payload validation; jobId idempotency; jobs enqueued with no worker processed after (re)start; close() waits for an in-flight job; a crashed worker's job recovered by the next worker; backoff 100 ms → 200 ms then success with no DLQ row; 3 failures → `failed_jobs` (attempts 3, email redacted, error scrubbed); malformed payload → DLQ after 1 attempt; schedules registered twice → one scheduler (tz Europe/London), stale schedule removed. Unit: `redact.test.ts` (4), `shutdown.test.ts` (4).
+- Worker log (local, 8 Nov): `{"event":"worker.started","queues":["notifications","email","images","pdf","share-cards","fraud","scheduled"],"schedules":{"upserted":["heartbeat"],"removed":[]}}`, then `job_heartbeats` row `scheduled:heartbeat | 2026-11-08 16:43:00`. A dead-letter line from the tests: `{"event":"job.dead_lettered","queue":"scheduled","job":"heartbeat","attempt":1,"error":"UnrecoverableError: Invalid payload for scheduled:heartbeat"}`.
+- Limitation: SIGTERM delivery can't be exercised on Windows (Node terminates the process); the signal path is proven on the Linux staging deploy (P0-15).
 No BullMQ/ioredis, no queue registry, no `enqueue`, no `failed_jobs` table, no scheduler, no heartbeat; `src/worker/index.ts` stub exits immediately on SIGTERM. All acceptance criteria and Redis integration tests missing.
 
 ### P0-05 · Security baseline — MISSING

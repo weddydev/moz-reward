@@ -8,21 +8,21 @@ Baton: held by Syedbadeshah76 since 2026-11-08 17:36
 ## Handoff note
 _Overwritten by `/handoff`. The next developer reads this first._
 - **Current state (Syedbadeshah76, 2026-11-08, mid-session — not a handoff yet):** security hotfix `dfcb50d` pushed (audit #1, #3, #6). Before that, P0-17 finished on `wip/p0-17-test-infra`, merged into `main` and ticked with evidence (SESSION_LOG). The branch is fully merged and can be deleted (`git push origin --delete wip/p0-17-test-infra`); do not work on it. Nothing half-done.
-- **Before your next session on either laptop:** `pnpm install --frozen-lockfile` (new dev deps: Stryker), `pnpm services:up` (Mailpit :8025, MinIO :9000/:9001), `.env.local` must use `EMAIL_PROVIDER=smtp` + the SMTP/MAILPIT/S3 keys from `.env.example` (old `R2_*` keys are gone), Playwright browsers: `pnpm exec playwright install chromium webkit`. **Since P0-02:** compose moved to `infra/docker-compose.dev.yml` (`pnpm services:up` handles it); `.env.local` keys `TURNSTILE_SITE_KEY`/`VAPID_PUBLIC_KEY` are now `NEXT_PUBLIC_TURNSTILE_SITE_KEY`/`NEXT_PUBLIC_VAPID_PUBLIC_KEY` (rename if you set them), and remove any `NODE_ENV=` line. **Since P0-03:** run `pnpm db:migrate` (migrations 0002/0003).
+- **Before your next session on either laptop:** `pnpm install --frozen-lockfile` (new dev deps: Stryker), `pnpm services:up` (Mailpit :8025, MinIO :9000/:9001), `.env.local` must use `EMAIL_PROVIDER=smtp` + the SMTP/MAILPIT/S3 keys from `.env.example` (old `R2_*` keys are gone), Playwright browsers: `pnpm exec playwright install chromium webkit`. **Since P0-02:** compose moved to `infra/docker-compose.dev.yml` (`pnpm services:up` handles it); `.env.local` keys `TURNSTILE_SITE_KEY`/`VAPID_PUBLIC_KEY` are now `NEXT_PUBLIC_TURNSTILE_SITE_KEY`/`NEXT_PUBLIC_VAPID_PUBLIC_KEY` (rename if you set them), and remove any `NODE_ENV=` line. **Since P0-03/04:** `pnpm install` (bullmq, ioredis) and `pnpm db:migrate` (migrations 0002–0004).
 - **Windows laptop note:** `.env.local` in place (H-02, 8 Nov); `SENTRY_DSN` added (H-10): add it to the Mac copy via the shared note.
 
 ## Status
-- **Phase:** P0 — Foundation and design system. Audit (`progress/AUDIT.md`): P0-01, P0-02, P0-03, P0-17 met; 4 partial (P0-06/07/08/09), 8 missing. Fixing gaps in task order.
-- **Last updated:** 2026-11-08 23:30, Syedbadeshah76
+- **Phase:** P0 — Foundation and design system. Audit (`progress/AUDIT.md`): P0-01 … P0-04, P0-17 met; 4 partial (P0-06/07/08/09), 7 missing. Fixing gaps in task order.
+- **Last updated:** 2026-11-09 00:20, Syedbadeshah76
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
 ## Now
-- P0-03 reworked and ticked (migrations 0002/0003: content_settings, geography location, `reject_mutation()`, `set_updated_at()`, `moz_app` role = security #7; branded scopes + `src/server/repos`; `db:seed`/`db:reset`; PostGIS pre-check; expand-only migration check). Next: P0-04 (background jobs).
+- P0-04 built and ticked (BullMQ queues, typed enqueue after commit, failed_jobs DLQ, Europe/London schedules, heartbeat, graceful worker). All P0-A tasks are ticked. Next: close P0-A with `/subphase-complete`.
 
 ## Next (top 3)
-1. P0-04 background jobs (MISSING in AUDIT: BullMQ queues, worker, schedules; also queue magic-link email = low timing finding), then P0-05 … P0-09, then P0-10+. Each with evidence; P0-17 tooling available.
-2. Remaining security items: magic-link response timing for staff vs customers (low, fix by queueing email in P0-04); #5 first-enrolment takeover (with P0-06), #8 Better Auth account endpoints for stale staff sessions (with P0-07).
+1. `/subphase-complete` for P0-A: full regression, exploratory QA, code-reviewer + security-reviewer now; its CI / staging / Sentry steps stay blocked until P0-14/15 and H-05/06/07 (record as pending, don't fake). Then P0-05 security baseline … P0-09, then P0-10+. Each with evidence; P0-17 tooling available.
+2. Remaining security items: magic-link response timing for staff vs customers (low, queue the email in P0-06; see DECISIONS P0-04); #5 first-enrolment takeover (with P0-06), #8 Better Auth account endpoints for stale staff sessions (with P0-07).
 3. Close sub-phases only with `/subphase-complete` (needs CI + staging: P0-14/15 and H-05/06/07).
 
 ## Blockers
@@ -32,7 +32,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 
 ## Map of the codebase
 - `src/app/` — Next.js App Router (Next 16: `proxy.ts` not middleware; async request APIs; read `node_modules/next/dist/docs/`)
-- `src/worker/index.ts` — worker entry (stub; BullMQ is P0-04)
+- `src/worker/index.ts` — worker entry (`pnpm worker`); `src/server/jobs/` — registry, `enqueue`, worker + DLQ, scheduler (Europe/London), shutdown; tables `failed_jobs`, `job_heartbeats`
 - `progress/AUDIT.md` — per-task audit vs `docs/phases/P0.md`; `docs/phases/*.md` = task briefs; `docs/ENGINEERING.md` = definition of done
 - `infra/docker-compose.dev.yml` (via `pnpm services:up`, pre-flight in `scripts/services.ts`) — Postgres 17 + PostGIS 3.5, Redis 7 (password `moz`), Mailpit (:1025 SMTP, :8025 UI/API), MinIO (:9000 S3, :9001 console; healthcheck creates bucket `moz-rewards`); init SQL in `infra/local/`
 - `.env.local` — local secrets (never committed; share via H-02); `src/server/env.ts` — fail-closed server env (`APP_ENV`/`APP_URL` required; staging/prod need NODE_ENV=production), validated at startup in `src/instrumentation.ts` + worker; `src/lib/env.ts` — `clientEnv` (`NEXT_PUBLIC_*` only); `pnpm setup:env` creates `.env.local`

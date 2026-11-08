@@ -71,3 +71,8 @@ Next: P0-03 rework.
 Done: migrations 0002 (content_settings, FK indexes, NOT NULL flags, lower(email) unique, geography location) and 0003 (`reject_mutation()`, `set_updated_at()` on all updated_at tables, `moz_app` least-privilege role = security #7); branded scopes from `require*` + `src/server/repos` (`dbFor`/`transaction`/`inShop`/`ownedBy`) with ESLint guards; flags service on a repo; PostGIS pre-check; `scripts/check-migrations.ts` in lint; `db:seed` (idempotent baseline, refused in prod), `db:reset` (local only); codes format + length guard; `src/lib/geo.ts`.
 Evidence (P0-03 ticked): `\d audit_logs` shows both reject_mutation triggers; db:reset twice on an empty throwaway DB → identical counts; re-run of migrations no-op; no-PostGIS Postgres → clear message exit 1; lint/type probes for unscoped access fail; db-foundation.test.ts (privilege matrix, 42501 for app role UPDATE, TRUNCATE 23001, constraints, geography distance, seed idempotency); unit 167, integration 137, e2e 37/37.
 Next: P0-04 background jobs.
+
+## 2026-11-08 — P0 — P0-04 background jobs (Syedbadeshah76)
+Done: bullmq 6.4.2 + ioredis 6.0.0; queue registry; typed enqueue (after-commit guard); DLQ to failed_jobs (redacted); London schedules (upsert + prune); heartbeat; graceful worker; migration 0004.
+Evidence (P0-04 ticked): jobs.test.ts 11 with real Redis (restart, in-flight close, crash recovery, backoff, DLQ after 3, scheduler idempotency); worker log + heartbeat row; unit 175, integration 148, e2e 37/37.
+Next: /subphase-complete for P0-A (CI/staging parts blocked on P0-14/15 + H-05/06/07).

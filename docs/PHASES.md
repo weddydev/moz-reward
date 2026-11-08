@@ -16,7 +16,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 - [x] P0-01 · Skills check and repository scaffold
 - [x] P0-02 · Local infrastructure and environment validation
 - [x] P0-03 · Database foundation
-- [ ] P0-04 · Background jobs infrastructure
+- [x] P0-04 · Background jobs infrastructure
 - [ ] P0-A closed with `/subphase-complete`
 
 **P0-B · Security baseline, auth, authorisation**
