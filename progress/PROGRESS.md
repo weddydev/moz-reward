@@ -15,26 +15,27 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Do first (env vars, migrations, seeds): —
 
 ## Status
-- **Phase:** P0 — Foundation and design system (in progress, 8 of 15 tasks)
-- **Last updated:** 2026-11-08 18:00 checkpoint, talha.syed session (nothing half-done; tree clean)
+- **Phase:** P0 — Foundation and design system. Kit upgraded to 16 task briefs; audit done (`progress/AUDIT.md`): 0 fully met, 7 partial (P0-01/02/03/06/07/08/09), 9 missing. Fixing gaps in task order.
+- **Last updated:** 2026-11-08 audit, talha.syed session
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
 ## Now
-- P0 task 9: motion primitives — page transition wrapper (View Transitions + fallback), press feedback, sheet/modal/side panel, skeletons; `/dev/motion` gallery skeleton.
+- Security hotfix from the audit: block the staff/admin MFA bypass (magic link/Google → passkey) and remove fail-open env defaults (`APP_ENV`/`APP_URL` required, console email + dev outbox + testUtils only in local/test). Then P0-01 gaps.
 
 ## Next (top 3)
-1. Motion primitives + `/dev/motion` (View Transitions, press, sheet/modal/side panel)
-2. Sound module + haptics helper
-3. App shells (customer, shop, admin); restyle auth pages with primitives
+1. P0-01 gaps: `server-only` everywhere, ESLint strict-type-checked + import order + client→server boundary + hex ban, `exactOptionalPropertyTypes`, Vitest unit/integration split (`test:int`), Playwright pixel7/iphone14/desktop1440, lefthook, exact versions in DECISIONS
+2. P0-02 gaps: serverEnv/clientEnv + fail-fast via instrumentation, env tests, Mailpit in `infra/docker-compose.dev.yml`, README Local setup
+3. P0-03 gaps: content_settings, updated_at trigger, geography, `lib/codes.ts`, `repos/_base.ts`, db:seed/db:reset, constraint tests (then P0-04, P0-05, P0-06, P0-07, P0-08, P0-09 fixes, then P0-10+)
 
 ## Blockers
 - Human: none 🔴. 🟠 for end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-10 Sentry.
-- Technical: —
+- Technical: audit HIGH findings tracked in `progress/AUDIT.md` (top risks section). Old PHASES ticks are void; nothing ticked until every criterion has evidence.
 
 ## Map of the codebase
 - `src/app/` — Next.js App Router (Next 16: `proxy.ts` not middleware; async request APIs; read `node_modules/next/dist/docs/`)
-- `src/worker/index.ts` — worker entry (stub; BullMQ from P1)
+- `src/worker/index.ts` — worker entry (stub; BullMQ is P0-04)
+- `progress/AUDIT.md` — per-task audit vs `docs/phases/P0.md` (criterion / status / evidence / fix); `docs/phases/*.md` = task briefs; `docs/ENGINEERING.md` = definition of done
 - `tests/setup.ts` — Vitest setup (jest-dom); unit tests live next to code as `*.test.ts(x)`
 - `tests/e2e/` — Playwright specs (chromium, webkit, pixel-7, iphone-14)
 - `docker-compose.yml` — local Postgres 17 + PostGIS 3.5 (`moz`, `moz_test` DBs) and Redis 7 (password `moz`); init SQL in `infra/local/`

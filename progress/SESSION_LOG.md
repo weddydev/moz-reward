@@ -33,3 +33,9 @@ Commits: fbeace3 f92b32f
 Tests: pnpm check ✅ 170 tests; gallery E2E ✅ 4/4 projects (axe clean, no overflow); pnpm build ✅
 Left off: start P0 task 9 — motion primitives (View Transitions wrapper + fallback, press feedback, Sheet/Modal/SidePanel, skeletons) and `/dev/motion`. Load `emil-design-eng` + `mobile-native`; run `review-animations` on the diff.
 Notes: Testing Library cleanup is explicit in tests/setup.ts (globals off). Grid items holding truncating text need `min-w-0`. ink-3 is never for readable text.
+
+## 2026-11-08 — P0 — kit upgrade + audit
+Done: kit upgraded (docs/phases briefs, ENGINEERING.md, code-reviewer); project-specific CLAUDE.md/README additions re-applied; full audit of prior work by code-reviewer ×2, security-reviewer, design-reviewer → progress/AUDIT.md.
+Result: 0 tasks fully met; partial P0-01/02/03/06/07/08/09; missing P0-04/05/10–16. Nothing ticked. Critical: staff/admin MFA bypass via magic link/Google → passkey (PoC). High: fail-open APP_ENV default, no headers/CSP, /dev 200 in prod, no Redis rate limiting, no server-only boundary, incomplete action template.
+Commits: 814f443 (kit), audit commit below
+Left off: security hotfix (MFA bypass + env defaults), then P0-01 gaps in order.

@@ -27,6 +27,7 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 | H-13 | 🟢 | Test each demo on a real Android phone and a real iPhone | Every phase end | Real-device check | 15 min / phase |
 | H-14 | 🟢 | Send the client the demo notes and collect feedback | Every phase end | Client sign-off | — |
 | H-15 | 🟢 | Client's solicitor reviews the legal page drafts | P5 | Launch | Client side |
+| H-17 | 🟠 | Decide whether to tighten Claude Code permissions in `.claude/settings.json` (audit security #17: `node:*`/`pnpm:*` run anything without a prompt; `cat` can read `.env*`) | Before staging secrets exist (~13 Nov 2026) | Tooling safety; Claude will not change its own permissions | 5 min |
 | H-16 | 🟢 | Optional: AI-generated reference images in `design/reference/` | Any time (helps from P0 UI work) | Visual guide for screens | — |
 
 ## Steps
@@ -48,6 +49,7 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 2. SQL Editor → run `CREATE EXTENSION IF NOT EXISTS postgis;`
 3. Dashboard → Connection details → copy the **pooled** connection string (for the app) and the **direct** one (for migrations).
 4. Keep both in your password manager; Claude will tell you the exact `gh secret set` commands when the deploy workflow is ready.
+5. (Audit security #7) Claude will add a migration creating a separate least-privilege app role; you will only need to put that role's connection string in the app secret.
 
 ### H-03 — Google OAuth client
 1. console.cloud.google.com → create project `Moz Rewards`.
@@ -83,6 +85,11 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 1. play.google.com/console → sign up as an organisation (needs a D-U-N-S number for the client's company) or individual → pay $25.
 2. Complete identity verification (can take several days — start early).
 3. Tell Claude when the account is verified; the TWA listing assets are prepared in P5.
+
+### H-17 — Claude Code permissions (your decision)
+1. Open `.claude/settings.json`.
+2. Options: add `"Bash(cat .env*)"`, `"Bash(head .env*)"`, `"Bash(tail .env*)"` to `deny`; consider replacing `"Bash(node:*)"` with specific `node` commands; decide whether `git push` should still be auto-allowed.
+3. Commit the change yourself (or tell Claude exactly which entries to set).
 
 ### H-16 — Reference images (optional)
 1. Save images as `design/reference/m03-wallet.png`, `d15-shop-dashboard.png` etc. (numbers from `docs/DESIGN.md` §15).
