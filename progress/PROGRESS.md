@@ -16,7 +16,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 
 ## Status
 - **Phase:** P0 — Foundation and design system (in progress, 6 of 15 tasks)
-- **Last updated:** 2026-11-08, talha.syed session
+- **Last updated:** 2026-11-08 checkpoint, talha.syed session (nothing half-done; tree clean)
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
@@ -56,7 +56,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 ## Last verified
 - `pnpm check`: ✅ 2026-11-08 (136 tests incl. authz matrix 95; mutation check confirmed matrix catches a removed MFA rule)
 - `pnpm db:migrate` + `drizzle-kit check`: ✅ 2026-11-08, no drift
-- `pnpm build`: ✅ 2026-11-08
+- `pnpm build`: ✅ 2026-11-08 (checkpoint, after authz harness)
 - `pnpm e2e`: ✅ 2026-11-08 12/12 (smoke, magic link, staff TOTP enrol + sign-in) on chromium, webkit, pixel-7, iphone-14
 - CI on main: — (not set up yet)
 - Staging deploy: —
