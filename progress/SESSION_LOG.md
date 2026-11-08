@@ -45,3 +45,9 @@ Done: kit v3 merged into CLAUDE/PHASES/ARCHITECTURE/settings/HUMAN_TASKS/DECISIO
 Tests: codes 8/8 ✅; integration project ❌ (authz world + test-api session failing, undiagnosed). main unchanged in code since last green (170 tests, e2e 12/12).
 Left off: diagnose integration failures (start with leftover `.insert(shopStaff)` in tests/authz/harness.ts ~line 63), then Playwright fixtures + guard, fakes, scripts.
 Notes: re-audit of ticked tasks against tightened ENGINEERING §1 = nothing to untick (no task was ticked). AUDIT.md still reflects kit v2 criteria; add v3 items (P0-02 MinIO, P0-14 additions, §1 items 6–8) when P0-17 lands.
+
+## 2026-11-08 19:45 — P0 — P0-17 finished and merged (Syedbadeshah76, Windows laptop)
+Done: integration suite fixed (harness leftover insert, Zod 4 superRefine TypeError, test-API MFA flag, Vitest groupOrder); fakes push/AI/postcodes/Places + S3 storage; Playwright E2E server :3100 + fixtures + console/network guard + self-tests; specs migrated (Mailpit, no sleeps, task-ID titles); test:regression/mutation/load:smoke/live/titles. Kit v2 audit and v3 merge were already applied by talha.syed (verified item by item, not redone).
+Evidence (P0-17 ticked): isolation a/b on moz_test_w2/w1 in separate pids, same PK, both pass; guard.spec 17/17 incl. test.fail for every bad mode; test API 404 in staging/production; test:regression PASS unit 100 / integration 18 / authz 95 / e2e 37 (5 projects, 0 flaky); mutation 90.1%; build ✅.
+Fixed on the way: db:migrate no-op on Windows; session cookie expiring in 1970; dev badge in screenshots; Chromium-only cold-compile timeouts (route warm-up, not longer timeouts).
+Next: security hotfix (MFA bypass, safeReturnTo), then audit fix plan P0-01 → P0-09.

@@ -7,20 +7,19 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 - 🟠 **Needed soon**: needed within the current or next phase
 - 🟢 **Later**: needed before launch or a later phase; do it whenever convenient
 
-**🔴 Blocking now on the Windows laptop (Syedbadeshah76):** H-19 (free port 5432) and H-02 (`.env.local`). Until both are done, no tests can run there. Local development uses stand-ins (test Google sign-in, sign-in links printed to the terminal) until the real accounts exist. When you finish one, tell Claude e.g. "H-03 done" and put any keys in `.env.local` yourself (never paste secrets into chat or Git).
+**Nothing is blocking code work right now.** Local development uses stand-ins (test Google sign-in, sign-in links printed to the terminal) until the real accounts exist. When you finish one, tell Claude e.g. "H-03 done" and put any keys in `.env.local` yourself (never paste secrets into chat or Git).
 
 ## Open
 
 | ID | Priority | Task | Needed by | Why | Est. time |
 |---|---|---|---|---|---|
-| H-19 | 🔴 | Windows laptop: stop the locally installed PostgreSQL services so Docker's Postgres can use port 5432 | Now (8 Nov 2026) | `pnpm services:up` fails: `postgresql-x64-14`/`-18` Windows services hold 5432; no DB = no tests, no P0-17 | 2 min |
 | H-07 | 🟠 | Buy domain; Cloudflare account; move DNS to Cloudflare | 13 Nov 2026 (end of P0) | Staging URL `staging.<domain>`, email domain, CDN | 30 min (+ up to 24 h DNS) |
 | H-06 | 🟠 | Staging VPS (London) + SSH access | 13 Nov 2026 (end of P0) | Demo 1 runs on staging | 30 min |
 | H-05 | 🟠 | Postgres database for staging (Neon, London/EU) | 13 Nov 2026 (end of P0) | Staging data | 10 min |
 | H-03 | 🟠 | Google Cloud OAuth client (web) | 13 Nov 2026 (Demo 1 shows real Google sign-in) | Customer Google sign-in | 15 min |
 | H-04 | 🟠 | Email provider (Resend) + API key + domain verification | 13 Nov 2026 (Demo 1 shows email-link sign-in) | Magic-link and invite emails | 15 min (+ DNS wait) |
 | H-10 | 🟠 | Sentry project (DSN) | 13 Nov 2026 | Error tracking on staging | 5 min |
-| H-02 | 🔴 | Share `.env.local` with your partner via a password manager (Windows laptop has none yet; talha.syed to share) | Now (8 Nov 2026), Windows laptop's first session | Same setup on both machines | 10 min |
+| H-02 | 🟠 | Share `.env.local` with your partner via a password manager (Windows laptop has none yet; talha.syed to share). Tests run without it; needed for `pnpm dev` with the shared secrets | Next Windows session (by 10 Nov 2026) | Same setup on both machines | 10 min |
 | H-08 | 🟢 | Cloudflare R2 bucket + API token; Turnstile keys | P2 start (~16 Nov 2026) | Image uploads, bot protection | 15 min |
 | H-09 | 🟢 | AI provider API key (Google Gemini) | P3 start (~23 Nov 2026) | AI review help | 5 min |
 | H-11 | 🟢 | Production VPS + production database | P5 (~7 Dec 2026) | Launch | 30 min |
@@ -114,4 +113,5 @@ Tell Claude "H-18 done on <machine>".
 |---|---|---|---|
 | H-01 | Private GitHub repo `weddydev/moz-reward` pushed; collaborators added; `gh` signed in as `weddydev` | talha.syed | 8 Nov 2026 |
 | — | Local tools: pnpm 12.18, Docker 29.9, gh 2.103, Node 26.11 (installed by Claude) | Claude | 8 Nov 2026 |
+| H-19 | Windows laptop: local PostgreSQL services stopped, port 5432 free for Docker | Syedbadeshah76 | 8 Nov 2026 |
 | H-16 | Reference images: 17 desktop + 11 mobile screenshots in `design/reference/desktop-view/` and `mobile-view/` (descriptive names, not m01/d01 numbering) | Syedbadeshah76 | 8 Nov 2026 |

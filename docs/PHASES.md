@@ -45,7 +45,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 - [ ] P0-14 · CI pipeline
 - [ ] P0-15 · Staging environment and deployment
 - [ ] P0-16 · Seeds and factories
-- [ ] P0-17 · Test infrastructure and self-verification tooling
+- [x] P0-17 · Test infrastructure and self-verification tooling
 - [ ] P0-E closed with `/subphase-complete`
 - [ ] P0 closed with `/phase-complete`
 - [ ] P0 definition of done met and demo delivered

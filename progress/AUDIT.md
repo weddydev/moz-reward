@@ -5,7 +5,7 @@
 Method: each task's acceptance criteria, edge cases, required tests and build notes were checked with evidence gathered in this session (commands run, file:line, test names, live measurements on `/dev/ui`, production-mode `curl`, proof-of-concept tests against the test DB). Reviewers were read-only; temporary probe files were deleted and the working tree stayed clean.
 
 
-> **Kit v3 update (8 Nov 2026):** ENGINEERING §1 tightened (test-first evidence, self-verification loop with inspected screenshots, unhappy paths, side effects) and P0-17 added. Re-check of ticked tasks: **none were ticked**, so nothing to untick; every partial task above must also meet the new §1 items 3 and 6–8 before ticking. New criteria not yet in the tables: P0-02 now includes MinIO (bucket auto-created); P0-14 adds CodeQL, migration test, bundle report, Renovate, staging smoke, console guard on smoke, `gh run watch`. P0-17 is in progress on branch `wip/p0-17-test-infra`. Fixed on that branch (not yet on `main`): security #2 fail-open env defaults and #4 tokens in logs (console email + dev outbox removed).
+> **Kit v3 update (8 Nov 2026):** ENGINEERING §1 tightened (test-first evidence, self-verification loop with inspected screenshots, unhappy paths, side effects) and P0-17 added. Re-check of ticked tasks: **none were ticked**, so nothing to untick; every partial task above must also meet the new §1 items 3 and 6–8 before ticking. New criteria not yet in the tables: P0-02 now includes MinIO (bucket auto-created); P0-14 adds CodeQL, migration test, bundle report, Renovate, staging smoke, console guard on smoke, `gh run watch`. P0-17 is complete and merged to `main` (8 Nov 2026), which also brought security #2 fail-open env defaults and #4 tokens in logs (console email + dev outbox removed) onto `main`.
 
 ## Work mapped to the new task IDs
 
@@ -38,8 +38,25 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 | P0-08 Tokens / fonts / preferences | PARTIAL |
 | P0-09 Primitives + gallery | PARTIAL |
 | P0-10 … P0-16 | MISSING |
+| P0-17 Test infrastructure | **MET** (8 Nov 2026, see below) — ticked |
 
-**Fully met: 0 · Partial: 7 · Missing: 9.** Nothing is ticked in `docs/PHASES.md`.
+**Fully met: 1 (P0-17) · Partial: 7 · Missing: 8.** Only P0-17 is ticked in `docs/PHASES.md`.
+
+## P0-17 · Test infrastructure and self-verification tooling — MET (Syedbadeshah76, 8 Nov 2026)
+
+| Criterion | Status | Evidence |
+|---|---|---|
+| Two integration files touching the same tables run in parallel without interference | ✅ | `tests/integration/isolation-a/b.test.ts` insert the same PK `isolation_probe` and count `shops`; run together: a → `moz_test_w2` pid 21136, b → `moz_test_w1` pid 10404, both pass |
+| Console guard fails a deliberately erroring page and passes once fixed | ✅ | `tests/e2e/guard.spec.ts`: `test.fail()` for console-error, throw, rejection, hydration, 5xx all pass (guard failed them); `mode=ok` and allowlisted 5xx pass; 17/17 |
+| Test seeding API unreachable outside `APP_ENV=test` | ✅ | `tests/integration/test-api.test.ts` "returns 404 when APP_ENV=staging/production" (POST and GET) |
+| `pnpm test:regression` runs everything with per-suite counts | ✅ | unit 100 · integration 18 · authz 95 · e2e 37 (5 projects) · PASS, 0 flaky |
+| Build items | ✅ | Vitest unit/integration projects (per-worker DBs, truncation, Redis prefix); factories; Playwright fixtures (`signInAs` all 7 roles, `createUser`, `freezeTime`, `shoot`, `mail`, `pushes`); test API; fakes push/AI/postcodes/Places + S3 storage (MinIO integration test) + `test:live`; Stryker (90.1%); k6 skeleton; scripts `test:int`, `test:regression`, `test:mutation`, `test:load:smoke`, `test:live`, `test:titles` (strict passes) |
+| Tests: self-tests for fixtures and guard | ✅ | `guard.spec.ts` (guard + 7 roles + clock + shoot + push), `scripts/check-test-titles.test.ts`, `src/server/integrations/fakes.test.ts` |
+| Existing tests migrated | ✅ | all specs import `tests/e2e/support/test.ts`; Mailpit instead of dev outbox; no `waitForTimeout`; every test title tagged |
+
+**Bugs found and fixed while doing it (regression test each):** `pnpm db:migrate` silently did nothing on Windows (P0-03; `src/lib/is-direct-run.ts`); test-API session cookie dated 1970; test-API staff sessions not MFA-verified (hook kept strict, see DECISIONS); `env.ts` threw a bare TypeError for a malformed `APP_URL` (P0-02); Vitest projects could not run together (groupOrder); `/dev/guard-check` imported values from a client module.
+
+**Kit v3 re-audit of ticked tasks against ENGINEERING §1 (items 3, 6–8):** before P0-17 nothing was ticked, so nothing to untick. P0-17 itself: test-first evidence (fakes, storage, test API, title checker, isDirectRun: each seen failing first), §1.6 n/a (no product UI; `/dev/guard-check` screenshot inspected), §1.7 unhappy paths (AI error/timeout/empty, storage missing key/unsafe key/not configured, test API invalid input/404), §1.8 side effects (DB session rows, MinIO objects, push sink, Mailpit). Remaining open items for later tasks: P0-14 must run E2E against `next build` and enforce `test:titles --strict`; 14 surviving mutants reviewed at phase end.
 
 ## Top risks
 

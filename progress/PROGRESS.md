@@ -7,76 +7,59 @@ Baton: held by Syedbadeshah76 since 2026-11-08 17:36
 
 ## Handoff note
 _Overwritten by `/handoff`. The next developer reads this first._
-- **Handed over by:** talha.syed, 2026-11-08 17:34
-- **Finished (on `main`):** kit v2 audit (`progress/AUDIT.md`: 0 met / 7 partial / 9 missing, 1 critical MFA bypass) and kit v3 merge (P0-17 added, `/subphase-complete`, TESTING §7–8, H-18). `main` = `415686a` + this note. No code changed on `main` since the last green run.
-- **Half-done — P0-17 test infrastructure, on branch `wip/p0-17-test-infra` (`f5b6b3d`, pushed):**
-  - Built: Mailpit + MinIO in `docker-compose.yml`; fail-closed `src/server/env.ts` (`APP_ENV`/`APP_URL` required, local/test only on localhost, https elsewhere, `parseServerEnv` + `env.test.ts`); email providers SMTP (→ Mailpit) / Resend / Brevo with timeouts (console provider + `/api/dev/outbox` removed); `src/lib/codes.ts` (test-first, 8 tests pass); Vitest projects `unit` + `integration` (per-worker DBs `moz_test_w1..4` cloned from migrated `moz_test_template`, per-file truncation, `tests/support/db.ts`); factories `src/server/testing/factories.ts` (+ `makeActor(role)`); seeding API `src/app/api/test/[action]/route.ts` (`POST /api/test/session {role}`, 404 unless `APP_ENV=test`); `tests/support/mailpit.ts`, `storage.ts`; isolation demo `tests/integration/isolation-a/b.test.ts`; auth/authz tests migrated (Mailpit, factories, `[P0-xx]` titles); testUtils now only in `APP_ENV=test`.
-  - **Failing:** `pnpm exec vitest run --project integration` — every authz matrix case and "creates an actor and an MFA-verified staff session" fail. Not diagnosed yet. First look: `tests/authz/harness.ts` line ~63 still has a leftover `.insert(shopStaff)` from before the factory migration (imports were removed) — fix that, then re-run and read the first real error.
-  - **Not started in P0-17:** Playwright fixtures (console/network guard, `signInAs(role)` via `/api/test/session`, clock, `shoot()` to `.artifacts/screens/<task>/`, Mailpit asserts), Playwright projects `chromium/webkit/pixel7/iphone14/desktop1440` + test web server on port 3100 with `APP_ENV=test` and its own DB (plan: `distDir` from env so it can run beside `pnpm dev`), `/dev/guard-check` page + guard self-test (`test.fail()`), fakes for push/AI/postcodes/Places + S3 storage provider (MinIO) with integration test, Stryker config (rules modules: `authz/policies.ts`, `lib/return-to.ts`, `lib/codes.ts`), `tests/load/` k6 skeleton, scripts `test:int`, `test:regression` (per-suite counts), `test:mutation`, `test:load:smoke`, `test:live`, test-title check script; migrate `tests/e2e/*.spec.ts` (still use the removed `/api/dev/outbox`) onto the fixtures; DECISIONS entries (Chainguard MinIO image pinned by digest, SMTP/Mailpit replacing console email, test API in prod bundle but 404-gated).
-- **Tested:** on the WIP branch, `src/lib/codes.test.ts` 8/8 ✅; integration project ❌ (see above). On `main`: last full run `pnpm check` 170 ✅ and e2e 12/12 ✅ at `f92b32f`; nothing in code changed since.
-- **Not yet tested:** Google OAuth (H-03), passkeys on a real device, Resend/Brevo for real (H-04), the whole WIP branch end to end.
-- **Do first on the other laptop:**
-  1. `git pull` on `main`, run `/resume` (it will show this note), then `git checkout wip/p0-17-test-infra` to continue P0-17.
-  2. `pnpm install --frozen-lockfile` (new deps on the branch: nodemailer, @aws-sdk/client-s3).
-  3. `docker compose up -d --wait` (branch adds Mailpit :1025/:8025 and MinIO :9000/:9001).
-  4. `.env.local`: copy the shared one (H-02) and add/align from `.env.example` on the branch: `EMAIL_PROVIDER=smtp`, `SMTP_HOST=localhost`, `SMTP_PORT=1025`, `MAILPIT_API_URL=http://localhost:8025`, `S3_ENDPOINT=http://localhost:9000`, `S3_REGION=auto`, `S3_ACCESS_KEY_ID=moz`, `S3_SECRET_ACCESS_KEY=moz-minio-local`, `S3_BUCKET=moz-rewards`, `S3_FORCE_PATH_STYLE=true`, `S3_PUBLIC_BASE_URL=` (remove old `R2_*`). Note: `main`'s code still expects `EMAIL_PROVIDER=console` — use `smtp` only on the WIP branch.
-  5. Install GitHub CLI + `gh auth login` (H-18).
-  6. When P0-17 is green: merge the branch into `main` (fast-forward or merge commit), push, delete the branch, tick P0-17 only with evidence for every criterion, then continue the fix plan below.
+- **Current state (Syedbadeshah76, 2026-11-08 19:40, mid-session — not a handoff yet):** P0-17 finished on `wip/p0-17-test-infra`, merged into `main` and ticked with evidence (SESSION_LOG). Branch deleted. Nothing half-done.
+- **Before your next session on either laptop:** `pnpm install --frozen-lockfile` (new dev deps: Stryker), `pnpm services:up` (Mailpit :8025, MinIO :9000/:9001), `.env.local` must use `EMAIL_PROVIDER=smtp` + the SMTP/MAILPIT/S3 keys from `.env.example` (old `R2_*` keys are gone), Playwright browsers: `pnpm exec playwright install chromium webkit`.
+- **Windows laptop note:** no `.env.local` yet (H-02). Tests ran with `.env.example` values + throwaway secrets exported in the shell (never written to disk).
 
 ## Status
-- **Phase:** P0 — Foundation and design system. Kit upgraded to 16 task briefs; audit done (`progress/AUDIT.md`): 0 fully met, 7 partial (P0-01/02/03/06/07/08/09), 9 missing. Fixing gaps in task order.
-- **Last updated:** 2026-11-08 17:34 handoff, talha.syed
+- **Phase:** P0 — Foundation and design system. Audit (`progress/AUDIT.md`): P0-17 met; 7 partial (P0-01/02/03/06/07/08/09), 8 missing. Fixing gaps in task order.
+- **Last updated:** 2026-11-08 19:40, Syedbadeshah76
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
 ## Now
-- P0-17 test infrastructure on branch `wip/p0-17-test-infra` (see Handoff note): fix failing integration project, then finish Playwright fixtures/guard, fakes, scripts, migrate e2e specs.
+- Security hotfix from the audit (critical staff/admin MFA bypass + `safeReturnTo` dot-segment bypass).
 
 ## Next (top 3)
-1. Finish P0-17 and merge to `main` (criteria: parallel isolation demo, console guard fail→pass, `/api/test/*` 404 outside test, `pnpm test:regression` per-suite counts).
-2. Security hotfix from the audit: block staff/admin MFA bypass (magic link/Google → passkey) — refuse magic link + Google for staff/admin accounts, require MFA session to register passkeys, `userVerification: "required"`; fix `safeReturnTo` dot-segment bypass. (Fail-open env + dev outbox are already fixed on the WIP branch.)
-3. Then fix audit gaps in task order P0-01 → P0-09 (see `progress/AUDIT.md` "Fix plan"), each with evidence, then P0-04/05, then P0-10+. Close sub-phases only with `/subphase-complete`.
+1. Security hotfix: refuse magic link + Google for staff/admin accounts, require an MFA session to register passkeys, `userVerification: "required"`; fix `safeReturnTo` dot-segment bypass. Test first (failing PoC tests).
+2. Fix audit gaps in task order P0-01 → P0-09 (`progress/AUDIT.md` "Fix plan"), each with evidence; then P0-04/05, then P0-10+. P0-17 tooling is available for all of them (TESTING §8 loop: `shoot()`, guard, `signInAs`).
+3. Close sub-phases only with `/subphase-complete` (needs CI + staging: P0-14/15 and H-05/06/07).
 
 ## Blockers
-- Human: 🔴 H-19 (Windows laptop: local PostgreSQL services hold port 5432, so Docker Postgres can't start) and 🔴 H-02 (`.env.local` not yet on the Windows laptop). Both block all tests and P0-17 there. 🟠 for end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-10 Sentry.
-- Technical: audit HIGH findings tracked in `progress/AUDIT.md` (top risks section). Old PHASES ticks are void; nothing ticked until every criterion has evidence.
+- Human: 🔴 none blocking code work. 🟠 H-02 `.env.local` for the Windows laptop; H-18 `gh` on the Windows laptop; end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-10 Sentry.
+- Technical: audit HIGH findings in `progress/AUDIT.md` (top risks). 14 surviving Stryker mutants (codes 7, return-to 3, policies 4) to review at phase end (TESTING §2).
 
 ## Map of the codebase
 - `src/app/` — Next.js App Router (Next 16: `proxy.ts` not middleware; async request APIs; read `node_modules/next/dist/docs/`)
 - `src/worker/index.ts` — worker entry (stub; BullMQ is P0-04)
-- `progress/AUDIT.md` — per-task audit vs `docs/phases/P0.md` (criterion / status / evidence / fix); `docs/phases/*.md` = task briefs; `docs/ENGINEERING.md` = definition of done
-- `tests/setup.ts` — Vitest setup (jest-dom); unit tests live next to code as `*.test.ts(x)`
-- `tests/e2e/` — Playwright specs (chromium, webkit, pixel-7, iphone-14)
-- `docker-compose.yml` — local Postgres 17 + PostGIS 3.5 (`moz`, `moz_test` DBs) and Redis 7 (password `moz`); init SQL in `infra/local/`
-- `.env.local` — generated locally from `.env.example` with random secrets (never committed; share via H-02)
-- `src/server/db/` — Drizzle client (`db()`), schema (`schema/auth.ts` Better Auth tables, `schema/core.ts` domain), `migrate.ts`
+- `progress/AUDIT.md` — per-task audit vs `docs/phases/P0.md`; `docs/phases/*.md` = task briefs; `docs/ENGINEERING.md` = definition of done
+- `docker-compose.yml` — Postgres 17 + PostGIS 3.5, Redis 7 (password `moz`), Mailpit (:1025 SMTP, :8025 UI/API), MinIO (:9000 S3, :9001 console); init SQL in `infra/local/`
+- `.env.local` — local secrets (never committed; share via H-02); `src/server/env.ts` — fail-closed Zod env (`APP_ENV`/`APP_URL` required)
+- `src/server/db/` — Drizzle client (`db()`), schema (`schema/auth.ts`, `schema/core.ts`), `migrate.ts` (entry check via `src/lib/is-direct-run.ts`, Windows-safe)
 - `drizzle/` — SQL migrations (0000 init, 0001 append-only trigger `prevent_update_delete()`)
-- `src/server/env.ts` — Zod-validated server env (`env()`); `src/server/integrations/email/` — console/memory/real providers
-- `src/server/auth/` — Better Auth instance `auth.ts` (Google, magic link, staff password Argon2id, TOTP, passkey, HIBP, testUtils in local/test), `session.ts`, `mfa.ts`
-- `src/server/authz/` — pure `decide*` policies + `requireCustomer/requireShopRole/requireAdminRole` (MFA + 12 h/2 h limits)
+- `src/server/integrations/` — `email/` (SMTP→Mailpit, Resend, Brevo), `storage/` (S3: MinIO/R2), fakes `push/`, `ai/`, `postcodes/`, `places/` (fail closed outside local/test), `fake-support.ts`
+- `src/server/auth/` — Better Auth `auth.ts` (Google, magic link, staff password Argon2id, TOTP, passkey, HIBP, testUtils only in `APP_ENV=test`), `session.ts`, `mfa.ts`
+- `src/server/authz/` — pure `decide*` policies + `requireCustomer/requireShopRole/requireAdminRole`
 - `src/server/actionTemplate.ts` — `defineAction({input, authorize, handler})`; `src/server/errors.ts` AppError
-- `src/features/auth/` + `src/app/(public)/sign-in`, `/staff/sign-in`, `/staff/security` — sign-in UI (temporary styling)
-- `src/app/api/auth/[...all]` Better Auth handler; `src/app/api/dev/outbox` dev-only email reader
-- `tests/authz/` — matrix harness (`authzMatrix`, 13 roles, `runAsPrincipal`), coverage guard, probes; add a `*.authz.test.ts` for every new action
-- `src/server/services/` — `audit.ts` (recordAudit, hashIp), `flags.ts` (feature flags + FLAG_* env override); `src/features/flags/actions.ts` setFeatureFlag
-- `tests/fixtures/auth.ts` — `createPasswordUser`, `totpFromUri`, `testEmail`
-- `tests/integration/` — DB-backed tests (test DB `moz_test`, migrated by `tests/global-setup.ts`)
-- `src/styles/tokens.css` (DESIGN tokens, reduced-motion retuning), `src/app/globals.css` (Tailwind `@theme inline` mapping + type-scale utilities `text-display/h1/h2/h3/body/small/caption`, `bg-gold-gradient`, `duration-fast/base/slow`, `pb-safe`), `src/styles/fonts.ts` (Fraunces + Manrope); `contrast.test.ts` guards WCAG pairs
-- `src/lib/motion-preference.ts` — `useReducedMotion()`, `setMotionPreference()` (`<html data-motion>`); applied by `components/system/ApplyPreferences`
-- `src/components/ui/` — design-system primitives (barrel `index.ts`), tests in `ui.test.tsx`; `src/lib/cx.ts`
-- `src/app/dev/` — dev galleries (404 in production); `/dev/ui` = `src/features/dev/UiGallery.tsx`
-- Configs: `vitest.config.mts`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc.json`, `pnpm-workspace.yaml` (allowed install scripts)
+- `src/server/services/` — `audit.ts`, `flags.ts`; `src/features/flags/actions.ts`
+- `src/server/testing/factories.ts` (re-exported by `tests/fixtures/factories.ts`) — factories + `makeActor(role)`
+- `src/app/api/test/[action]/route.ts` — test-only API (404 unless `APP_ENV=test`): `POST session|user|fakes|reset-fakes`, `GET push`
+- `src/features/auth/` + `/sign-in`, `/staff/sign-in`, `/staff/security` — sign-in UI (temporary styling)
+- `src/app/dev/` — dev pages (404 in production): `/dev/ui` gallery, `/dev/guard-check` (guard self-test target)
+- `src/styles/tokens.css`, `src/app/globals.css`, `src/styles/fonts.ts`; `src/lib/motion-preference.ts`; `src/components/ui/` primitives
+- Tests: Vitest projects `unit` (`src/**`, `scripts/**`) and `integration` (`tests/integration`, `tests/authz`; per-worker DBs `moz_test_w1..4` from `moz_test_template`, `tests/support/db.ts`); `tests/authz/` matrix + coverage guard
+- `tests/e2e/` — Playwright, own server :3100 (`APP_ENV=test`, DB `moz_test_e2e`, `.next-e2e`), projects chromium/webkit/pixel7/iphone14/desktop1440; **import `test` from `tests/e2e/support/test.ts`** (guard, `signInAs`, `createUser`, `freezeTime`, `shoot`, `mail`, `pushes`); add new routes to `support/warm-up.ts`
+- `scripts/` — `test-regression.ts`, `check-test-titles.ts`, `load-smoke.ts`; `stryker.config.mjs`; `tests/load/smoke.js` (k6); `tests/live/` + `vitest.live.config.mts`
+- Configs: `vitest.config.mts`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc.json`, `pnpm-workspace.yaml`
 
 ## Last verified
-- `pnpm check`: ✅ 2026-11-08 (170 tests)
-- Gallery E2E: ✅ 2026-11-08 axe (no serious/critical) + no horizontal overflow on chromium, webkit, pixel-7, iphone-14
-- Screenshots: ✅ 2026-11-08 home + sign-in, Pixel 7 + desktop: Fraunces/Manrope loaded, ivory bg, focus ring visible
-- `pnpm db:migrate` + `drizzle-kit check`: ✅ 2026-11-08, no drift
-- `pnpm build`: ✅ 2026-11-08 (checkpoint, after authz harness)
-- `pnpm e2e`: ✅ 2026-11-08 12/12 (smoke, magic link, staff TOTP enrol + sign-in) on chromium, webkit, pixel-7, iphone-14
-- CI on main: — (not set up yet)
-- Staging deploy: —
-- E2E smoke on staging: —
+- `pnpm check`: ✅ 2026-11-08 19:35 (22 files, 213 tests) on the merged branch
+- `pnpm test:regression`: ✅ 2026-11-08 — unit 100, integration 18, authz 95, e2e 37 (5 projects), 0 flaky
+- `pnpm test:mutation`: ✅ 90.1% (break 80); `pnpm test:live`: storage ✅, email skipped (H-04); `pnpm test:load:smoke`: runs (Docker k6), checks 100%, action p95 458 ms on `next dev` (not meaningful; staging gate)
+- `pnpm test:titles --strict`: ✅ every test tagged
+- `pnpm db:migrate`: ✅ 2026-11-08 (Windows; was silently skipped before the fix)
+- `pnpm build`: ✅ 2026-11-08 19:45 (9 static pages; NODE_ENV must not be exported in the shell)
+- CI on main: — (not set up yet) · Staging deploy: — · E2E smoke on staging: —
 
 ## Open questions / assumptions
 - Not yet tested: Google OAuth (needs H-03), passkey sign-in (needs a real device), real email provider (needs H-04).
