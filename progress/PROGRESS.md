@@ -26,7 +26,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 3. Close sub-phases only with `/subphase-complete` (needs CI + staging: P0-14/15 and H-05/06/07).
 
 ## Blockers
-- Human: 🔴 none blocking code work. 🟠 H-02 `.env.local` for the Windows laptop; H-18 `gh` on the Windows laptop; end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-10 Sentry.
+- Human: 🔴 none blocking code work. 🟠 H-02 `.env.local` for the Windows laptop; end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-10 Sentry.
 - Technical: **intermittent WebKit E2E failures under full parallel load** (TESTING §7: open, not quarantined): 3 failures in ~10 full runs on the Windows laptop (staff TOTP spec once: stayed on `/staff/sign-in` after "Continue"; UI gallery twice in a row), never in isolation (`--repeat-each 4`) or in the last 5 consecutive full runs. Root cause not yet found; no speculative fix. Next occurrence: run with `--trace retain-on-failure` and read the trace in `test-results/`. Must be resolved before `/subphase-complete`.
 - Technical: audit HIGH findings in `progress/AUDIT.md` (top risks). 14 surviving Stryker mutants (codes 7, return-to 3, policies 4) to review at phase end (TESTING §2).
 
