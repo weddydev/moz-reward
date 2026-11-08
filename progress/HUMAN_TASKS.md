@@ -7,19 +7,20 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 - 🟠 **Needed soon**: needed within the current or next phase
 - 🟢 **Later**: needed before launch or a later phase; do it whenever convenient
 
-**Nothing is blocking right now.** Local development uses stand-ins (test Google sign-in, sign-in links printed to the terminal) until the real accounts exist. When you finish one, tell Claude e.g. "H-03 done" and put any keys in `.env.local` yourself (never paste secrets into chat or Git).
+**🔴 Blocking now on the Windows laptop (Syedbadeshah76):** H-19 (free port 5432) and H-02 (`.env.local`). Until both are done, no tests can run there. Local development uses stand-ins (test Google sign-in, sign-in links printed to the terminal) until the real accounts exist. When you finish one, tell Claude e.g. "H-03 done" and put any keys in `.env.local` yourself (never paste secrets into chat or Git).
 
 ## Open
 
 | ID | Priority | Task | Needed by | Why | Est. time |
 |---|---|---|---|---|---|
+| H-19 | 🔴 | Windows laptop: stop the locally installed PostgreSQL services so Docker's Postgres can use port 5432 | Now (8 Nov 2026) | `pnpm services:up` fails: `postgresql-x64-14`/`-18` Windows services hold 5432; no DB = no tests, no P0-17 | 2 min |
 | H-07 | 🟠 | Buy domain; Cloudflare account; move DNS to Cloudflare | 13 Nov 2026 (end of P0) | Staging URL `staging.<domain>`, email domain, CDN | 30 min (+ up to 24 h DNS) |
 | H-06 | 🟠 | Staging VPS (London) + SSH access | 13 Nov 2026 (end of P0) | Demo 1 runs on staging | 30 min |
 | H-05 | 🟠 | Postgres database for staging (Neon, London/EU) | 13 Nov 2026 (end of P0) | Staging data | 10 min |
 | H-03 | 🟠 | Google Cloud OAuth client (web) | 13 Nov 2026 (Demo 1 shows real Google sign-in) | Customer Google sign-in | 15 min |
 | H-04 | 🟠 | Email provider (Resend) + API key + domain verification | 13 Nov 2026 (Demo 1 shows email-link sign-in) | Magic-link and invite emails | 15 min (+ DNS wait) |
 | H-10 | 🟠 | Sentry project (DSN) | 13 Nov 2026 | Error tracking on staging | 5 min |
-| H-02 | 🟢 | Share `.env.local` with your partner via a password manager | Before partner's first session | Same setup on both machines | 10 min |
+| H-02 | 🔴 | Share `.env.local` with your partner via a password manager (Windows laptop has none yet; talha.syed to share) | Now (8 Nov 2026), Windows laptop's first session | Same setup on both machines | 10 min |
 | H-08 | 🟢 | Cloudflare R2 bucket + API token; Turnstile keys | P2 start (~16 Nov 2026) | Image uploads, bot protection | 15 min |
 | H-09 | 🟢 | AI provider API key (Google Gemini) | P3 start (~23 Nov 2026) | AI review help | 5 min |
 | H-11 | 🟢 | Production VPS + production database | P5 (~7 Dec 2026) | Launch | 30 min |
@@ -31,6 +32,13 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 | H-17 | 🟠 | Decide whether to tighten Claude Code permissions in `.claude/settings.json` (audit security #17: `node:*`/`pnpm:*` run anything without a prompt; `cat` can read `.env*`) | Before staging secrets exist (~13 Nov 2026) | Tooling safety; Claude will not change its own permissions | 5 min |
 
 ## Steps
+
+### H-19 — Free port 5432 on the Windows laptop
+1. Open **PowerShell as Administrator** (Start → type "PowerShell" → right-click → Run as administrator).
+2. Run: `Stop-Service postgresql-x64-14, postgresql-x64-18 -ErrorAction SilentlyContinue`
+3. Run: `Set-Service postgresql-x64-14 -StartupType Manual; Set-Service postgresql-x64-18 -StartupType Manual` (stops them coming back after a reboot; start them by hand if another project needs them).
+4. Check: `netstat -ano | findstr :5432` prints nothing.
+5. Tell Claude "H-19 done"; Claude runs `pnpm services:up`.
 
 ### H-07 — Domain + Cloudflare (do this first: H-04 and H-06 depend on the domain)
 1. Buy a domain (e.g. `mozrewards.co.uk`) — Cloudflare Registrar (dash.cloudflare.com → Domain Registration) is simplest because DNS is then already on Cloudflare.

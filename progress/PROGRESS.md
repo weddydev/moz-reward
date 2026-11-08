@@ -38,7 +38,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 3. Then fix audit gaps in task order P0-01 → P0-09 (see `progress/AUDIT.md` "Fix plan"), each with evidence, then P0-04/05, then P0-10+. Close sub-phases only with `/subphase-complete`.
 
 ## Blockers
-- Human: none 🔴. 🟠 for end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-10 Sentry.
+- Human: 🔴 H-19 (Windows laptop: local PostgreSQL services hold port 5432, so Docker Postgres can't start) and 🔴 H-02 (`.env.local` not yet on the Windows laptop). Both block all tests and P0-17 there. 🟠 for end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-10 Sentry.
 - Technical: audit HIGH findings tracked in `progress/AUDIT.md` (top risks section). Old PHASES ticks are void; nothing ticked until every criterion has evidence.
 
 ## Map of the codebase
