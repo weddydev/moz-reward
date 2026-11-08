@@ -29,7 +29,7 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 | Task | Verdict |
 |---|---|
 | P0-01 Scaffold | **MET** (8 Nov 2026) — ticked |
-| P0-02 Local infra + env | PARTIAL |
+| P0-02 Local infra + env | **MET** (8 Nov 2026) — ticked |
 | P0-03 Database | PARTIAL |
 | P0-04 Background jobs | MISSING |
 | P0-05 Security baseline | MISSING |
@@ -40,7 +40,7 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 | P0-10 … P0-16 | MISSING |
 | P0-17 Test infrastructure | **MET** (8 Nov 2026, see below) — ticked |
 
-**Fully met: 2 (P0-01, P0-17) · Partial: 6 · Missing: 8.** P0-01 and P0-17 are ticked in `docs/PHASES.md`.
+**Fully met: 3 (P0-01, P0-02, P0-17) · Partial: 5 · Missing: 8.** P0-01, P0-02 and P0-17 are ticked in `docs/PHASES.md`.
 
 ## P0-17 · Test infrastructure and self-verification tooling — MET (Syedbadeshah76, 8 Nov 2026)
 
@@ -130,7 +130,19 @@ Commands run by the reviewer: `pnpm check` exit 0 (170 tests); `pnpm build` ✓;
 | ENG §2 no `any` / no `!` | partial | `!` in `Tabs.tsx`, `SegmentedControl.tsx` | guards |
 | ENG §2 explicit return types | partial | missing on `session.ts`, `authz/index.ts`, `services/flags.ts`, `_columns.ts` | add + lint rule |
 
-### P0-02 · Local infrastructure and environment validation — PARTIAL
+### P0-02 · Local infrastructure and environment validation — MET (re-audited 8 Nov 2026, Syedbadeshah76)
+
+**Rework evidence (commits 63765b5, 5d42f07):**
+- Fresh GitHub clone, README "Local setup" followed literally: `pnpm install` → `pnpm setup:env` (generated the 4 secrets; a 2nd run refuses to overwrite) → `pnpm services:up` (= `docker compose -f infra/docker-compose.dev.yml up -d --wait`, all 4 healthy) → `pnpm db:migrate` → `pnpm dev`: `/` 200 (h1 "Moz Rewards"), `/sign-in` 200. Then `pnpm check` 141 unit ✅, `pnpm build` ✅.
+- Missing variable: `AUTH_SECRET` absent → `next dev` exits 1 with "Invalid server environment… - AUTH_SECRET: missing (required)" (instrumentation hook), same for `pnpm worker`. `next start` with a short value → "Failed to prepare server … AUTH_SECRET: must be at least 32 characters". No values printed (unit tests pin this).
+- `pnpm check:bundle` after `pnpm build`: 45 server variable names, 19 files in `.next/static`, 0 hits; one reviewed allowlisted shape (Better Auth core env-shim getter, name only; DECISIONS).
+- MinIO: on an empty volume (throwaway project) the healthcheck created bucket `moz-rewards` before `--wait` returned.
+- Edge cases: Docker stopped (`DOCKER_HOST` unreachable) → "Docker is installed but not running…"; no Docker CLI → "Docker is not installed or not on PATH…"; port 8025 held by another process → "Port conflict: 8025 (Mailpit web/API)…", exit 1. Port conflicts documented in README.
+- Tests: `src/server/env.test.ts` (10), `src/lib/env.test.ts` (4), `scripts/{services,setup-env,check-client-bundle}.test.ts` (10); integration 120 ✅, E2E 37/37 ✅.
+- Safe defaults: `APP_ENV` required; local/test only on localhost; staging/production require `NODE_ENV=production` + https.
+- Deviations (DECISIONS): Postgres 17 instead of 16; server env stays in `src/server/env.ts`, client env in `src/lib/env.ts`.
+
+Table below is the original audit.
 
 | Criterion | Status | Evidence | Fix needed |
 |---|---|---|---|
