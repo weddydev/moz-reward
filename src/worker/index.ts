@@ -4,6 +4,7 @@
  * variable names, never their values. Kept alive until SIGINT/SIGTERM so `pnpm worker` behaves like the real
  * process. `pnpm worker` runs with the react-server condition so `server-only` modules load outside Next.
  */
+import "../../scripts/load-env";
 import { env } from "@/server/env";
 
 try {

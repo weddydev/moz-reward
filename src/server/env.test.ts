@@ -20,8 +20,12 @@ describe("[P0-02] server env", () => {
   it("names missing variables without printing any values", () => {
     const { AUTH_SECRET: _secret, APP_ENV: _env, ...rest } = base;
     const run = () => parseServerEnv(rest);
-    expect(run).toThrow(/AUTH_SECRET/);
-    expect(run).toThrow(/APP_ENV/);
+    expect(run).toThrow(/- AUTH_SECRET: missing \(required\)/);
+    expect(run).toThrow(/- APP_ENV: missing \(required\)/);
+    // Present but wrong is reported as invalid, not missing.
+    expect(() => parseServerEnv({ ...base, AUTH_SECRET: "short" })).toThrow(
+      /- AUTH_SECRET: must be at least 32 characters/,
+    );
     try {
       run();
     } catch (e) {

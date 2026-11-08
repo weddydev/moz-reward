@@ -110,7 +110,7 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
 export function parseServerEnv(source: Record<string, string | undefined>): ServerEnv {
   const parsed = serverEnvSchema.safeParse(source);
   if (parsed.success) return parsed.data;
-  throw formatEnvError("server", parsed.error);
+  throw formatEnvError("server", parsed.error, source);
 }
 
 let cached: ServerEnv | undefined;
