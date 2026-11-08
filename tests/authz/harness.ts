@@ -7,10 +7,9 @@
  */
 import { describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { newId } from "@/lib/id";
-import { createPasswordUser } from "../fixtures/auth";
+import { makeAdmin, makeShop, makeStaff, makeUser } from "../fixtures/factories";
 import { db } from "@/server/db/client";
-import { adminMembers, shopStaff, shops } from "@/server/db/schema";
+import { shops } from "@/server/db/schema";
 import type { ActionResult } from "@/server/actionTemplate";
 import { loadPrincipal, runAsPrincipal } from "@/server/authz/principal";
 import type { AdminRole, Principal } from "@/server/authz/policies";
@@ -44,31 +43,13 @@ const DENIED = new Set(["UNAUTHENTICATED", "FORBIDDEN", "MFA_REQUIRED", "REAUTH_
 
 let worldPromise: Promise<World> | undefined;
 
-async function createShop(label: string) {
-  const code = Array.from(
-    { length: 6 },
-    () => "23456789ABCDEFGHJKMNPQRSTVWXYZ"[Math.floor(Math.random() * 30)],
-  ).join("");
-  const [shop] = await db()
-    .insert(shops)
-    .values({
-      slug: `${label}-${newId().slice(-8)}`,
-      shopCode: code,
-      name: `Authz ${label}`,
-      category: "cafe",
-      status: "active",
-    })
-    .returning({ id: shops.id });
-  return shop!;
-}
-
 async function principalFor(userId: string, mfaVerified = true) {
   return loadPrincipal({ userId, mfaVerified, sessionCreatedAt: new Date() });
 }
 
 async function buildWorld(): Promise<World> {
-  const [shopA, shopB] = await Promise.all([createShop("a"), createShop("b")]);
-  const user = async () => (await createPasswordUser()).id;
+  const [shopA, shopB] = await Promise.all([makeShop({ name: "Authz A" }), makeShop({ name: "Authz B" })]);
+  const user = async () => (await makeUser()).id;
 
   const ids = {
     customer: await user(),
@@ -91,7 +72,7 @@ async function buildWorld(): Promise<World> {
   const admins: Partial<Record<AdminRole, string>> = {};
   for (const role of ["owner", "support", "moderator", "finance"] as const) {
     admins[role] = await user();
-    await db().insert(adminMembers).values({ userId: admins[role]!, role });
+    await makeAdmin(admins[role]!, role);
   }
 
   return {
@@ -133,7 +114,7 @@ export function authzMatrix(
   actionName: string,
   spec: { allow: ReadonlyArray<Role>; run: (w: World) => Promise<ActionResult<unknown>> },
 ) {
-  describe(`authz: ${actionName}`, () => {
+  describe(`[P0-07] authz: ${actionName}`, () => {
     for (const role of ROLES) {
       const expected = spec.allow.includes(role) ? "allow" : "deny";
       it(`${role} → ${expected}`, async () => {

@@ -4,7 +4,7 @@ import { newId } from "@/lib/id";
 import { db } from "@/server/db/client";
 import { auditLogs } from "@/server/db/schema";
 
-describe("audit_logs (append-only)", () => {
+describe("[P0-03] audit_logs (append-only)", () => {
   it("accepts inserts but rejects UPDATE and DELETE", async () => {
     const rowId = newId();
     await db()

@@ -1,3 +1,5 @@
+import "server-only";
+import nodemailer, { type Transporter } from "nodemailer";
 import { env } from "@/server/env";
 
 export type EmailMessage = {
@@ -13,44 +15,84 @@ export interface EmailProvider {
   send(message: EmailMessage): Promise<void>;
 }
 
-// Kept on globalThis so the dev outbox survives Next.js hot reloads.
-const g = globalThis as unknown as { __mozOutbox?: EmailMessage[] };
-const outbox: EmailMessage[] = (g.__mozOutbox ??= []);
-const OUTBOX_LIMIT = 50;
+const TIMEOUT_MS = 10_000;
 
-/** Local provider: prints the email to the terminal and keeps it for the dev-only outbox (E2E). */
-export const consoleProvider: EmailProvider = {
+function parseFrom(from: string): { name?: string; email: string } {
+  const m = from.match(/^\s*"?([^"<]*)"?\s*<([^>]+)>\s*$/);
+  if (!m) return { email: from.trim() };
+  const name = m[1]?.trim();
+  return name ? { name, email: m[2]!.trim() } : { email: m[2]!.trim() };
+}
+
+let smtpTransport: Transporter | undefined;
+
+/** SMTP (Mailpit in local/test; any SMTP relay elsewhere). */
+const smtpProvider: EmailProvider = {
   async send(message) {
-    outbox.push(message);
-    if (outbox.length > OUTBOX_LIMIT) outbox.shift();
-    console.warn(
-      `\n[email:${message.kind}] to=${message.to}\nSubject: ${message.subject}\n\n${message.text}\n`,
+    const e = env();
+    smtpTransport ??= nodemailer.createTransport({
+      host: e.SMTP_HOST,
+      port: e.SMTP_PORT ?? 1025,
+      secure: false,
+      connectionTimeout: TIMEOUT_MS,
+      greetingTimeout: TIMEOUT_MS,
+      socketTimeout: TIMEOUT_MS,
+    });
+    await smtpTransport.sendMail({
+      from: e.EMAIL_FROM,
+      to: message.to,
+      subject: message.subject,
+      text: message.text,
+      ...(message.html ? { html: message.html } : {}),
+    });
+  },
+};
+
+async function postJson(url: string, headers: Record<string, string>, body: unknown): Promise<void> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...headers },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`email provider responded ${res.status}`);
+}
+
+const resendProvider: EmailProvider = {
+  async send(message) {
+    const e = env();
+    await postJson(
+      "https://api.resend.com/emails",
+      { authorization: `Bearer ${e.EMAIL_API_KEY ?? ""}` },
+      { from: e.EMAIL_FROM, to: [message.to], subject: message.subject, text: message.text, ...(message.html ? { html: message.html } : {}) },
     );
   },
 };
 
-/** Messages captured by the console/memory providers (local + test only). */
-export const devOutbox = (): ReadonlyArray<EmailMessage> => outbox;
-
-/** Test provider: keeps messages in memory for assertions. */
-export const memoryProvider: EmailProvider & { outbox: EmailMessage[]; clear(): void } = {
-  outbox,
-  clear: () => void outbox.splice(0, outbox.length),
+const brevoProvider: EmailProvider = {
   async send(message) {
-    outbox.push(message);
+    const e = env();
+    await postJson(
+      "https://api.brevo.com/v3/smtp/email",
+      { "api-key": e.EMAIL_API_KEY ?? "" },
+      { sender: parseFrom(e.EMAIL_FROM), to: [{ email: message.to }], subject: message.subject, textContent: message.text, ...(message.html ? { htmlContent: message.html } : {}) },
+    );
   },
 };
 
 function resolveProvider(): EmailProvider {
-  const e = env();
-  if (e.APP_ENV === "test") return memoryProvider;
-  switch (e.EMAIL_PROVIDER) {
-    case "console":
-      return consoleProvider;
+  const provider = env().EMAIL_PROVIDER;
+  switch (provider) {
+    case "smtp":
+      return smtpProvider;
     case "resend":
+      return resendProvider;
     case "brevo":
-      // Real providers are wired once H-04 is done (P0 auth task follow-up).
-      throw new Error(`Email provider "${e.EMAIL_PROVIDER}" is not configured yet`);
+      return brevoProvider;
+    default: {
+      const unreachable: never = provider;
+      throw new Error(`Unknown email provider: ${String(unreachable)}`);
+    }
   }
 }
 

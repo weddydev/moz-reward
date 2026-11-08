@@ -24,12 +24,14 @@
     "services:down": "docker compose down"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1164.0",
     "@better-auth/passkey": "^1.7.18",
     "@node-rs/argon2": "^2.2.2",
     "better-auth": "^1.7.18",
     "drizzle-orm": "^0.45.4",
     "lucide-react": "^1.70.0",
     "next": "16.4.5",
+    "nodemailer": "^10.3.1",
     "postgres": "^4.1.0",
     "qrcode": "^1.5.4",
     "react": "19.3.0",
@@ -47,6 +49,7 @@
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
     "@types/node": "^24.19.2",
+    "@types/nodemailer": "^8.0.2",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",

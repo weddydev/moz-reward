@@ -34,6 +34,35 @@ services:
       timeout: 3s
       retries: 30
 
+  mailpit:
+    # Local/test SMTP catcher with web UI (http://localhost:8025) and API used by tests.
+    image: axllent/mailpit:v1.33.1
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    environment:
+      MP_MAX_MESSAGES: 5000
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  minio:
+    # Local/test S3-compatible storage (production uses Cloudflare R2 through the same S3 API).
+    # MinIO no longer publishes maintained community images; Chainguard's build is pinned by digest.
+    image: cgr.dev/chainguard/minio@sha256:a1ac4589a5f8136b616e667b48a0bea9719bb10bd45799ea946f24bbedfafde4
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: moz
+      MINIO_ROOT_PASSWORD: moz-minio-local
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - miniodata:/data
+
 volumes:
   pgdata:
   redisdata:
+  miniodata:

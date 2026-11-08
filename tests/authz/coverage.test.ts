@@ -31,7 +31,7 @@ const matrixSource = walk(join(ROOT, "tests", "authz"), { includeTests: true })
   .map((f) => readFileSync(f, "utf8"))
   .join("\n");
 
-describe("authz matrix coverage", () => {
+describe("[P0-07] authz matrix coverage", () => {
   it("finds the server actions", () => {
     expect(actionNames.length).toBeGreaterThan(0);
   });

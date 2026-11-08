@@ -1,3 +1,4 @@
+import "server-only";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -13,7 +14,8 @@ import { hashPassword, verifyPassword } from "./password";
 
 const e = env();
 const appUrl = new URL(e.APP_URL);
-const isLocalOrTest = e.APP_ENV === "local" || e.APP_ENV === "test";
+/** Better Auth test utilities exist only in the test environment (never local/staging/production). */
+const isTest = e.APP_ENV === "test";
 
 export const SESSION_MAX_AGE = {
   customer: 60 * 60 * 24 * 30, // 30 days
@@ -85,7 +87,7 @@ export const auth = betterAuth({
       customPasswordCompromisedMessage:
         "This password has appeared in a data breach. Please choose a different one.",
     }),
-    ...(isLocalOrTest ? [testUtils()] : []),
+    ...(isTest ? [testUtils()] : []),
     nextCookies(), // must stay last
   ],
 });

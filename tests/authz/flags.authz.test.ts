@@ -11,7 +11,7 @@ authzMatrix("setFeatureFlag", {
   run: () => setFeatureFlag({ key: "ai_review_help", enabled: false }),
 });
 
-it("setFeatureFlag writes an audit entry", async () => {
+it("[P0-07] setFeatureFlag writes an audit entry", async () => {
   const w = await world();
   const res = await runAsPrincipal(w.principals.admin_owner, () =>
     setFeatureFlag({ key: "game_rewards", enabled: true }),
@@ -25,7 +25,7 @@ it("setFeatureFlag writes an audit entry", async () => {
   ).toBe(true);
 });
 
-it("setFeatureFlag rejects unknown flags before authorising", async () => {
+it("[P0-07] setFeatureFlag rejects unknown flags", async () => {
   const w = await world();
   const res = await runAsPrincipal(w.principals.admin_owner, () =>
     setFeatureFlag({ key: "free_money", enabled: true }),

@@ -1,9 +1,8 @@
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { auth } from "@/server/auth/auth";
 import { db } from "@/server/db/client";
 import { sessions, users } from "@/server/db/schema";
-import { memoryProvider } from "@/server/integrations/email";
 import {
   TEST_PASSWORD,
   cookieHeaderFrom,
@@ -11,6 +10,7 @@ import {
   testEmail,
   totpFromUri,
 } from "../fixtures/auth";
+import { firstLink, latestEmailTo } from "../support/mailpit";
 
 const sessionRow = async (token: string) =>
   (await db().select().from(sessions).where(eq(sessions.token, token)))[0];
@@ -18,7 +18,7 @@ const sessionRow = async (token: string) =>
 const signIn = (email: string, password = TEST_PASSWORD) =>
   auth.api.signInEmail({ body: { email, password }, asResponse: true });
 
-describe("staff password + TOTP", () => {
+describe("[P0-06] staff password + TOTP", () => {
   it("password-only session is not MFA verified; after enrolment sign-in requires TOTP and marks the session", async () => {
     const user = await createPasswordUser();
 
@@ -77,18 +77,17 @@ describe("staff password + TOTP", () => {
   });
 });
 
-describe("customer magic link", () => {
-  beforeEach(() => memoryProvider.clear());
-
+describe("[P0-06] customer magic link", () => {
   it("emails a single-use link that signs the customer in (not MFA)", async () => {
     const email = testEmail("customer");
     await auth.api.signInMagicLink({
       body: { email, callbackURL: "/wallet" },
       headers: new Headers({ origin: "http://localhost:3000" }),
     });
-    const message = memoryProvider.outbox.find((m) => m.to === email);
-    expect(message?.kind).toBe("magic-link");
-    const link = message?.text.match(/https?:\/\/\S+/)?.[0];
+    // Real SMTP delivery, read back from Mailpit.
+    const message = await latestEmailTo(email);
+    expect(message.subject).toBe("Your Moz Rewards sign-in link");
+    const link = firstLink(message.text);
     expect(link).toBeDefined();
 
     const res = await auth.handler(

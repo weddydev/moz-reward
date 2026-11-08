@@ -1,39 +1,18 @@
 import { TOTP } from "otpauth";
-import { newId } from "@/lib/id";
-import { auth } from "@/server/auth/auth";
-import { hashPassword } from "@/server/auth/password";
+import { TEST_PASSWORD, fakeEmail, makeUser } from "./factories";
 
-export const TEST_PASSWORD = "correct-horse-battery-staple-42";
+export { TEST_PASSWORD };
 
-/** Unique, obviously-fake email per test run (never real personal data). */
-export const testEmail = (label: string) => `${label}.${newId().slice(-12)}@test.moz.invalid`;
+/** Unique, obviously-fake email per test (never real personal data). */
+export const testEmail = (label: string): string => fakeEmail(label);
 
-/** Creates a staff/admin-style user with an email+password credential (sign-up is disabled publicly). */
-export async function createPasswordUser(
-  opts: { email?: string; name?: string; password?: string } = {},
-) {
-  const ctx = await auth.$context;
-  const user = await ctx.internalAdapter.createUser(
-    {
-      email: opts.email ?? testEmail("staff"),
-      name: opts.name ?? "Test Staff",
-      emailVerified: true,
-    },
-    { method: "admin" },
-  );
-  await ctx.internalAdapter.linkAccount({
-    userId: user.id,
-    providerId: "credential",
-    accountId: user.id,
-    password: await hashPassword(opts.password ?? TEST_PASSWORD),
-  });
-  return user;
-}
+/** A staff/admin-style user with an email+password credential (public sign-up is disabled). */
+export const createPasswordUser = (opts: { email?: string; name?: string; password?: string } = {}) =>
+  makeUser({ ...opts, name: opts.name ?? "Test Staff" });
 
 /** Current TOTP code for an otpauth:// URI returned by twoFactor.enable. */
 export function totpFromUri(uri: string): string {
-  const url = new URL(uri);
-  const secret = url.searchParams.get("secret");
+  const secret = new URL(uri).searchParams.get("secret");
   if (!secret) throw new Error("TOTP URI has no secret");
   return new TOTP({ secret, digits: 6, period: 30 }).generate();
 }

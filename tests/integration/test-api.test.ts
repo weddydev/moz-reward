@@ -1,0 +1,49 @@
+import { eq } from "drizzle-orm";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const call = (mod: { POST: (req: Request, ctx: { params: Promise<{ action: string }> }) => Promise<Response> }, body: unknown, action = "session") =>
+  mod.POST(new Request("http://localhost:3000/api/test/session", { method: "POST", body: JSON.stringify(body) }), {
+    params: Promise.resolve({ action }),
+  });
+
+describe("[P0-17] test-only seeding API", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("creates an actor and an MFA-verified staff session when APP_ENV=test", async () => {
+    const route = await import("@/app/api/test/[action]/route");
+    const res = await call(route, { role: "owner" });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { userId: string; shopId: string | null };
+    expect(body.shopId).toBeTruthy();
+    expect(res.headers.getSetCookie().some((c) => c.includes("session_token="))).toBe(true);
+
+    const { db } = await import("@/server/db/client");
+    const { sessions } = await import("@/server/db/schema");
+    const rows = await db().select().from(sessions).where(eq(sessions.userId, body.userId));
+    expect(rows.map((r) => r.mfaVerified)).toEqual([true]);
+  });
+
+  it("gives customers a non-MFA session and rejects unknown roles", async () => {
+    const route = await import("@/app/api/test/[action]/route");
+    expect((await call(route, { role: "customer" })).status).toBe(200);
+    expect((await call(route, { role: "superuser" })).status).toBe(400);
+    expect((await call(route, { role: "customer" }, "drop-tables")).status).toBe(404);
+  });
+
+  it.each([
+    ["staging", "https://staging.mozrewards.co.uk"],
+    ["production", "https://mozrewards.co.uk"],
+  ])("returns 404 when APP_ENV=%s", async (appEnv, url) => {
+    vi.resetModules();
+    vi.stubEnv("APP_ENV", appEnv);
+    vi.stubEnv("APP_URL", url);
+    vi.stubEnv("EMAIL_PROVIDER", "resend");
+    vi.stubEnv("EMAIL_API_KEY", "re_test_key");
+    const route = await import("@/app/api/test/[action]/route");
+    const res = await call(route, { role: "admin_owner" });
+    expect(res.status).toBe(404);
+  });
+});
