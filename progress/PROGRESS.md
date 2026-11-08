@@ -3,30 +3,39 @@
 _Keep under ~150 lines. Overwrite sections; move history to SESSION_LOG.md._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-08 15:12
+Baton: free — last held by talha.syed, 2026-11-08 17:34
 
 ## Handoff note
 _Overwritten by `/handoff`. The next developer reads this first._
-- Handed over by: —
-- Finished: —
-- Half-done and how to continue: —
-- Tested (what, how, result): —
-- Not yet tested: —
-- Do first (env vars, migrations, seeds): —
+- **Handed over by:** talha.syed, 2026-11-08 17:34
+- **Finished (on `main`):** kit v2 audit (`progress/AUDIT.md`: 0 met / 7 partial / 9 missing, 1 critical MFA bypass) and kit v3 merge (P0-17 added, `/subphase-complete`, TESTING §7–8, H-18). `main` = `415686a` + this note. No code changed on `main` since the last green run.
+- **Half-done — P0-17 test infrastructure, on branch `wip/p0-17-test-infra` (`f5b6b3d`, pushed):**
+  - Built: Mailpit + MinIO in `docker-compose.yml`; fail-closed `src/server/env.ts` (`APP_ENV`/`APP_URL` required, local/test only on localhost, https elsewhere, `parseServerEnv` + `env.test.ts`); email providers SMTP (→ Mailpit) / Resend / Brevo with timeouts (console provider + `/api/dev/outbox` removed); `src/lib/codes.ts` (test-first, 8 tests pass); Vitest projects `unit` + `integration` (per-worker DBs `moz_test_w1..4` cloned from migrated `moz_test_template`, per-file truncation, `tests/support/db.ts`); factories `src/server/testing/factories.ts` (+ `makeActor(role)`); seeding API `src/app/api/test/[action]/route.ts` (`POST /api/test/session {role}`, 404 unless `APP_ENV=test`); `tests/support/mailpit.ts`, `storage.ts`; isolation demo `tests/integration/isolation-a/b.test.ts`; auth/authz tests migrated (Mailpit, factories, `[P0-xx]` titles); testUtils now only in `APP_ENV=test`.
+  - **Failing:** `pnpm exec vitest run --project integration` — every authz matrix case and "creates an actor and an MFA-verified staff session" fail. Not diagnosed yet. First look: `tests/authz/harness.ts` line ~63 still has a leftover `.insert(shopStaff)` from before the factory migration (imports were removed) — fix that, then re-run and read the first real error.
+  - **Not started in P0-17:** Playwright fixtures (console/network guard, `signInAs(role)` via `/api/test/session`, clock, `shoot()` to `.artifacts/screens/<task>/`, Mailpit asserts), Playwright projects `chromium/webkit/pixel7/iphone14/desktop1440` + test web server on port 3100 with `APP_ENV=test` and its own DB (plan: `distDir` from env so it can run beside `pnpm dev`), `/dev/guard-check` page + guard self-test (`test.fail()`), fakes for push/AI/postcodes/Places + S3 storage provider (MinIO) with integration test, Stryker config (rules modules: `authz/policies.ts`, `lib/return-to.ts`, `lib/codes.ts`), `tests/load/` k6 skeleton, scripts `test:int`, `test:regression` (per-suite counts), `test:mutation`, `test:load:smoke`, `test:live`, test-title check script; migrate `tests/e2e/*.spec.ts` (still use the removed `/api/dev/outbox`) onto the fixtures; DECISIONS entries (Chainguard MinIO image pinned by digest, SMTP/Mailpit replacing console email, test API in prod bundle but 404-gated).
+- **Tested:** on the WIP branch, `src/lib/codes.test.ts` 8/8 ✅; integration project ❌ (see above). On `main`: last full run `pnpm check` 170 ✅ and e2e 12/12 ✅ at `f92b32f`; nothing in code changed since.
+- **Not yet tested:** Google OAuth (H-03), passkeys on a real device, Resend/Brevo for real (H-04), the whole WIP branch end to end.
+- **Do first on the other laptop:**
+  1. `git pull` on `main`, run `/resume` (it will show this note), then `git checkout wip/p0-17-test-infra` to continue P0-17.
+  2. `pnpm install --frozen-lockfile` (new deps on the branch: nodemailer, @aws-sdk/client-s3).
+  3. `docker compose up -d --wait` (branch adds Mailpit :1025/:8025 and MinIO :9000/:9001).
+  4. `.env.local`: copy the shared one (H-02) and add/align from `.env.example` on the branch: `EMAIL_PROVIDER=smtp`, `SMTP_HOST=localhost`, `SMTP_PORT=1025`, `MAILPIT_API_URL=http://localhost:8025`, `S3_ENDPOINT=http://localhost:9000`, `S3_REGION=auto`, `S3_ACCESS_KEY_ID=moz`, `S3_SECRET_ACCESS_KEY=moz-minio-local`, `S3_BUCKET=moz-rewards`, `S3_FORCE_PATH_STYLE=true`, `S3_PUBLIC_BASE_URL=` (remove old `R2_*`). Note: `main`'s code still expects `EMAIL_PROVIDER=console` — use `smtp` only on the WIP branch.
+  5. Install GitHub CLI + `gh auth login` (H-18).
+  6. When P0-17 is green: merge the branch into `main` (fast-forward or merge commit), push, delete the branch, tick P0-17 only with evidence for every criterion, then continue the fix plan below.
 
 ## Status
 - **Phase:** P0 — Foundation and design system. Kit upgraded to 16 task briefs; audit done (`progress/AUDIT.md`): 0 fully met, 7 partial (P0-01/02/03/06/07/08/09), 9 missing. Fixing gaps in task order.
-- **Last updated:** 2026-11-08 audit, talha.syed session
+- **Last updated:** 2026-11-08 17:34 handoff, talha.syed
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
 ## Now
-- Security hotfix from the audit: block the staff/admin MFA bypass (magic link/Google → passkey) and remove fail-open env defaults (`APP_ENV`/`APP_URL` required, console email + dev outbox + testUtils only in local/test). Then P0-01 gaps.
+- P0-17 test infrastructure on branch `wip/p0-17-test-infra` (see Handoff note): fix failing integration project, then finish Playwright fixtures/guard, fakes, scripts, migrate e2e specs.
 
 ## Next (top 3)
-1. P0-01 gaps: `server-only` everywhere, ESLint strict-type-checked + import order + client→server boundary + hex ban, `exactOptionalPropertyTypes`, Vitest unit/integration split (`test:int`), Playwright pixel7/iphone14/desktop1440, lefthook, exact versions in DECISIONS
-2. P0-02 gaps: serverEnv/clientEnv + fail-fast via instrumentation, env tests, Mailpit in `infra/docker-compose.dev.yml`, README Local setup
-3. P0-03 gaps: content_settings, updated_at trigger, geography, `lib/codes.ts`, `repos/_base.ts`, db:seed/db:reset, constraint tests (then P0-04, P0-05, P0-06, P0-07, P0-08, P0-09 fixes, then P0-10+)
+1. Finish P0-17 and merge to `main` (criteria: parallel isolation demo, console guard fail→pass, `/api/test/*` 404 outside test, `pnpm test:regression` per-suite counts).
+2. Security hotfix from the audit: block staff/admin MFA bypass (magic link/Google → passkey) — refuse magic link + Google for staff/admin accounts, require MFA session to register passkeys, `userVerification: "required"`; fix `safeReturnTo` dot-segment bypass. (Fail-open env + dev outbox are already fixed on the WIP branch.)
+3. Then fix audit gaps in task order P0-01 → P0-09 (see `progress/AUDIT.md` "Fix plan"), each with evidence, then P0-04/05, then P0-10+. Close sub-phases only with `/subphase-complete`.
 
 ## Blockers
 - Human: none 🔴. 🟠 for end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-10 Sentry.

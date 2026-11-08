@@ -39,3 +39,9 @@ Done: kit upgraded (docs/phases briefs, ENGINEERING.md, code-reviewer); project-
 Result: 0 tasks fully met; partial P0-01/02/03/06/07/08/09; missing P0-04/05/10–16. Nothing ticked. Critical: staff/admin MFA bypass via magic link/Google → passkey (PoC). High: fail-open APP_ENV default, no headers/CSP, /dev 200 in prod, no Redis rate limiting, no server-only boundary, incomplete action template.
 Commits: 814f443 (kit), audit commit below
 Left off: security hotfix (MFA bypass + env defaults), then P0-01 gaps in order.
+
+## 2026-11-08 17:34 — P0 — kit v3 merge, P0-17 started (WIP branch), handoff
+Done: kit v3 merged into CLAUDE/PHASES/ARCHITECTURE/settings/HUMAN_TASKS/DECISIONS/README (415686a). P0-17 partly built on `wip/p0-17-test-infra` (f5b6b3d): Mailpit+MinIO, fail-closed env + tests, SMTP/Resend/Brevo email, codes.ts (8 tests ✅), Vitest unit/integration projects with per-worker DBs, factories, /api/test/session, Mailpit/MinIO helpers, isolation pair, migrated auth/authz tests.
+Tests: codes 8/8 ✅; integration project ❌ (authz world + test-api session failing, undiagnosed). main unchanged in code since last green (170 tests, e2e 12/12).
+Left off: diagnose integration failures (start with leftover `.insert(shopStaff)` in tests/authz/harness.ts ~line 63), then Playwright fixtures + guard, fakes, scripts.
+Notes: re-audit of ticked tasks against tightened ENGINEERING §1 = nothing to untick (no task was ticked). AUDIT.md still reflects kit v2 criteria; add v3 items (P0-02 MinIO, P0-14 additions, §1 items 6–8) when P0-17 lands.
