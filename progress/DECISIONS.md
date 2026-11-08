@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-08 — Authz matrix harness
+Decision: `tests/authz/harness.ts` builds real DB principals for 13 roles (anonymous, customer, other-shop staff/owner, own-shop staff/owner, owner without MFA, inactive staff, 4 admin roles, admin without MFA) and `authzMatrix("<action>", { allow, run })` asserts allow/deny for each. `coverage.test.ts` fails if any `export const x = defineAction(` lacks a matrix entry. Actions are run as a role via `runAsPrincipal()` (AsyncLocalStorage), which throws unless `APP_ENV=test`.
+Why: SECURITY §3 makes the matrix mandatory; real principals also exercise `loadPrincipal` (active flags, roles).
+Consequence: New actions must add a `*.authz.test.ts` entry or CI fails. Route handlers that mutate data must be added to the coverage guard when the first one appears.
+
 ## 2026-11-08 — Auth flows, MFA enforcement and session limits
 Decision: Customers: Google + magic link only. Staff/admin: email+password (Argon2id via `@node-rs/argon2`, HIBP check on password set) then mandatory TOTP or passkey; a password-only session goes straight to `/staff/security` to enrol, and enrolment ends with sign-out + fresh sign-in so the portal session is MFA-verified. `requireShopRole`/`requireAdminRole` deny unless `session.mfaVerified`; staff sessions are capped at 12 h and admin at 2 h **absolute** from sign-in (stricter than the idle timeout in SECURITY §5, and simple to prove).
 Why: one users table per PRODUCT §2 (customer can also be staff) means 2FA must be checked per session, not per account.

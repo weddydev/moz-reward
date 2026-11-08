@@ -15,18 +15,18 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Do first (env vars, migrations, seeds): —
 
 ## Status
-- **Phase:** P0 — Foundation and design system (in progress, 5 of 15 tasks)
+- **Phase:** P0 — Foundation and design system (in progress, 6 of 15 tasks)
 - **Last updated:** 2026-11-08, talha.syed session
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
 ## Now
-- P0 task 6: authz test harness (`tests/authz/`) with the role-matrix pattern.
+- P0 task 7: design tokens, fonts (Fraunces + Manrope via next/font), Tailwind theme, globals, reduced-motion handling.
 
 ## Next (top 3)
-1. Authz test harness (`tests/authz/`)
-2. Design tokens + fonts (Fraunces + Manrope), Tailwind theme, reduced motion
-3. UI primitives + `/dev/ui` gallery
+1. Design tokens + fonts (Fraunces + Manrope), Tailwind theme, reduced motion
+2. UI primitives + `/dev/ui` gallery (then restyle the auth pages with them)
+3. Motion primitives + `/dev/motion`
 
 ## Blockers
 - Human: none 🔴. 🟠 for end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-10 Sentry.
@@ -47,12 +47,14 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - `src/server/actionTemplate.ts` — `defineAction({input, authorize, handler})`; `src/server/errors.ts` AppError
 - `src/features/auth/` + `src/app/(public)/sign-in`, `/staff/sign-in`, `/staff/security` — sign-in UI (temporary styling)
 - `src/app/api/auth/[...all]` Better Auth handler; `src/app/api/dev/outbox` dev-only email reader
+- `tests/authz/` — matrix harness (`authzMatrix`, 13 roles, `runAsPrincipal`), coverage guard, probes; add a `*.authz.test.ts` for every new action
+- `src/server/services/` — `audit.ts` (recordAudit, hashIp), `flags.ts` (feature flags + FLAG_* env override); `src/features/flags/actions.ts` setFeatureFlag
 - `tests/fixtures/auth.ts` — `createPasswordUser`, `totpFromUri`, `testEmail`
 - `tests/integration/` — DB-backed tests (test DB `moz_test`, migrated by `tests/global-setup.ts`)
 - Configs: `vitest.config.mts`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc.json`, `pnpm-workspace.yaml` (allowed install scripts)
 
 ## Last verified
-- `pnpm check`: ✅ 2026-11-08 (41 tests: authz policies, actions, Argon2id, auth flow integration)
+- `pnpm check`: ✅ 2026-11-08 (136 tests incl. authz matrix 95; mutation check confirmed matrix catches a removed MFA rule)
 - `pnpm db:migrate` + `drizzle-kit check`: ✅ 2026-11-08, no drift
 - `pnpm build`: ✅ 2026-11-08
 - `pnpm e2e`: ✅ 2026-11-08 12/12 (smoke, magic link, staff TOTP enrol + sign-in) on chromium, webkit, pixel-7, iphone-14
