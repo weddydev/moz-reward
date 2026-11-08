@@ -13,6 +13,20 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-08 — Background jobs: BullMQ 6 design (P0-04)
+Decision: **bullmq 6.4.2 + ioredis 6.0.0**, pinned exactly. 6.4.2 is the newest release at least two weeks old; BullMQ shipped 6.5–6.7 this week, which is too fresh. The `msgpackr-extract` native build is not approved; BullMQ falls back to pure JS.
+- Queue registry: `src/server/jobs/registry.ts` (7 queues, concurrency, Zod payload per job). Typed `enqueue()` validates the payload and throws `EnqueueInTransactionError` inside a repo `transaction()` (AsyncLocalStorage), so jobs only follow commits. Pass `jobId` for idempotency.
+- Retries: 3 attempts, exponential backoff from 2 s. On the final attempt, or an `UnrecoverableError` such as a malformed payload, the processor wrapper writes `failed_jobs` (redacted payload and error) before BullMQ marks the job failed, so shutdown can't lose a dead letter.
+- Schedules are defined in code (Europe/London) and registered by `upsertJobScheduler`; ids no longer in code are removed, so restarts never double-register.
+- `scheduled:heartbeat` runs every minute and writes `job_heartbeats`.
+- Shutdown: `createShutdown()` handles the first signal only, waits for in-flight jobs, and exits 1 after 45 s; a crashed worker's job is recovered by stalled-job detection.
+Why: ARCHITECTURE §6 and ENGINEERING §5. The DLQ lives in Postgres so the super-admin page (later) is a simple table query, and BullMQ's own failed set in Redis expires after 7 days.
+Consequence:
+- New jobs go into `JOBS` and `HANDLERS`, and handlers must be idempotent.
+- Producers fail fast when Redis is down (no offline queue), so callers must handle the enqueue error.
+- SIGTERM can't be delivered on Windows (Node terminates the process), so the signal path is unit-tested here and proven on the Linux staging deploy (P0-15).
+- Queueing the magic-link email (the low timing finding) is deferred to P0-06, because it needs the worker running in E2E.
+
 ## 2026-11-08 — Scoped data access: branded scopes + repositories (P0-03)
 Decision: `requireCustomer` / `requireShopRole` / `requireAdminRole` now return branded, frozen scopes (`src/server/authz/scope.ts`). Repositories (`src/server/repos/*`) reach the DB only through `dbFor(scope)` / `transaction(scope, fn)`, and build tenant filters with `inShop(col, scope)` / `ownedBy(col, scope)`. Work no user asked for uses `systemScope("why")`. ESLint enforces three rules: only repos, `db/`, `auth/`, `authz/principal.ts` and `testing/` may import `db`; only `authz/` (and testing) may mint scopes; `as …Scope` casts are banned. A plain object does not type-check as a scope.
 Why: the brief asks that unscoped access be awkward. A brand, a lint rule and filters built from the scope make a cross-shop query take deliberate effort, and the effort shows up in review.

@@ -29,6 +29,13 @@
       "when": 1794154354618,
       "tag": "0003_triggers_and_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794155979260,
+      "tag": "0004_jobs",
+      "breakpoints": true
     }
   ]
 }

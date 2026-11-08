@@ -1,4 +1,5 @@
 import "server-only";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { and, eq, type SQL } from "drizzle-orm";
 import type { CustomerScope, Scope, ShopScope } from "@/server/authz/scope";
 import { type Database, db, type Transaction } from "@/server/db/client";
@@ -18,10 +19,19 @@ export function dbFor(_scope: Scope, tx?: Transaction): Executor {
   return tx ?? db();
 }
 
+const insideTransaction = new AsyncLocalStorage<true>();
+
 /** Runs `fn` in one transaction for an authorised caller. */
 export function transaction<T>(_scope: Scope, fn: (tx: Transaction) => Promise<T>): Promise<T> {
-  return db().transaction(fn);
+  return insideTransaction.run(true, () => db().transaction(fn));
 }
+
+/**
+ * True while code runs inside `transaction()`. Side effects that must only follow a commit (enqueueing jobs,
+ * sending email) check this and refuse, so a rolled-back transaction can never leave a job pointing at rows
+ * that do not exist.
+ */
+export const isInsideTransaction = (): boolean => insideTransaction.getStore() === true;
 
 const withExtra = (base: SQL, extra: ReadonlyArray<SQL | undefined>): SQL =>
   extra.length === 0 ? base : (and(base, ...extra) ?? base);
