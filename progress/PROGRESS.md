@@ -16,13 +16,13 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - **Windows laptop note:** `.env.local` in place (H-02, 8 Nov); `SENTRY_DSN` added (H-10): add it to the Mac copy via the shared note.
 
 ## Status
-- **Phase:** P0 — Foundation and design system. P0-A closed; P0-05 met; P0-06 rework in progress (piece A done). Remaining partial: P0-06/07/08/09; missing: P0-10…16.
-- **Last updated:** 2026-11-09 12:16, Syedbadeshah76
+- **Phase:** P0 — Foundation and design system. P0-A closed; P0-05 met; P0-06 rework in progress (pieces A + C done; B + D left). Remaining partial: P0-06/07/08/09; missing: P0-10…16.
+- **Last updated:** 2026-11-09 12:39, Syedbadeshah76
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
 ## Now
-- **P0-06 rework in progress** (not ticked). Piece A done and pushed (`d7f2c34`): magic link with Turnstile (header `x-turnstile-token`) + 5/h/email (HMAC key) + 20/h/IP (skipped when IP is `local`), hashed token storage, delivery via `after()` (identical answer/timing for known/unknown/staff), React Email template, `/sign-in/link-expired` page, Google errors → `/sign-in?error=google`, QA-1…4 fixed (offline via `withNetworkGuard`, in-flight ref, invalid-email field error, long email wrap). E2E staff TOTP flake root-caused (one flow > 30 s under WebKit load) and fixed by splitting; test API `user` takes `totp: true`.
+- **P0-06 rework in progress** (not ticked). Done and pushed: piece A, the sign-in link (`d7f2c34`: Turnstile, limits, hashed tokens, after-response delivery, React Email, `/sign-in/link-expired`, QA-1…4). Piece C, staff (`6131b96` security #5: the enrolment verify no longer mints an MFA session; `c8b3a4d` staff login 10/15 min/IP + per-account pause 1→15 min + lockout email + second-factor IP limit; `780ffbe` own HIBP check with timeout and fail-open, TOTP ±1 and recovery-reuse tests). Recovery codes stay encrypted (DECISIONS).
 - P0-05 met earlier today (proxy/CSP, limiter, logger, Turnstile, audit; PPR off — DECISIONS).
 
 ## P0-A follow-ups (from reviews + QA; owners noted)
@@ -33,9 +33,9 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Open, small: CR-M3 `enqueue` timeout (`commandTimeout` + unreachable-Redis test); CR-L2 schedule pruning during rolling deploys; CR-L4 `dbFor().transaction` bypasses the ALS guard; CR-L6 migration checker gaps; CR-L7 RuleTester for `no-server-in-client`; SEC-L2 gitleaks image digest; SEC-L4 + QA-9 test API: token/loopback gate and 404 (not 405) for every method.
 
 ## Next (top 3)
-1. P0-06 piece C (staff): security #5 — the enrolment `verify-totp` (request carries a valid session cookie) must not mint `mfaVerified` sessions, only the sign-in challenge (two-factor cookie) does; staff login limit 10/15 min/IP + per-account backoff + lockout email; own HIBP k-anonymity check with timeout, fail-open + warning; TOTP ±1 step and recovery-code reuse tests. Test-first (`tests/integration/auth-flows.test.ts`, `mfa-bypass.test.ts`).
-2. P0-06 pieces B + D: reject unverified Google emails (DB hook) + account-linking rule in DECISIONS; `__Host-` cookies on https; revoke sessions on role change (`repos/sessions.ts deleteUserSessions`); session list + "sign out everywhere"; customer 30 d timeout test with injected clock; user deleted mid-session test; optional `CHECK (email = lower(email))`. Then screenshots of sign-in screens (320/390 Chromium+WebKit, 1440) and walk the P0-06 acceptance list → tick.
-3. P0-07 (incl. security #8, defineAction + requestLogger + audit + 429), then `/subphase-complete P0-B`.
+1. P0-06 piece B: reject unverified Google emails (DB hook on user/account create from `/callback/google`; test with a stubbed profile) + document the account-linking rule (one user per verified email; Google and magic link resolve to the same user) in DECISIONS.
+2. P0-06 piece D: `__Host-` cookie names on https (`advanced.cookies`); revoke sessions on role change (`repos/sessions.ts deleteUserSessions` from the staff/admin role writers); session list + "sign out everywhere" (Better Auth `listSessions`/`revokeOtherSessions`, page under /staff/security and a customer equivalent); customer 30-day timeout test with an injected clock; user deleted mid-session test; optional `CHECK (email = lower(email))` migration. Then screenshots of the sign-in screens (320/390 Chromium+WebKit, 1440), walk the P0-06 acceptance list, and tick it.
+3. P0-07 (security #8, defineAction + requestLogger + audit + 429 mapping), then `/subphase-complete P0-B`.
 
 ## Blockers
 - Human: 🔴 none blocking code work. 🟠 by 13 Nov: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-20 Turnstile keys, H-17 permissions decision.
@@ -52,7 +52,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - `src/server/authz/scope.ts` — branded scopes from `require*`; `src/server/repos/` — the only DB access for features (`_base.ts`: `dbFor`, `transaction`, `inShop`, `ownedBy`; ESLint-enforced)
 - `drizzle/` — SQL migrations (0000 init, 0001 append-only trigger, 0002 hardening + geography, 0003 `reject_mutation()`/`set_updated_at()`/`moz_app` role); destructive statements need `-- contract:` (`scripts/check-migrations.ts`)
 - `src/server/integrations/` — `email/` (SMTP→Mailpit, Resend, Brevo), `storage/` (S3: MinIO/R2), fakes `push/`, `ai/`, `postcodes/`, `places/` (fail closed outside local/test), `fake-support.ts`
-- `src/server/auth/magic-link.ts` (request checks + after-response delivery), `src/server/emails/` (React Email templates), `src/features/auth/network.ts` (`withNetworkGuard`), `src/server/repos/sessions.ts`, `/sign-in/link-expired`
+- `src/server/auth/magic-link.ts` (request checks + after-response delivery), `staff-login.ts` (throttle/backoff/lockout email), `src/server/integrations/breach/` (HIBP k-anonymity), `src/server/security/email-key.ts`, `src/server/emails/` (React Email templates), `src/features/auth/network.ts` (`withNetworkGuard`), `src/server/repos/sessions.ts`, `/sign-in/link-expired`
 - `src/server/auth/` — Better Auth `auth.ts` (Google, magic link, staff password Argon2id, TOTP, passkey, HIBP, testUtils only in `APP_ENV=test`), `session.ts`, `mfa.ts`
 - `src/server/authz/` — pure `decide*` policies + `requireCustomer/requireShopRole/requireAdminRole`
 - `src/server/actionTemplate.ts` — `defineAction({input, authorize, handler})`; `src/server/errors.ts` AppError
@@ -69,7 +69,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Configs: `vitest.config.mts`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc.json`, `pnpm-workspace.yaml`
 
 ## Last verified
-- `pnpm check`: ✅ 2026-11-09 243 unit; `pnpm test:int` ✅ 171 (magic-link.test 8); `pnpm e2e` ✅ 87/87 full run (68 intended skips); auth.spec 24/24 under `--repeat-each 4` on WebKit + iphone14; `build` ✅ (earlier today)
+- `pnpm check`: ✅ 2026-11-09 247 unit; `pnpm test:int` ✅ 181 (magic-link 8, staff-login 6, MFA edge cases); `pnpm e2e` ✅ 87/87 full run (68 intended skips); auth.spec 24/24 under `--repeat-each 4` on WebKit + iphone14; `build` ✅ (earlier today)
 - P0-A gate 2026-11-09: QA agent regression (check 205, int 151, e2e 2 of 3 runs clean, gallery flake root-caused and fixed), then the 3 clean runs above; `build` ✅, `check:bundle` ✅ 45 names / 19 files, `test:titles --strict` ✅
 - `pnpm test:mutation`: ✅ 90.1% (break 80); `pnpm test:live`: storage ✅, email skipped (H-04); `pnpm test:load:smoke`: runs (Docker k6), checks 100%, action p95 458 ms on `next dev` (not meaningful; staging gate)
 - `pnpm test:titles --strict`: ✅ every test tagged
