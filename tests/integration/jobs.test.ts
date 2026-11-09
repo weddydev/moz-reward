@@ -7,8 +7,14 @@ import { failedJobs, jobHeartbeats } from "@/server/db/schema";
 import { closeQueues, EnqueueInTransactionError, enqueue, getQueue } from "@/server/jobs/queues";
 import { REDACTED } from "@/server/jobs/redact";
 import { registerSchedules, SCHEDULE_TZ, type ScheduleDef } from "@/server/jobs/scheduler";
-import { createQueueWorker, type Processor, startWorkers } from "@/server/jobs/worker";
+import {
+  createQueueWorker,
+  type Processor,
+  type RecordFailure,
+  startWorkers,
+} from "@/server/jobs/worker";
 import { transaction } from "@/server/repos/_base";
+import { recordFailedJob } from "@/server/repos/jobs";
 import type { Job } from "bullmq";
 
 const open: { close: () => Promise<void> }[] = [];
@@ -195,6 +201,84 @@ describe("[P0-04] retries and dead letters", () => {
     expect(row?.error).toContain("cannot email");
     expect(row?.error).not.toContain("jo@example.co.uk");
     await waitFor(async () => (await stateOf(queue, job.id ?? "")) === "failed");
+  });
+
+  it("a job that stalls past the limit (worker crashed twice) is dead-lettered although no processor finished", async () => {
+    const queue = `t-${newId()}`;
+    const timings = { concurrency: 1, lockDuration: 500, stalledInterval: 250 };
+    const job = await getQueue(queue).add("crashy", { userId: "u-1" }, { attempts: 3 });
+    const crashWhileHolding = async (): Promise<void> => {
+      let started = false;
+      const doomed = createQueueWorker(
+        queue,
+        () => {
+          started = true;
+          return new Promise(() => {}); // hangs: the process "dies" holding the job
+        },
+        timings,
+      );
+      await waitFor(async () => started);
+      await doomed.worker.close(true); // force: lock not released, like a killed process
+      await doomed.connection.quit();
+    };
+    await crashWhileHolding();
+    await crashWhileHolding(); // second stall exceeds maxStalledCount (1)
+    let ranAgain = false;
+    const next = createQueueWorker(
+      queue,
+      async () => {
+        ranAgain = true;
+      },
+      timings,
+    );
+    open.push({
+      close: async () => {
+        await next.worker.close();
+        await next.connection.quit();
+      },
+    });
+    const [row] = await waitFor(async () => {
+      const rows = await db().select().from(failedJobs).where(eq(failedJobs.queue, queue));
+      return rows.length > 0 ? rows : undefined;
+    });
+    expect(ranAgain).toBe(false);
+    expect(row).toMatchObject({ jobName: "crashy", jobId: job.id, payload: { userId: "u-1" } });
+    expect(row?.error).toMatch(/stalled more than allowable limit/);
+    await waitFor(async () => (await stateOf(queue, job.id ?? "")) === "failed");
+  });
+
+  it("a dead letter survives a failing DB write on the final attempt and keeps the original error", async () => {
+    const queue = `t-${newId()}`;
+    let writes = 0;
+    const flakyRecord: RecordFailure = async (scope, row) => {
+      writes++;
+      if (writes === 1) throw new Error("Connection terminated unexpectedly");
+      await recordFailedJob(scope, row);
+    };
+    const { worker: w, connection } = createQueueWorker(
+      queue,
+      async () => {
+        throw new Error("smtp refused");
+      },
+      { concurrency: 1, recordFailure: flakyRecord },
+    );
+    open.push({
+      close: async () => {
+        await w.close();
+        await connection.quit();
+      },
+    });
+    const job = await getQueue(queue).add("doomed", {}, { attempts: 1 });
+    const [row] = await waitFor(async () => {
+      const rows = await db().select().from(failedJobs).where(eq(failedJobs.queue, queue));
+      return rows.length > 0 ? rows : undefined;
+    });
+    expect(writes).toBe(2);
+    expect(row).toMatchObject({ jobName: "doomed", jobId: job.id, attempts: 1 });
+    expect(row?.error).toContain("smtp refused");
+    expect(row?.error).not.toContain("Connection terminated");
+    await waitFor(async () => (await stateOf(queue, job.id ?? "")) === "failed");
+    expect((await getQueue(queue).getJob(job.id ?? ""))?.failedReason).toBe("smtp refused");
   });
 
   it("a malformed registry payload is dead-lettered at once (no pointless retries)", async () => {

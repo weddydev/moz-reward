@@ -9,7 +9,7 @@ import { env } from "@/server/env";
 import { closeQueues } from "@/server/jobs/queues";
 import { registerSchedules } from "@/server/jobs/scheduler";
 import { createShutdown } from "@/server/jobs/shutdown";
-import { startWorkers } from "@/server/jobs/worker";
+import { type RunningWorkers, startWorkers } from "@/server/jobs/worker";
 
 /** Longest we wait for in-flight jobs on shutdown (container stop grace period is 60 s). */
 const SHUTDOWN_TIMEOUT_MS = 45_000;
@@ -26,12 +26,14 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const running = startWorkers();
-  const schedules = await registerSchedules();
-  log("worker.started", { queues: running.workers.map((w) => w.name), schedules });
-
+  // Signal handlers go in before any worker starts, so a stop during start-up is still graceful.
+  const started: { running?: RunningWorkers } = {};
   const shutdown = createShutdown({
-    close: () => Promise.all([running.close(), closeQueues()]).then(() => undefined),
+    // Workers first: in-flight handlers may still enqueue follow-up jobs on the producer connection.
+    close: async () => {
+      await started.running?.close();
+      await closeQueues();
+    },
     exit: (code) => process.exit(code),
     log,
     timeoutMs: SHUTDOWN_TIMEOUT_MS,
@@ -42,6 +44,11 @@ async function main(): Promise<void> {
   process.on("SIGINT", () => {
     void shutdown("SIGINT");
   });
+
+  const running = startWorkers();
+  started.running = running;
+  const schedules = await registerSchedules();
+  log("worker.started", { queues: running.workers.map((w) => w.name), schedules });
 }
 
 void main().catch((err: unknown) => {
