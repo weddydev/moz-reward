@@ -1,0 +1,24 @@
+# Line endings (P0-14): the repository and every working copy use LF, whatever the
+# machine's core.autocrlf says, so Prettier (endOfLine: lf) and CI agree on Windows and Mac.
+* text=auto eol=lf
+
+# Windows scripts keep CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets: never normalised or diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.mp3 binary
+*.ogg binary
+*.wav binary
+*.pdf binary
+*.zip binary

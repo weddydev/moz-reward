@@ -31,6 +31,9 @@ function resolveProvider(): PushProvider {
   return fakeProvider;
 }
 
-export async function sendPush(subscription: PushSubscriptionTarget, payload: PushPayload): Promise<void> {
+export async function sendPush(
+  subscription: PushSubscriptionTarget,
+  payload: PushPayload,
+): Promise<void> {
   await resolveProvider().send(subscription, payload);
 }

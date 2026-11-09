@@ -24,7 +24,8 @@ export function baseTestUrl(): string {
 const baseName = (): string => new URL(baseTestUrl()).pathname.slice(1);
 export const templateName = (): string => `${baseName()}_template`;
 export const workerDbName = (poolId: string | number): string => `${baseName()}_w${poolId}`;
-export const workerDbUrl = (poolId: string | number): string => withDatabase(baseTestUrl(), workerDbName(poolId));
+export const workerDbUrl = (poolId: string | number): string =>
+  withDatabase(baseTestUrl(), workerDbName(poolId));
 
 async function admin<T>(fn: (sql: postgres.Sql) => Promise<T>): Promise<T> {
   const sql = postgres(withDatabase(baseTestUrl(), "postgres"), { max: 1, onnotice: () => {} });
@@ -40,7 +41,9 @@ export async function assertDatabaseReachable(): Promise<void> {
   try {
     await admin((sql) => sql`select 1`);
   } catch {
-    throw new Error("Postgres is not reachable. Start Docker Desktop, then run `pnpm services:up`.");
+    throw new Error(
+      "Postgres is not reachable. Start Docker Desktop, then run `pnpm services:up`.",
+    );
   }
 }
 
@@ -48,13 +51,15 @@ export async function assertDatabaseReachable(): Promise<void> {
 export async function prepareWorkerDatabases(workers = INTEGRATION_WORKERS): Promise<void> {
   const template = templateName();
   await admin(async (sql) => {
-    for (let i = 1; i <= workers; i++) await sql.unsafe(`DROP DATABASE IF EXISTS "${workerDbName(i)}" WITH (FORCE)`);
+    for (let i = 1; i <= workers; i++)
+      await sql.unsafe(`DROP DATABASE IF EXISTS "${workerDbName(i)}" WITH (FORCE)`);
     await sql.unsafe(`DROP DATABASE IF EXISTS "${template}" WITH (FORCE)`);
     await sql.unsafe(`CREATE DATABASE "${template}"`);
   });
   await runMigrations(withDatabase(baseTestUrl(), template));
   await admin(async (sql) => {
-    for (let i = 1; i <= workers; i++) await sql.unsafe(`CREATE DATABASE "${workerDbName(i)}" TEMPLATE "${template}"`);
+    for (let i = 1; i <= workers; i++)
+      await sql.unsafe(`CREATE DATABASE "${workerDbName(i)}" TEMPLATE "${template}"`);
   });
 }
 

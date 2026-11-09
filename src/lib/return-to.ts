@@ -5,7 +5,13 @@ const ENCODED_SEPARATOR = /%2f|%5c/i;
 
 /** Allowlisted internal return paths only (SECURITY.md §4): must be a same-origin path. */
 export function safeReturnTo(value: string | null | undefined, fallback = "/wallet"): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\") || CONTROL_CHARS.test(value))
+  if (
+    !value ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\") ||
+    CONTROL_CHARS.test(value)
+  )
     return fallback;
   try {
     const base = "http://internal.invalid";

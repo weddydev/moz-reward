@@ -7,8 +7,9 @@ export { TEST_PASSWORD };
 export const testEmail = (label: string): string => fakeEmail(label);
 
 /** A staff/admin-style user with an email+password credential (public sign-up is disabled). */
-export const createPasswordUser = (opts: { email?: string; name?: string; password?: string } = {}) =>
-  makeUser({ ...opts, name: opts.name ?? "Test Staff" });
+export const createPasswordUser = (
+  opts: { email?: string; name?: string; password?: string } = {},
+) => makeUser({ ...opts, name: opts.name ?? "Test Staff" });
 
 /** Current TOTP code for an otpauth:// URI returned by twoFactor.enable. */
 export function totpFromUri(uri: string): string {

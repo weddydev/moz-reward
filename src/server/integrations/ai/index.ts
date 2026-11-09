@@ -16,9 +16,13 @@ export class AiUnavailableError extends Error {
   }
 }
 
-export type AiScript = { mode: "ok"; text: string } | { mode: "error" } | { mode: "timeout" } | { mode: "empty" };
+export type AiScript =
+  { mode: "ok"; text: string } | { mode: "error" } | { mode: "timeout" } | { mode: "empty" };
 
-const DEFAULT_SCRIPT: AiScript = { mode: "ok", text: "Thanks for a lovely visit — friendly staff and great coffee." };
+const DEFAULT_SCRIPT: AiScript = {
+  mode: "ok",
+  text: "Thanks for a lovely visit — friendly staff and great coffee.",
+};
 const state = processState<{ script: AiScript }>("ai", () => ({ script: DEFAULT_SCRIPT }));
 
 /** Scripted fake (TESTING §9) with failure modes, controllable from tests and `/api/test/fakes`. */

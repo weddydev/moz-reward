@@ -27,7 +27,9 @@ function main(): void {
     .filter((f) => !ALLOWED.has(f))
     .flatMap((f) => hexLines(readFileSync(f, "utf8")).map((line) => `${f}:${line}`));
   if (problems.length > 0) {
-    console.error(`[css] hard-coded hex colours (use tokens from src/styles/tokens.css):\n${problems.map((p) => `  ${p}`).join("\n")}`);
+    console.error(
+      `[css] hard-coded hex colours (use tokens from src/styles/tokens.css):\n${problems.map((p) => `  ${p}`).join("\n")}`,
+    );
     process.exit(1);
   }
 }

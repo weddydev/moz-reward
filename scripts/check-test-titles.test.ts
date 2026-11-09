@@ -13,7 +13,10 @@ describe("[P0-17] test title checker", () => {
 
   it("reports untagged tests with file and line", () => {
     const src = `describe("auth", () => {\n  it("signs in", () => {});\n});\ntest.skip("todo later", () => {});`;
-    expect(untaggedTests("b.test.ts", src)).toEqual(["b.test.ts:2  signs in", "b.test.ts:4  todo later"]);
+    expect(untaggedTests("b.test.ts", src)).toEqual([
+      "b.test.ts:2  signs in",
+      "b.test.ts:4  todo later",
+    ]);
   });
 
   it("ignores hooks and configuration calls", () => {

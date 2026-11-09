@@ -303,7 +303,7 @@ importers:
         specifier: ^9.6.0
         version: 9.6.0
       prettier:
-        specifier: ^3.9.10
+        specifier: 3.9.10
         version: 3.9.10
       prettier-plugin-tailwindcss:
         specifier: ^0.8.1

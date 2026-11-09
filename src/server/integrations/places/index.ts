@@ -8,9 +8,27 @@ export interface PlacesProvider {
 }
 
 const FIXTURES: Place[] = [
-  { placeId: "fixture-brew-bloom", name: "Brew & Bloom Café", address: "12 Parkway, London NW1 7JR", lat: 51.5413, lng: -0.1466 },
-  { placeId: "fixture-patels", name: "Patel's Corner Store", address: "4 High Street, Leicester LE1 5WW", lat: 52.6349, lng: -1.1316 },
-  { placeId: "fixture-glow", name: "Glow Studio", address: "20 Market Street, Manchester M1 1AE", lat: 53.4794, lng: -2.2453 },
+  {
+    placeId: "fixture-brew-bloom",
+    name: "Brew & Bloom Café",
+    address: "12 Parkway, London NW1 7JR",
+    lat: 51.5413,
+    lng: -0.1466,
+  },
+  {
+    placeId: "fixture-patels",
+    name: "Patel's Corner Store",
+    address: "4 High Street, Leicester LE1 5WW",
+    lat: 52.6349,
+    lng: -1.1316,
+  },
+  {
+    placeId: "fixture-glow",
+    name: "Glow Studio",
+    address: "20 Market Street, Manchester M1 1AE",
+    lat: 53.4794,
+    lng: -2.2453,
+  },
 ];
 
 const fixtureProvider: PlacesProvider = {

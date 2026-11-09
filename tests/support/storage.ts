@@ -9,7 +9,10 @@ export async function ensureBucket(): Promise<void> {
     endpoint,
     region: process.env.S3_REGION ?? "auto",
     forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
-    credentials: { accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "", secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "" },
+    credentials: {
+      accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
+      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
+    },
   });
   try {
     await client.send(new HeadBucketCommand({ Bucket: bucket }));
@@ -17,7 +20,9 @@ export async function ensureBucket(): Promise<void> {
     try {
       await client.send(new CreateBucketCommand({ Bucket: bucket }));
     } catch (err) {
-      throw new Error(`MinIO is not reachable or the bucket could not be created. Run \`pnpm services:up\`. (${(err as Error).name})`);
+      throw new Error(
+        `MinIO is not reachable or the bucket could not be created. Run \`pnpm services:up\`. (${(err as Error).name})`,
+      );
     }
   } finally {
     client.destroy();

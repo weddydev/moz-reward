@@ -35,7 +35,10 @@ export default defineConfig({
     { name: "webkit", use: { ...devices["Desktop Safari"] } },
     { name: "pixel7", use: { ...devices["Pixel 7"] } },
     { name: "iphone14", use: { ...devices["iPhone 14"] } },
-    { name: "desktop1440", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    {
+      name: "desktop1440",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+    },
   ],
   // Remote targets (staging) are already running: no local web server at all.
   ...(isRemote

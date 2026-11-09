@@ -31,8 +31,12 @@ describe("[P0-17] object storage (S3 provider against MinIO)", () => {
 
   it("rejects keys that try to escape their prefix", async () => {
     const { storage } = await import("@/server/integrations/storage");
-    await expect(storage.put("../etc/passwd", Buffer.from("x"), "text/plain")).rejects.toThrow(/invalid storage key/);
-    await expect(storage.put("/abs/key", Buffer.from("x"), "text/plain")).rejects.toThrow(/invalid storage key/);
+    await expect(storage.put("../etc/passwd", Buffer.from("x"), "text/plain")).rejects.toThrow(
+      /invalid storage key/,
+    );
+    await expect(storage.put("/abs/key", Buffer.from("x"), "text/plain")).rejects.toThrow(
+      /invalid storage key/,
+    );
   });
 
   it("fails closed with a clear error when S3 is not configured", async () => {
