@@ -34,6 +34,9 @@ FROM base AS runtime
 ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0
+# The runtime never uses npm (node runs directly; pnpm comes from corepack), and the npm bundled in the base
+# image carries HIGH CVEs (undici, brace-expansion — Trivy, first main run). Remove it.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 # Non-root (SECURITY §11). Files stay root-owned and read-only to the app user.
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/.next ./.next

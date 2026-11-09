@@ -28,6 +28,11 @@ Decision: `auth.ts` exports `getAuth()` (memoised `createAuth()`) instead of a m
 Why: `next build` imports route modules to collect config; a module-level Better Auth instance read runtime secrets, so the production image could not be built without secrets (it must never be). The image context also leaves out tests/. Env is still validated at boot by instrumentation.ts; config values are unchanged (security-reviewer: no finding).
 Consequence / revisit when: new modules must not read `env()` at import time. Known gap (CARRIED C-09 → P0-19): the image logs the invalid-env error at boot but the Next process keeps running.
 
+## 2026-11-10 — Trivy: npm removed from the runtime; dev-tool binaries skipped until P0-15 (P0-14)
+Decision: the runtime stage deletes the base image's npm (6 HIGH: undici, brace-expansion; never used at runtime). Trivy skips only `@esbuild+*` and `lefthook-*` (Go binaries with old stdlib: 3 CRITICAL, ~60 HIGH), as CARRIED C-21 → P0-15.
+Why: they ship only because the runtime still copies the full node_modules for the tsx worker; the proper fix (Next standalone + bundled worker) is P0-15's planned slimming. Nothing is deployed before P0-15, and P0-15 cannot be ticked until Trivy passes with no skips.
+Consequence / revisit when: P0-15 removes the `--skip-dirs` in ci.yml.
+
 ## 2026-11-10 — Interactive buttons disabled until hydration (P0-14)
 Decision: client components whose buttons do work (DeviceList, SignOutButton; earlier EnrolTotp and the sign-in form) render them disabled until `useHydrated()` is true. UI primitives get the same rule in P0-09 (CARRIED C-20).
 Why: on a production build the server-rendered button is visible and focusable before React attaches handlers; a press in that window is silently lost (CI's slower runner hit it: confirm never opened). Disabled also makes Playwright wait correctly.
