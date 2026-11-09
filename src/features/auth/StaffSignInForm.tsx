@@ -39,7 +39,12 @@ export function StaffSignInForm(): React.JSX.Element {
     }
     const { data, error: err } = call.value;
     if (err) {
-      setError(err.status === 429 ? "Too many attempts — please wait and try again." : GENERIC);
+      // 429 messages come from our limiter and say how long to wait ("Please wait 1 minute…"): keep them.
+      setError(
+        err.status === 429
+          ? (err.message ?? "Too many attempts. Please wait and try again.")
+          : GENERIC,
+      );
       return;
     }
     if ("twoFactorRedirect" in data && data.twoFactorRedirect) {
@@ -69,8 +74,15 @@ export function StaffSignInForm(): React.JSX.Element {
       setError(call.message);
       return;
     }
-    if (call.value.error) {
-      setError("That code didn't work. Check your authenticator app and try again.");
+    const codeError = call.value.error;
+    if (codeError) {
+      setError(
+        codeError.status === 429
+          ? (codeError.message ?? "Too many attempts. Please wait and try again.")
+          : useBackup
+            ? "That backup code didn't work. Each code works once — try another one."
+            : "That code didn't work. Check your authenticator app and try again.",
+      );
       return;
     }
     router.push(returnTo);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge, Button } from "@/components/ui";
 import { cx } from "@/lib/cx";
 import { withNetworkGuard } from "./network";
@@ -18,7 +18,9 @@ export type DeviceRow = {
 /**
  * Signed-in devices (SECURITY §2): sign one other device out, or sign out everywhere (this device too, after
  * an inline confirm). No motion: a rarely used, functional screen. Every request is guarded against double
- * taps and network failures, and the result is announced in a live region.
+ * taps and network failures, and the result is announced in a live region. Focus never falls to <body>:
+ * the confirm takes focus when it opens, Cancel/Escape return it to the trigger, and after a device is
+ * removed focus moves to the list heading (P0-B QA).
  */
 export function DeviceList({
   devices,
@@ -32,6 +34,28 @@ export function DeviceList({
   const [pending, setPending] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [status, setStatus] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+  /** Where focus goes after the next render: the element that replaces the one that was just removed. */
+  const focusAfterRender = useRef<string | null>(null);
+  const setFocusTarget = (id: string): void => {
+    focusAfterRender.current = id;
+  };
+
+  useEffect(() => {
+    const id = focusAfterRender.current;
+    if (!id) return;
+    focusAfterRender.current = null;
+    document.getElementById(id)?.focus();
+  });
+
+  function openConfirm(): void {
+    setConfirming(true);
+    setFocusTarget("confirm-everywhere-yes");
+  }
+
+  function closeConfirm(): void {
+    setConfirming(false);
+    setFocusTarget("sign-out-everywhere");
+  }
 
   async function run<T>(
     key: string,
@@ -60,6 +84,7 @@ export function DeviceList({
     const done = await run(device.id, () => signOutOtherDevice({ sessionId: device.id }));
     if (done === null) return;
     setStatus({ tone: "ok", text: `Signed out of ${device.device}.` });
+    setFocusTarget("devices-heading"); // its row (and the focused button) is about to disappear
     router.refresh();
   }
 
@@ -72,13 +97,14 @@ export function DeviceList({
 
   return (
     <section aria-labelledby="devices-heading" className="flex flex-col gap-4">
-      <h2 id="devices-heading" className="text-h3">
+      <h2 id="devices-heading" tabIndex={-1} className="text-h3 outline-none">
         Signed-in devices
       </h2>
       <ul className="border-line divide-line flex flex-col divide-y rounded-md border">
         {devices.map((device) => (
           <li key={device.id} className="flex flex-wrap items-center gap-3 p-4">
-            <div className="min-w-0 flex-1">
+            {/* basis-48: on narrow screens the button wraps below instead of squeezing the dates */}
+            <div className="min-w-0 flex-1 basis-48">
               <p className="flex flex-wrap items-center gap-2 font-semibold wrap-break-word">
                 {device.device}
                 {device.current ? <Badge tone="business">This device</Badge> : null}
@@ -103,12 +129,18 @@ export function DeviceList({
       </ul>
 
       {confirming ? (
-        <div className="bg-surface-2 flex flex-col gap-3 rounded-md p-4">
+        <div
+          className="bg-surface-2 flex flex-col gap-3 rounded-md p-4"
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && pending !== "all") closeConfirm();
+          }}
+        >
           <p id="confirm-everywhere">
             Sign out on every device, including this one? You&apos;ll need to sign in again.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button
+              id="confirm-everywhere-yes"
               variant="destructive"
               size={40}
               loading={pending === "all"}
@@ -117,26 +149,18 @@ export function DeviceList({
             >
               Sign out everywhere
             </Button>
-            <Button
-              variant="ghost"
-              size={40}
-              disabled={pending === "all"}
-              onClick={() => {
-                setConfirming(false);
-              }}
-            >
+            <Button variant="ghost" size={40} disabled={pending === "all"} onClick={closeConfirm}>
               Cancel
             </Button>
           </div>
         </div>
       ) : (
         <Button
+          id="sign-out-everywhere"
           variant="secondary"
           block
           disabled={pending !== null}
-          onClick={() => {
-            setConfirming(true);
-          }}
+          onClick={openConfirm}
         >
           Sign out everywhere
         </Button>

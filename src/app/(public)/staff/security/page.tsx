@@ -4,6 +4,7 @@ import { AuthCard } from "@/features/auth/AuthCard";
 import { EnrolTotp } from "@/features/auth/EnrolTotp";
 import { SignedInDevices } from "@/features/auth/SignedInDevices";
 import { SignOutButton } from "@/features/auth/SignOutButton";
+import { isPrivilegedUser } from "@/server/auth/privileged";
 import { getSession } from "@/server/auth/session";
 import type { Metadata } from "next";
 
@@ -13,6 +14,8 @@ export default async function StaffSecurityPage(): Promise<React.JSX.Element> {
   // Checked before anything streams: a signed-out visitor gets a real 307, not a client-side redirect.
   const session = await getSession();
   if (!session) redirect("/staff/sign-in?returnTo=/staff/security");
+  // Customers have no staff set-up to do (no password): send them to their own devices page (P0-B QA).
+  if (!(await isPrivilegedUser(session.user.id))) redirect("/me/security");
   return (
     <AuthCard title="Two-step verification">
       {session.user.twoFactorEnabled ? (

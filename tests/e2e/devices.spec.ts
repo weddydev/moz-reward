@@ -33,6 +33,9 @@ test("[P0-06] customer sees their signed-in devices and signs another device out
   mail,
   shoot,
 }) => {
+  // Two real email-link sign-ins (two devices) plus a screenshot: ~20 UI steps, which ran past the default
+  // 30 s on WebKit under a full parallel run. It can't be split: both devices must be signed in at once.
+  test.setTimeout(60_000);
   const email = uniqueEmail("e2e-devices");
   const phone = await browser.newContext({ userAgent: IPHONE_UA, baseURL: baseURL! });
   const phonePage = await phone.newPage();
@@ -49,6 +52,7 @@ test("[P0-06] customer sees their signed-in devices and signs another device out
   await page.getByRole("button", { name: "Sign out of Safari on iPhone" }).click();
   await expect(page.getByRole("status")).toHaveText("Signed out of Safari on iPhone.");
   await expect(list.getByRole("listitem")).toHaveCount(1);
+  await expect(page.getByRole("heading", { name: "Signed-in devices" })).toBeFocused(); // not <body>
 
   // The phone's next request is signed out.
   await phonePage.goto("/me/security");
@@ -78,4 +82,30 @@ test("[P0-06] sign out everywhere asks first, then ends every session including 
 test("[P0-06] the devices page sends signed-out visitors to sign in", async ({ page }) => {
   await page.goto("/me/security");
   await expect(page).toHaveURL(BACK_TO_SIGN_IN);
+});
+
+test("[P0-06] keyboard: the confirm takes focus, Escape and Cancel return it, nothing falls to <body>", async ({
+  page,
+  signInAs,
+}) => {
+  await signInAs("customer");
+  await page.goto("/me/security");
+  const trigger = page.locator("#sign-out-everywhere");
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#confirm-everywhere-yes")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#sign-out-everywhere")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Cancel" }).press("Enter");
+  await expect(page.locator("#sign-out-everywhere")).toBeFocused();
+});
+
+test("[P0-06] a customer who opens the staff security page is sent to their own devices page", async ({
+  page,
+  signInAs,
+}) => {
+  await signInAs("customer");
+  await page.goto("/staff/security");
+  await expect(page).toHaveURL(/\/me\/security$/);
 });
