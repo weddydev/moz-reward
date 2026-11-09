@@ -16,12 +16,13 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - **Windows laptop note:** `.env.local` in place (H-02, 8 Nov); `SENTRY_DSN` added (H-10): add it to the Mac copy via the shared note.
 
 ## Status
-- **Phase:** P0 — Foundation and design system. P0-A closed; P0-05, P0-06 met. Next: P0-07, then close P0-B. Remaining partial: P0-07/08/09; missing: P0-10…16.
-- **Last updated:** 2026-11-09 (afternoon), Syedbadeshah76
+- **Phase:** P0 — Foundation and design system. P0-A closed; P0-05, P0-06, P0-07 met → **P0-B ready to close** (`/subphase-complete P0-B`). Remaining partial: P0-08/09; missing: P0-10…16.
+- **Last updated:** 2026-11-09 (evening), Syedbadeshah76
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
 ## Now
+- **P0-07 ticked 9 Nov**: `7a5a9c5` template rebuild (authenticate → validate → authorise → rate limit → tx → audit → after-commit → Result), `defineRoute` with Origin check, central error map (+LIMIT_REACHED, PLAN_RESTRICTED), `requireStaffAwardLimit`, AST coverage script in `pnpm lint` (fail→pass demonstrated for an action and a route), stricter matrix verdict + self-test; `07a4ea4` security #8 gate on Better Auth endpoints for staff/admin.
 - **P0-06 ticked 9 Nov** (evidence in SESSION_LOG). Real Google sign-in verified after H-03; sign-in screens E2E + screenshots `801451d`. Carried to P0-12: route-group TOTP guards (per group), role switcher + default portal per role. Piece D today: `f1c70c3` Google scopes once; `1252b6a` `__Host-` cookies on https; `6c1c0bf` DB trigger ends sessions on any staff/admin privilege change + `users_email_lowercase` CHECK (migrations 0005/0006); `b285bd5` customer 30-day idle timeout (injected clock) + user deleted mid-session; `13f56e8` signed-in devices (`/me/security`, `/staff/security`); `4e2c887` sign-in shows the shop when returnTo is `/s/<code>`; `0a8aba5` security pages redirect signed-out visitors with a real 307 (was a streamed client-side redirect). Earlier: piece A, the sign-in link (`d7f2c34`: Turnstile, limits, hashed tokens, after-response delivery, React Email, `/sign-in/link-expired`, QA-1…4). Piece C, staff (`6131b96` security #5: the enrolment verify no longer mints an MFA session; `c8b3a4d` staff login 10/15 min/IP + per-account pause 1→15 min + lockout email + second-factor IP limit; `780ffbe` own HIBP check with timeout and fail-open, TOTP ±1 and recovery-reuse tests). Recovery codes stay encrypted (DECISIONS).
 - P0-05 met earlier today (proxy/CSP, limiter, logger, Turnstile, audit; PPR off — DECISIONS).
 
@@ -33,7 +34,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Open, small: CR-M3 `enqueue` timeout (`commandTimeout` + unreachable-Redis test); CR-L2 schedule pruning during rolling deploys; CR-L4 `dbFor().transaction` bypasses the ALS guard; CR-L6 migration checker gaps; CR-L7 RuleTester for `no-server-in-client`; SEC-L2 gitleaks image digest; SEC-L4 + QA-9 test API: token/loopback gate and 404 (not 405) for every method.
 
 ## Next (top 3)
-1. P0-07 (security #8: defineAction + requestLogger + audit + 429 mapping), then `/subphase-complete P0-B` (incl. a production-build E2E run on WebKit to re-check the load-only timeouts).
+1. `/subphase-complete P0-B` (P0-05…07): full regression incl. a production-build E2E run (re-check the WebKit load-only timeouts), exploratory QA, code-reviewer + security-reviewer, HUMAN_TASKS review, push; post-push CI/staging/Sentry still pending P0-14/15.
 2. Formatting drift: `pnpm format` rewrites 55 committed files (CI `format:check` would fail). Two stashes hold that output (`git stash list`); decide whether to commit it as one `style:` commit or find the config mismatch first. Use `prettier --write <files>`, not `pnpm format`, until then.
 3. P0-08/09 rework (QA-7, QA-8), then P0-10 onwards.
 
@@ -69,7 +70,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Configs: `vitest.config.mts`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc.json`, `pnpm-workspace.yaml`
 
 ## Last verified
-- `pnpm check`: ✅ 2026-11-09 271 unit; `pnpm test:int` ✅ 225 (incl. authz 125+); E2E: full run 101 passed / 1 failed (devices flake → root-caused, fixed in 0a8aba5), then devices+auth+sign-in-edges 55/55 on 5 projects; auth.spec 60/60 ×4. Combined devices+auth ×4 on 5 projects overloads `next dev` on WebKit (17/18 failures = 30 s test timeouts) — stress artefact, not a regression; re-check on a production build at P0-B close
+- `pnpm check`: ✅ 2026-11-09 295 unit (lint includes the authz coverage script); `pnpm test:int` ✅ 260 (authz 154); auth E2E (auth, sign-in-edges, devices, sign-in-screens) 70/70 on 5 projects. Combined ×4 repeat on `next dev` overloads WebKit (30 s timeouts) — re-check on a production build at P0-B close
 - P0-A gate 2026-11-09: QA agent regression (check 205, int 151, e2e 2 of 3 runs clean, gallery flake root-caused and fixed), then the 3 clean runs above; `build` ✅, `check:bundle` ✅ 45 names / 19 files, `test:titles --strict` ✅
 - `pnpm test:mutation`: ✅ 90.1% (break 80); `pnpm test:live`: storage ✅, email skipped (H-04); `pnpm test:load:smoke`: runs (Docker k6), checks 100%, action p95 458 ms on `next dev` (not meaningful; staging gate)
 - `pnpm test:titles --strict`: ✅ every test tagged

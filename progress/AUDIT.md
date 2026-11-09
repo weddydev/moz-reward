@@ -34,7 +34,7 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 | P0-04 Background jobs | **MET** (8 Nov 2026) — ticked |
 | P0-05 Security baseline | MISSING |
 | P0-06 Authentication | MET (9 Nov) |
-| P0-07 Authz + action template | PARTIAL |
+| P0-07 Authz + action template | MET (9 Nov) |
 | P0-08 Tokens / fonts / preferences | PARTIAL |
 | P0-09 Primitives + gallery | PARTIAL |
 | P0-10 … P0-16 | MISSING |
@@ -68,7 +68,7 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 | #4 tokens in logs | **fixed** (P0-17 merge: console email + dev outbox removed) | — |
 | #6 passkey without user verification | **fixed** | register options return `userVerification: "required"` (same test file); enforced on verify by `@better-auth/passkey` |
 | #7 append-only tables writable by the app's DB role | **fixed** (P0-03, `13c2e05`) | group role `moz_app`: DML everywhere, no UPDATE/DELETE/TRUNCATE on append-only tables, default privileges for future tables; `tests/integration/db-foundation.test.ts` (privilege matrix over every table, `SET ROLE moz_app` UPDATE on audit_logs → 42501); staging login role steps in H-05 |
-| #5, #8 | open (medium) | with P0-06 / P0-07 rework |
+| #5, #8 | closed 9 Nov | #5 6131b96; #8 07a4ea4 (Better Auth endpoint gate) |
 | Review of the hotfix (security-reviewer) | #1 #3 #6 confirmed closed (all session-creating endpoints checked; 16 redirect probes) | new: staff `/two-factor/disable` deleted TOTP then failed and change-password failed half-way → **fixed** (`mfa-bypass.test.ts`, seen failing first); magic-link timing leak (low) → P0-04 queue; legacy passkeys → none can exist (no deployment) |
 
 P0-06 and P0-07 stay PARTIAL: route-group guards, friendly expired-link page, role-home fallback, first-enrolment takeover (#5) and the other criteria in their tables are still open.
@@ -256,7 +256,7 @@ No BullMQ/ioredis, no queue registry, no `enqueue`, no `failed_jobs` table, no s
 | Tests: link lifecycle, TOTP gate, recovery, return-URL, throttling, timeouts; E2E via Mailpit | partial | TOTP gate + link single-use ✓; E2E uses dev outbox | add |
 | ENG §17 placeholder logic | partial | resend/brevo throw "wired once H-04 is done" | implement Resend now (key optional) |
 
-### P0-07 · Authorisation layer, action template, error model — PARTIAL
+### P0-07 · Authorisation layer, action template, error model — MET (2026-11-09; Sentry reporting → P0-13)
 
 | Criterion | Status | Evidence | Fix needed |
 |---|---|---|---|
