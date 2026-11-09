@@ -13,6 +13,16 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-09 — Sub-phases P0-A…P0-D close with post-push checks marked pending
+Decision: P0-A is ticked once local gates are green (regression, exploratory QA, reviews with no BLOCK/HIGH open, push). Step 6 of `/subphase-complete` (CI, staging deploy, staging smoke, Sentry) is recorded as **pending**, not passed, because CI is built in P0-14 and staging in P0-15 (needs H-05/06/07).
+Why: otherwise no sub-phase before P0-E could close. The checks are deferred and explicitly recorded, not skipped (TESTING §4).
+Consequence: `/subphase-complete P0-E` must run post-push verification retroactively for all of P0 (CI green on main, staging deploy, smoke). Each earlier sub-phase's SESSION_LOG entry says "post-push: pending P0-14/15".
+
+## 2026-11-09 — Dead letters: `failed` event backstop; E2E screenshots keep the caret
+Decision: the worker's `failed` event upserts `failed_jobs` once BullMQ has really failed a job (`finishedOn` set), next to the in-processor write. `shoot()` uses `caret: "initial"`.
+Why: BullMQ fails stalled-limit jobs without calling the processor. Playwright's caret hiding writes inline styles, which React reports as a hydration mismatch when the shot lands before the page segment hydrates. A root-layout "hydrated" marker was tried and rejected: it fires before Next hydrates the page segment.
+Consequence: a final failure writes the row twice (idempotent upsert). Screenshots may show a caret in a focused input.
+
 ## 2026-11-08 — Background jobs: BullMQ 6 design (P0-04)
 Decision: **bullmq 6.4.2 + ioredis 6.0.0**, pinned exactly. 6.4.2 is the newest release at least two weeks old; BullMQ shipped 6.5–6.7 this week, which is too fresh. The `msgpackr-extract` native build is not approved; BullMQ falls back to pure JS.
 - Queue registry: `src/server/jobs/registry.ts` (7 queues, concurrency, Zod payload per job). Typed `enqueue()` validates the payload and throws `EnqueueInTransactionError` inside a repo `transaction()` (AsyncLocalStorage), so jobs only follow commits. Pass `jobId` for idempotency.
