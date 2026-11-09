@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-09 — Sessions: __Host- cookies, rotation by DB trigger, signed-in devices (P0-06)
+Decision: (1) On https every auth cookie is `__Host-moz.*` (Secure, Path=/, no Domain): `cookiePrefix: "__Host-moz"` with Better Auth's `useSecureCookies` off (it would prepend `__Secure-`) and `secure` set directly; plain-http local/E2E keeps `moz.*` (`src/server/auth/cookies.ts`). (2) Session rotation on privilege change is a DB trigger (migration 0006): inserting, deleting or changing role/active/shop of a `shop_staff` or `admin_members` row deletes all of that user's sessions, so no future role writer can forget it; a customer who becomes staff loses their email-link session too. (3) Signed-in devices: any signed-in user (no MFA needed: it can only reduce access) lists their own live sessions (no tokens or IPs leave the server), signs one other device out (foreign or gone id → the same NOT_FOUND), or signs out everywhere, which includes this device (SECURITY wording). Pages: `/staff/security`, `/me/security` (moves into the Me tab with P0-12). (4) `users.email` has a `CHECK (email = lower(email))` (migration 0005, normalises first).
+Why: SECURITY §2; audit SEC-M5b.
+Consequence: granting a role signs the user out everywhere (staff invites in P2 must say so). Sign-out events are not audit-logged (not in the SECURITY §8 list).
+
 ## 2026-11-09 — Account linking: one user per verified email (P0-06)
 Decision: `account.accountLinking = { enabled: true, trustedProviders: [] }`. A Google sign-in with an email Google hasn't verified can't create a user (`user.create.before` hook, `src/server/auth/social.ts`). Implicit linking needs both the provider's `email_verified` and a verified local user (Better Auth's `requireLocalEmailVerified`, default on), so Google and magic link resolve to the same user for one verified address. Staff/admins never get Google sessions (security #1 hook).
 Why: SECURITY §2; stops address squatting and linking takeover through unverified OAuth emails.

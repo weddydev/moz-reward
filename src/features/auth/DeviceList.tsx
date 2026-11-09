@@ -66,8 +66,8 @@ export function DeviceList({
   async function signOutEverywhere(): Promise<void> {
     const done = await run("all", () => signOutAllDevices({}));
     if (done === null) return;
-    router.push(signInPath);
-    router.refresh();
+    // Full page load: every session is gone, so no client-cached signed-in page may survive.
+    window.location.assign(signInPath);
   }
 
   return (
@@ -79,7 +79,7 @@ export function DeviceList({
         {devices.map((device) => (
           <li key={device.id} className="flex flex-wrap items-center gap-3 p-4">
             <div className="min-w-0 flex-1">
-              <p className="flex flex-wrap items-center gap-2 font-semibold break-words">
+              <p className="flex flex-wrap items-center gap-2 font-semibold wrap-break-word">
                 {device.device}
                 {device.current ? <Badge tone="business">This device</Badge> : null}
               </p>
