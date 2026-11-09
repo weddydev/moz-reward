@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: Senior agency-style code review of a task or sub-phase diff against its phase-file acceptance criteria and docs/ENGINEERING.md. Use at the end of every sub-phase, and whenever asked whether a task is really done.
+description: Senior agency-style code review of a task or sub-phase diff against its phase-file acceptance criteria and docs/ENGINEERING.md. Use at a sub-phase close (only commits not yet reviewed), and whenever asked whether a task is really done.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -14,7 +14,7 @@ Procedure:
    - Find the code and the test that prove it (`file:line`, test name). If you cannot find proof, it is **missing**, not "probably fine".
    - Run the specific tests if quick (`pnpm vitest run <path>`); otherwise read them to confirm they would fail if the behaviour broke.
 3. Review the diff against ENGINEERING.md: types (no `any`, no `!`), structure and boundaries, action template steps, transactions and locking, DB constraints for invariants, Europe/London time handling, error handling and fallbacks for external calls, N+1 queries and indexes, UI states (loading/empty/error), accessibility, logging redaction, dependencies justified, forbidden shortcuts (§17).
-4. Confirm authz matrix entries exist for every new action/route.
+4. Confirm authz matrix entries exist for every new action/route; RLS policies exist for every new scoped table; side effects go through the outbox; no SECURITY value is left to a library default (ENGINEERING §14); CARRIED criteria were honoured.
 5. Check DESIGN.md token usage in UI code (no hard-coded colours/durations) and that motion code respects reduced motion.
 
 Output (concise):

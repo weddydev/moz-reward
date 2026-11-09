@@ -1,147 +1,122 @@
 # Moz Rewards — Instructions for Claude Code
 
-You are building **Moz Rewards**, a UK loyalty and engagement web app (PWA + Android app on Google Play), from an empty folder to production. You work on autopilot, phase by phase, and must leave the project resumable at any moment.
+You are building **Moz Rewards**, a UK loyalty and engagement web app (PWA + Android app on Google Play) for a large organisation, expected to run at high scale for years. You work on autopilot, task by task, and must leave the project resumable at any moment.
 
-This file is loaded every session, so it is kept short. Detailed specs live in `docs/` — read only the section you need for the task in hand.
+This file is loaded every session, so it stays short and points to the single sources. Detailed specs live in `docs/` — read only the section the task needs.
 
 ## 1. Session protocol (always)
 
-**Two developers, one at a time.** Two developers take turns on this project from different machines (never simultaneously). The Git repo is the only shared memory: never rely on your own chat history or local memory for project state. The **Baton** line in PROGRESS.md shows who is working.
+**Two developers, one at a time.** They take turns from different machines (never simultaneously). The Git repo is the only shared memory. The **Baton** line in PROGRESS.md shows who is working.
 
-**Start of every session (including after `/clear`):** use `/resume`. It pulls from `origin main`, checks and takes the baton, verifies the build and tests, then continues. If it was not used:
-1. `git pull --rebase origin main`, then read `progress/PROGRESS.md` — it is the single source of truth for where we are. If the baton is held by the other developer, stop and ask the human.
-2. Find the next unticked task in `docs/PHASES.md`, then open **that task's section** in `docs/phases/<phase>.md` (plus the phase's "How to work this phase" header). The phase file is the task brief: Read list, Build notes, Acceptance criteria, Edge cases, Tests, Verify.
-3. Read exactly the doc sections the task's **Read** list names — no more, no less — plus `docs/ENGINEERING.md` §1 if you haven't this session.
-4. Do not scan the whole repo to "get oriented". PROGRESS.md tells you what exists and where.
+**Start of every session (including after `/clear`):** use `/resume`. If not used: `git pull --rebase origin main`, read `progress/PROGRESS.md` (stop and ask if the other developer holds the baton), find the next unticked task in `docs/PHASES.md`, open **that task's section** in `docs/phases/<phase>.md` plus the phase header, and read exactly the doc sections its **Read** list names. Don't scan the repo to "get oriented".
 
-**After every completed task:**
-1. Run the relevant checks (typecheck, lint, the tests you touched).
-2. Walk the task's **Acceptance criteria** one by one and produce evidence for each (command output, test names, screenshots, curl). Also confirm the **Edge cases** and **Tests** listed exist. If any criterion is unmet, the task is not done — keep working or record exactly what remains.
-3. Commit with a Conventional Commit message (`feat(loyalty): ledger idempotency`).
-4. Update `progress/PROGRESS.md` (Now / Next / Last verified), tick the task in `docs/PHASES.md`, and add a short evidence line to SESSION_LOG.md.
-5. Commit the progress update and **push to `origin main`** (every task, so the human can stop or hand off at any moment).
-6. Play the soft task sound: `node .claude/hooks/notify.mjs task "<task ID> done: <name>" < /dev/null`
-7. **Do not stop — start the next task immediately** (unless the cadence below says stop). Mention in one line what finished.
+**Phase start:** before the first task of a phase, run one brief review of that phase file: every task gets measurable Acceptance criteria, Edge cases, Tests and Verify. Commit the improved brief.
 
-**Autopilot cadence (human's standing rule):**
-- Keep going task after task. After **3–5 completed tasks** (fewer when the tasks were large), **stop** for review.
-- **Always stop when a whole phase is complete** (after `/phase-complete`), even if fewer than 3 tasks ran.
-- When stopping: make sure everything is committed and pushed, then play the louder review sound `node .claude/hooks/notify.mjs review "<what was done>" < /dev/null` and reply with a short summary (done, verified, next, open 🔴/🟠 human tasks). The human then says "continue" or runs `/handoff`.
-- Also stop early (with the review sound) if blocked on a 🔴 human task with no other work available, or when context is getting heavy (`/checkpoint` first).
+**Each task:**
+1. Test first for logic (TESTING §7). Build.
+2. `pnpm gate:task` (TESTING §4 is the single source for every gate). Security-relevant tasks also run `security-reviewer` on the task diff.
+3. Walk the Acceptance criteria and incoming CARRIED rows one by one with evidence. Unmet → keep working, or move it to a CARRIED row **and** the target task's criteria.
+4. **One commit per task:** code + tests + progress files (PROGRESS Now/Next, PHASES tick, ≤ 5 evidence lines in SESSION_LOG). Conventional Commit message. After CI exists: branch `t/<task-id>`, PR, `gh pr merge --auto --squash`. Push.
+5. Sound: `node .claude/hooks/notify.mjs task "<task ID> done: <name>" < /dev/null`
+6. Start the next task. Check the previous push's CI result before the next push; red CI is fixed first.
 
-**After every completed sub-phase (task group):** run `/subphase-complete` — full regression of everything built so far, exploratory QA, `code-reviewer` + the reviewers the phase file names, progress updates (PROGRESS incl. Handoff note, HUMAN_TASKS, SESSION_LOG), push, then verify CI, the staging deploy, the staging smoke and Sentry. **After every phase:** `/phase-complete`. Never leave finished work only on your machine.
+**Cadence (human's standing rule):** after 3–5 tasks (fewer if large), and always at phase end, stop for review: everything pushed, then `node .claude/hooks/notify.mjs review "<what was done>" < /dev/null` and a short summary (done, verified, next, open 🔴/🟠 human tasks). Stop early if blocked on a 🔴 human task with nothing else to do, or when context is heavy (`/checkpoint` first).
 
-**Before context gets heavy:** `/checkpoint` (saves and pushes). **When the human is stopping for the day or handing over:** `/handoff` (verifies, writes the handoff note, frees the baton, pushes). A fresh session on either machine must be able to continue with zero re-discovery.
+**Sub-phase close:** `/subphase-complete` (light: CI green, staging smoke, Sentry, reviews of unreviewed commits, scoped QA if screens changed). **Phase close:** `/phase-complete` (the one heavy gate + demo). **Handover:** `/handoff`. **Context heavy:** `/checkpoint`.
 
-**Decisions:** whenever you make a decision a future session or the other developer might question, write it in `progress/DECISIONS.md` (this also triggers a sound for the human).
+**Decisions:** any choice a future session might question goes in `progress/DECISIONS.md` (2–4 lines; plays a sound).
 
 ## 2. Source-of-truth order
 
-When documents disagree, follow this order:
 1. Explicit instruction from the human in the current session
-2. `docs/COMPLIANCE.md` and `docs/SECURITY.md` (legal and security rules are never traded away)
+2. `docs/COMPLIANCE.md` and `docs/SECURITY.md` (never traded away)
 3. `docs/PRODUCT.md` (what to build)
 4. `docs/DESIGN.md` (how it looks and moves)
-5. Reference images in `design/reference/` (visual guide only — DESIGN.md wins on any conflict: colours, spacing, type, motion, component behaviour)
+5. `design/reference/` images (visual guide only; DESIGN.md wins)
 6. `docs/ARCHITECTURE.md` (how it is built)
 
 ## 3. Working principles
 
-- **Agency-grade quality.** Build as a senior engineer at a top product agency would for a SaaS expected to run at scale for years. `docs/ENGINEERING.md` defines the standard and the definition of done (§1); its "forbidden shortcuts" (§17) are never acceptable. Speed comes from good structure, never from skipping acceptance criteria, edge cases or tests.
-- **Quality first, then speed, then token economy.** Never ship a shortcut that weakens security, accessibility or correctness.
-- **Judgment over rigid rules.** Budgets and targets (bundle size, Lighthouse, coverage) are targets, not tripwires. If something exceeds a budget by ≤15% for clear user value, accept it and log a one-line entry in `progress/DECISIONS.md`. Do not spend more than ~30 minutes of rework to shave a few KB. If it exceeds by more than 15%, optimise first; if still over, log it and flag it in PROGRESS.md.
-- **Minimise human work; track what remains in `progress/HUMAN_TASKS.md`.** Do everything you can yourself (CLI tools such as `gh` when authenticated, generated configs, scripts, docs). Only things that truly need a human (creating accounts, payments, secrets, DNS, store consoles, real-device testing, client contact) go into HUMAN_TASKS.md, each with ID, priority (🔴 blocking now / 🟠 needed soon / 🟢 later), what needs it and by when, why, time estimate, and exact numbered steps. Add tasks as early as you can foresee them, so the human can do them before they become blocking. When blocked, mark it 🔴, continue with any work that does not depend on it, and mention it in your reply. Move tasks to Done when the human confirms. Review the whole list at the end of every sub-phase and phase.
-- **Small, verified steps.** One task → working code → tests → commit. Keep the app runnable on `main` at all times.
-- **Don't invent scope.** If PRODUCT.md is silent, choose the simplest sensible behaviour, note it in DECISIONS.md, move on.
-- **Record decisions.** Any choice a future session might question (library, pattern, trade-off) gets a 2–4 line entry in DECISIONS.md.
+- **Agency-grade quality, built to run at scale.** ENGINEERING.md §1 is the definition of done; §17 lists forbidden shortcuts. Speed comes from structure, never from skipping criteria, edge cases or tests.
+- **Production parity.** Evidence comes from a production build (`pnpm e2e`), never from `next dev` alone. Every value SECURITY.md specifies is set explicitly in config — never left to a library default (ENGINEERING §14).
+- **Every CI check has a local twin** (`pnpm check`, `pnpm gate:task`). No gate is ever "pending": if infrastructure is missing, the infrastructure task moves earlier.
+- **Right-sized verification.** Heavy suites run once per level (TESTING §4): fast checks per task, CI on every push, a light sub-phase close, one heavy phase gate. Never re-run a green suite "to be sure"; `--repeat-each` only to diagnose a flake.
+- **Judgment over rigid budgets.** Bundle/Lighthouse/coverage targets: ≤ 15% over for clear user value is accepted with a one-line DECISIONS entry; more → optimise first. Don't spend > ~30 min shaving a few KB.
+- **Minimise human work; track the rest in `progress/HUMAN_TASKS.md`** (ID, 🔴/🟠/🟢, needed by, why, time, exact steps). Add tasks as early as you can foresee them. Review the list at every sub-phase and phase close.
+- **Don't invent scope.** If PRODUCT.md is silent, choose the simplest sensible behaviour, record it in DECISIONS.md, move on.
+- **Carried work is tracked, not remembered:** CARRIED table in PROGRESS.md; a task can't be ticked with an open incoming carry.
 
 ### Debugging: root cause before fixes
-When something fails: reproduce it, read the actual error and the code path, form one hypothesis, confirm it with a quick check or a failing test, then fix. No speculative edits, no changing several things at once. If two attempts fail, stop, write down what you know, and re-examine assumptions before trying again.
+Reproduce, read the actual error and code path, form one hypothesis, confirm it with a quick check or a failing test, then fix. No speculative edits. After two failed attempts, stop, write down what you know, re-examine assumptions.
 
 ### Verification before "done"
-Never report a task, fix or phase as done without evidence from this session: the command you ran and its result (tests passing, build output, a screenshot for UI, a curl response for an endpoint). If something could not be verified, say so plainly and add it to PROGRESS.md.
+Never report done without evidence from this session (command + result, screenshot inspected, curl). Anything unverified is said plainly and written in PROGRESS.md as NOT VERIFIED.
 
 ## 4. Token economy (without lowering quality)
 
-- Read files by section, not whole; search with grep/glob before opening files.
-- Use a subagent for broad exploration or reviews so raw output stays out of the main context.
-- Run targeted tests while developing; run the full suite at the end of a task group and at phase end.
-- Pipe long command output through `tail`/`grep`; never paste huge logs back.
-- Keep PROGRESS.md under ~150 lines; move old detail to SESSION_LOG.md.
-- Do not re-read a file you just wrote unless a tool reported an error.
+- Read by section, not whole files; grep/glob before opening. Don't re-read a file you just wrote.
+- Long suites (sub-phase QA, phase gate) run in a background subagent that returns a compact summary; pipe command output through `tail`/`grep`.
+- Gate scripts print per-suite counts only. Don't paste logs.
+- PROGRESS.md ≤ 120 lines of current state; SESSION_LOG ≤ 5 evidence lines per task; AUDIT.md is frozen history.
+- Reviews at sub-phase close cover only commits not already reviewed at task level.
+- Skills are loaded only when they add something (§6).
 
 ## 5. Non-negotiables
 
-- **Never** build review gating: every star rating gets identical "Post on Google" and "Send privately" options. No rewards for reviews. (See COMPLIANCE.md.)
-- **Never** commit secrets. `.env*` files are git-ignored; only `.env.example` is committed.
-- **Every** data access is authorised and scoped (customer → own data; staff → own shop; admin → by role). Cross-shop access tests are mandatory.
+- **Never** build review gating: every star rating gets identical "Post on Google" and "Send privately" options. No rewards for reviews, no offers triggered by feedback. (COMPLIANCE §1.)
+- **Never** commit secrets. `.env*` is git-ignored; only `.env.example` is committed.
+- **Every** data access is authorised and scoped (customer → own data; staff → own shop; admin → by role), with Row-Level Security as the second wall. Cross-shop tests are mandatory.
 - **Every** animation respects `prefers-reduced-motion` and never blocks interaction or navigation.
-- **No iOS App Store work.** iOS is supported as Safari + installable PWA (Add to Home Screen). Android ships to Google Play as a Trusted Web Activity.
-- Customer-facing copy is UK English, currency GBP (£), dates `7 Nov 2026`, times 24h or `5pm`.
+- **No iOS App Store work.** iOS = Safari + installable PWA. Android ships to Google Play as a Trusted Web Activity.
+- Customer-facing copy is UK English, GBP (£), dates `7 Nov 2026`, times 24h or `5pm`.
 
-## 6. Installed skills (Emil Kowalski design engineering)
+## 6. Skills (Emil Kowalski design engineering, in `.claude/skills/`)
 
-Installed in `.claude/skills/`: `emil-design-eng`, `animation-performance`, `mobile-native`, `review-animations`.
-- Use `emil-design-eng` when building any interactive component, transition or micro-interaction.
-- Use `mobile-native` when building customer mobile screens (touch, gestures, safe areas, native feel).
-- Use `animation-performance` when an animation drops frames or before closing a phase with new motion.
-- Run `review-animations` (manual) on every diff that adds or changes motion, and fix what it blocks.
-- **Precedence:** `docs/DESIGN.md` wins over skill defaults. The signature moments in DESIGN.md §8 (Gilded Gate, points credited, ingot pour, reward unlocked, receipt, redeem code) are **intentional exceptions** to the "UI animations under 300ms" rule: keep their specified durations, but apply the skills' standards for easing, interruptibility, skip-on-tap, reduced motion and performance. Everyday UI motion (presses, tabs, sheets, toasts) must follow the skills' sub-300ms guidance.
+Load a skill only when it applies; DESIGN.md wins on any conflict:
+- `emil-design-eng`: a **new** interactive pattern or a signature moment (DESIGN §8). Not for routine screens built from existing primitives.
+- `mobile-native`: a **new** customer mobile screen or gesture.
+- `animation-performance`: only when an animation misses its frame budget.
+- `review-animations`: run by `design-reviewer` on diffs that add or change motion; fix what it blocks.
+Signature moments in DESIGN §8 keep their specified durations (exceptions to "UI motion under 300 ms") but follow the skills on easing, interruptibility, skip-on-tap, reduced motion and performance. Everyday UI motion stays under 300 ms.
 
-## 7. Commands (once scaffolded)
+## 7. Commands
 
 ```
-pnpm dev            # local app
-pnpm worker         # background jobs (validates env at start)
-pnpm typecheck      # tsc --noEmit
-pnpm lint           # eslint
-pnpm test           # vitest unit + integration
-pnpm e2e            # playwright: own server on :3100 (APP_ENV=test), 5 projects, console/network guard
-pnpm test:unit      # vitest unit project only
-pnpm test:int       # vitest integration project (per-worker DBs, needs services:up)
-pnpm test:regression # unit + integration + authz + all E2E, per-suite counts (sub-phase gate)
-pnpm test:titles    # warn on tests without [Pn-nn]/[Jn]; --strict exits 1
-pnpm test:mutation  # stryker on rules modules (phase end)
-pnpm test:load:smoke # k6 smoke (local k6 or Docker image); BASE_URL/VUS/DURATION
-pnpm test:live      # real-provider smoke (staging, phase end); skips providers without keys
-pnpm db:migrate     # drizzle migrations
-pnpm db:seed        # idempotent baseline (flags, content settings); demo shops arrive with P0-16; refused in production
-pnpm db:reset       # LOCAL only: drop schemas, migrate, seed
-pnpm check          # typecheck + lint + unit (no Docker; run before every commit)
-pnpm check:full     # typecheck + lint + unit + integration (needs services:up)
-pnpm format         # prettier --write (format:check in CI)
-pnpm test:coverage  # vitest with coverage thresholds
-pnpm db:migrate:test # migrate the moz_test DB (vitest globalSetup also does this)
-pnpm services:up    # Docker/port pre-flight, then infra/docker-compose.dev.yml up -d --wait (Postgres, Redis, Mailpit, MinIO + bucket)
-pnpm services:down  # stop local services
-pnpm setup:env      # create .env.local from .env.example with generated local secrets (never overwrites)
-pnpm check:bundle   # after `pnpm build`: fail if server-only env var names appear in .next/static
+pnpm dev               # local app (next dev)
+pnpm worker            # background jobs (validates env at start)
+pnpm build / start     # production build / serve
+pnpm check             # typecheck + lint (incl. authz coverage, migrations, css-hex) + format:check + unit — no Docker
+pnpm gate:task         # task gate: check + test:int + build + task E2E on the production build (TESTING §4)  [built in P0-14]
+pnpm gate:phase        # the one heavy gate (TESTING §4)  [built in P0-14]
+pnpm test:unit         # vitest unit project
+pnpm test:int          # integration + authz (per-worker DBs; needs services:up)
+pnpm e2e               # Playwright against a PRODUCTION build (APP_ENV=test) — the evidence run
+pnpm e2e:dev           # Playwright against next dev — fast inner loop only, never evidence
+pnpm test:titles       # warn on tests without [Pn-nn]/[Jn]; --strict exits 1
+pnpm test:mutation     # stryker on rules modules (phase gate, changed modules)
+pnpm test:load:smoke   # k6 smoke (BASE_URL/VUS/DURATION)
+pnpm test:live         # real-provider smoke; --require-all at phase gate (missing keys = NOT VERIFIED)
+pnpm db:migrate | db:generate | db:seed | db:reset   # drizzle migrations / generate / idempotent seed / LOCAL reset
+pnpm format | format:check
+pnpm services:up | services:down   # Docker: Postgres+PostGIS, Redis, Mailpit, MinIO
+pnpm setup:env         # create .env.local with generated local secrets (never overwrites)
+pnpm check:bundle      # after build: fail if server-only env names appear in .next/static
 ```
-Update this list if scripts change.
+Until P0-14 lands `gate:task`/`gate:phase` and the production-build `pnpm e2e`, run their steps by hand (TESTING §4). Update this list when scripts change.
 
-## 8. Custom slash commands
+## 8. Slash commands
 
-- `/resume` — pull, take the baton, verify, continue
-- `/checkpoint` — save and push progress so the session can be cleared safely
-- `/handoff` — end the session cleanly for the other developer (verify, handoff note, free baton, push)
-- `/subphase-complete` — close a sub-phase: full regression, exploratory QA, reviews, push, CI + staging + Sentry verification
-- `/phase-complete` — all phase gates, demo dry run on staging with video, client demo notes
-- `/security-review` — run the security checklist on recent changes
-- `/demo` — prepare the client demo script for what's on staging
+`/resume` (pull, baton, verify, continue) · `/checkpoint` (save + push) · `/handoff` (verify, handoff note, free baton, push) · `/subphase-complete` (light close) · `/phase-complete` (heavy gate, demo, client notes) · `/security-review` · `/demo`
 
 ## 9. Doc index
 
 | File | Read when |
 |---|---|
-| `progress/PROGRESS.md` | Start of every session |
-| `progress/HUMAN_TASKS.md` | Start of every session (check for 🔴), end of every sub-phase/phase, whenever a new human dependency appears |
+| `progress/PROGRESS.md` | Start of every session (state, CARRIED table, open follow-ups) |
+| `progress/HUMAN_TASKS.md` | Start of session (🔴 items), every close, whenever a new human dependency appears |
 | `docs/PHASES.md` | Finding the next task; ticking finished ones |
-| `docs/phases/<phase>.md` | Before and while doing any task (that task's section) |
-| `docs/ENGINEERING.md` | §1 every session; other sections as the task's Read list says |
-| `docs/PRODUCT.md` | Building any feature (read that feature's section) |
-| `docs/DESIGN.md` | Building any UI, animation or sound |
-| `docs/ARCHITECTURE.md` | Structure, data model, flows, deployment |
-| `docs/SECURITY.md` | Auth, data access, uploads, headers, any server code |
-| `docs/TESTING.md` | §7–8 for every task (test first, self-verification loop); §4 at sub-phase and phase close |
-| `docs/COMPLIANCE.md` | Reviews, notifications, marketplace, game, data rights |
+| `docs/phases/<phase>.md` | The current task's section + phase header |
+| `docs/ENGINEERING.md` | §1 every session; other sections per the task's Read list |
+| `docs/TESTING.md` | §4 (gates) and §7–8 (rules, self-verification) for every task |
+| `docs/PRODUCT.md`, `DESIGN.md`, `ARCHITECTURE.md`, `SECURITY.md`, `COMPLIANCE.md` | The sections the task's Read list names |
 | `progress/DECISIONS.md` | Before changing an established pattern |

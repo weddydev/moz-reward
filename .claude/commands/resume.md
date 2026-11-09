@@ -9,11 +9,11 @@ Resume Moz Rewards. Two developers take turns; the repo files are the only share
 3. Read `progress/PROGRESS.md` fully. Check the **Baton** line:
    - `free` or held by you → continue.
    - Held by the other developer → stop and tell the human: "<name> still holds the baton since <time>. Continue anyway?" Only continue if they confirm.
-4. Set `Baton: held by <you> since <date time>`, commit (`chore(progress): baton <you>`) and push immediately so the other developer sees it.
+4. Set `Baton: held by <you> since <date time>`, commit (`chore(progress): baton <you>`) and push immediately so the other developer sees it. If the push is rejected: pull, re-read the baton, and stop if the other developer took it.
 5. Read `progress/HUMAN_TASKS.md` (open items only). Ask the human whether any open tasks were completed since the last session; move confirmed ones to Done.
 6. Read the **Handoff note**, the last SESSION_LOG.md entry, `docs/PHASES.md` to find the next unticked task, and that task's section in `docs/phases/<phase>.md` (plus the phase's "How to work this phase" header).
 7. Bring the local environment in line: `pnpm install --frozen-lockfile`, start Docker services, `pnpm db:migrate`, `pnpm db:seed` if the note says so. If `.env.example` gained variables, list them for the human.
-8. Run `pnpm check` (and any tests named under "Not yet tested" in the handoff note). If anything fails, fix it first (root cause first) and record it.
+8. Run `pnpm check` (fast; no full suites) and any tests named under "Not yet tested" in the handoff note. Check the last CI run (`gh run list --limit 1`, once CI exists): red CI is fixed first. If anything fails, fix it at the root cause and record it. If the next task is the first of a phase, do the phase's brief review first (CLAUDE.md §1).
 9. State in 3–5 lines: phase, what the other developer finished, what you will do next, and any 🔴 human tasks.
 10. Continue with the next task following CLAUDE.md §1.
 

@@ -122,3 +122,8 @@ Regression before fixes (qa-engineer): check 295, test:int 260 (authz 150), cove
 Reviews: code-reviewer BLOCK (HIGH: Google ID-token sign-in bypassed the unverified-email rule; coverage script missed plain "use server" exports; 4 MEDIUM, 6 LOW). security-reviewer: same HIGH + 5 MEDIUM, 8 LOW; verified closed #1, #3, #6, #8, SEC-M5b. Exploratory QA: 9 issues (2 major).
 Fixed: 5f1d334, 30cc9ac, bbc7752 (see PROGRESS Now). Evidence: check 304, test:int 263, devices E2E 25/25 (5 projects), mutation checks on the IP option (spoofed XFF stored without it) and the gate. Open items → PROGRESS "P0-B review follow-ups".
 Not done: regression re-run after the fixes (stopped at the human's request: plan audit first). P0-B not ticked.
+
+## 2026-11-09 (night) — Plan v4 applied after the plan audit (Syedbadeshah76, Windows laptop)
+Audit: 5 read-only reviewers read 39 plan files end to end; report published as a shareable doc (claude.ai artifact "Moz Rewards — Plan and Architecture Audit"): 9 Critical, 14 High gaps; 22 contradictions.
+Applied (docs only, no code): production parity (`pnpm e2e` on a production build), CI first (P0 order A→B→E→C→D), no pending gates, new P0-18/19/20/21, observability + SLOs + RUNBOOK in P0-13, production target topology + RPO/RTO + capacity model (H-21), mandatory RLS, library-defaults rule + conformance test, loyalty core rules (PRODUCT §4–6, §15), data-protection foundations (COMPLIANCE §2), right-sized testing (task fast / CI full / light sub-phase / one heavy phase gate), one commit per task, CARRIED table, AUDIT frozen.
+Next: P0-14.

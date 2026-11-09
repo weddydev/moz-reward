@@ -6,6 +6,10 @@ These are product rules the code must enforce. They are not legal advice; the cl
 
 - **No review gating.** Every rating (1–5) shows the same two options with equal size, colour weight and order: "Post on Google" and "Send to the shop privately". No extra steps, questions, delays or exit buttons for low ratings. No logic anywhere branches on rating to change what the customer can do.
 - **No incentives** for reviews: no points, offers, game plays or entries linked to rating or reviewing.
+- **Review-incentive guard** (shops must not reward or punish feedback indirectly):
+  - The feedback inbox has no "send offer" or reward action.
+  - Star rating is never a customer segment, filter for offers, or offer audience.
+  - Any private offer sent to a customer within 14 days of that customer's feedback is flagged to the moderation queue (the offer still sends; moderation reviews the pattern).
 - The only rating-dependent behaviour allowed: alerting the shop to low ratings so it can resolve problems. Resolution is never conditional on changing a review.
 - AI review help only rephrases the customer's own chips and note; never invents experiences; never defaults to 5 stars; the customer edits before posting.
 - Shops cannot delete or hide private feedback.
@@ -16,30 +20,117 @@ These are product rules the code must enforce. They are not legal advice; the cl
 
 - Privacy notice explains: what we collect, why, sharing with the joined shop (name, phone, member ID, visit history, birthday day+month if given), retention, rights.
 - Data export and deletion available in-app; admin queue tracks deadlines (1 month).
-- Minimise: no precise location stored; birthday day+month only; phone not shown in share cards or public pages.
+- Minimise: no precise location stored; birthday day+month only; birth year used only for the 18+ flag; phone not shown in share cards or public pages.
 - Shops are told (Shop Terms) how they may use customer data (only for their own loyalty/offers, no export for other purposes). Customer list export is owner-only, 2FA re-auth, audit-logged.
+
+**Drafts and review.** Claude drafts the ROPA, DPIA, processor register and retention schedule in task P0-21 under `docs/compliance/`. The client's solicitor reviews them (human task H-23). Code follows the defaults below until the solicitor confirms or changes them.
+
+### 2.1 Controller roles
+
+- **Platform (Moz Rewards) = controller** for accounts, sign-in, security, fraud prevention, the Offers feed, marketplace, game, notifications delivery and admin.
+- **Each shop = independent controller** for its member data (membership, visits, notes, its marketing). Shop Terms set this out, with data-sharing terms: purpose limits, security duties, no onward export, help with rights requests, prompt breach notice to each other.
+- Privacy notice and Shop Terms state these roles in plain words.
+
+### 2.2 ROPA and lawful basis
+
+The ROPA lists every purpose. Lawful basis per purpose (draft, solicitor to confirm):
+
+| Purpose | Lawful basis | Controller |
+|---|---|---|
+| Account, sign-in, profile | Contract | Platform |
+| Loyalty membership, points, rewards, receipts | Contract | Shop (platform delivers) |
+| Marketing push / email / inbox from shops | Consent (`marketing_opt_in`) | Shop |
+| Transactional messages | Contract | Platform / shop |
+| Fraud and abuse prevention, device signals | Legitimate interests (LIA in DPIA) | Platform |
+| Security, audit and application logs | Legitimate interests; legal obligation where it applies | Platform |
+| Private feedback, AI review help | Contract (feature the customer chooses) | Platform; shop for feedback it receives |
+| Marketplace listings, reveal logs, reports | Contract; legitimate interests (safety) for reveal logs | Platform |
+| Game and leaderboard | Contract; consent for leaderboard display (opt-in) | Platform |
+| 18+ flag (birth year), 13+ declaration | Legitimate interests (child safety) | Platform |
+| Birthday treats | Consent (optional field + marketing opt-in) | Shop |
+| "Near me" location | Consent on tap; never stored | Platform |
+| First-party analytics | Legitimate interests (statistical purposes, with opt-out) | Platform |
+| Shop applications, plans, invoices | Contract; legal obligation (accounting) | Platform |
+| Rights requests and complaints | Legal obligation | Platform |
+
+### 2.3 Processor register
+
+Each processor is listed with: purpose, data categories, location, transfer basis, DPA signed (yes/no), sub-processors link. Transfer basis is one of: UK adequacy (incl. EU/EEA and the UK–US data bridge for certified US companies), IDTA, or the UK Addendum to the EU SCCs. No processor goes live without an entry.
+
+Processors to register: app/worker hosting, managed Postgres, Redis, Cloudflare (CDN, WAF, R2, Turnstile), Resend and Brevo (email), Sentry, logs/metrics backend, analytics (Umami / PostHog EU), AI provider (review help: no training on our data, minimal input), Google (OAuth, Places / Business Profile), GitHub (code and CI only — no production personal data). postcodes.io receives postcodes only and is noted as a third party, not a processor.
+
+### 2.4 DPIA
+
+A DPIA is completed **before Phase 1 goes live** to real customers. It covers at least: fraud monitoring and device signals, children and age checks, AI review help, marketing notifications, marketplace reveal logs. It is updated when a feature changes the risk.
+
+### 2.5 Complaints (Data (Use and Access) Act 2025)
+
+- A data protection complaints process: in-app and email route, acknowledgement within 30 days, decision without undue delay, records kept.
+- The privacy notice explains how to complain to us and then to the ICO.
+
+### 2.6 Retention schedule
+
+Defaults — solicitor to confirm. Removal is a scheduled job per row, except audit logs.
+
+| Data | Kept for |
+|---|---|
+| Magic-link tokens | 24 h |
+| Sessions | Role session lifetime + 30 days |
+| Notifications (inbox) | 12 months |
+| Rejected / expired requests | 24 months |
+| Private feedback | 24 months |
+| Game sessions | 12 months |
+| Marketplace listings | 30 days after end |
+| Reveal logs | 12 months |
+| Device signals | 90 days |
+| Receipt photos | 12 months |
+| Audit logs | 2 years (monthly partitions; dropping a partition is the only removal) |
+| Application logs | 30 days |
+| Backups | 35 days |
+| Shop invoices and payment records | 6 years (accounting) |
+| Inactive customer accounts | Reviewed at 24 months of inactivity (notice, then erasure) |
+
+### 2.7 Ledger, erasure and DSAR
+
+- The ledger holds no personal data: membership / subject IDs only.
+- **Erasure** anonymises the user and the customer profile (name, email, phone ciphertext, birthday, birth year). Ledger and audit rows stay, pseudonymous.
+- **Deletion cascade**: marketplace listings removed; feedback text redacted; live redeem and claim codes voided; sessions and push subscriptions revoked; a sole shop owner must transfer or close the shop first; backups age out within 35 days. Completed within 1 month of the request.
+- **DSAR export scope**: profile, memberships, ledger, requests, redemptions, claims, feedback, listings, reveal logs, notifications, consents, devices, fraud flags (where lawful to disclose), notes about the customer.
+- Google Play requires a public web URL for account deletion: `/delete-account` (PRODUCT.md §17).
+
+### 2.8 Device signals
+
+Device signals (fingerprint hash, user agent, IP hash) are used **only** for fraud and security, never for marketing or analytics. They are disclosed in the Cookie Notice. Whether they fall under the PECR storage/access exemptions (as amended by DUAA 2025) is checked in the DPIA. Kept 90 days.
 
 ## 3. Marketing messages and cookies (PECR as amended)
 
-- Notifications are opt-in per shop (clear toggle at join). Mute per shop and global categories at any time, immediately effective.
+- **One marketing-consent rule for every channel** (push, email, in-app inbox):
+  - `membership.marketing_opt_in` defaults to false and is asked clearly at join (unticked). It can be changed any time.
+  - Marketing (announcements, offer notifications, private offers, birthday, win-back, happy-hour push, saved-offer and Daily Drop reminders) goes only to opted-in, unmuted members.
+  - Transactional messages (approval, rejection, expiry, redeem, receipt, sign-in, security) ignore opt-in but respect mute for push.
+  - Consent, mute and category checks run at send time; a change takes effect immediately.
+  - Every consent change is recorded (who, when, how, wording version) and included in the DSAR export.
 - Every marketing email has a one-click unsubscribe.
-- Announcement cap: 2 per shop per 7 days.
+- Announcement cap: 2 per shop per rolling 7 days.
+- **Quiet hours**: no marketing push 21:00–08:00 Europe/London.
+- **Cross-shop cap**: at most 5 marketing pushes per customer per rolling 7 days across all shops.
 - Cookies: strictly necessary + privacy-friendly first-party analytics with a visible notice and opt-out (no advertising or cross-site tracking). If any non-exempt tracker is ever added, a consent banner is required before setting it.
 
 ## 4. Marketplace (Online Safety Act 2023, consumer law, HMRC platform reporting)
 
-- Report button on every listing and seller profile; reporter acknowledgement with expected timeframe; complaints and appeals flow.
+- Report button on every listing and seller profile; Block on the seller profile; reporter acknowledgement with a stated timeframe (default 48 h — client to confirm) and a decision update; complaints and appeals flow.
+- EXIF/GPS metadata stripped from every upload before it is served.
 - Moderation queue with recorded decisions (`moderation_actions`); illegal items removed on sight.
 - Prohibited items enforced by keyword filter + review (list maintained in admin content settings): weapons and bladed items, crossbows, air guns, replica firearms, ammunition, fireworks; tobacco, vapes, e-liquids, alcohol; medicines, prescription items, controlled drugs, paraphernalia, cure claims; live animals; counterfeit/replica goods, pirated software/media; stolen goods, ID documents, bank cards, accounts/logins; adult products/services; recalled/unsafe products, used child car seats and helmets; event tickets, gift cards, vouchers; loans, investments, crypto, gambling, jobs with upfront fees; hazardous chemicals, gas canisters, ivory/protected wildlife.
-- Sellers 18+; business sellers labelled and show business name and address.
+- 18+ confirmation required to list AND to reveal a number; business sellers labelled and show business name and address.
 - **No payments in the app** (keeps the platform outside HMRC digital platform reporting rules as a listing/advertising-only site). Adding payments later requires a compliance review.
-- Pages to generate (templates, marked for solicitor review): Marketplace Rules, Prohibited Items, Reporting and Complaints.
-- Keep records needed for an Online Safety illegal-content risk assessment (the client completes the assessment; you provide a draft template in `docs/legal-templates/` in Phase 4).
+- Marketplace Rules, Prohibited Items and Reporting and Complaints pages (marked for solicitor review) **ship with the marketplace in Phase 4**. The marketplace cannot go live without them.
+- Keep records needed for the Online Safety Act assessments: the illegal-content risk assessment AND the children's-access assessment (the client completes both; you provide draft templates in `docs/legal-templates/` in Phase 4).
 
 ## 5. Mini game (Gambling Act 2005)
 
 - Free to play. No purchase, payment or points stake to play. No paid extra plays.
-- Rewards (if enabled by a shop) are small, skill-based score thresholds, capped daily. No random prize draws.
+- Rewards (if enabled by a shop) are small, skill-based score thresholds, paid at most once per day per shop. No random prize draws. The leaderboard has no prizes.
 - Game Rules page published.
 
 ## 6. Offers and advertising (CAP Code, DMCC unfair practices)
@@ -50,9 +141,16 @@ These are product rules the code must enforce. They are not legal advice; the cl
 
 ## 7. Children
 
-- Customer app 13+ (stated at sign-up); marketplace 18+ (confirmation before first listing or reveal).
+- Customer app 13+: a required "I am 13 or over" declaration at sign-up; without it no profile is stored.
+- Optional birth year is used only to set an 18+ flag (`is_adult_confirmed` + date). It is never shown to shops or used for segments, offers or ads.
+- Age-restricted offers (alcohol, etc.) are hidden unless 18+ is confirmed.
+- Marketplace listing AND number reveal require 18+ confirmation.
+- Leaderboard is opt-in; names of anyone not 18+ confirmed are always hidden (anonymous handle).
+- Online Safety Act: a children's-access assessment is done alongside the illegal-content assessment (§4).
 - High-privacy defaults; no profiling for ads.
 
-## 8. Policy pages (templates you generate in Phase 5, clearly marked "Draft — requires legal review")
+## 8. Policy pages (templates you generate, clearly marked "Draft — requires legal review")
 
-Terms of Use, Shop Terms, Privacy Policy, Cookie Notice, Review and Fake Review Policy, Marketplace Rules, Prohibited Items, Reporting and Complaints, Game Rules, Acceptable Use. Store in `src/content/legal/*.mdx`, rendered at `/legal/*`.
+Store in `src/content/legal/*.mdx`, rendered at `/legal/*`. Each page ships with the feature it covers:
+- **Phase 4, with the marketplace**: Marketplace Rules, Prohibited Items, Reporting and Complaints.
+- **Phase 5**: Terms of Use, Shop Terms (incl. controller roles and data-sharing terms, §2.1), Privacy Policy (incl. the complaints process, §2.5), Cookie Notice (incl. device signals, §2.8), Review and Fake Review Policy, Game Rules, Acceptable Use.

@@ -2,11 +2,14 @@
 
 This file is the **checklist**. The detail for every task (read list, build notes, acceptance criteria, edge cases, tests, verification) lives in `docs/phases/<phase>.md`. Always open the phase file section for the task you are doing.
 
-Rules:
-- Tick `- [x]` only when every acceptance criterion in the phase file has evidence from the session (ENGINEERING.md §1). Add the evidence summary to SESSION_LOG.md.
-- Every task runs the self-verification loop (TESTING §7–8: test first for logic, run the app with the console/network guard, inspect screenshots, try to break it, check side effects).
-- At the end of every **sub-phase**: `/subphase-complete` (full regression of everything built so far, exploratory QA, `code-reviewer` + reviewers the phase file names, progress updates, push, then CI + staging + Sentry verification). Tick the "closed with `/subphase-complete`" line only after that.
-- At the end of every **phase**: `/phase-complete` (all phase gates, demo dry run on staging with video, client demo notes).
+Rules (gates are defined once, in TESTING §4):
+- Tick `- [x]` only when every acceptance criterion and incoming CARRIED row has evidence from the session (ENGINEERING.md §1), with ≤ 5 evidence lines in SESSION_LOG.md in the same commit.
+- **Task:** `pnpm gate:task` (fast: check, integration, production build, the task's E2E on the production build); `security-reviewer` on security-relevant task diffs.
+- **Push:** CI runs the full suite (3 projects); nightly runs all 5 projects, ZAP baseline and k6 smoke against staging.
+- **Sub-phase:** `/subphase-complete` is light — CI green, staging smoke, Sentry, reviews of unreviewed commits, scoped QA if screens changed. No gate may be "pending".
+- **Phase:** `/phase-complete` is the one heavy gate (`pnpm gate:phase`) + DoD + demo; the phase's hardening task is that same run.
+- **Phase start:** a brief review fills missing Edge cases / measurable Acceptance criteria in the phase file before its first task.
+- Week labels are targets for planning, not gates.
 
 ## P0 — Foundation and design system (week 1)
 Details: [`docs/phases/P0.md`](phases/P0.md)
@@ -17,14 +20,29 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 - [x] P0-02 · Local infrastructure and environment validation
 - [x] P0-03 · Database foundation
 - [x] P0-04 · Background jobs infrastructure
-- [x] P0-A closed with `/subphase-complete` (post-push CI/staging pending P0-14/15)
+- [x] P0-A closed with `/subphase-complete` (post-push CI/staging completed by P0-14/P0-15 — retro rule)
 
 **P0-B · Security baseline, auth, authorisation**
 
 - [x] P0-05 · Security baseline
 - [x] P0-06 · Authentication for all roles
 - [x] P0-07 · Authorisation layer, action template, error model
-- [ ] P0-B closed with `/subphase-complete`
+- [ ] P0-B closed with `/subphase-complete` (review fixes done; closes when P0-14 CI is green on its code)
+
+> **Plan v4 order:** after P0-B comes **P0-E** (production foundation), then P0-C, then P0-D.
+
+**P0-E · Production foundation (do before P0-C and P0-D)**
+
+- [x] P0-17 · Test infrastructure and self-verification tooling
+- [ ] P0-14 · CI pipeline, gate scripts and production-parity testing
+- [ ] P0-19 · Auth hardening and library security conformance
+- [ ] P0-18 · Reliability primitives: outbox, Redis split, failure modes, safe migrations
+- [ ] P0-20 · Row-Level Security (mandatory)
+- [ ] P0-13 · Observability, SLOs and runbook
+- [ ] P0-21 · Compliance foundations (drafts)
+- [ ] P0-15 · Staging environment, deployment and rollback (needs H-05, H-06, H-07, H-21)
+- [ ] P0-16 · Demo seeds
+- [ ] P0-E closed with `/subphase-complete`
 
 **P0-C · Design system, motion, sound**
 
@@ -39,14 +57,6 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 - [ ] P0-12 · App shells, navigation and route groups
 - [ ] P0-D closed with `/subphase-complete`
 
-**P0-E · Observability, CI, staging, seeds**
-
-- [ ] P0-13 · Observability and analytics foundation
-- [ ] P0-14 · CI pipeline
-- [ ] P0-15 · Staging environment and deployment
-- [ ] P0-16 · Seeds and factories
-- [x] P0-17 · Test infrastructure and self-verification tooling
-- [ ] P0-E closed with `/subphase-complete`
 - [ ] P0 closed with `/phase-complete`
 - [ ] P0 definition of done met and demo delivered
 
@@ -207,12 +217,12 @@ Details: [`docs/phases/P5.md`](phases/P5.md)
 - [ ] P5-08 · Performance pass
 - [ ] P5-09 · Accessibility pass
 - [ ] P5-10 · Visual regression baselines
-- [ ] P5-11 · Load test and cross-device verification
 - [ ] P5-C closed with `/subphase-complete`
 
 **P5-D · Production readiness**
 
 - [ ] P5-12 · Production infrastructure, backups, monitoring
+- [ ] P5-11 · Load test (on the production-shaped environment) and cross-device verification
 - [ ] P5-13 · Runbook, operator docs, release workflow
 - [ ] P5-14 · Release candidate
 - [ ] P5-D closed with `/subphase-complete`

@@ -7,7 +7,7 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 - 🟠 **Needed soon**: needed within the current or next phase
 - 🟢 **Later**: needed before launch or a later phase; do it whenever convenient
 
-**Nothing is blocking code work right now.** Local development uses stand-ins (test Google sign-in, sign-in links printed to the terminal) until the real accounts exist. When you finish one, tell Claude e.g. "H-03 done" and put any keys in `.env.local` yourself (never paste secrets into chat or Git).
+**Nothing is blocking code work right now.** Local development uses stand-ins (Mailpit for email, MinIO for storage, fake push/AI) until the real accounts exist. Plan v4 (9 Nov) added client decisions H-21…H-24: **H-21 is needed before staging (P0-15)**. When you finish one, tell Claude e.g. "H-21 done" and put any keys in `.env.local` yourself (never paste secrets into chat or Git).
 
 ## Open
 
@@ -21,11 +21,15 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 | H-08 | 🟢 | Cloudflare R2 bucket + API token | P2 start (~16 Nov 2026) | Image uploads | 10 min |
 | H-09 | 🟢 | AI provider API key (Google Gemini) | P3 start (~23 Nov 2026) | AI review help | 5 min |
 | H-11 | 🟢 | Production VPS + production database | P5 (~7 Dec 2026) | Launch | 30 min |
-| H-12 | 🟢 | Google Play Console account ($25 one-time) — start early, verification takes days | P5 (~7 Dec 2026); **start by 23 Nov** | Android app | 20 min + Google verification |
+| H-21 | 🟠 | Client: confirm capacity model + hosting budget (managed multi-host production) | Before P0-15 staging (~13 Nov 2026) | Production topology, load-test targets, cost (ARCHITECTURE §1, §12) | 30 min with the client |
+| H-22 | 🟠 | Client: confirm loyalty-rule defaults (PRODUCT §4–§6, §15 state matrix, §16 recovery) | Before P1 starts | P1 builds these rules; changing them later costs rework | 45 min with the client |
+| H-23 | 🟠 | Solicitor: review compliance drafts (ROPA, DPIA, processor register, retention schedule) | Before real customer data (P1 go-live) | UK GDPR/PECR/DUAA obligations (COMPLIANCE §2) | Client side |
+| H-24 | 🟢 | Client: decide large-organisation controls (admin SSO, pen-test vendor, on-call rota) | Before P5 (~30 Nov 2026) | SECURITY §15, launch readiness | 30 min with the client |
+| H-12 | 🟠 | Google Play Console account — **organisation** developer account (avoids the 14-day closed-test rule for new personal accounts); verification takes days | **Start now**; must be verified before P5-04 | Android app; Play release timing (S-03) | 20 min + Google verification |
 | H-13 | 🟢 | Test each demo on a real Android phone and a real iPhone | Every phase end | Real-device check | 15 min / phase |
 | H-14 | 🟢 | Send the client the demo notes and collect feedback | Every phase end | Client sign-off | — |
 | H-15 | 🟢 | Client's solicitor reviews the legal page drafts | P5 | Launch | Client side |
-| H-17 | 🟠 | Decide whether to tighten Claude Code permissions in `.claude/settings.json` (audit security #17: `node:*`/`pnpm:*` run anything without a prompt; `cat` can read `.env*`) | Before staging secrets exist (~13 Nov 2026) | Tooling safety; Claude will not change its own permissions | 5 min |
+| H-17 | 🟠 | Decide whether to tighten Claude Code permissions in `.claude/settings.json` (audit security #17 + plan audit H7: `node:*`/`pnpm:*` run anything without a prompt, incl. `pnpm add`; `cat`/`node` can read `.env*`, so the Read deny is bypassable) | Before staging secrets exist (~13 Nov 2026) | Tooling safety; Claude will not change its own permissions | 5 min |
 
 ## Steps
 
@@ -67,7 +71,7 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 4. Authorised JavaScript origins: `http://localhost:3000` and `https://staging.<domain>`.
 5. Authorised redirect URIs: `http://localhost:3000/api/auth/callback/google` and `https://staging.<domain>/api/auth/callback/google`.
 6. Copy Client ID and Client secret into `.env.local` as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Tell Claude "H-03 done".
-- **Status 9 Nov (Claude checked):** keys are in the Windows `.env.local` with the right shape and Google accepts the client ID, but Google answers `redirect_uri_mismatch`. Step 5 is still needed: add `http://localhost:3000/api/auth/callback/google` exactly (no trailing slash). Then Claude re-runs the live check and a real sign-in with a test-user Google account. Also add the keys to the shared password-manager note for the Mac.
+- **Done 9 Nov:** localhost redirect URI added; real Google sign-in verified. The staging URI is a step in H-07.
 
 ### H-04 — Email provider (Resend)
 1. resend.com → sign up → API Keys → Create key (sending access) → put it in `.env.local` as `EMAIL_API_KEY`.
@@ -113,6 +117,23 @@ Tell Claude "H-18 done on <machine>".
 ### H-16 — Reference images (optional)
 1. Save images as `design/reference/m03-wallet.png`, `d15-shop-dashboard.png` etc. (numbers from `docs/DESIGN.md` §15).
 2. Commit them or tell Claude to commit them.
+
+### H-21 — Capacity model and hosting budget (client)
+1. Ask the client for 12-month forecasts: number of shops, total members, busiest hour (requests per second or "customers per shop per hour"), largest single shop, biggest announcement audience.
+2. Show them the target in ARCHITECTURE §1 (≥ 2 app hosts, managed Postgres with HA, two Redis instances, Cloudflare WAF) and its rough monthly cost (Claude prepares a one-page estimate on request).
+3. Get a yes/no on the budget. Tell Claude the numbers and the answer; Claude updates ARCHITECTURE §12 and DECISIONS (a "no" records the single-host fallback and its risk).
+
+### H-22 — Loyalty-rule defaults (client)
+1. Read PRODUCT §4 (leave/rejoin), §5 (award guards, reversals, platform cap), §6 (progress model, expiry, redemption, programme changes, streak/tier defaults), §15 (shop state matrix), §16 (account recovery). Every "default — client to confirm" item is a question.
+2. Mark each as accepted or changed; tell Claude the changes before P1 starts.
+
+### H-23 — Solicitor review of compliance drafts
+1. After Claude finishes P0-21, send the client's solicitor the files in `docs/compliance/` (ROPA, DPIA, processor register, retention schedule) and COMPLIANCE.md §2–§4, §7.
+2. Return the solicitor's changes to Claude before P1 goes live with real customers.
+
+### H-24 — Large-organisation controls (client)
+1. Decide: admin sign-in via the organisation's identity provider (SSO), yes/no; who runs the independent penetration test (and when, ≥ 2 weeks before launch); who is on call after launch (names, hours, escalation).
+2. Tell Claude; P5 tasks are adjusted accordingly.
 
 ## Done
 

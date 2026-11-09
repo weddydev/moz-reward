@@ -1,5 +1,7 @@
 # AUDIT — prior work against the upgraded kit (P0)
 
+> **Frozen 9 Nov 2026 (plan v4).** This is history; do not update it. Open items now live in `progress/PROGRESS.md` (CARRIED table, IDs prefixed A- for P0-A and B- for P0-B reviews). Ratings below may be stale: PHASES.md ticks are authoritative.
+
 **Date:** 8 Nov 2026 · **Baseline commit:** `814f443` (kit upgrade) · **Auditors:** `code-reviewer` ×2 (P0-A/B, P0-C/D/E), `security-reviewer`, `design-reviewer` · **Standard:** `docs/phases/P0.md`, `docs/ENGINEERING.md`, `docs/SECURITY.md`, `docs/DESIGN.md`.
 
 Method: each task's acceptance criteria, edge cases, required tests and build notes were checked with evidence gathered in this session (commands run, file:line, test names, live measurements on `/dev/ui`, production-mode `curl`, proof-of-concept tests against the test DB). Reviewers were read-only; temporary probe files were deleted and the working tree stayed clean.

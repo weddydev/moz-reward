@@ -1,18 +1,15 @@
 ---
-description: Close a sub-phase with full regression, exploratory QA, reviews, push and post-push verification
+description: Close a sub-phase (light): CI green, staging smoke, scoped reviews and QA, progress
 ---
 
-Close the current sub-phase ($ARGUMENTS, e.g. "P1-B"). Follow `docs/TESTING.md` §4 "Sub-phase done" and §8 exactly. Do not skip steps; if a step cannot run, stop and say why.
+Close the current sub-phase ($ARGUMENTS, e.g. "P1-B"). This gate is **light by design** (TESTING §4): CI already ran the full suite on every push, so do **not** re-run the suites locally. Never mark a check passed that you did not see.
 
-1. **Completeness:** every task in the sub-phase is ticked in `docs/PHASES.md` with an evidence line in SESSION_LOG.md. List any that aren't and finish them first.
-2. **Full regression** (use the `qa-engineer` subagent to run and summarise):
-   - `pnpm check`, integration tests, authz matrix + coverage script
-   - every E2E journey built so far (not only this sub-phase) on all Playwright projects, with the console/network guard
-   - fix every failure at its root cause; re-run until green
-3. **Exploratory QA:** `qa-engineer` drives this sub-phase's screens and flows per TESTING §8 step 4 (double taps, back/refresh mid-flow, slow 3G, offline, long text, empty data, keyboard only, reduced motion, two tabs), captures screenshots at 320/390/1440 and reports issues. Inspect the screenshots yourself. Fix what it finds.
-4. **Reviews:** `code-reviewer` on all task IDs in the sub-phase; plus `security-reviewer` and/or `design-reviewer` if the phase file says so, and `review-animations` for any motion. Resolve every BLOCK/high finding; log medium/low ones in PROGRESS.md.
-5. **Progress:** update PROGRESS.md (incl. handoff note), HUMAN_TASKS.md (review all items, add new ones with priority and steps), SESSION_LOG.md (sub-phase summary with test counts), DECISIONS.md if needed. Commit.
-6. **Push and verify:** `git push origin main`; `gh run watch` until CI finishes; confirm the staging deploy job succeeded; run the staging smoke for this area; check Sentry for new errors in this release. If anything fails, fix and repeat this step.
-7. Reply with a short table: regression (passed/failed counts per suite), exploratory issues found/fixed, review verdicts, CI + staging status, and open 🔴/🟠 human tasks.
+1. **Completeness:** every task in the sub-phase is ticked in `docs/PHASES.md` with evidence lines in SESSION_LOG.md, and no CARRIED row targets this sub-phase. Finish anything missing first.
+2. **CI:** `gh run list --branch main --limit 3` → the run for the last commit is green (if red: fix at the root cause, push, repeat). If CI does not exist yet, stop: the infrastructure task moves earlier — never close with a "pending" gate.
+3. **Staging:** the deploy for that commit succeeded; run the staging smoke for this sub-phase's area; Sentry shows no new errors for the release.
+4. **Reviews** (background subagents, only commits since the last "code-review done" line in SESSION_LOG.md that were not already reviewed at task level): `code-reviewer`; plus `security-reviewer` if server, auth, data access, uploads, notifications or marketplace code changed; plus `design-reviewer` if key screens or motion changed. Fix every BLOCK/HIGH; log medium/low in PROGRESS "follow-ups" with an owner task.
+5. **Exploratory QA only if the sub-phase added or changed screens:** `qa-engineer` on those screens (320/390/1440, Chromium + WebKit; double submit, back/refresh mid-flow, slow 3G, offline, long text, keyboard, reduced motion, two tabs). Inspect the key screenshots yourself. Fix majors; log minors.
+6. **Progress (one commit):** PROGRESS (Now/Next/CARRIED/follow-ups/handoff note), HUMAN_TASKS (review every open item, add new ones with priority and steps), SESSION_LOG (≤ 8 lines: CI run, staging smoke, review verdicts, QA issues found/fixed, "code-review done <sha>"), DECISIONS if needed, tick the sub-phase line in PHASES.md. Push; confirm CI picks it up.
+7. **Reply** with a short table: CI (run link), staging smoke, Sentry, review verdicts, QA issues found/fixed, open 🔴/🟠 human tasks.
 
-If `gh` is not installed or authenticated, add a 🔴 HUMAN_TASKS item ("Install GitHub CLI and run `gh auth login`") and report CI/staging status as "not verified" — never as passed.
+If `gh` is not authenticated, add a 🔴 HUMAN_TASKS item ("Install GitHub CLI and run `gh auth login`") and report CI as NOT VERIFIED — never as passed.
