@@ -135,3 +135,8 @@ Applied (docs/config only): topology, backups, free tiers, launch-tier capacity,
 ## 2026-11-09 (late night) — checkpoint before a new chat (Syedbadeshah76, Windows laptop)
 Done: H-25 answered (GitHub Free, GITHUB_MODE=free); plan v5 follow-ups (deploy via SSH, one OpenPGP backup key, backup:verify + H-29). No code changed. Baton kept.
 Next: P0-14 — start with Prettier pin + .gitattributes + format:check + one style: commit (see PROGRESS handoff note).
+
+## 2026-11-09 (late night) — P0 — P0-14 started, handed over half-done (Syedbadeshah76, Windows laptop)
+Done: main `20fcf24` style commit (Prettier pinned, .gitattributes eol=lf, format:check in check, 21 files token-equivalent); stashes dropped (human OK). `wip/P0-14` `fa8e676`: production-build `pnpm e2e` + `e2e:dev`, gate:task / gate:phase / ci:usage, pre-push guard, axe in guard + every-route spec, /api/test/runtime, C-10 items (404 every method, token, .gitleaksignore, gitleaks digest, migration lock rules, RuleTester), ci.yml, Dockerfile.
+Evidence: gate:task P0-14 PASS via pre-push (unit 349, int 266, build, bundle, E2E 23/0); prod E2E chromium+webkit 63/0 earlier; mutations seen failing (OPTIONS, limiter on, token, axe, NOT VERIFIED summary); full-history gitleaks clean; root-caused gate failure: .env.local NODE_ENV leaked into Vitest (fixed + test).
+Not done: CI result (run 42662735390 queued), Docker build (fails: tests/ excluded but type-checked), scheduled.yml, Renovate, minimumReleaseAge, AC2/5/6 demos. Two one-off 15 s integration timeouts (jobs close(), test-api session) — watch.
