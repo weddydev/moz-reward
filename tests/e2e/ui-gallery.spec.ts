@@ -1,22 +1,46 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./support/test";
 
-test("[P0-09] UI gallery renders every primitive with no serious accessibility violations", async ({ page, shoot }) => {
-  await page.goto("/dev/ui");
-  await expect(page.getByRole("heading", { level: 1, name: "UI gallery" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Collect points" })).toBeVisible();
-  await expect(page.getByRole("tablist", { name: "Requests" })).toBeVisible();
+/**
+ * Three focused tests rather than one: the axe scan, the full-page screenshot and the toast interaction are
+ * independent, and together they used most of one test's budget under full parallel load on WebKit (a click
+ * then ran out of time waiting for stability). Each now has its own budget and reports its own failure.
+ */
+test.describe("[P0-09] UI gallery", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/dev/ui");
+    await expect(page.getByRole("heading", { level: 1, name: "UI gallery" })).toBeVisible();
+  });
 
-  // No horizontal page overflow (mobile browsers would zoom the whole page out).
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  expect(overflow).toBeLessThanOrEqual(0);
+  test("[P0-09] renders every primitive with no page overflow and no serious accessibility violations", async ({
+    page,
+  }) => {
+    await expect(page.getByRole("button", { name: "Collect points" })).toBeVisible();
+    await expect(page.getByRole("tablist", { name: "Requests" })).toBeVisible();
 
-  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
-  const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
-  expect(serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+    // No horizontal page overflow (mobile browsers would zoom the whole page out).
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
 
-  await shoot("ui-gallery");
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+      .analyze();
+    const serious = results.violations.filter(
+      (v) => v.impact === "serious" || v.impact === "critical",
+    );
+    expect(
+      serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
+    ).toEqual([]);
+  });
 
-  await page.getByRole("button", { name: "Success toast" }).click();
-  await expect(page.getByText("+80 gold added")).toBeVisible();
+  test("[P0-09] screenshot for visual inspection", async ({ shoot }) => {
+    await shoot("ui-gallery");
+  });
+
+  test("[P0-09] a toast appears when triggered", async ({ page }) => {
+    await page.getByRole("button", { name: "Success toast" }).click();
+    await expect(page.getByText("+80 gold added")).toBeVisible();
+  });
 });
