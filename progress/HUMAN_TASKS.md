@@ -16,7 +16,6 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 | H-07 | 🟠 | Buy domain; Cloudflare account; move DNS to Cloudflare | 13 Nov 2026 (end of P0) | Staging URL `staging.<domain>`, email domain, CDN | 30 min (+ up to 24 h DNS) |
 | H-06 | 🟠 | Staging VPS (London) + SSH access | 13 Nov 2026 (end of P0) | Demo 1 runs on staging | 30 min |
 | H-05 | 🟠 | Postgres database for staging (Neon, London/EU) | 13 Nov 2026 (end of P0) | Staging data | 10 min |
-| H-03 | 🟠 | Google Cloud OAuth client (web) | 13 Nov 2026 (Demo 1 shows real Google sign-in) | Customer Google sign-in | 15 min |
 | H-04 | 🟠 | Email provider (Resend) + API key + domain verification | 13 Nov 2026 (Demo 1 shows email-link sign-in) | Magic-link and invite emails | 15 min (+ DNS wait) |
 | H-20 | 🟠 | Cloudflare Turnstile site + keys (after H-07) | 13 Nov 2026 (P0-06 puts Turnstile on the sign-in link form; staging fails closed without a real secret) | Bot protection on sign-in (SECURITY §6) | 5 min |
 | H-08 | 🟢 | Cloudflare R2 bucket + API token | P2 start (~16 Nov 2026) | Image uploads | 10 min |
@@ -38,6 +37,7 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 5. Tell Claude "H-19 done"; Claude runs `pnpm services:up`.
 
 ### H-07 — Domain + Cloudflare (do this first: H-04 and H-06 depend on the domain)
+- After the domain exists: Google Cloud → Moz Rewards → Google Auth Platform → Clients → Moz Rewards client (`404449…-1f0s…`): add origin `https://staging.<domain>` and redirect URI `https://staging.<domain>/api/auth/callback/google` (from H-03).
 1. Buy a domain (e.g. `mozrewards.co.uk`) — Cloudflare Registrar (dash.cloudflare.com → Domain Registration) is simplest because DNS is then already on Cloudflare.
 2. If bought elsewhere: Cloudflare → Add a site → enter the domain → Free plan → copy the two nameservers → set them at your registrar.
 3. Tell Claude the domain name. Claude will list the exact DNS records (staging A record, email records) once H-06 and H-04 exist.
@@ -118,6 +118,7 @@ Tell Claude "H-18 done on <machine>".
 
 | ID | Task | Done by | Date |
 |---|---|---|---|
+| H-03 | Google OAuth client; localhost redirect URI added; real Google sign-in verified (staging URI waits for H-07, see H-07 step) | Syedbadeshah76 | 9 Nov 2026 |
 | H-01 | Private GitHub repo `weddydev/moz-reward` pushed; collaborators added; `gh` signed in as `weddydev` | talha.syed | 8 Nov 2026 |
 | — | Local tools: pnpm 12.18, Docker 29.9, gh 2.103, Node 26.11 (installed by Claude) | Claude | 8 Nov 2026 |
 | H-02 | `.env.local` on the Windows laptop (all keys set, app env check passes, `pnpm dev` serves /, /sign-in, /staff/sign-in, session API with it; verified by Claude, names only) | Syedbadeshah76 | 8 Nov 2026 |

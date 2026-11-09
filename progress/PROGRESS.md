@@ -16,13 +16,13 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - **Windows laptop note:** `.env.local` in place (H-02, 8 Nov); `SENTRY_DSN` added (H-10): add it to the Mac copy via the shared note.
 
 ## Status
-- **Phase:** P0 — Foundation and design system. P0-A closed; P0-05 met; P0-06 rework in progress (pieces A + C done, B code done; D left). Remaining partial: P0-06/07/08/09; missing: P0-10…16.
+- **Phase:** P0 — Foundation and design system. P0-A closed; P0-05, P0-06 met. Next: P0-07, then close P0-B. Remaining partial: P0-07/08/09; missing: P0-10…16.
 - **Last updated:** 2026-11-09 (afternoon), Syedbadeshah76
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
 ## Now
-- **P0-06 rework: all code pieces done** (not ticked: waits on H-03 for the real Google sign-in). Piece D today: `f1c70c3` Google scopes once; `1252b6a` `__Host-` cookies on https; `6c1c0bf` DB trigger ends sessions on any staff/admin privilege change + `users_email_lowercase` CHECK (migrations 0005/0006); `b285bd5` customer 30-day idle timeout (injected clock) + user deleted mid-session; `13f56e8` signed-in devices (`/me/security`, `/staff/security`); `4e2c887` sign-in shows the shop when returnTo is `/s/<code>`; `0a8aba5` security pages redirect signed-out visitors with a real 307 (was a streamed client-side redirect). Earlier: piece A, the sign-in link (`d7f2c34`: Turnstile, limits, hashed tokens, after-response delivery, React Email, `/sign-in/link-expired`, QA-1…4). Piece C, staff (`6131b96` security #5: the enrolment verify no longer mints an MFA session; `c8b3a4d` staff login 10/15 min/IP + per-account pause 1→15 min + lockout email + second-factor IP limit; `780ffbe` own HIBP check with timeout and fail-open, TOTP ±1 and recovery-reuse tests). Recovery codes stay encrypted (DECISIONS).
+- **P0-06 ticked 9 Nov** (evidence in SESSION_LOG). Real Google sign-in verified after H-03; sign-in screens E2E + screenshots `801451d`. Carried to P0-12: route-group TOTP guards (per group), role switcher + default portal per role. Piece D today: `f1c70c3` Google scopes once; `1252b6a` `__Host-` cookies on https; `6c1c0bf` DB trigger ends sessions on any staff/admin privilege change + `users_email_lowercase` CHECK (migrations 0005/0006); `b285bd5` customer 30-day idle timeout (injected clock) + user deleted mid-session; `13f56e8` signed-in devices (`/me/security`, `/staff/security`); `4e2c887` sign-in shows the shop when returnTo is `/s/<code>`; `0a8aba5` security pages redirect signed-out visitors with a real 307 (was a streamed client-side redirect). Earlier: piece A, the sign-in link (`d7f2c34`: Turnstile, limits, hashed tokens, after-response delivery, React Email, `/sign-in/link-expired`, QA-1…4). Piece C, staff (`6131b96` security #5: the enrolment verify no longer mints an MFA session; `c8b3a4d` staff login 10/15 min/IP + per-account pause 1→15 min + lockout email + second-factor IP limit; `780ffbe` own HIBP check with timeout and fail-open, TOTP ±1 and recovery-reuse tests). Recovery codes stay encrypted (DECISIONS).
 - P0-05 met earlier today (proxy/CSP, limiter, logger, Turnstile, audit; PPR off — DECISIONS).
 
 ## P0-A follow-ups (from reviews + QA; owners noted)
@@ -33,12 +33,12 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Open, small: CR-M3 `enqueue` timeout (`commandTimeout` + unreachable-Redis test); CR-L2 schedule pruning during rolling deploys; CR-L4 `dbFor().transaction` bypasses the ALS guard; CR-L6 migration checker gaps; CR-L7 RuleTester for `no-server-in-client`; SEC-L2 gitleaks image digest; SEC-L4 + QA-9 test API: token/loopback gate and 404 (not 405) for every method.
 
 ## Next (top 3)
-1. P0-06 close-out: once H-03 step 5 (redirect URI) is done, re-run the live check (POST /api/auth/sign-in/social → no `redirect_uri_mismatch`; scope is now `email profile openid` once) and a real Google sign-in with a test-user account on Chromium; screenshot. Then sign-in screenshots (320/390 Chromium+WebKit, 1440) incl. shop context, walk the P0-06 acceptance list, tick it. Role switcher + default portal per role → P0-12 (AUDIT).
+1. P0-07 (security #8: defineAction + requestLogger + audit + 429 mapping), then `/subphase-complete P0-B` (incl. a production-build E2E run on WebKit to re-check the load-only timeouts).
 2. Formatting drift: `pnpm format` rewrites 55 committed files (CI `format:check` would fail). Two stashes hold that output (`git stash list`); decide whether to commit it as one `style:` commit or find the config mismatch first. Use `prettier --write <files>`, not `pnpm format`, until then.
-3. P0-07 (security #8, defineAction + requestLogger + audit + 429 mapping), then `/subphase-complete P0-B`.
+3. P0-08/09 rework (QA-7, QA-8), then P0-10 onwards.
 
 ## Blockers
-- Human: 🔴 none blocking code work. 🟠 by 13 Nov: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth (keys in; redirect URI missing), H-04 Resend, H-20 Turnstile keys, H-17 permissions decision.
+- Human: 🔴 none blocking code work. 🟠 by 13 Nov: H-07 domain (+ staging Google URI), H-06 VPS, H-05 Neon, H-04 Resend, H-20 Turnstile keys, H-17 permissions decision.
 - Technical: post-push verification (CI, staging, Sentry) can't run until P0-14/15. WebKit E2E intermittent: both parts root-caused and fixed (gallery b4e1b1c; staff TOTP flow split in d7f2c34, 24/24 under repeat load).
 - Technical: audit HIGH findings in `progress/AUDIT.md` (top risks). 14 surviving Stryker mutants (codes 7, return-to 3, policies 4) to review at phase end (TESTING §2).
 
@@ -78,5 +78,5 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - CI on main: — (not set up yet) · Staging deploy: — · E2E smoke on staging: —
 
 ## Open questions / assumptions
-- Not yet tested: Google OAuth (needs H-03), passkey sign-in (needs a real device), real email provider (needs H-04).
+- Not yet tested: passkey sign-in (needs a real device), real email provider (needs H-04).
 - Domain name not chosen yet (H-07); staging URLs written as `staging.<domain>` until then.

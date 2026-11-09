@@ -33,7 +33,7 @@ Method: each task's acceptance criteria, edge cases, required tests and build no
 | P0-03 Database | **MET** (8 Nov 2026) — ticked |
 | P0-04 Background jobs | **MET** (8 Nov 2026) — ticked |
 | P0-05 Security baseline | MISSING |
-| P0-06 Authentication | PARTIAL |
+| P0-06 Authentication | MET (9 Nov) |
 | P0-07 Authz + action template | PARTIAL |
 | P0-08 Tokens / fonts / preferences | PARTIAL |
 | P0-09 Primitives + gallery | PARTIAL |
@@ -223,7 +223,7 @@ No BullMQ/ioredis, no queue registry, no `enqueue`, no `failed_jobs` table, no s
 | AC: headers, nonce blocking, limiter + spoofing, redaction | missing | – | – |
 | Tests: limiter, redaction, header snapshot, origin | missing | – | – |
 
-### P0-06 · Authentication for all roles — PARTIAL
+### P0-06 · Authentication for all roles — MET (2026-11-09; route-group guards + role switcher carried to P0-12, which owns them)
 
 | Criterion | Status | Evidence | Fix needed |
 |---|---|---|---|

@@ -22,7 +22,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 **P0-B · Security baseline, auth, authorisation**
 
 - [x] P0-05 · Security baseline
-- [ ] P0-06 · Authentication for all roles
+- [x] P0-06 · Authentication for all roles
 - [ ] P0-07 · Authorisation layer, action template, error model
 - [ ] P0-B closed with `/subphase-complete`
 
