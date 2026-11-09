@@ -59,28 +59,22 @@ describe("[P0-06] staff/admin MFA bypass is closed (audit security #1, #6)", () 
     expect(await countEmailsTo(admin.email)).toBe(0);
   });
 
-  it("treats a staff row stored with a mixed-case email as privileged (no email link)", async () => {
-    // Raw inserts (seeds, invites) may keep the case; the check must not fail open.
-    const lower = testEmail("mixedcase");
-    const [user] = await db()
-      .insert(users)
-      .values({
-        email: lower.replace(/^./, (c) => c.toUpperCase()).replace("@", "@Shop."),
-        name: "Owner",
-      })
-      .returning();
-    const stored = user?.email ?? "";
-    expect(stored).not.toBe(stored.toLowerCase());
+  it("treats a staff email as privileged whatever casing or spaces the request uses (no email link)", async () => {
+    // Stored emails are lower case (DB CHECK users_email_lowercase, session-rotation.test.ts); the lookup must
+    // still not fail open on a differently-cased request.
+    const stored = testEmail("mixedcase");
+    const [user] = await db().insert(users).values({ email: stored, name: "Owner" }).returning();
     const shop = await makeShop();
     await makeStaff(shop.id, user?.id ?? "", "owner");
 
-    expect(await isPrivilegedEmail(stored.toLowerCase())).toBe(true);
+    const mixed = stored.replace(/^./, (c) => c.toUpperCase());
+    expect(await isPrivilegedEmail(mixed)).toBe(true);
     expect(await isPrivilegedEmail(`  ${stored.toUpperCase()} `)).toBe(true);
-    await sendLink(stored.toLowerCase());
+    await sendLink(mixed);
     const customer = testEmail("customer-after-mixed");
     await sendLink(customer);
     await latestEmailTo(customer);
-    expect(await countEmailsTo(stored.toLowerCase())).toBe(0);
+    expect(await countEmailsTo(stored)).toBe(0);
   });
 
   it("refuses a sign-in link issued before the account became staff", async () => {

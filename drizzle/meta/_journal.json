@@ -36,6 +36,20 @@
       "when": 1794155979260,
       "tag": "0004_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794209641794,
+      "tag": "0005_users_email_lowercase",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794209652409,
+      "tag": "0006_revoke_sessions_on_privilege_change",
+      "breakpoints": true
     }
   ]
 }

@@ -4,7 +4,16 @@
  * If you add an auth plugin, regenerate to a scratch file and merge the diff by hand.
  */
 import { relations, sql } from "drizzle-orm";
-import { boolean, index, integer, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  check,
+  index,
+  integer,
+  pgTable,
+  text,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { id, timestamps, tz } from "./_columns";
 
 export const users = pgTable(
@@ -18,8 +27,12 @@ export const users = pgTable(
     twoFactorEnabled: boolean().default(false).notNull(),
     ...timestamps(),
   },
-  // Case-insensitive uniqueness in the DB (ENGINEERING §6): Better Auth lowercases, raw inserts might not.
-  (t) => [uniqueIndex("users_email_lower_uq").on(sql`lower(${t.email})`)],
+  // Case-insensitive uniqueness in the DB (ENGINEERING §6): Better Auth lowercases, raw inserts might not,
+  // so the DB also refuses a mixed-case email outright (audit SEC-M5b).
+  (t) => [
+    uniqueIndex("users_email_lower_uq").on(sql`lower(${t.email})`),
+    check("users_email_lowercase", sql`${t.email} = lower(${t.email})`),
+  ],
 );
 
 export const sessions = pgTable(
