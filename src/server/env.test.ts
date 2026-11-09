@@ -80,7 +80,17 @@ describe("[P0-02] server env", () => {
     APP_URL: "https://mozrewards.co.uk",
     EMAIL_PROVIDER: "resend",
     EMAIL_API_KEY: "k",
+    TRUSTED_PROXY: "cloudflare",
   };
+
+  it("[P0-05] refuses TRUSTED_PROXY=none on staging/production (client IPs would all share one bucket)", () => {
+    expect(() => parseServerEnv({ ...prod, TRUSTED_PROXY: "none" })).toThrow(/TRUSTED_PROXY/);
+    expect(() => parseServerEnv({ ...prod, APP_ENV: "staging", TRUSTED_PROXY: "none" })).toThrow(
+      /TRUSTED_PROXY/,
+    );
+    expect(parseServerEnv({ ...prod, TRUSTED_PROXY: "caddy" }).TRUSTED_PROXY).toBe("caddy");
+    expect(parseServerEnv(base).TRUSTED_PROXY).toBe("none");
+  });
 
   it("requires https on staging and production", () => {
     expect(() => parseServerEnv({ ...prod, APP_URL: "http://mozrewards.co.uk" })).toThrow(

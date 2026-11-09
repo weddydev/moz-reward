@@ -89,6 +89,7 @@ describe("[P0-17] fakes fail closed outside local/test", () => {
       vi.stubEnv("APP_URL", "https://staging.mozrewards.co.uk");
       vi.stubEnv("EMAIL_PROVIDER", "resend");
       vi.stubEnv("EMAIL_API_KEY", "re_test_key");
+      vi.stubEnv("TRUSTED_PROXY", "caddy");
       const calls = {
         push: async () =>
           (await import("./push")).sendPush({ endpoint: "e" }, { title: "t", body: "b" }),

@@ -50,6 +50,8 @@ export const serverEnvSchema = z
     GOOGLE_CLIENT_ID: optional,
     GOOGLE_CLIENT_SECRET: optional,
     ADMIN_IP_ALLOWLIST: optional,
+    /** Which proxy sets the client IP header (SECURITY §6): none (local/test), caddy, cloudflare. */
+    TRUSTED_PROXY: z.enum(["none", "caddy", "cloudflare"]).default("none"),
 
     DATA_ENCRYPTION_KEY: optional,
     DATA_ENCRYPTION_KEY_ID: z.string().default("k1"),
@@ -102,6 +104,13 @@ export const serverEnvSchema = z
         code: "custom",
         path: ["APP_URL"],
         message: "must use https outside local/test",
+      });
+    }
+    if (!isLocalEnv && e.TRUSTED_PROXY === "none") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["TRUSTED_PROXY"],
+        message: "must be caddy or cloudflare outside local/test (client IPs for rate limits)",
       });
     }
     if (e.EMAIL_PROVIDER === "smtp" && !e.SMTP_HOST) {

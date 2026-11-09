@@ -57,6 +57,7 @@ describe("[P0-17] test-only seeding API", () => {
     vi.stubEnv("APP_URL", url);
     vi.stubEnv("EMAIL_PROVIDER", "resend");
     vi.stubEnv("EMAIL_API_KEY", "re_test_key");
+    vi.stubEnv("TRUSTED_PROXY", "caddy");
     const route = await import("@/app/api/test/[action]/route");
     const res = await call(route, { role: "admin_owner" });
     expect(res.status).toBe(404);
