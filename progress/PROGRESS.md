@@ -17,12 +17,12 @@ _Overwritten by `/handoff`. The next developer reads this first._
 
 ## Status
 - **Phase:** P0 — Foundation and design system. P0-A closed; P0-05 met; P0-06 rework in progress (pieces A + C done, B code done; D left). Remaining partial: P0-06/07/08/09; missing: P0-10…16.
-- **Last updated:** 2026-11-09 12:39, Syedbadeshah76
+- **Last updated:** 2026-11-09 (afternoon), Syedbadeshah76
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
 ## Now
-- **P0-06 rework in progress** (not ticked). Done and pushed: piece A, the sign-in link (`d7f2c34`: Turnstile, limits, hashed tokens, after-response delivery, React Email, `/sign-in/link-expired`, QA-1…4). Piece C, staff (`6131b96` security #5: the enrolment verify no longer mints an MFA session; `c8b3a4d` staff login 10/15 min/IP + per-account pause 1→15 min + lockout email + second-factor IP limit; `780ffbe` own HIBP check with timeout and fail-open, TOTP ±1 and recovery-reuse tests). Recovery codes stay encrypted (DECISIONS).
+- **P0-06 rework: all code pieces done** (not ticked: waits on H-03 for the real Google sign-in). Piece D today: `f1c70c3` Google scopes once; `1252b6a` `__Host-` cookies on https; `6c1c0bf` DB trigger ends sessions on any staff/admin privilege change + `users_email_lowercase` CHECK (migrations 0005/0006); `b285bd5` customer 30-day idle timeout (injected clock) + user deleted mid-session; `13f56e8` signed-in devices (`/me/security`, `/staff/security`); `4e2c887` sign-in shows the shop when returnTo is `/s/<code>`; `0a8aba5` security pages redirect signed-out visitors with a real 307 (was a streamed client-side redirect). Earlier: piece A, the sign-in link (`d7f2c34`: Turnstile, limits, hashed tokens, after-response delivery, React Email, `/sign-in/link-expired`, QA-1…4). Piece C, staff (`6131b96` security #5: the enrolment verify no longer mints an MFA session; `c8b3a4d` staff login 10/15 min/IP + per-account pause 1→15 min + lockout email + second-factor IP limit; `780ffbe` own HIBP check with timeout and fail-open, TOTP ±1 and recovery-reuse tests). Recovery codes stay encrypted (DECISIONS).
 - P0-05 met earlier today (proxy/CSP, limiter, logger, Turnstile, audit; PPR off — DECISIONS).
 
 ## P0-A follow-ups (from reviews + QA; owners noted)
@@ -33,8 +33,8 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Open, small: CR-M3 `enqueue` timeout (`commandTimeout` + unreachable-Redis test); CR-L2 schedule pruning during rolling deploys; CR-L4 `dbFor().transaction` bypasses the ALS guard; CR-L6 migration checker gaps; CR-L7 RuleTester for `no-server-in-client`; SEC-L2 gitleaks image digest; SEC-L4 + QA-9 test API: token/loopback gate and 404 (not 405) for every method.
 
 ## Next (top 3)
-1. P0-06 piece B: code done (`3a6a0cc`: unverified Google emails refused, linking rule in DECISIONS). Left: once H-03 step 5 (redirect URI) is done, re-run the live check (POST /api/auth/sign-in/social → Google page must not show `redirect_uri_mismatch`) and a real Google sign-in with a test-user account on Chromium; screenshot it.
-2. P0-06 piece D: `__Host-` cookie names on https (`advanced.cookies`); revoke sessions on role change (`repos/sessions.ts deleteUserSessions` from the staff/admin role writers); session list + "sign out everywhere" (Better Auth `listSessions`/`revokeOtherSessions`, page under /staff/security and a customer equivalent); customer 30-day timeout test with an injected clock; user deleted mid-session test; optional `CHECK (email = lower(email))` migration. Then screenshots of the sign-in screens (320/390 Chromium+WebKit, 1440), walk the P0-06 acceptance list, and tick it.
+1. P0-06 close-out: once H-03 step 5 (redirect URI) is done, re-run the live check (POST /api/auth/sign-in/social → no `redirect_uri_mismatch`; scope is now `email profile openid` once) and a real Google sign-in with a test-user account on Chromium; screenshot. Then sign-in screenshots (320/390 Chromium+WebKit, 1440) incl. shop context, walk the P0-06 acceptance list, tick it. Role switcher + default portal per role → P0-12 (AUDIT).
+2. Formatting drift: `pnpm format` rewrites 55 committed files (CI `format:check` would fail). Two stashes hold that output (`git stash list`); decide whether to commit it as one `style:` commit or find the config mismatch first. Use `prettier --write <files>`, not `pnpm format`, until then.
 3. P0-07 (security #8, defineAction + requestLogger + audit + 429 mapping), then `/subphase-complete P0-B`.
 
 ## Blockers
@@ -69,7 +69,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Configs: `vitest.config.mts`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc.json`, `pnpm-workspace.yaml`
 
 ## Last verified
-- `pnpm check`: ✅ 2026-11-09 247 unit; `pnpm test:int` ✅ 181 (magic-link 8, staff-login 6, MFA edge cases); `pnpm e2e` ✅ 87/87 full run (68 intended skips); auth.spec 24/24 under `--repeat-each 4` on WebKit + iphone14; `build` ✅ (earlier today)
+- `pnpm check`: ✅ 2026-11-09 271 unit; `pnpm test:int` ✅ 225 (incl. authz 125+); E2E: full run 101 passed / 1 failed (devices flake → root-caused, fixed in 0a8aba5), then devices+auth+sign-in-edges 55/55 on 5 projects; auth.spec 60/60 ×4. Combined devices+auth ×4 on 5 projects overloads `next dev` on WebKit (17/18 failures = 30 s test timeouts) — stress artefact, not a regression; re-check on a production build at P0-B close
 - P0-A gate 2026-11-09: QA agent regression (check 205, int 151, e2e 2 of 3 runs clean, gallery flake root-caused and fixed), then the 3 clean runs above; `build` ✅, `check:bundle` ✅ 45 names / 19 files, `test:titles --strict` ✅
 - `pnpm test:mutation`: ✅ 90.1% (break 80); `pnpm test:live`: storage ✅, email skipped (H-04); `pnpm test:load:smoke`: runs (Docker k6), checks 100%, action p95 458 ms on `next dev` (not meaningful; staging gate)
 - `pnpm test:titles --strict`: ✅ every test tagged
