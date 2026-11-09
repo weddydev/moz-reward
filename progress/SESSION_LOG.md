@@ -131,3 +131,7 @@ Next: P0-14.
 ## 2026-11-09 (night) — Plan v5 applied: single VPS + free tiers, audit follow-ups (Syedbadeshah76, Windows laptop)
 Verified provider/GitHub limits on official pages first (research agent): Sentry free = 1 user; GitHub Free private = no protection/rulesets/auto-merge/environments; GHCR currently free; Gemini: UK must use paid; OAuth sign-in-only exempt from Testing limits; wal-g has no age support (OpenPGP) and a known R2 CA-bundle issue; R2 free 10 GB shared. Human decisions: Sentry free + alert forwarding; deploy via docker save|ssh; one OpenPGP key for dumps + WAL.
 Applied (docs/config only): topology, backups, free tiers, launch-tier capacity, GitHub modes + CI minutes budget, HTML never CDN-cached, FORCE RLS, secrets rule, @AGENTS.md, timeline re-baseline (launch Fri 22 Jan 2027), HUMAN_TASKS rewrite (H-25…H-28), infra/RESOURCES.md. Checks: lint ✅, test:titles ✅, prettier --check ✅ on all changed docs.
+
+## 2026-11-09 (late night) — checkpoint before a new chat (Syedbadeshah76, Windows laptop)
+Done: H-25 answered (GitHub Free, GITHUB_MODE=free); plan v5 follow-ups (deploy via SSH, one OpenPGP backup key, backup:verify + H-29). No code changed. Baton kept.
+Next: P0-14 — start with Prettier pin + .gitattributes + format:check + one style: commit (see PROGRESS handoff note).

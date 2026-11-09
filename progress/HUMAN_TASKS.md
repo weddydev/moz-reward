@@ -15,7 +15,6 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 
 | ID | Priority | Task | Needed by | Why | Est. time |
 |---|---|---|---|---|---|
-| H-25 | 🟠 | Choose the GitHub plan: **(a) Pro/Team** (recommended) or **(b) stay Free** | Tue 10 Nov 2026 (P0-14) | Branch protection, auto-merge, environments on a private repo need a paid plan | 10 min |
 | H-07 | 🟠 | Buy domain; Cloudflare account (free); move DNS to Cloudflare | Sun 15 Nov 2026 (P0-15) | Tunnel hostnames, email domain, Turnstile | 30 min (+ up to 24 h DNS) |
 | H-06 | 🟠 | Buy Hostinger KVM 4 (UK location), add both developers' SSH keys, give Claude the IP | Sun 15 Nov 2026 (P0-15) | Hosts production **and** staging (plan v5) | 30 min |
 | H-08 | 🟠 | Cloudflare R2: two buckets (uploads, backups) with separate bucket-scoped tokens | Sun 15 Nov 2026 (P0-15) | Uploads (P2) and encrypted backups (P0-15) | 15 min |
@@ -135,6 +134,7 @@ Images live in `design/reference/desktop-view/` and `mobile-view/`.
 
 | ID | Task | Done by | Date |
 |---|---|---|---|
+| H-25 | GitHub plan: **Free** for now (`GITHUB_MODE=free`: pre-push hook, CI on every push, manual production deploy gated on green CI). Upgrade to Pro later only if server-side branch protection is wanted | human | 9 Nov 2026 |
 | H-05 | **Removed (plan v5):** the database is self-hosted on the VPS (no Neon). The owner connection string goes only into the password manager and GitHub secrets | — | 9 Nov 2026 |
 | H-11 | **Merged into H-06 (plan v5):** production runs on the same VPS; no separate production VPS or database | — | 9 Nov 2026 |
 | H-03 | Google OAuth dev client; localhost redirect URI; real Google sign-in verified (staging/production clients → H-28) | Syedbadeshah76 | 9 Nov 2026 |

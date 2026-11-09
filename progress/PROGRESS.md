@@ -6,21 +6,24 @@ _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is 
 Baton: held by Syedbadeshah76 since 2026-11-09 10:12
 
 ## Handoff note
-_Overwritten by `/handoff`. The next developer reads this first._
-- **9 Nov (night), Syedbadeshah76:** plan v4 (audit) and **plan v5 (single VPS, free tiers)** applied — read DECISIONS "Plan v5" first. P0 order is **A → B → E → C → D**. Next task: **P0-14** (CI within the free Actions budget, gate scripts, production-build E2E, formatting fix); its last criterion needs H-25 (GitHub plan). Nothing half-done in code.
-- **Before your next session:** `git pull`, read CLAUDE.md (rewritten), TESTING §4 (single source for gates), docs/phases/P0.md "How to work this phase" and P0-14. `pnpm install --frozen-lockfile`, `pnpm services:up`, `pnpm db:migrate` (migrations 0005–0006 since 8 Nov). Two git stashes on the Windows laptop hold the 55-file Prettier reformat; P0-14 commits it (or regenerate it with `pnpm format` after pinning Prettier).
-- **Mac:** add `SENTRY_DSN` and the Google keys to `.env.local` from the shared note.
+_Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
+- **Checkpoint 9 Nov 2026 (late night), Syedbadeshah76 (Windows laptop) — baton kept; continuing in a new chat.**
+- **State:** plan v4 (audit) + plan v5 (single VPS, free tiers) are committed and pushed. GitHub plan = **Free** (`GITHUB_MODE=free`). No code changed since the P0-B review fixes (`bbc7752`). Nothing half-done.
+- **Next task: P0-14** (docs/phases/P0.md). Start with repo hygiene: pin Prettier to an exact version (package.json has `^3.9.10`), add `.gitattributes` (`* text=auto eol=lf`), add `format:check` to `pnpm check`, run `pnpm format`, check the diff is formatting-only, commit as one `style:` commit. Two old git stashes (`stash@{0}`, `stash@{1}`) hold the same reformat — not needed after that commit; ask the human before dropping them. Then the production-build `pnpm e2e`, `gate:task` / `gate:phase` / `ci:usage`, a lefthook `pre-push` hook (lefthook.yml has only pre-commit today), GitHub Actions within the free budget, scheduled workflows, Renovate.
+- **Human tasks:** the human said "everything set up" — at the start of the next session, confirm which of H-06, H-07, H-08, H-26, H-27, H-04, H-20, H-28, H-21, H-17, H-12, H-22 are actually done before marking them.
+- **Untracked files from the human:** `moz-plan-v5-prompt.md` and `src/features/moz-plan-v5-prompt.md` — not committed; the human may delete them.
+- **Before your next session:** `git pull`; read CLAUDE.md (now imports AGENTS.md), TESTING §4, DECISIONS "Plan v5" and "Plan v4", P0.md header + P0-14.
 
 ## Status
 - **Phase:** P0. Done: P0-01…07, P0-17. P0-A closed (post-push checks completed by P0-14/15). P0-B review fixes done; P0-B closes when P0-14's CI is green on its code.
 - **Next sub-phase:** P0-E production foundation: P0-14 → P0-19 → P0-18 → P0-20 → P0-13 → P0-21 → P0-15 → P0-16; then P0-C (P0-08…11), then P0-D (P0-12).
-- **GITHUB_MODE:** `free` until H-25 is answered (`pro` or `free`; ENGINEERING §16).
+- **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Projected end:** P0 Wed 18 Nov 2026 · P1 Mon 30 Nov · P2 Thu 10 Dec · P3 Sat 19 Dec · P4 Sat 2 Jan 2027 · P5 Tue 12 Jan · **launch Fri 22 Jan 2027** (assumptions in PHASES.md; slips if human tasks are late or the Play account needs a 14-day closed test).
 - **Last updated:** 2026-11-09 (night), Syedbadeshah76
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- Plan v4 and plan v5 committed (docs, phase files, `.claude` commands/agents, progress, `infra/RESOURCES.md`). No code changed.
+- Plan v4 and plan v5 committed (docs, phase files, `.claude` commands/agents, progress, `infra/RESOURCES.md`); GitHub Free chosen (H-25). No code changed. Next: P0-14.
 
 ## Next (top 3)
 1. **P0-14**: pin Prettier + `.gitattributes` + commit the repo reformat; `pnpm e2e` on a production build, `e2e:dev`; `gate:task` / `gate:phase`; GitHub Actions + nightly; branch protection; then switch to `t/<task-id>` PRs.
