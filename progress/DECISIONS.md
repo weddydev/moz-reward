@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-09 — Sign-in links: checks in a Better Auth hook, delivery after the response, not queued (P0-06)
+Decision: browser requests to `/sign-in/magic-link` pass Turnstile (`x-turnstile-token` header) and SECURITY §6 limits (5/h per email keyed by HMAC, 20/h per IP) in a `before` hook; direct `auth.api` calls from server code skip them. The per-IP limit is skipped when the client IP is `local` (TRUSTED_PROXY=none). The email, including the staff/admin refusal, is sent in Next `after()`, so known, unknown and staff addresses get the same response in the same time. Tokens are stored hashed.
+Why: queueing would put the raw sign-in token in Redis (BullMQ keeps failed jobs 7 days), which defeats hashed storage. Locally every request shares the `local` IP, so an IP limit would lock out dev and E2E.
+Consequence: a failed send is logged, not retried (the user can ask again). Tests that call `auth.api` directly don't exercise the limits; `tests/integration/magic-link.test.ts` goes through `auth.handler`.
+
 ## 2026-11-09 — Nonce CSP means per-request rendering: Cache Components / PPR turned off (P0-05)
 Decision: `cacheComponents` and `partialPrefetching` are removed from `next.config.ts`; the root layout calls `connection()`, so every page renders per request. `src/proxy.ts` sets a fresh script nonce per request (`script-src 'self' 'nonce-…' 'strict-dynamic'`). Styles use `'unsafe-inline'` (React renders `style` attributes that a nonce can't cover; SECURITY §5 only requires script nonces). `X-Powered-By` is off.
 Why: SECURITY §5 (higher precedence than ARCHITECTURE) requires per-request nonces. Verified in a production build: with PPR on, Next's own chunks were blocked and **no page hydrated** in Chromium or WebKit. After the change, every page hydrates with zero console issues, and an injected nonce-less inline script is blocked (`tests/e2e/csp-injection.spec.ts`). Nothing used `"use cache"`; PPR was only on because the scaffold generated it.
