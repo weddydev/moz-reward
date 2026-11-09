@@ -67,6 +67,7 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 4. Authorised JavaScript origins: `http://localhost:3000` and `https://staging.<domain>`.
 5. Authorised redirect URIs: `http://localhost:3000/api/auth/callback/google` and `https://staging.<domain>/api/auth/callback/google`.
 6. Copy Client ID and Client secret into `.env.local` as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Tell Claude "H-03 done".
+- **Status 9 Nov (Claude checked):** keys are in the Windows `.env.local` with the right shape and Google accepts the client ID, but Google answers `redirect_uri_mismatch`. Step 5 is still needed: add `http://localhost:3000/api/auth/callback/google` exactly (no trailing slash). Then Claude re-runs the live check and a real sign-in with a test-user Google account. Also add the keys to the shared password-manager note for the Mac.
 
 ### H-04 — Email provider (Resend)
 1. resend.com → sign up → API Keys → Create key (sending access) → put it in `.env.local` as `EMAIL_API_KEY`.

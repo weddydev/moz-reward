@@ -21,6 +21,7 @@ import {
 } from "./mfa";
 import { hashPassword, verifyPassword } from "./password";
 import { isPrivilegedUser } from "./privileged";
+import { socialSignUpAllowed } from "./social";
 import {
   checkSecondFactor,
   checkStaffLogin,
@@ -73,7 +74,23 @@ export const auth = betterAuth({
       mfaVerified: { type: "boolean", required: false, defaultValue: false, input: false },
     },
   },
+  // One user per verified email: Google and magic link resolve to the same user. Implicit linking needs the
+  // provider's email_verified *and* a verified local user; no provider is trusted to skip that (DECISIONS).
+  account: { accountLinking: { enabled: true, trustedProviders: [] } },
   databaseHooks: {
+    user: {
+      create: {
+        before: async (user, ctx) => {
+          if (!socialSignUpAllowed({ path: ctx?.path, emailVerified: user.emailVerified })) {
+            throw new APIError("FORBIDDEN", {
+              message:
+                "Please use a Google account with a verified email address, or sign in by email.",
+            });
+          }
+          return { data: user };
+        },
+      },
+    },
     session: {
       create: {
         before: async (session, ctx) => {

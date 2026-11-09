@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-09 — Account linking: one user per verified email (P0-06)
+Decision: `account.accountLinking = { enabled: true, trustedProviders: [] }`. A Google sign-in with an email Google hasn't verified can't create a user (`user.create.before` hook, `src/server/auth/social.ts`). Implicit linking needs both the provider's `email_verified` and a verified local user (Better Auth's `requireLocalEmailVerified`, default on), so Google and magic link resolve to the same user for one verified address. Staff/admins never get Google sessions (security #1 hook).
+Why: SECURITY §2; stops address squatting and linking takeover through unverified OAuth emails.
+Consequence: the hook wiring is covered by a unit-tested policy plus a manual real-Google check (H-03); a full Google callback can't run in CI without stubbing Google's token and JWKS endpoints.
+
 ## 2026-11-09 — Staff auth hardening details (P0-06)
 Decision: (1) A second-factor verify marks a session `mfaVerified` only in the sign-in challenge (no session yet); the enrolment verify (inside a password-only session) does not (audit security #5). (2) Staff/admin login: 10/15 min per IP, per-account pause after 5 wrong passwords (1 min doubling to 15 min, from any IP), counted for unknown emails too, and one lockout email to real staff/admin accounts. Second-factor endpoints: 10/15 min per IP. (3) Breached-password check is our own HIBP k-anonymity client (3 s timeout, fail-open with a warning; test fake list in APP_ENV=test) instead of Better Auth's plugin, which had no timeout and failed closed and called the real API from tests. (4) Recovery codes stay **encrypted** (Better Auth's only options are reversible: it decrypts to compare and remove used codes), not hashed as the brief says; single use is tested.
 Why: SECURITY §2/§6; the brief's "hashed" recovery codes would need a re-implementation of Better Auth's backup-code verification.
