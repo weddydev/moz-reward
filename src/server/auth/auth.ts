@@ -66,7 +66,14 @@ export const auth = betterAuth({
                 "Staff and admin accounts sign in with a password and two-step verification.",
             });
           }
-          return { data: { ...session, mfaVerified: isMfaSessionPath(ctx?.path) } };
+          // A second-factor path counts only in the sign-in challenge, which runs with no session yet.
+          // The same endpoint during enrolment runs inside a (password-only) session; counting that would let
+          // someone holding just the password enrol their own app and get an MFA session (audit security #5).
+          const enrolling =
+            isMfaSessionPath(ctx?.path) && ctx ? (await getSessionFromCtx(ctx)) !== null : false;
+          return {
+            data: { ...session, mfaVerified: isMfaSessionPath(ctx?.path) && !enrolling },
+          };
         },
       },
     },

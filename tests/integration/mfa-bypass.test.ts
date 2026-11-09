@@ -190,3 +190,34 @@ describe("[P0-06] staff/admin MFA bypass is closed (audit security #1, #6)", () 
     expect(options.authenticatorSelection?.userVerification).toBe("required");
   });
 });
+
+describe("[P0-06] first enrolment can't stand in for the second factor (audit security #5)", () => {
+  it("verifying the code while enrolling leaves no MFA-verified session; only the sign-in challenge creates one", async () => {
+    const user = await staffUser();
+    const first = await auth.api.signInEmail({
+      body: { email: user.email, password: TEST_PASSWORD },
+      asResponse: true,
+    });
+    const headers = cookieHeaderFrom(first);
+    const enabled = await auth.api.enableTwoFactor({ body: { password: TEST_PASSWORD }, headers });
+    if (enabled.method !== "totp") throw new Error("expected TOTP enrolment");
+    // Someone holding only the password enrols and verifies a code from *their* app…
+    await auth.api.verifyTOTP({ body: { code: totpFromUri(enabled.totpURI) }, headers });
+    // …but no session of this account may count as MFA-verified from that.
+    expect((await sessionsOf(user.id)).map((s) => s.mfaVerified)).not.toContain(true);
+
+    // The real sign-in challenge (password, then code with the two-factor cookie) still works.
+    const challenge = await auth.api.signInEmail({
+      body: { email: user.email, password: TEST_PASSWORD },
+      asResponse: true,
+    });
+    const verified = await auth.api.verifyTOTP({
+      body: { code: totpFromUri(enabled.totpURI) },
+      headers: cookieHeaderFrom(challenge),
+      asResponse: true,
+    });
+    const { token } = (await verified.json()) as { token: string };
+    const rows = await sessionsOf(user.id);
+    expect(rows.find((s) => s.token === token)?.mfaVerified).toBe(true);
+  });
+});
