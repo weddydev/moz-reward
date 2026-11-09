@@ -16,28 +16,29 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - **Windows laptop note:** `.env.local` in place (H-02, 8 Nov); `SENTRY_DSN` added (H-10): add it to the Mac copy via the shared note.
 
 ## Status
-- **Phase:** P0 — Foundation and design system. P0-A closed (P0-01…04 + P0-17 met). Remaining partial: P0-06/07/08/09; missing: P0-05, P0-10…16. Fixing in task order.
-- **Last updated:** 2026-11-09 11:09, Syedbadeshah76
+- **Phase:** P0 — Foundation and design system. P0-A closed; P0-05 met. Remaining partial: P0-06/07/08/09; missing: P0-10…16. Working in task order.
+- **Last updated:** 2026-11-09 11:46, Syedbadeshah76
 - **Staging:** not deployed yet
 - **Production:** not deployed
 
 ## Now
-- **P0-A closed** (2026-11-09): regression green, QA done, review 🔴s fixed. Post-push CI/staging/Sentry checks are **pending P0-14/15** (DECISIONS 2026-11-09). Next: P0-05 security baseline.
+- **P0-05 security baseline met** (2026-11-09): proxy (nonce CSP + SECURITY §5 headers, request id, /dev 404 in production), Redis limiter, clientIp/assertSameOrigin, pino with redaction, Turnstile, audit(). Pages now render per request (PPR off, DECISIONS 2026-11-09). Next: P0-06 rework.
+- Wiring left to P0-06 (owned there, not P0-05 gaps): rate limits on the magic link (5/h/email, 20/h/IP) and staff login (10/15 min/IP + per-account backoff); Better Auth's in-memory limiter → Redis storage; Turnstile on the sign-in link form (needs H-20 on staging). P0-07: `defineAction` uses `requestLogger` + `audit()` + 429 mapping.
 
 ## P0-A follow-ups (from reviews + QA; owners noted)
 - Before the first staging deploy (P0-15): SEC-M2 assert at boot that the app runs as `moz_app` (not the owner); SEC-M3 Redis password + `rediss://` + key prefix required in staging/production; SEC-L3 crypto keys required/length-checked in staging/production; SEC-L1 `.gitleaksignore` for `TEST_PASSWORD` (the CI full-history scan fails otherwise); QA-6 `next start` with invalid env keeps serving 500s; exit instead.
 - Before P1 repos: SEC-M4 restrict `systemScope` imports; lint `patterns` to catch relative imports; tenant repos take `ShopScope`/`CustomerScope`.
 - P0-06 rework: QA-1 (major) sign-in forms hang and throw `Failed to fetch` when offline (`CustomerSignInForm.tsx:33`, `StaffSignInForm.tsx:33,57`, `EnrolTotp.tsx:34,59`: try/catch, reset state, offline message); QA-2 in-flight ref guard (3 synchronous submits sent 3 emails); QA-3 an invalid email shows "Something went wrong" instead of a field error; QA-4 a 254-char email overflows the "Check your email" card; SEC-M5b `CHECK (email = lower(email))`; P0-05 owns the magic-link rate limit (QA-10).
 - P0-09 rework: QA-7 at 320 px ShopCard titles truncate ("Brew & …", seen in the screenshot) and the table hides columns with no scroll hint; QA-8 the Spinner freezes under reduced motion (`globals.css:158`).
-- Open, small: CR-M3 `enqueue` timeout (`commandTimeout` + unreachable-Redis test); CR-L2 schedule pruning during rolling deploys; CR-L4 `dbFor().transaction` bypasses the ALS guard; CR-L6 migration checker gaps; CR-L7 RuleTester for `no-server-in-client`; CR-L8 pino logger (P0-05); SEC-L2 gitleaks image digest; SEC-L4 + QA-9 test API: token/loopback gate and 404 (not 405) for every method.
+- Open, small: CR-M3 `enqueue` timeout (`commandTimeout` + unreachable-Redis test); CR-L2 schedule pruning during rolling deploys; CR-L4 `dbFor().transaction` bypasses the ALS guard; CR-L6 migration checker gaps; CR-L7 RuleTester for `no-server-in-client`; SEC-L2 gitleaks image digest; SEC-L4 + QA-9 test API: token/loopback gate and 404 (not 405) for every method.
 
 ## Next (top 3)
-1. P0-05 security baseline (docs/phases/P0.md §P0-05): headers/CSP, rate limits (incl. magic link 5/hour/email), pino logger with redaction (CR-L8), Turnstile. Test-first.
-2. P0-06 rework incl. the QA-1…4 sign-in fixes and security #5; P0-07 incl. security #8. Then `/subphase-complete P0-B`.
+1. P0-06 rework (docs/phases/P0.md §P0-06 + AUDIT.md table): limits + Turnstile wiring above, QA-1…4 sign-in fixes, security #5, hashed magic-link tokens, unverified-Google rejection, HIBP timeout. Test-first.
+2. P0-07 incl. security #8, then `/subphase-complete P0-B` (code-reviewer + security-reviewer).
 3. P0-08/P0-09 rework (incl. QA-7/8), then P0-10+.
 
 ## Blockers
-- Human: 🔴 none blocking code work. 🟠 end of P0: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-17 permissions decision.
+- Human: 🔴 none blocking code work. 🟠 by 13 Nov: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-20 Turnstile keys, H-17 permissions decision.
 - Technical: post-push verification (CI, staging, Sentry) can't run until P0-14/15. WebKit E2E intermittent: the gallery part is fixed (b4e1b1c); the staff TOTP spec failed once on 8 Nov and hasn't failed since (0/6 full runs). If it fails again, read the trace in `test-results/`.
 - Technical: audit HIGH findings in `progress/AUDIT.md` (top risks). 14 surviving Stryker mutants (codes 7, return-to 3, policies 4) to review at phase end (TESTING §2).
 
@@ -54,7 +55,8 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - `src/server/auth/` — Better Auth `auth.ts` (Google, magic link, staff password Argon2id, TOTP, passkey, HIBP, testUtils only in `APP_ENV=test`), `session.ts`, `mfa.ts`
 - `src/server/authz/` — pure `decide*` policies + `requireCustomer/requireShopRole/requireAdminRole`
 - `src/server/actionTemplate.ts` — `defineAction({input, authorize, handler})`; `src/server/errors.ts` AppError
-- `src/server/services/` — `audit.ts`, `flags.ts`; `src/features/flags/actions.ts`
+- `src/server/services/` — `audit.ts` (`audit(tx,{actor: scope,…})`, meta scrubbed, IP hashed), `flags.ts`; `src/features/flags/actions.ts`
+- `src/proxy.ts` — per-request CSP nonce + SECURITY §5 headers, `x-request-id`, `/dev/*` 404 in production; `src/server/security/` — `headers.ts`, `rate-limit.ts` (`limit`, `limitOrThrow`, `tooManyRequests`, `ipKey`/`userKey`), `request.ts` (`clientIp` via `TRUSTED_PROXY`, `assertSameOrigin`), `turnstile.ts` (`verifyTurnstile`); `src/components/security/Turnstile.tsx`; `src/server/log.ts` (pino, `log()`, `requestLogger`)
 - `src/server/testing/factories.ts` (re-exported by `tests/fixtures/factories.ts`) — factories + `makeActor(role)`
 - `src/app/api/test/[action]/route.ts` — test-only API (404 unless `APP_ENV=test`): `POST session|user|fakes|reset-fakes`, `GET push`
 - `src/features/auth/` + `/sign-in`, `/staff/sign-in`, `/staff/security` — sign-in UI (temporary styling)
@@ -66,7 +68,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Configs: `vitest.config.mts`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc.json`, `pnpm-workspace.yaml`
 
 ## Last verified
-- `pnpm check`: ✅ 2026-11-09 207 unit; `pnpm test:int` ✅ 151 (incl. authz 95 + coverage guard); `pnpm e2e` ✅ 47/47 three full runs in a row (5 projects, 68 intended skips)
+- `pnpm check`: ✅ 2026-11-09 240 unit; `pnpm test:int` ✅ 163; `pnpm e2e` ✅ 57/57 (after the CSP change; 68 intended skips); `build` ✅ all routes dynamic; `check:bundle` ✅ 46 names
 - P0-A gate 2026-11-09: QA agent regression (check 205, int 151, e2e 2 of 3 runs clean, gallery flake root-caused and fixed), then the 3 clean runs above; `build` ✅, `check:bundle` ✅ 45 names / 19 files, `test:titles --strict` ✅
 - `pnpm test:mutation`: ✅ 90.1% (break 80); `pnpm test:live`: storage ✅, email skipped (H-04); `pnpm test:load:smoke`: runs (Docker k6), checks 100%, action p95 458 ms on `next dev` (not meaningful; staging gate)
 - `pnpm test:titles --strict`: ✅ every test tagged

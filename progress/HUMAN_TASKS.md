@@ -18,7 +18,8 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 | H-05 | 🟠 | Postgres database for staging (Neon, London/EU) | 13 Nov 2026 (end of P0) | Staging data | 10 min |
 | H-03 | 🟠 | Google Cloud OAuth client (web) | 13 Nov 2026 (Demo 1 shows real Google sign-in) | Customer Google sign-in | 15 min |
 | H-04 | 🟠 | Email provider (Resend) + API key + domain verification | 13 Nov 2026 (Demo 1 shows email-link sign-in) | Magic-link and invite emails | 15 min (+ DNS wait) |
-| H-08 | 🟢 | Cloudflare R2 bucket + API token; Turnstile keys | P2 start (~16 Nov 2026) | Image uploads, bot protection | 15 min |
+| H-20 | 🟠 | Cloudflare Turnstile site + keys (after H-07) | 13 Nov 2026 (P0-06 puts Turnstile on the sign-in link form; staging fails closed without a real secret) | Bot protection on sign-in (SECURITY §6) | 5 min |
+| H-08 | 🟢 | Cloudflare R2 bucket + API token | P2 start (~16 Nov 2026) | Image uploads | 10 min |
 | H-09 | 🟢 | AI provider API key (Google Gemini) | P3 start (~23 Nov 2026) | AI review help | 5 min |
 | H-11 | 🟢 | Production VPS + production database | P5 (~7 Dec 2026) | Launch | 30 min |
 | H-12 | 🟢 | Google Play Console account ($25 one-time) — start early, verification takes days | P5 (~7 Dec 2026); **start by 23 Nov** | Android app | 20 min + Google verification |
@@ -81,10 +82,14 @@ Claude keeps this list current. It is reviewed and updated at the end of every p
 2. Copy its full contents into a shared password-manager note (1Password/Bitwarden) named "Moz Rewards .env.local".
 3. Partner pastes it into `.env.local` in their copy of the project. Update the note whenever you add a key.
 
-### H-08 — R2 + Turnstile
+### H-20 — Turnstile keys (needs the Cloudflare account from H-07)
+1. Cloudflare → Turnstile → Add widget → name "Moz Rewards" → hostnames `localhost`, `staging.<domain>` (add the production domain later) → Widget mode **Managed** → Create.
+2. Copy the **Site key** → `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and the **Secret key** → `TURNSTILE_SECRET_KEY` in the shared password-manager note (staging gets them with P0-15). Do not use Cloudflare's public test keys (1x000…AA): the server refuses them outside local/test.
+3. Locally you can leave both empty: the widget is skipped and the server accepts the local bypass only in local/test.
+
+### H-08 — R2 bucket
 1. Cloudflare → R2 → enable (free tier) → Create bucket `moz-rewards`, location hint Europe.
-2. R2 → Manage API tokens → Create token → Object Read & Write, this bucket only → copy Account ID, Access Key ID, Secret → `.env.local` (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`).
-3. Cloudflare → Turnstile → Add site → domains `localhost`, `staging.<domain>` → Managed → copy Site key and Secret key → `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`.
+2. R2 → Manage API tokens → Create token → Object Read & Write, this bucket only → copy Account ID, Access Key ID, Secret → staging env: `S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET=moz-rewards`, `S3_FORCE_PATH_STYLE=false`.
 
 ### H-09 — Gemini key
 1. aistudio.google.com → Get API key → create in the `Moz Rewards` project → `.env.local` as `AI_API_KEY`.
