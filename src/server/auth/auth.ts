@@ -12,6 +12,7 @@ import * as schema from "@/server/db/schema";
 import { env } from "@/server/env";
 import { checkBreachedPassword } from "@/server/integrations/breach";
 import { clientIp } from "@/server/security/request";
+import { authCookieOptions } from "./cookies";
 import { checkMagicLinkRequest, deliverMagicLink } from "./magic-link";
 import {
   PASSKEY_REGISTRATION_PATHS,
@@ -63,8 +64,7 @@ export const auth = betterAuth({
   database: drizzleAdapter(db(), { provider: "pg", schema, usePlural: true }),
   advanced: {
     database: { generateId: () => newId() },
-    cookiePrefix: "moz",
-    useSecureCookies: appUrl.protocol === "https:",
+    ...authCookieOptions(e.APP_URL),
   },
   session: {
     expiresIn: SESSION_MAX_AGE.customer,
