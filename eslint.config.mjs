@@ -132,6 +132,7 @@ const eslintConfig = defineConfig([
     ".next/**",
     ".next-e2e/**",
     ".stryker-tmp/**",
+    ".artifacts/**", // screenshots, traces and QA output (git-ignored)
     "out/**",
     "build/**",
     "coverage/**",

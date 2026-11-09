@@ -37,6 +37,33 @@ describe("[P0-02] server env", () => {
     expect(() => parseServerEnv({ ...base, APP_URL: "not a url" })).toThrow(/APP_URL/);
   });
 
+  it("rejects a malformed or wrong-protocol database/Redis URL at startup, without echoing it", () => {
+    const bad = [
+      ["DATABASE_URL", "not-a-url"],
+      ["DATABASE_URL", "mysql://u:secretpw@localhost/db"],
+      ["DATABASE_URL_MIGRATIONS", "http://u:secretpw@localhost/db"],
+      ["DATABASE_URL_TEST", "nonsense"],
+      ["REDIS_URL", "localhost:6379"],
+      ["REDIS_URL", "http://:secretpw@localhost:6379"],
+      ["REDIS_URL_TEST", "nonsense"],
+    ] as const;
+    for (const [name, value] of bad) {
+      const run = () => parseServerEnv({ ...base, [name]: value });
+      expect(run, `${name}=${value}`).toThrow(new RegExp(`- ${name}: `));
+      expect(run).not.toThrow(/secretpw/);
+    }
+  });
+
+  it("accepts postgres:, postgresql:, redis: and rediss: URLs", () => {
+    expect(() =>
+      parseServerEnv({
+        ...base,
+        DATABASE_URL: "postgresql://u:p@db.example:5432/db?sslmode=require",
+        REDIS_URL: "rediss://default:p@cache.example:6380",
+      }),
+    ).not.toThrow();
+  });
+
   it("refuses local/test settings on a non-localhost URL (fails closed on a misconfigured deploy)", () => {
     expect(() => parseServerEnv({ ...base, APP_URL: "https://mozrewards.co.uk" })).toThrow(
       /APP_ENV/,

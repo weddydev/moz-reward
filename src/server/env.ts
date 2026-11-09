@@ -13,6 +13,22 @@ const optional = z
   .optional()
   .transform((v) => (v === "" ? undefined : v));
 
+const POSTGRES = ["postgres:", "postgresql:"] as const;
+const REDIS = ["redis:", "rediss:"] as const;
+const hasProtocol = (value: string, protocols: readonly string[]): boolean =>
+  URL.canParse(value) && protocols.includes(new URL(value).protocol);
+const protocolMessage = (protocols: readonly string[]): string =>
+  `must be a ${protocols.map((p) => `${p}//`).join(" or ")} URL`;
+
+/** Connection URL checked at startup, so a typo fails the boot instead of the first query. Never echoed. */
+const connectionUrl = (protocols: readonly string[]) =>
+  z
+    .string()
+    .min(1)
+    .refine((v) => hasProtocol(v, protocols), protocolMessage(protocols));
+const optionalConnectionUrl = (protocols: readonly string[]) =>
+  optional.refine((v) => v === undefined || hasProtocol(v, protocols), protocolMessage(protocols));
+
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 export const serverEnvSchema = z
@@ -22,11 +38,11 @@ export const serverEnvSchema = z
     APP_URL: z.url(),
     CDN_URL: z.url().optional(),
 
-    DATABASE_URL: z.string().min(1),
-    DATABASE_URL_MIGRATIONS: optional,
-    DATABASE_URL_TEST: optional,
-    REDIS_URL: z.string().min(1),
-    REDIS_URL_TEST: optional,
+    DATABASE_URL: connectionUrl(POSTGRES),
+    DATABASE_URL_MIGRATIONS: optionalConnectionUrl(POSTGRES),
+    DATABASE_URL_TEST: optionalConnectionUrl(POSTGRES),
+    REDIS_URL: connectionUrl(REDIS),
+    REDIS_URL_TEST: optionalConnectionUrl(REDIS),
     /** Per-worker key prefix in tests; empty elsewhere. */
     REDIS_KEY_PREFIX: z.string().default(""),
 
