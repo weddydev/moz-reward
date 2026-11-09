@@ -20,8 +20,8 @@ Sections: [1 Layers and tools](#1-layers-and-tools) · [2 Coverage and test stre
 | Visual | Playwright screenshots | 20 key screens × mobile WebKit, mobile Chromium, desktop; threshold 0.2%; deterministic data, animations disabled (phase gate) |
 | Performance | Lighthouse CI + bundle size check | Customer routes vs DESIGN §12; bundle check fails at > 15% over budget (CLAUDE.md §3); Lighthouse at phase gate |
 | Test strength | Stryker (mutation testing) | Money/rules modules (see §2) |
-| Load | k6 | Smoke against staging at every phase end and nightly; full load at P2-16 and P5-11 (§5) |
-| Security scanning | Semgrep, CodeQL, OSV, gitleaks (CI); OWASP ZAP baseline (nightly against staging); authenticated ZAP once (P5-07) | No manual ZAP runs per phase |
+| Load | k6 | Smoke against staging at every phase end and twice weekly (scheduled CI); launch-tier load at P2-16 and P5-11 (§5) |
+| Security scanning | Semgrep (SAST), OSV, gitleaks (CI); CodeQL only if available for the repo (private repos need GitHub Code Security — not assumed); OWASP ZAP baseline (weekly scheduled run against staging, and at every phase gate); authenticated ZAP once (P5-07) | No manual ZAP runs per phase |
 | Data integrity | Reconciliation job + test | Ledger sums vs cached balances, receipt numbering, reward states, outbox rows older than 2 min |
 
 ## 2. Coverage and test strength
@@ -68,31 +68,31 @@ This section is the **single source** for gates. CLAUDE.md, commands and agents 
 6. `security-reviewer` on the task diff when the task touches auth, authz, sessions, rate limits, payments, uploads, crypto or PII (background; no BLOCK/HIGH open).
 No full regression, no exploratory QA agent, no all-project runs at task level.
 
-**Every push (CI, from P0-14):** frozen install, `pnpm check`, integration + authz matrix, migration test + migration linter (§6), build, `check:bundle`, coverage thresholds, `test:titles --strict`, full E2E on the production build (iphone14, pixel7, desktop1440), gitleaks, OSV, Semgrep, CodeQL → deploy staging → staging smoke (journeys 1, 2, 5 + the area changed). Branch protection: `main` merges only on green. The developer does not wait: they start the next task and check the result before their next push; a red CI is fixed before anything else.
+**Every push (CI, from P0-14):** frozen install, `pnpm check`, integration + authz matrix, migration test + migration linter (§6), build, `check:bundle`, coverage thresholds, `test:titles --strict`, full E2E on the production build on **Chromium mobile (pixel7) and Chromium desktop (desktop1440)**, gitleaks, OSV, Semgrep (CodeQL only where available) → deploy staging → staging smoke (journeys 1, 2, 5 + the area changed). Budget (GitHub Free Actions credit, ARCHITECTURE §10): `concurrency` with cancel-in-progress; path filters (docs/progress-only changes skip build and E2E); pnpm and Playwright browser caches; 1-core runners for light jobs; sharding only if it saves wall time; target ≤ 75% of the monthly credit. In `pro` mode `main` merges only on green; in `free` mode the pre-push hook runs `gate:task` and production deploys refuse a commit without a green run. The developer does not wait: they start the next task and check the result before their next push; a red CI is fixed before anything else.
 
-**Nightly (CI):** E2E on all 5 projects, ZAP baseline against staging, k6 smoke against staging, reconciliation check on staging. Failures open an issue and are fixed the next working session.
+**Twice weekly (scheduled CI):** E2E on all 5 projects (adds WebKit/iPhone coverage the push CI skips) + k6 smoke against staging. **Weekly:** ZAP baseline against staging. The staging reconciliation job runs on the VPS (no Actions minutes). Failures open an issue and are fixed the next working session.
 
 **Sub-phase done (`/subphase-complete`) — light:**
-1. CI green on the last commit (CI already ran the full suite — do **not** re-run it locally).
+1. CI green on the last commit (CI already ran the full suite — do **not** re-run it locally). Print the Actions credit used this month (`gh api` billing usage, or the repository's Actions usage page); at ≥ 80% stop scheduled runs and tell the human.
 2. Staging deploy succeeded, staging smoke passed, no new Sentry errors in the release.
 3. `code-reviewer` (+ `security-reviewer` if server code) on commits not already reviewed at task level; no BLOCK/HIGH open.
 4. Exploratory QA **only if the sub-phase added or changed screens**, scoped to those screens (320/390/1440, Chromium + WebKit).
 5. Progress files updated in the same commit.
 No gate may be "pending": if CI or staging does not exist yet, the infrastructure task moves earlier (P0 order A → B → E → C → D).
 
-**Phase done (`/phase-complete`) — the one heavy gate; the phase's hardening task is this run:** `pnpm gate:phase` = sub-phase checks + E2E on all 5 projects + axe on all routes + visual snapshots + Lighthouse CI + mutation (changed rules modules) + k6 smoke on staging + `test:live --require-all` + reconciliation clean + rollback rehearsal (deploy N, roll back to N-1, smoke passes) + **demo** (§8.7). Failures are fixed, or explicitly deferred with a DECISIONS entry, a CARRIED row and a HUMAN_TASKS item if the client must know — never silently skipped.
+**Phase done (`/phase-complete`) — the one heavy gate; the phase's hardening task is this run:** `pnpm gate:phase` (runs **locally**, so it costs no Actions minutes) = sub-phase checks + E2E on all 5 projects + ZAP baseline + axe on all routes + visual snapshots + Lighthouse CI + mutation (changed rules modules) + k6 smoke on staging + `test:live --require-all` + reconciliation clean + rollback rehearsal (deploy N, roll back to N-1, smoke passes) + **demo** (§8.7). Failures are fixed, or explicitly deferred with a DECISIONS entry, a CARRIED row and a HUMAN_TASKS item if the client must know — never silently skipped.
 
-**Pre-production release (P5):** phase gate + full load test (§5) on the production-shaped environment + authenticated ZAP + independent penetration test + restore drill in an isolated DR environment meeting RPO/RTO + human real-device run-through (Android, iPhone Safari, iPhone installed PWA, desktop browsers, VoiceOver and TalkBack passes).
+**Pre-production release (P5):** phase gate + launch-tier load test (§5) against production behind the maintenance page + authenticated ZAP + the SECURITY checklist and reviewers (an independent penetration test only if the client funds one — never promised) + the full rebuild-and-restore rehearsal meeting RPO ≤ 5 min / RTO ≤ 2 h (ARCHITECTURE §9) + human real-device run-through (Android, iPhone Safari, iPhone installed PWA, desktop browsers, VoiceOver and TalkBack passes).
 
 Repeated runs (`--repeat-each`, ×3) are a **diagnostic for a suspected flake**, never a routine gate.
 
 ## 5. Load tests
 
-Targets come from the capacity model in ARCHITECTURE §12 (client to confirm via HUMAN_TASKS H-21; planning numbers until then).
+Targets come from the **launch tier** in ARCHITECTURE §12.1 (200 shops, 50,000 members, 30 req/s peak, 1,000 concurrent SSE, a 10,000-member announcement fan-out in < 10 min, 10 scans/s on one shop). The scale tier (2,000 shops / 500,000 members) is documented with its upgrade path but **not tested before launch**.
 
-- **Smoke (every phase end + nightly):** 200 virtual users for 5 minutes against staging on the busiest endpoints built so far. Pass: actions p95 < 300 ms, p99 < 800 ms, errors < 0.5%, queue lag < 60 s.
-- **First full load (P2-16):** the P5 scenario scaled to staging size, to find architectural limits while there is time to fix them.
-- **Release load (P5-11, on the production-shaped environment):** mix 70% browse (landing, offers feed, wallet), 20% customer actions (request, claim, rate), 10% staff actions (approve, requests list with SSE open). Runs: 2× forecast peak for 30 min; 2 h soak at peak (memory, SSE leaks); 5× spike; failover (kill one app host and the Redis primary during load); dataset seeded at 12-month forecast volume; concurrent SSE at the forecast number; one announcement fanned out to the forecast audience. Pass: actions p95 < 300 ms, p99 < 800 ms; page server time p95 < 800 ms; errors < 0.5% (< 1% during failover, no lost jobs, no lost outbox rows); queue lag < 60 s; SSE delivery p95 < 3 s; no DB connection exhaustion.
+- **Smoke (every phase end + twice weekly):** 200 virtual users for 5 minutes against staging on the busiest endpoints built so far. Pass: actions p95 < 300 ms, p99 < 800 ms, errors < 0.5%, queue lag < 60 s. Staging has CPU/memory limits; the smoke never runs while production serves real users.
+- **First launch-tier load (P2-16):** the P5 scenario at launch-tier numbers against staging, to find limits while there is time to fix them.
+- **Release load (P5-11):** from a developer machine or a GitHub runner against production behind the maintenance page, before go-live. Mix 70% browse (landing, offers feed, wallet), 20% customer actions (request, claim, rate), 10% staff actions (approve, requests list with SSE open). Runs: 2× launch peak for 30 min; 1 h soak; a short 5× spike; 1,000 concurrent SSE; the 10,000-member fan-out; a **restart test** — restart one web replica, the worker, redis-queue and Postgres in turn during load. Dataset at launch-tier volume. Pass: actions p95 < 300 ms, p99 < 800 ms; page server time p95 < 800 ms; errors < 0.5% outside restarts; no lost jobs or outbox rows; recovery within target after each restart; SSE clients reconnect; queue lag < 60 s; no DB connection exhaustion.
 
 ## 6. Test data and isolation
 
@@ -147,6 +147,7 @@ A small **live smoke suite** (`pnpm test:live --require-all` at the phase gate, 
 ## 10. Production verification
 
 - Post-release smoke on production (read-only checks + a dedicated test shop) after every deploy; automatic rollback trigger on failure (S-03 thresholds).
-- **Synthetic monitoring:** scheduled Playwright checks every 10 minutes against production for: landing page, sign-in page, wallet (test account), offers feed, dashboard login page; alert to on-call on failure.
-- Nightly **data-integrity reconciliation** job (ledger sums = cached balances; receipt numbers gapless per shop; no reward redeemed twice; no outbox row older than 2 min); any mismatch alerts on-call and the admin System page.
-- SLOs and error-budget burn alerts as defined in ARCHITECTURE §11.
+- **Uptime and synthetic checks (free tiers):** UptimeRobot keyword monitors every 5 minutes on the landing page, sign-in page, offers feed, dashboard login and `/api/health/live`, alerting both developers (email + mobile app); a scheduled Playwright check of the sign-in → wallet flow (test account) runs on the VPS every 30 minutes and mails both developers on failure (no Actions minutes).
+- Nightly **data-integrity reconciliation** job on the VPS (ledger sums = cached balances; receipt numbers gapless per shop; no reward redeemed twice; no outbox row older than 2 min); any mismatch emails both developers and shows on the admin System page.
+- **Monthly restore drill** (automated): latest dump restored into a scratch database, integrity + reconciliation checks run, result on the admin System page and in SESSION_LOG (ARCHITECTURE §9).
+- SLOs are internal targets measured from logs and synthetic checks (ARCHITECTURE §11).

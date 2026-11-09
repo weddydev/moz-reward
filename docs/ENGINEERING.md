@@ -71,7 +71,7 @@ Route handlers (SSE, uploads) follow the same steps plus `Origin` checks for mut
 
 - Migrations are generated, reviewed and committed; never edit a merged migration.
 - Expand → migrate → contract for any breaking change; old code must keep working during deploy (rolling deploys run old and new code together).
-- **At scale:** every migration sets `lock_timeout` (5 s); indexes on existing tables use `CREATE INDEX CONCURRENTLY` in a non-transactional migration; backfills run as batched jobs, never inside the migration; the migration linter (TESTING §6) enforces this. Connection budget: web replicas × pool + workers ≤ 80% of `max_connections`; production uses PgBouncer in transaction mode; app `statement_timeout` 5 s (web), 60 s (worker).
+- **At scale:** every migration sets `lock_timeout` (5 s); indexes on existing tables use `CREATE INDEX CONCURRENTLY` in a non-transactional migration; backfills run as batched jobs, never inside the migration; the migration linter (TESTING §6) enforces this. Connection budget: web replicas × pool + workers ≤ 80% of `max_connections`, checked at boot; no PgBouncer at launch (single VPS) — RLS uses `SET LOCAL`, so adding PgBouncer in transaction mode later needs no code change (ARCHITECTURE scale path); app `statement_timeout` 5 s (web), 60 s (worker).
 - Every FK indexed; queries in hot paths have indexes verified with `EXPLAIN` on seeded data.
 - Constraints in the DB, not only in code: unique, check, not-null, FK, partial unique indexes for business invariants (one pending request, one Daily Drop per day).
 - Append-only tables (`ledger_entries`, `audit_logs`) protected by triggers that reject UPDATE/DELETE. They hold no PII (ids only), so erasure anonymises the subject rows and leaves them intact. Large append-only tables (`audit_logs`, `notifications`) are partitioned monthly; retention removes whole partitions only.
@@ -152,7 +152,10 @@ Route handlers (SSE, uploads) follow the same steps plus `Origin` checks for mut
 ## 16. Git and commits
 
 - Conventional Commits, small and focused; message explains why when not obvious.
-- `main` is always deployable. Until CI exists (P0-14) a pre-push hook runs `pnpm gate:task`. After: each task on branch `t/<task-id>`, a PR merged with `gh pr merge --auto --squash`, and branch protection that merges only on green CI.
+- `main` is always deployable. A committed pre-push hook runs `pnpm gate:task` and refuses force-pushes. One documented setting, `GITHUB_MODE` (PROGRESS.md), switches the flow:
+  - `pro` (GitHub Pro/Team): each task on branch `t/<task-id>`, PR merged with `gh pr merge --auto --squash`; branch protection requires CI and blocks force-push and deletion of `main`; deploy secrets may live in environments (no required reviewers on private repos at any plan below Enterprise).
+  - `free` (GitHub Free, private repo — no branch protection, rulesets, auto-merge or environments): push to `main` through the pre-push hook; CI runs on every push; production deploy is a `workflow_dispatch` that refuses unless the target commit has a green CI run; secrets are repository secrets.
+- Actions budget: stay under 75% of the monthly Actions credit (Free: $12 ≈ 2,000 Linux 2-core minutes); 1-core runners for light jobs; `concurrency` with cancel-in-progress; path filters; pnpm and Playwright caches; Actions artifacts small and short-lived (they share the 500 MB package storage).
 - One commit per task: code, tests and progress files together (squash merge).
 - Never commit generated secrets, `.env*` (except `.env.example`), large binaries, or coverage output.
 

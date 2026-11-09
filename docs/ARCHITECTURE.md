@@ -16,26 +16,26 @@ Use the **latest stable** version of each at project start; record exact version
 | Styling | Tailwind CSS + CSS variables (DESIGN.md tokens) | No CSS-in-JS runtime |
 | Animation | `motion` + CSS + SVG/Canvas | Lazy-load heavy pieces |
 | Validation | Zod | Shared schemas client/server |
-| Database | PostgreSQL 16+ with PostGIS | Managed, London/EU region, HA standby, PITR, PgBouncer (transaction mode). Row-Level Security on every shop- and user-scoped table |
+| Database | PostgreSQL 17 with PostGIS | Self-hosted in Docker on the production VPS (pinned image, named volume, internal network only). WAL archiving + nightly encrypted dumps to R2 (§9). No pooler at launch (§12). Row-Level Security, forced, on every shop- and user-scoped table |
 | ORM / migrations | Drizzle ORM + drizzle-kit | SQL migrations committed |
 | Auth | Better Auth (Drizzle adapter) | Google OAuth, magic link, TOTP 2FA, passkeys (staff/admin), email+password (staff/admin only, Argon2id). If a required capability is missing at kickoff, fall back to Auth.js and log the decision |
 | Cache / rate limit / queues | Redis 7 + BullMQ | Two instances: `redis-queue` (BullMQ + rate limits) and `redis-cache` (cache + pub/sub). See §12 |
 | Realtime | Server-Sent Events (Route Handler) + Redis pub/sub | No third-party realtime service |
-| Email | Resend (primary) + Brevo (secondary) behind a provider interface | React Email templates. Paid tier at launch; quota alert at 70%. Transactional/auth mail fails over to the secondary |
+| Email | Resend (primary) + Brevo (secondary) behind a provider interface | React Email templates. Free tiers at launch (Resend 100/day, Brevo 300/day); email budget, 70% alert and drop order in §10. Auth/security mail fails over to the secondary |
 | Push | Web Push (VAPID) via `web-push` | Works in browsers, Android TWA, iOS Home Screen PWAs |
 | Object storage | Cloudflare R2 (S3 API) | Served via Cloudflare on a separate domain (`cdn.`) |
 | Images | `sharp` in the worker | Re-encode to AVIF/WebP, strip EXIF |
 | PDF | Server-rendered (e.g. `@react-pdf/renderer`) in the worker | Receipts, invoices, posters |
 | Share images | Satori/`@vercel/og`-style rendering | PNG cards |
-| AI review help | Gemini Flash-class or similar low-cost model via server-only API | Behind a provider interface |
+| AI review help | Gemini Flash-class model via the **paid** pay-as-you-go API (never the free tier: UK users may only use paid services, and paid terms exclude product-improvement use of prompts) | Server-only, behind a provider interface and a feature flag (off until the key exists); project spend cap + app daily cap + kill switch (§10) |
 | Bot protection | Cloudflare Turnstile | Forms and sign-in |
-| Analytics | Self-hosted Umami or PostHog (EU) | No advertising trackers |
-| Errors | Sentry (free tier in dev/staging; paid at launch, quota alert) | PII scrubbing on |
-| Metrics / traces / logs | OpenTelemetry, Prometheus-compatible metrics, logs shipped off-host | See §11 |
+| Analytics | Self-hosted Umami (own database in the production Postgres) | No advertising trackers |
+| Errors | Sentry Developer (free): one owner account, alert rules forward to both developers; sample rates keep errors under ~4,000/month | PII scrubbing on; quota alert at 70% |
+| Metrics / logs | Structured JSON logs on the host (rotated, 30 days) + Sentry + admin System page; no paid metrics backend | See §11 |
 | Testing | Vitest, Testing Library, Playwright, axe-core, k6, Lighthouse CI | See TESTING.md |
 | Android app | Bubblewrap Trusted Web Activity | Google Play |
-| Hosting | Production: Cloudflare → ≥ 2 app hosts in separate failure domains (Docker Compose: web replicas, Caddy) → worker host(s) → managed Postgres → `redis-queue` + `redis-cache` → R2 | Staging on separate host(s) with separate databases and Redis; same config shape, smaller. Topology and targets in §9 (pending client budget confirmation, H-21) |
-| CI/CD | GitHub Actions | Staging auto-deploy, production on tag with approval |
+| Hosting | One Hostinger KVM 4 VPS (UK; 4 vCPU, 16 GB RAM, 200 GB NVMe), Ubuntu LTS, Docker Compose. Cloudflare (free) → Cloudflare Tunnel → Caddy → 2 web replicas; worker (+ outbox relay); Postgres 17 + PostGIS; `redis-queue` + `redis-cache`; Umami. R2 for files and backups | Staging is a separate Compose project on the same VPS with CPU/memory limits and nothing shared with production. Topology and targets in §9 (H-21 answered: single VPS, free tiers) |
+| CI/CD | GitHub Actions | Staging auto-deploy on green `main`; production deploy on a `v*` tag, started by a human. Image shipped by `docker save \| zstd \| ssh` (no registry). Works on GitHub Free or Pro/Team (ENGINEERING) |
 
 ## 2. Repository layout
 
@@ -71,7 +71,7 @@ Use the **latest stable** version of each at project start; record exact version
 ├─ drizzle/                 # migrations
 ├─ tests/                   # e2e/, load/, fixtures/, authz/
 ├─ public/                  # manifest, icons, .well-known/assetlinks.json
-├─ infra/                   # docker-compose.{staging,prod}.yml, Caddyfile, backup scripts
+├─ infra/                   # docker-compose.{staging,prod}.yml, Caddyfile, VPS hardening script, backup/restore scripts, RESOURCES.md (memory budget)
 └─ twa/                     # Bubblewrap project (Phase 5)
 ```
 
@@ -82,13 +82,13 @@ Use the **latest stable** version of each at project start; record exact version
 - Domain logic in `server/services` as plain functions taking explicit inputs; no framework imports; 90%+ unit-test coverage for loyalty, offers, plans, fraud rules.
 - Every mutation (server action or mutating route handler) follows the action template in ENGINEERING §4 (`src/server/actionTemplate.ts`). This file does not restate its steps.
 - Repos never accept a bare entity ID without a scope (`shopId`, `userId`), a `SystemScope` (scheduled jobs) or an `AdminScope` (cross-shop admin reads, audited).
-- Layering: app filter first, Row-Level Security second. The scoped-transaction helper runs `SET LOCAL app.shop_id / app.user_id / app.scope` before any query. The web role `moz_app` has no `BYPASSRLS`. Cross-shop system sweeps run as the worker role `moz_worker` (`BYPASSRLS`) and are audit-logged. RLS policies exist on every shop- and user-scoped table (SECURITY §3).
+- Layering: app filter first, Row-Level Security second. The scoped-transaction helper runs `SET LOCAL app.shop_id / app.user_id / app.scope` before any query. The web role `moz_app` has no `BYPASSRLS`. Cross-shop system sweeps run as the worker role `moz_worker` (`BYPASSRLS`) and are audit-logged. Postgres is self-hosted, so we hold the superuser and create `moz_worker` with `BYPASSRLS` ourselves in the provisioning/migration bootstrap (no provider-specific role steps). RLS is enabled **and forced** with policies on every shop- and user-scoped table (SECURITY §3).
 - A module never touches another module's tables (see Data ownership in §2).
 - Money stored as integer pence; points as integers; times as `timestamptz` (UTC), business rules computed in `Europe/London` via `src/lib/time.ts`.
 - IDs: UUIDv7 primary keys; public short codes (shop code, member ID, claim codes) generated with crypto-random Crockford base32 and uniqueness retry.
 - Errors: typed `AppError(code, message, status)`; user-facing messages friendly; no stack traces to clients.
 - Feature flags: `feature_flags` table + env overrides (Google Business replies, AI help, game rewards).
-- Conventional Commits; one commit per task. Once CI exists: branch `t/<task-id>`, one squash-merged PR per task, `main` protected by required CI.
+- Conventional Commits; one commit per task. Once CI exists: with GitHub Pro/Team, branch `t/<task-id>`, one squash-merged PR per task, `main` protected by required CI; on GitHub Free, the committed pre-push hook + CI on every push (ENGINEERING, `GITHUB_MODE`).
 
 ## 4. Data model
 
@@ -137,9 +137,9 @@ Sweeps: system jobs that scan many rows (expiry, reminders, retention) page by k
 
 ## 5. Key flows
 
-**Scan → landing**: `/s/[code]` (RSC, CDN-cached per shop for 60s for anonymous users) → client shows Gilded Gate if `src` present → CTA "Collect points" → sign-in if needed (return URL validated) → membership upsert → shop page.
+**Scan → landing**: `/s/[code]` (RSC, rendered per request; the shop's public landing data is cached in `redis-cache` for 60 s) → client shows Gilded Gate if `src` present → CTA "Collect points" → sign-in if needed (return URL validated) → membership upsert → shop page.
 
-**CSP vs CDN caching**: a response cached at Cloudflare must not carry a per-request nonce (the cached nonce would be reused). Rule: dynamic and signed-in routes use the nonce CSP; CDN-cached public routes (shop landing `/s/[code]` for anonymous users, offers feed) use a static hash-based CSP with no nonce and no inline script outside the hashed set. A test asserts both cases. Decided and tested in P1-02.
+**CSP and caching**: HTML is **never** cached at the CDN. Every page renders per request with the nonce CSP (SECURITY §5); a hash-based CSP is not workable with the App Router because the inline RSC payload scripts change with the page's data. Hot public pages (shop landing `/s/[code]`, offers feed) cache their **data** in `redis-cache` for 60 s, not their HTML. HTML responses carry `Cache-Control: private, no-store` (or Next's dynamic default) and no Cloudflare cache rule matches HTML. Cloudflare caches only static assets (`/_next/static/*`, icons, fonts) and `cdn.` images. A test asserts that `/s/[code]` and the offers feed carry a fresh nonce per request and are not cacheable by a shared cache. Decided and tested in P1-02.
 
 **Side effects (outbox)**: every side effect (email, push, PDF, SSE publish, fraud check, referral check) is written as an `outbox` row in the same transaction as the change. Nothing is enqueued or published directly from a request. After commit the relay worker enqueues each row with `jobId = outbox.id` and marks it dispatched. A sweeper alerts on undispatched rows older than 2 min.
 
@@ -153,16 +153,17 @@ Sweeps: system jobs that scan many rows (expiry, reminders, retention) page by k
 
 ## 6. Background jobs
 
-BullMQ queues in `src/worker/`: `notifications` (push + inbox fan-out in batches of 500), `email`, `images`, `pdf`, `share-cards`, `fraud`, `scheduled`. Repeatable schedules (Europe/London): request expiry (every 5 min), Daily Drop expiry (00:00), saved-offer reminders (hourly + 17:00), birthday suggestions (06:00), win-back suggestions (06:30), monthly recap (1st, 09:00), weekly owner email (Mon 09:00), plan state transitions + reminders (07:00), listing expiry (hourly), points expiry (daily), data-request deadlines (daily), backups verification (daily).
+BullMQ queues in `src/worker/`: `notifications` (push + inbox fan-out in batches of 500), `email`, `images`, `pdf`, `share-cards`, `fraud`, `scheduled`. Repeatable schedules (Europe/London): request expiry (every 5 min), Daily Drop expiry (00:00), saved-offer reminders (hourly + 17:00), birthday suggestions (06:00), win-back suggestions (06:30), monthly recap (1st, 09:00), weekly owner email (Mon 09:00), plan state transitions + reminders (07:00), listing expiry (hourly), points expiry (daily), data-request deadlines (daily), backups verification (daily), health job (every 5 min, §11), restore drill (monthly, §9).
 
 All jobs idempotent, with retries + exponential backoff and a dead-letter queue visible in super admin (simple table).
 
 - Jobs are created from the `outbox` by the relay worker (`jobId = outbox.id`, so a re-relay never duplicates a job). Request code never calls `queue.add` directly. Scheduled jobs are the only other producer.
 - Outbox relay: polls undispatched rows (oldest first, keyset-batched), enqueues, marks `dispatched_at`. Sweeper alerts when any row is older than 2 min.
-- Queues live on `redis-queue` only (AOF everysec, `maxmemory-policy noeviction`, replica). Never on `redis-cache`.
+- **Replay mode** (`relay --replay-since <timestamp>`): re-dispatches outbox rows dispatched within N minutes before a restore point. Used by the RUNBOOK restore procedure, because `redis-queue` contents are lost if the VPS is lost; safe because jobs are idempotent and `jobId = outbox.id`. Tested (P0-18, P0-15).
+- Queues live on `redis-queue` only (AOF everysec, `maxmemory-policy noeviction`). Never on `redis-cache`. The daily email send counter (§10) also lives on `redis-queue`.
 - Cross-shop sweeps run under `SystemScope` as the `moz_worker` DB role, keyset-batched, each with a runtime alarm (§4).
 - Graceful shutdown: on SIGTERM a worker stops taking new jobs and drains active jobs for up to 60 s; unfinished jobs return to the queue and are retried.
-- Workers run on separate host(s) from web replicas in production.
+- In production the worker is its own container on the same VPS as the web replicas, with its own memory limit (`infra/RESOURCES.md`). A separate worker host is a scale-path step (§12.2).
 
 ## 7. Realtime
 
@@ -179,31 +180,41 @@ All jobs idempotent, with retries + exponential backoff and a dead-letter queue 
 - Uploads: client requests a presigned PUT URL (`/api/uploads`) with declared type/size → upload to R2 `incoming/` → server enqueues `images` job → sharp validates magic bytes, re-encodes (AVIF + WebP), strips EXIF, generates sizes → moves to `public/` path → DB updated. Originals deleted.
 - Limits: images ≤ 8 MB in, JPEG/PNG/WebP/HEIC only; max 5 per listing, 6 per shop gallery.
 - Served from `cdn.<domain>` (separate origin) with long cache and content hashes.
+- Durability: uploaded images rely on R2's own durability (no versioning or cross-bucket replication at launch) — an accepted risk recorded in DECISIONS. Receipt PDFs and share cards are regenerable from the database.
 
 ## 9. Environments and deployment
 
 | Env | URL | Deploys | Data |
 |---|---|---|---|
 | Local | localhost:3000 | `pnpm dev` + Docker (postgres, redis, Mailpit, MinIO) | Seed |
-| Staging | `staging.<domain>` | Auto on every green push to `main` | Seed demo data, reset weekly. Separate host(s), separate Postgres and Redis |
-| Production | `<domain>` (+ `cdn.`) | Git tag `v*` + manual approval in GitHub | Real |
+| Staging | `staging.<domain>` | Auto on every green push to `main` | Seed demo data, reset weekly. Separate Compose project on the production VPS: own Postgres, Redis, secrets, R2 bucket or prefix, Google OAuth client |
+| Production | `<domain>` (+ `cdn.`) | Git tag `v*`, deploy started by a human (see Deploy) | Real |
 
-**Production topology (target; budget confirmed by the client via H-21).**
-- Cloudflare (proxy, WAF, bot rules) in front. The origin is reachable only through Cloudflare (Tunnel or Authenticated Origin Pulls; host firewall allows Cloudflare ranges only).
-- ≥ 2 app hosts in separate failure domains, each running web replicas behind Caddy.
-- Worker(s) on separate host(s).
-- Managed Postgres (London/EU) with HA standby, point-in-time recovery and PgBouncer in transaction mode.
-- `redis-queue` (BullMQ + rate limits; AOF everysec, `noeviction`, replica) and `redis-cache` (cache + pub/sub; `allkeys-lru`). See §12.
-- Cloudflare R2 with versioning and cross-bucket replication for uploads and receipts.
-- Staging: separate host(s), separate databases and Redis; same config shape as production, smaller sizes.
-- If the client declines the budget, the single-host fallback (tested rebuild ≤ 2 h) is recorded in DECISIONS with the accepted risk.
+**Production topology (H-21 answered: single VPS, free tiers).**
+- **Host:** one Hostinger KVM 4 VPS in the UK (4 vCPU, 16 GB RAM, 200 GB NVMe), Ubuntu LTS, Docker Compose. Provisioned by an idempotent hardening script in `infra/` (SECURITY §11).
+- **Edge:** Cloudflare free plan (DNS, proxy, TLS, free WAF managed rules and rate-limit rule as a backstop). The origin is reachable **only through Cloudflare Tunnel** (`cloudflared` container, one tunnel per environment); the host has no inbound 80/443. ufw default-deny; SSH key-only as a non-root deploy user.
+- **Production containers** (every container has a memory limit; the budget table lives in `infra/RESOURCES.md` and must fit 16 GB with headroom):
+  - `cloudflared` → `caddy` → `web-1`, `web-2` (two replicas so rolling deploys work on one host);
+  - `worker` (+ outbox relay);
+  - `postgres` (17 + PostGIS, pinned image with wal-g and `ca-certificates`, named volume, internal network only, never published to a host port; `shared_buffers` ≈ 2 GB). Holds the app database and Umami's own database (own role, no access to the app database);
+  - `redis-queue` (BullMQ + rate limits + email counter; AOF everysec, `noeviction`) and `redis-cache` (data cache + pub/sub; `allkeys-lru`) as two containers (§12);
+  - `umami`.
+- **Staging:** a separate Compose project on the same VPS at `staging.<domain>` (basic auth + `noindex`): its own networks, volumes, Postgres, Redis containers, secrets, R2 bucket or prefix, Google OAuth client and tunnel. It shares nothing with production. It has CPU and memory limits so it can never starve production, and may be stopped after launch when not in use. Same Postgres/PostGIS image and version as production (parity).
+- **No pooler at launch.** The connection-budget rule (§12) is checked at boot; `SET LOCAL` keeps RLS pooler-safe, so adding PgBouncer later needs no code change (§12.2).
 
-**Targets.** Availability 99.9% per month. RPO ≤ 5 min (Postgres), ≤ 1 min (`redis-queue`). RTO ≤ 1 h. All infrastructure as code (compose files + provisioning scripts in `infra/`); a full host rebuild is rehearsed in P5 and then quarterly.
+**Targets (internal, never a client SLA).**
+- Availability 99.5% per month (single host).
+- RPO ≤ 5 min (WAL archiving). If wal-g against R2 is blocked in P0-15, the fallback is nightly dumps only (RPO 24 h) with a DECISIONS entry and the client informed (H-21).
+- RTO ≤ 2 h: build a fresh VPS from the `infra/` scripts, restore, replay the outbox, move the Tunnel.
+- The full rebuild-and-restore is rehearsed once before launch (P5), locally or on a temporary hourly-billed VPS. After that, the monthly automated restore drill (below) keeps the backups proven.
 
 **Deploy.**
-- Docker images built in CI, tagged with the commit SHA, pushed to GHCR, pulled on each host.
-- Rolling deploy: one web replica at a time; a replica takes traffic only after `/api/health/ready` passes. Workers drain (§6) before replacement. SSE streams send a jittered `retry:` before close (§7).
-- Rollback = redeploy the previous image tag. Rehearsed at every phase end from P0-15.
+- CI builds the production image tagged with the commit SHA and ships it straight to the VPS: `docker save | zstd | ssh deploy@<vps> docker load`. No registry: images go only from the GitHub runner to our host, so the deploy has no dependency on GHCR pricing or availability. Keep Actions artifacts small and short-lived (they share the GitHub Packages storage quota).
+- The host keeps the last 3 production images; the deploy job prunes older ones.
+- Release step from the deploy job, before any replica switches: migrations (expand-only) run in a one-off container from the new image on the production network. The owner connection string lives only in GitHub secrets and the password manager; it is passed to that container over the SSH session and never written to the host.
+- Rolling deploy: replace `web-1`, wait for `/api/health/ready`, then `web-2` (Caddy health-checks both upstreams). Then the worker drains (§6) and is replaced. SSE streams send a jittered `retry:` before close (§7). A failing health check aborts and leaves the previous version serving.
+- Rollback = redeploy the previous image tag (scripted). Rehearsed at every phase end from P0-15.
+- Production deploys are started by a human on a `v*` tag. GitHub Pro/Team: `production` environment secrets and a deployment-branch rule (required reviewers are not available for private repos below Enterprise, so no approval gate is planned). GitHub Free: a `workflow_dispatch` that refuses unless the tag's commit has a green CI run, with repository secrets. One documented setting (`GITHUB_MODE`, ENGINEERING) switches between them.
 
 **Migrations at scale.**
 - Expand-only per release (expand → migrate → contract across releases), so the previous image always runs against the new schema.
@@ -212,96 +223,123 @@ All jobs idempotent, with retries + exponential backoff and a dead-letter queue 
 - Backfills run as batched jobs, never inside a migration.
 - A migration linter in CI rejects unsafe operations (non-concurrent index on an existing table, volatile default on a large table, column drop in the same release as its last use).
 
-**Secrets.** Production secrets live in a secrets manager or GitHub Environments; on hosts only as root-only files. Never in the repo. Keys are separate per purpose (SECURITY §7).
+**Secrets.** Developers' laptops hold dev-only keys. Staging and production secrets live only in GitHub secrets, in root-only files on the host written by the deploy job, and in the developers' password manager. Claude never sees a staging or production secret, and no step asks a human to paste one into chat. Never in the repo. Keys are separate per purpose (SECURITY §7).
 
-**Backups.** Managed Postgres PITR + nightly logical dump to R2 (encrypted), retained 35 days. Restore drill monthly in an isolated DR environment (not staging).
-
-- Staging is protected with HTTP basic auth + `noindex` so client demos are private.
+**Backups and recovery.**
+- **Nightly dumps:** `pg_dump -Fc` of each production database (app + Umami), encrypted with the backup **OpenPGP public key** (`gpg --encrypt`; only the public key is on the host) and uploaded to a dedicated R2 backup bucket. The backup bucket has its own R2 API token scoped to that bucket only, different from the app's uploads token. An R2 lifecycle rule deletes objects after 35 days.
+- **WAL archiving:** wal-g to the same backup bucket (S3-compatible endpoint, path-style), `archive_timeout = 60s`, weekly base backup, retention `delete retain FULL 5` (≈ 35 days) so neither the bucket nor the local `pg_wal` grows without bound. WAL and base backups are encrypted with the **same** OpenPGP public key (`WALG_PGP_KEY`; wal-g supports OpenPGP but not `age`, so one OpenPGP key pair serves both — human's decision, plan v5). The Postgres image includes `ca-certificates` (wal-g issue #2550: `wal-push` hangs against R2 without it).
+- **Keys:** one backup OpenPGP key pair. The private key is never on the VPS; it lives only in the developers' password manager (HUMAN_TASKS H-26).
+- **Alerts** (health job, §11): no successful dump in 26 h; WAL archive lag > 10 min; disk > 80%; R2 storage ≥ 70% of the free 10 GB (uploads + backups together).
+- **Monthly automated restore drill:** on the 1st, the host restores that night's dump into a scratch database (from the local plaintext copy kept only until the drill finishes; the private key is not on the host), runs the integrity and reconciliation checks, verifies that the uploaded ciphertext in R2 matches the checksum recorded at upload, then drops the scratch database and deletes the plaintext. The result is recorded on the admin System page and in SESSION_LOG. Decryption with the offline private key is exercised in the P5 rehearsal and after any change to the backup scripts. A developer also runs a **full decrypt-and-restore from R2** (private key from the password manager, into a local scratch database) at every phase end, and the full rebuild-and-restore rehearsal runs once in P5.
+- **Restore procedure** (RUNBOOK): fresh VPS from `infra/` → restore base backup + WAL to the target point (or the latest dump) → `relay --replay-since <restore point − N min>` (§6), because `redis-queue` contents die with the VPS → integrity + reconciliation → start `cloudflared` with the production tunnel token on the new host (no DNS change).
+- Receipts and share cards are regenerable from the database. User-uploaded images rely on R2 durability (accepted risk, §8).
+- Hostinger's automatic weekly VPS backups are an extra layer only; recovery never relies on them.
 
 ## 10. Third-party services
 
 The human creates accounts; you write the integration and document the exact env vars in `.env.example`.
 
-Free tiers are for development and staging only. At launch every service that carries production traffic is on a paid tier with quota alerts at 70%.
+**Free tiers are the launch plan.** The only recurring paid items are the VPS, Gemini usage (capped) and, if chosen, GitHub Pro. Every quota has an alert at 70% (the health job checks usage counters or the provider's usage API; where a provider gives no API, its own usage alert email goes to both developers). When a quota runs out the system degrades gracefully, as documented below; no user action fails with a 500.
 
-| Service | Purpose | Tier at launch |
-|---|---|---|
-| App + worker hosts (London) | Web replicas, workers, Caddy (§9) | Paid, ≥ 2 app hosts + worker host |
-| Managed Postgres (London/EU) | Database with HA standby, PITR, PgBouncer | Paid |
-| Managed or self-hosted Redis | `redis-queue` (with replica) + `redis-cache` | Paid |
-| Cloudflare | DNS, CDN, WAF, R2, Turnstile, Tunnel / Authenticated Origin Pulls | Paid plan if WAF/bot rules require it; R2 pay-per-use |
-| Resend (primary) / Brevo (secondary) | Email | Paid tier (primary); secondary account active for failover |
-| Google Cloud | OAuth client, (optional) Places / Business Profile APIs | Pay-per-use with budget alert |
-| AI provider | Review help | Pay-per-use with budget alert |
-| Sentry | Errors | Paid, quota alert |
-| Logs / metrics / traces backend | Off-host logs (30 days), metrics, traces, alerting | Paid or self-hosted |
-| Umami / PostHog | Analytics | Self-hosted / paid EU |
-| GitHub | Repo, Actions, GHCR, Environments | Paid if Actions minutes or protection rules require it |
-| Google Play Console | Android app | One-time fee |
-| postcodes.io | Postcode → lat/long | Free, no key |
+| Service | Purpose | Plan at launch | Limit we watch | When the quota runs out |
+|---|---|---|---|---|
+| Hostinger KVM 4 (UK) | Production + staging host (§9) | Paid VPS (promo term, renewal price higher — budgeted by the client, H-21) | CPU, RAM, disk (80%) | Scale path §12.2 |
+| Cloudflare | DNS, CDN (static + `cdn.` only), Tunnel, Turnstile, free WAF managed rules + rate-limit rule (backstop; our Redis limits are the real control) | Free | — | — |
+| Cloudflare R2 | Uploads bucket + backup bucket (separate scoped tokens) | Free tier: 10 GB-month, 1M Class A, 10M Class B, zero egress | Storage ≥ 70% of 10 GB (uploads + backups together) | Overage is billed per GB; the alert lets us prune or accept a small bill — never stop backups |
+| Resend (primary) / Brevo (failover) | Email | Free: Resend 100/day, 3,000/month; Brevo 300/day | Combined daily cap (≈ 400/day): alert at 70% (≈ 280/day) | Drop order below |
+| Google Cloud | OAuth (staging and production clients); Business Profile API only if the optional feature is enabled | Free | — | — |
+| Gemini API | Review help | Paid pay-as-you-go (never the free tier) | Project monthly spend cap (≈ 10-min lag, may overshoot) + our own app daily cap + kill-switch flag (the real control) | Feature hides "Help me write it"; the customer writes their own text |
+| Sentry | Errors (web + worker) | Developer (free): one user, 5,000 errors/month, 30-day retention | Sample rates keep errors under ~4,000/month; quota alert at 70% | Errors still logged on the host (§11); Sentry drops events over quota |
+| UptimeRobot | Uptime and keyword monitors | Free: 50 monitors, 5-min interval | — | — |
+| Umami | Analytics | Self-hosted (§9) | — | — |
+| GitHub | Repo, Actions | Free or Pro/Team (HUMAN_TASKS, `GITHUB_MODE`); Actions credit budget < 75%, stop rule at 80% (ENGINEERING) | Monthly Actions credit | Scheduled workflows pause; push CI continues |
+| Google Play Console | Android app | One-time fee | — | — |
+| postcodes.io | Postcode → lat/long | Free, no key | — | "Near me" by postcode shows a friendly retry; geolocation still works |
 
-- Cost: a monthly cost model per 1,000 shops is maintained in P5-12 and updated when a tier changes.
-- Every paid provider has a budget alert routed to the on-call channel.
+**Email budget.**
+- Email is used only for: sign-in links; auth/security mail (lockout and account-recovery notices); staff invites; shop-account mail (application received/approved/rejected, activation, invoices, suspension notices); plan reminders; data-request mails; the weekly owner email; and critical ops/health alerts to the developers. Announcements, offers and all marketing go by push + in-app inbox only, never by email (PRODUCT §9).
+- A daily send counter lives in `redis-queue` (not the cache). At 70% of the combined daily cap (≈ 280/day) an alert goes to both developers.
+- The weekly owner email is paced at ≤ 150/day (spread across days if needed), so it never crowds out critical mail.
+- Near the cap, mail is shed in this order: weekly owner email first (dropped for that week) → plan reminders (dropped; the dashboard banner still shows them) → data-request notices, staff invites and shop-account mail are queued to the next day, never dropped (data requests have a one-month legal deadline) → auth/security mail (sign-in, lockout, recovery) and ops alerts are **never** dropped or delayed.
+- Resend → Brevo failover and the drop order are both tested.
+
+- Cost: a cost model (VPS at renewal price, Gemini spend, optional GitHub Pro, R2 overage, and the cost of each scale-path step) is maintained in P5-12.
+- Every metered provider (Gemini, R2) has a budget alert to both developers.
+- Grafana Cloud free may be added later for dashboards; it must never become a dependency.
 
 ## 11. Observability
 
 Built in P0-13 (not P5).
 
-- Structured logs (pino) with request IDs; never log tokens, phone numbers, emails, codes. Logs shipped off-host; 30-day retention.
-- Metrics via OpenTelemetry, Prometheus-compatible: HTTP rate, latency and errors per route; DB pool usage; queue depth and lag; job failures; SSE connections; outbox age. Traces for requests and jobs.
-- Health split: `/api/health/live` (public, process up, no detail) and `/api/health/ready` (internal only: DB, Redis, queue lag; used by the load balancer and deploys). Uptime monitor on staging and production.
-- Sentry for web + worker, release tags per deploy; paid tier at launch with a quota alert.
-- Dashboards: one per SLO. Alerts routed to an on-call channel (on-call rota is a human task before launch).
-- Admin "System" page: queue depths, failed jobs, last backup time.
+- Structured JSON logs (pino) with request IDs; never log tokens, phone numbers, emails, codes. Kept on the host with Docker log rotation, 30-day retention. No paid log or metrics backend.
+- Health split: `/api/health/live` (public, process up, no detail) and `/api/health/ready` (internal only: DB, Redis, queue lag; used by Caddy and deploys).
+- Sentry for web + worker (free Developer plan, one owner account): release tags per deploy; alert rules forward to both developers (email / webhook to the health-mail channel); the second developer gets details through the owner or the forwarded alert.
+- UptimeRobot monitors staging and production (one owner account; both developers' emails as alert contacts; the mobile app on both phones).
+- **Admin "System" page** (instead of a metrics backend): queue depth and lag, outbox age, failed jobs; last backup, WAL archive lag, last restore drill; disk, DB size, SSE connections; request rate, p95 latency and error rate per route over the last hour (aggregated from the request logs by a scheduled job); email sends today vs cap; provider quota usage.
+- **Health job** (scheduled, every 5 min): checks the alert thresholds (outbox age > 2 min, queue lag, failed jobs, backup age > 26 h, WAL lag > 10 min, disk > 80%, quotas ≥ 70%, missing partitions, job runtime alarms) and emails both developers. These alerts are critical mail (never dropped, §10).
+- On-call: best-effort business hours by the two developers, uptime alerts to both phones, no 24/7 rota (post-launch support is a separate agreement).
 
-**SLOs.**
+**SLOs** (internal targets, measured from logs and synthetic checks; never a client SLA).
 
 | SLO | Target |
 |---|---|
-| Availability | 99.9% per month |
+| Availability | 99.5% per month |
 | Approve → points credited on the customer screen | p95 < 2 s |
 | SSE delivery | p95 < 3 s |
 | Sign-in email sent | p95 < 30 s |
 
-**Error-budget policy.** When a month's error budget is spent, feature work pauses and the next tasks are reliability work until the SLO is back within budget. The pause is recorded in PROGRESS.
+**Error-budget policy.** Reviewed at each sub-phase close and monthly after launch. If an SLO was missed in the month, the next task is the reliability fix for its cause, recorded in PROGRESS; feature work continues once that fix ships.
 
-**Runbook.** `docs/RUNBOOK.md` is created in P0-13 with: deploy, rollback, restore, Redis loss, key leak, email provider outage. Each phase extends it for what it added.
+**Runbook.** `docs/RUNBOOK.md` is created in P0-13 with: deploy, rollback, restore (with outbox replay), full VPS rebuild, Redis loss, key leak, email provider outage, free-tier quota exhausted, Tunnel down. Each phase extends it for what it added.
 
 ## 12. Scale plan
 
-- Stateless web containers; scale horizontally behind Caddy.
-- Read-heavy public pages cached at Cloudflare; offers feed cached 60s; shop landing 60s for anonymous. Cached routes use the static hash-based CSP, never a nonce (§5).
-- DB: PgBouncer in transaction mode; read replica when analytics load grows. Session-level state is never relied on (RLS settings use `SET LOCAL` inside the transaction).
-- Connection budget: (web replicas × pool size) + (workers × pool size) ≤ 80% of Postgres `max_connections`. Checked at boot from config; documented per environment in `infra/`.
+- Stateless web containers; two replicas behind Caddy on the VPS, more replicas or hosts on the scale path (§12.2).
+- HTML is never CDN-cached (§5). Hot public data (offers feed, shop landing) is cached in `redis-cache` for 60 s and rendered per request with the nonce CSP. The CDN caches only static assets and `cdn.` images.
+- DB: no pooler at launch. Session-level state is never relied on (RLS settings use `SET LOCAL` inside the transaction), so a transaction-mode pooler can be added later with no code change.
+- Connection budget: (web replicas × pool size) + (workers × pool size) + Umami ≤ 80% of Postgres `max_connections`. Checked at boot from config; documented per environment in `infra/RESOURCES.md`.
 - Fan-out via queues, never in request.
 
 **Redis split.**
 
 | Instance | Holds | Config |
 |---|---|---|
-| `redis-queue` | BullMQ queues, rate-limit counters | AOF everysec, `maxmemory-policy noeviction`, replica, password + TLS + key prefix (staging/prod) |
-| `redis-cache` | Cache, pub/sub (SSE fan-out) | `allkeys-lru`, no persistence needed, password + TLS + key prefix (staging/prod) |
+| `redis-queue` | BullMQ queues, rate-limit counters, daily email counter | AOF everysec, `maxmemory-policy noeviction`, password + TLS + key prefix (staging/prod) |
+| `redis-cache` | Data cache, pub/sub (SSE fan-out) | `allkeys-lru`, no persistence needed, password + TLS + key prefix (staging/prod) |
 
-Dev and staging run the same two-instance split (two containers locally).
+Dev, staging and production run the same two-container split. `redis-queue` survives a container restart (AOF); if the VPS is lost, queued jobs are rebuilt from the outbox (replay mode, §6).
 
 **Rate-limiter fail modes** (when `redis-queue` is unreachable):
 - Auth and money endpoints (sign-in, magic link, 2FA, approve, redeem, claim confirm, points request) fail CLOSED with a friendly 503 and `Retry-After`.
-- Public reads fail OPEN; Cloudflare rate rules are the backstop.
+- Public reads fail OPEN; the Cloudflare free rate-limit rule is the backstop.
 - Both modes have tests.
 
 ### 12.1 Capacity model
 
-Planning numbers until the client confirms them (H-21):
+**Launch tier (tested)** — until the client gives a forecast (H-21):
 
-| Dimension | Planning number |
+| Dimension | Launch tier |
 |---|---|
-| Shops | 2,000 |
-| Members | 500,000 |
-| Peak request rate | 300 req/s |
-| Concurrent SSE connections | 20,000 |
-| Announcement fan-out | 100,000 members in < 10 min |
-| Scan spike on one shop | 50 scans/s |
+| Shops | 200 |
+| Members | 50,000 |
+| Peak request rate | 30 req/s |
+| Concurrent SSE connections | 1,000 |
+| Announcement fan-out | 10,000 members in < 10 min |
+| Scan spike on one shop | 10 scans/s |
 
-Performance targets: actions p95 < 300 ms, p99 < 800 ms; page server time p95 < 800 ms; errors < 0.5% (< 1% during failover, no lost jobs); queue lag < 60 s; SSE delivery p95 < 3 s.
+Performance targets: actions p95 < 300 ms, p99 < 800 ms; page server time p95 < 800 ms; errors < 0.5% (outside the restart test, no lost jobs); queue lag < 60 s; SSE delivery p95 < 3 s.
 
-Load tests (details in TESTING.md): k6 smoke against staging at every phase end; first full load test at P2-16; release load test at P5-11 at 2× forecast peak for 30 min, a 2 h soak at peak, a 5× spike, and failover (kill one app host and the Redis primary during load), on a dataset seeded at 12-month forecast volume.
+Load tests (details in TESTING.md §5): k6 smoke against staging at every phase end; a small load test at launch-tier numbers at P2-16; release load test at P5-11, run from a developer machine or a GitHub runner against production behind the maintenance page before go-live (load generator's IP allowed through the Cloudflare rules for the run): 2× launch peak for 30 min, 1 h soak, a short 5× spike, 1,000 SSE connections, the 10,000-member fan-out, and a **restart test** (restart one web replica, the worker, `redis-queue` and Postgres in turn during load: no lost jobs, recovery within target, clients reconnect). Dataset at launch-tier volume, removed before go-live.
+
+### 12.2 Scale path (not targets)
+
+Documented only; **not built or tested before launch**. Scale tier: 2,000 shops / 500,000 members. Take the steps in order, each when its trigger metric holds (from the System page, health job and host metrics):
+
+| Step | Change | Trigger |
+|---|---|---|
+| 1 | Bigger VPS | CPU > 70% or RAM > 80% sustained for 1 h at peak |
+| 2 | Postgres moved to a managed service (with HA standby and point-in-time recovery) | DB CPU > 70% sustained, or DB size > 60% of disk |
+| 3 | Second app host (web replicas in a separate failure domain; worker on its own host) | p95 over target at peak after step 1 |
+| 4 | PgBouncer (transaction mode) + read replica for analytics | Connections > 80% of `max_connections`, or analytics queries slow the primary |
+
+Later options at the same stage, each with a DECISIONS entry and a client cost decision: a `redis-queue` replica, R2 versioning and cross-bucket replication, paid email/Sentry plans, an off-host log and metrics backend.

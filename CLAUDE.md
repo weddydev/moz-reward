@@ -1,6 +1,8 @@
 # Moz Rewards — Instructions for Claude Code
 
-You are building **Moz Rewards**, a UK loyalty and engagement web app (PWA + Android app on Google Play) for a large organisation, expected to run at high scale for years. You work on autopilot, task by task, and must leave the project resumable at any moment.
+@AGENTS.md
+
+You are building **Moz Rewards**, a UK loyalty and engagement web app (PWA + Android app on Google Play), built to agency standard on a minimal budget: one VPS and free tiers (DECISIONS "Plan v5"), with a documented path to scale. You work on autopilot, task by task, and must leave the project resumable at any moment.
 
 This file is loaded every session, so it stays short and points to the single sources. Detailed specs live in `docs/` — read only the section the task needs.
 
@@ -16,7 +18,7 @@ This file is loaded every session, so it stays short and points to the single so
 1. Test first for logic (TESTING §7). Build.
 2. `pnpm gate:task` (TESTING §4 is the single source for every gate). Security-relevant tasks also run `security-reviewer` on the task diff.
 3. Walk the Acceptance criteria and incoming CARRIED rows one by one with evidence. Unmet → keep working, or move it to a CARRIED row **and** the target task's criteria.
-4. **One commit per task:** code + tests + progress files (PROGRESS Now/Next, PHASES tick, ≤ 5 evidence lines in SESSION_LOG). Conventional Commit message. After CI exists: branch `t/<task-id>`, PR, `gh pr merge --auto --squash`. Push.
+4. **One commit per task:** code + tests + progress files (PROGRESS Now/Next, PHASES tick, ≤ 5 evidence lines in SESSION_LOG). Conventional Commit message. Merge per the **GitHub mode** in PROGRESS (`GITHUB_MODE`): `pro` → branch `t/<task-id>`, PR, `gh pr merge --auto --squash` (branch protection requires CI); `free` → push to `main` through the committed pre-push hook (it runs `pnpm gate:task` and refuses force-pushes); CI runs on every push either way.
 5. Sound: `node .claude/hooks/notify.mjs task "<task ID> done: <name>" < /dev/null`
 6. Start the next task. Check the previous push's CI result before the next push; red CI is fixed first.
 
@@ -40,6 +42,8 @@ This file is loaded every session, so it stays short and points to the single so
 - **Agency-grade quality, built to run at scale.** ENGINEERING.md §1 is the definition of done; §17 lists forbidden shortcuts. Speed comes from structure, never from skipping criteria, edge cases or tests.
 - **Production parity.** Evidence comes from a production build (`pnpm e2e`), never from `next dev` alone. Every value SECURITY.md specifies is set explicitly in config — never left to a library default (ENGINEERING §14).
 - **Every CI check has a local twin** (`pnpm check`, `pnpm gate:task`). No gate is ever "pending": if infrastructure is missing, the infrastructure task moves earlier.
+- **Free-tier discipline.** Every free quota (Actions credit, R2, Resend/Brevo, Sentry, UptimeRobot) has a 70% alert and a documented degradation (ARCHITECTURE §10). Never add a paid service without a DECISIONS entry and the human's approval.
+- **Secrets:** laptops hold dev-only keys. Staging and production secrets live only in GitHub secrets, root-only files the deploy job writes on the host, and the developers' password manager. Never ask the human to paste a secret into chat; never read one.
 - **Right-sized verification.** Heavy suites run once per level (TESTING §4): fast checks per task, CI on every push, a light sub-phase close, one heavy phase gate. Never re-run a green suite "to be sure"; `--repeat-each` only to diagnose a flake.
 - **Judgment over rigid budgets.** Bundle/Lighthouse/coverage targets: ≤ 15% over for clear user value is accepted with a one-line DECISIONS entry; more → optimise first. Don't spend > ~30 min shaving a few KB.
 - **Minimise human work; track the rest in `progress/HUMAN_TASKS.md`** (ID, 🔴/🟠/🟢, needed by, why, time, exact steps). Add tasks as early as you can foresee them. Review the list at every sub-phase and phase close.

@@ -43,8 +43,11 @@ Top risks, in order:
 - [ ] **Authorisation test matrix** (`tests/authz/`): for every action/route, assert anonymous, customer, staff of another shop, staff (own shop), owner, each admin role → expected allow/deny. Mandatory in CI.
 - [ ] Public IDs are unguessable (UUIDv7 internally, random codes publicly); never rely on obscurity for access.
 - [ ] "View as shop" for admins is read-only, time-limited, bannered and audit-logged.
-- [ ] **Row-Level Security is mandatory** (built in P0, before any P1 table): policies on every shop- and user-scoped table. The scoped-transaction helper sets `SET LOCAL app.shop_id / app.user_id / app.scope` (safe with PgBouncer transaction mode).
-- [ ] The web DB role `moz_app` has no `BYPASSRLS`. System jobs that sweep across shops use the worker role `moz_worker` (`BYPASSRLS`) under `SystemScope`, and each run is audit-logged.
+- [ ] **Row-Level Security is mandatory** (built in P0, before any P1 table): policies on every shop- and user-scoped table. The scoped-transaction helper sets `SET LOCAL app.shop_id / app.user_id / app.scope` (transaction-scoped, so a transaction-mode pooler can be added later with no code change).
+- [ ] RLS is **forced**: every scoped table has `ENABLE ROW LEVEL SECURITY` **and** `FORCE ROW LEVEL SECURITY`, so a connection that happens to be the table owner is still filtered (only superusers and `BYPASSRLS` roles skip RLS). Seeds and backfills that must cross shops run as `moz_worker` or under an explicit scope, never by relying on owner privilege.
+- [ ] The migration checker fails a scoped table without RLS, without `FORCE ROW LEVEL SECURITY` or without a policy; a test with negative fixtures proves each case fails.
+- [ ] The web app refuses to boot when connected as the owner role or a superuser (§11).
+- [ ] The web DB role `moz_app` has no `BYPASSRLS`. System jobs that sweep across shops use the worker role `moz_worker` (`BYPASSRLS`, created by us as superuser on the self-hosted Postgres) under `SystemScope`, and each run is audit-logged.
 - [ ] Cross-shop admin reads use `AdminScope` and write an audit row per read.
 - [ ] The authz matrix includes a "bypass the app filter" test per shop-scoped table: a query without the app-level scope filter, run as `moz_app`, returns no rows from another shop (RLS alone blocks it). A new shop- or user-scoped table without a policy fails CI. P5-07 only verifies.
 
@@ -65,7 +68,7 @@ Top risks, in order:
 - [ ] Middleware is `proxy.ts` (Next 16). It sets headers and request IDs only. Authorisation never relies on it: every action and route handler calls `src/server/authz` itself (§3).
 - [ ] Incoming `x-request-id` is validated: kept only when set by the trusted proxy and well-formed (strict charset, bounded length); otherwise a new ID is generated. A client-chosen or malformed value is never reflected into logs or headers.
 - [ ] Prefetch requests (RSC/router prefetch) still receive the static security headers (HSTS, nosniff, Referrer-Policy, Permissions-Policy, COOP, frame-ancestors). A test asserts this.
-- [ ] CSP vs CDN caching: dynamic and signed-in routes use the nonce CSP below. CDN-cached public routes (shop landing `/s/[code]` for anonymous users, offers feed) use a static hash-based CSP with no nonce, so a cached nonce is never reused. Tests cover both. Decided and tested in P1-02.
+- [ ] CSP and caching: HTML is never cached at the CDN or any shared cache, so a nonce is never reused. Every page, including the shop landing `/s/[code]` and the offers feed, renders per request with the nonce CSP below; those two pages cache their data in `redis-cache` (60 s), not their HTML. The CDN caches only static assets and `cdn.` images (ARCHITECTURE §5). A test asserts a fresh nonce per request and a non-shareable `Cache-Control` on both pages. Decided and tested in P1-02.
 - [ ] Security headers (set in `proxy.ts` / config): strict CSP with per-request nonces (`default-src 'self'`; scripts nonce-based; `img-src` self + cdn + data/blob; `connect-src` self + required APIs; `frame-ancestors 'none'`; `object-src 'none'`; `base-uri 'self'`); HSTS (`max-age=63072000; includeSubDomains; preload`); `X-Content-Type-Options: nosniff`; `Referrer-Policy: strict-origin-when-cross-origin`; `Permissions-Policy` (camera=self for scanner pages only, geolocation=self, others off); `Cross-Origin-Opener-Policy: same-origin`.
 - [ ] `/dev/*` routes return 404 in production.
 
@@ -88,7 +91,8 @@ Redis sliding-window limits (per IP + per user where signed in). Defaults:
 | SSE connections | Per-user and per-shop open-stream caps (ARCHITECTURE §7) |
 | Upload URL requests | Per-user limit on presigned URLs; per-user storage quota (P4) |
 | Redeem / claim code confirm | Per staff member and per shop attempt limit; backoff on repeated misses |
-| Public pages | Cloudflare rate rules + caching |
+| Public shop lookup `/s/[code]` | 60 / min / IP (our Redis limiter; 429 with `Retry-After`); Cloudflare free rate-limit rule only as a backstop |
+| Public pages | Per-IP Redis limit (fails open) + data cache in `redis-cache`; Cloudflare free rate-limit rule as the backstop |
 
 - [ ] Limiter fail modes when Redis is unreachable: auth and money endpoints (sign-in, magic link, 2FA, points request, approve, redeem, claim confirm) fail CLOSED with a friendly 503 and `Retry-After`; public reads fail OPEN with Cloudflare rules as the backstop. Both have tests.
 - [ ] Client IP comes only from `TRUSTED_PROXY` handling. In staging and production, an "unknown" client IP is one strict shared bucket, never a bypass.
@@ -101,16 +105,17 @@ Redis sliding-window limits (per IP + per user where signed in). Defaults:
 ## 7. Data protection
 
 - [ ] TLS 1.2+ everywhere; HSTS preload.
-- [ ] Encryption at rest by providers; **field-level encryption** (AES-256-GCM, key ID stored with each value for rotation) for phone numbers (customers and listings); HMAC-SHA256 blind index for lookups.
+- [ ] Encryption at rest: R2 encrypts by default; backups are encrypted by us before upload (§11, ARCHITECTURE §9). VPS disk encryption is not assumed, so the most sensitive fields use **field-level encryption** (AES-256-GCM, key ID stored with each value for rotation) for phone numbers (customers and listings); HMAC-SHA256 blind index for lookups.
 - [ ] Keys are separate per purpose, never one secret reused or derived for several: Better Auth secret; field-encryption data key (with key ID); blind-index key; QR HMAC key; log/IP hash key; VAPID keys. Boot fails if two are equal.
-- [ ] Production secrets live in a secrets manager or GitHub Environments; on hosts only as root-only files, never elsewhere on disk.
+- [ ] **Secrets handling.** Developers' laptops hold dev-only keys. Staging and production secrets live only in GitHub secrets (environment secrets on Pro/Team, repository secrets on Free), in root-only files on the host written by the deploy job, and in the developers' password manager — never elsewhere on disk, never in the repo. Staging and production keys are generated separately (no shared values).
+- [ ] Claude never sees a staging or production secret. No task, script or HUMAN_TASKS step asks a human to paste one into chat; a human enters it directly into GitHub secrets or the password manager. Public keys (the backup OpenPGP public key, VAPID public key) are not secrets and may be shared.
 - [ ] Rotation runbook for every key (in `docs/RUNBOOK.md`) and a tested re-encryption job that moves all encrypted fields to a new key ID (built in P1-04, verified in P5-07).
 - [ ] Data minimisation: birthday stored as day+month only; no precise location stored; listing area not full address.
 - [ ] The ledger holds no PII: subject is the membership ID only; no names, emails, phones or free text in any ledger column.
 - [ ] Share cards, exports and logs never contain phone, email, member ID or tokens.
 - [ ] Data export (JSON/CSV) and deletion workflows (PRODUCT.md §17); deletion anonymises the user and customer profile; ledger and audit rows stay (pseudonymous).
 - [ ] Retention follows the schedule in COMPLIANCE §2 (each data type has a removal job and a test). Audit logs are removed only by dropping whole monthly partitions.
-- [ ] Backups encrypted, retained 35 days; restore drill monthly in an isolated DR environment.
+- [ ] Backups (nightly dumps, WAL and base backups) are encrypted on the host before upload with one backup OpenPGP public key (wal-g supports OpenPGP, not `age`); the private key is never on the VPS (password manager only). Backups go to a dedicated R2 bucket with its own bucket-scoped token, retained 35 days. Monthly automated restore drill into a scratch database (ARCHITECTURE §9).
 
 ## 8. Files and uploads
 
@@ -123,6 +128,7 @@ Redis sliding-window limits (per IP + per user where signed in). Defaults:
 
 - [ ] All third-party API keys server-side only; least-privilege scopes (Google OAuth: `openid email profile`).
 - [ ] AI review help: input = stars, chip labels, user note (≤ 500 chars). System prompt forbids inventing details. Output ≤ 60 words, plain text, filtered for URLs/emails/phone numbers. No PII sent beyond the note. Provider can be swapped via interface.
+- [ ] AI provider is the **paid** Gemini API only (never the free tier: free-tier prompts may be used to improve Google's products, and UK users may only use paid services). Key server-only; feature flag off until the key exists; project spend cap plus our own app-level daily cap and a kill-switch flag (the real control).
 - [ ] Web Push payloads contain no personal data beyond the message text.
 - [ ] Analytics: no advertising trackers, IP anonymised, no session replay on authenticated pages.
 
@@ -130,7 +136,7 @@ Redis sliding-window limits (per IP + per user where signed in). Defaults:
 
 - [ ] Lockfile committed; `pnpm install --frozen-lockfile` in CI.
 - [ ] Dependency audit (`pnpm audit --prod` + OSV-Scanner) — block on high/critical with a fix available.
-- [ ] Static analysis: CodeQL (GitHub) and Semgrep (OWASP + secrets rules) on every push.
+- [ ] Static analysis: Semgrep (OWASP + secrets rules) on every push. CodeQL only where it is licensed: GitHub code scanning on a private repo needs GitHub Code Security (paid add-on), so on Free/Pro CodeQL runs only if the repo is public or the client licenses it (DECISIONS).
 - [ ] Secret scanning: gitleaks pre-commit hook + CI.
 - [ ] Renovate/Dependabot weekly, grouped minor/patch.
 - [ ] SBOM generated per release (CycloneDX).
@@ -139,33 +145,40 @@ Redis sliding-window limits (per IP + per user where signed in). Defaults:
 
 ## 11. Infrastructure
 
-- [ ] Hosts: SSH key-only, non-root deploy user, UFW (443 from Cloudflare ranges only + SSH from allowlist), unattended security upgrades, fail2ban.
-- [ ] Containers run as non-root, read-only filesystem where possible, resource limits.
-- [ ] Redis: bound to the private network; password, TLS and a per-environment key prefix are required in staging and production (boot fails without them).
-- [ ] Database access only from app and worker hosts (IP allowlist / private networking).
-- [ ] Separate DB roles: owner/migrations, `moz_app` (web, no `BYPASSRLS`), `moz_worker` (cross-shop sweeps). Enforced at boot: the app refuses to start if connected as the owner role or a superuser, or if `moz_app` has `BYPASSRLS`.
-- [ ] Caddy TLS; HTTP→HTTPS; staging behind basic auth.
-- [ ] **Origin lock is mandatory**: the origin is reachable only through Cloudflare (Cloudflare Tunnel or Authenticated Origin Pulls), and the host firewall allows only Cloudflare IP ranges. A check from outside Cloudflare to the origin IP must fail.
-- [ ] Cloudflare WAF managed rules and bot rules on.
+One Hostinger VPS runs production and staging (ARCHITECTURE §9). The host is provisioned by an idempotent hardening script in `infra/`; a second run makes no changes.
+
+- [ ] **Origin lock is mandatory**: the origin is reachable only through Cloudflare Tunnel (`cloudflared`, one tunnel per environment). The host has no inbound 80/443; Caddy and the app publish no host ports. A check from outside to the VPS IP on 80/443 must fail.
+- [ ] Host firewall: ufw default-deny inbound; only SSH is open.
+- [ ] SSH key-only (password and root login disabled) as a non-root `deploy` user; both developers' keys installed; fail2ban on SSH.
+- [ ] unattended-upgrades for security updates (reboot window documented in the RUNBOOK; containers restart and the Tunnel reconnects).
+- [ ] Docker log rotation (size + count, 30 days of app logs) so logs never fill the disk; swap configured; disk alert at 80%.
+- [ ] Containers run as non-root, read-only filesystem where possible, with a memory limit each (`infra/RESOURCES.md`).
+- [ ] **Staging isolation on the same host**: a separate Compose project with its own networks, volumes, Postgres, Redis, secrets, R2 bucket or prefix, Google OAuth client and tunnel; no network, volume or secret shared with production; CPU and memory limits so it can never starve production; basic auth + `noindex`.
+- [ ] Redis: on the internal Docker network only; password, TLS and a per-environment key prefix are required in staging and production (boot fails without them).
+- [ ] Postgres on the internal Docker network only, never published to a host port; reachable only by that environment's app, worker, Umami and backup jobs. Umami has its own database and role with no access to the app database.
+- [ ] Separate DB roles: owner/migrations, `moz_app` (web, no `BYPASSRLS`), `moz_worker` (cross-shop sweeps). Enforced at boot: the app refuses to start if connected as the owner role or a superuser, or if `moz_app` has `BYPASSRLS`. The owner connection string is used only by the deploy job's migration step (ARCHITECTURE §9).
+- [ ] TLS terminates at Cloudflare (Always Use HTTPS, HSTS); `cloudflared` → Caddy over the internal network.
+- [ ] Backup bucket: its own R2 token scoped to that bucket only (separate from the uploads token); the host holds only the public encryption key.
+- [ ] Cloudflare free WAF managed rules, Bot Fight Mode and the free rate-limit rule on, as a backstop; our Redis limits are the real control (§6).
 
 ## 12. Logging, audit and incidents
 
 - [ ] Audit log entries for: sign-ins (staff/admin, success and failure), role changes, approvals/rejections, reversals, redemptions, offer publish, announcements, moderation actions, plan/payment changes, data exports, view-as-shop, admin reads of customer PII (`AdminScope`), cross-shop system sweeps.
 - [ ] Audit rows are written in the same transaction as the action they record.
-- [ ] Audit log is streamed (at least hourly) to write-once storage (R2 with Object Lock). Each row carries a hash chain (hash of the previous row + its own content); a verification job detects gaps or edits. Admins can export a date range as CSV (formula-injection safe).
-- [ ] Alerts: error-rate spike, failed-login spike, account lockouts, fraud flags, queue backlog, outbox age > 2 min, backup failure, provider quota at 70%. All alerts route to the on-call channel.
+- [ ] Audit log is exported at least hourly to write-once storage where available (an R2 bucket lock rule on the free plan if offered); otherwise as an hourly signed export to the backup bucket. Each row carries a hash chain (hash of the previous row + its own content); a verification job detects gaps or edits. Admins can export a date range as CSV (formula-injection safe).
+- [ ] Alerts: error-rate spike, failed-login spike, account lockouts, fraud flags, queue backlog, outbox age > 2 min, backup failure (no dump in 26 h, WAL lag > 10 min), disk > 80%, provider quota at 70%. All alerts go to both developers (health-job email, Sentry alert forwarding, UptimeRobot push). Response is best-effort business hours; there is no 24/7 rota.
 - [ ] `docs/RUNBOOK.md` is created in P0-13 and extended every phase: deploy, rollback, restore, Redis loss, key leak and rotation, email provider outage, and the incident process (triage, contain, rotate secrets, notify client, ICO notification within 72 hours where required).
 
 ## 13. Pre-launch checklist
 
 - [ ] All boxes above ticked or explicitly deferred with a DECISIONS.md entry.
 - [ ] Authz matrix 100% passing.
-- [ ] OWASP ZAP baseline scan against staging: no High/Medium unresolved.
-- [ ] Semgrep/CodeQL/OSV: no unresolved High/Critical.
+- [ ] OWASP ZAP authenticated scan (plus the weekly baseline) against staging: no High/Medium unresolved.
+- [ ] Semgrep/OSV (and CodeQL where licensed, §10): no unresolved High/Critical.
 - [ ] Secrets rotated from staging values; production keys unique.
 - [ ] Security headers verified (securityheaders.com grade A or better).
-- [ ] Backup restore drill completed in an isolated DR environment (not staging), within the RTO (≤ 1 h).
-- [ ] Independent penetration test by a third party completed before launch (not only ZAP); all High/Medium findings fixed or accepted in DECISIONS. Recommend Cyber Essentials Plus to the client.
+- [ ] Full rebuild-and-restore rehearsal done once before launch (fresh VPS from `infra/` scripts, locally or on a temporary hourly-billed VPS; restore; outbox replay; integrity + reconciliation) within RTO ≤ 2 h and RPO ≤ 5 min; the monthly automated restore drill into a scratch database is passing (ARCHITECTURE §9).
+- [ ] Security assurance for launch: the authenticated ZAP scan, this checklist and our security-reviewer runs. An independent penetration test is **optional and client-funded** (H-24); it is not promised. If the client commissions one, its High/Medium findings are fixed or accepted in DECISIONS before launch. Recommend Cyber Essentials to the client.
 - [ ] `/.well-known/security.txt` published with a contact and a vulnerability disclosure policy (VDP) page.
 - [ ] SECURITY conformance test (§14) passes against the production build.
 
@@ -182,8 +195,8 @@ Applies to every security-relevant dependency: auth, sessions, cookies, CSP, rat
 
 ## 15. Large-organisation controls
 
-Decide with the client (H-24); build in P5.
+Only the free controls are kept (H-24 answered); build in P5.
 
-- [ ] Admin SSO via the client's identity provider (OIDC), optional.
 - [ ] Passkeys mandatory for super admins.
-- [ ] Sealed break-glass admin account; any use raises an alert and is audit-logged.
+- [ ] Sealed break-glass admin account (credentials in the password manager only); any use raises an alert and is audit-logged.
+- [ ] Audit export per §12 (hash chain, hourly export, admin CSV export).

@@ -5,13 +5,13 @@ This file is the **checklist**. The detail for every task (read list, build note
 Rules (gates are defined once, in TESTING §4):
 - Tick `- [x]` only when every acceptance criterion and incoming CARRIED row has evidence from the session (ENGINEERING.md §1), with ≤ 5 evidence lines in SESSION_LOG.md in the same commit.
 - **Task:** `pnpm gate:task` (fast: check, integration, production build, the task's E2E on the production build); `security-reviewer` on security-relevant task diffs.
-- **Push:** CI runs the full suite (3 projects); nightly runs all 5 projects, ZAP baseline and k6 smoke against staging.
+- **Push:** CI runs the full suite on two Chromium projects within the free Actions budget; twice weekly all 5 projects + k6 smoke, weekly ZAP baseline (TESTING §4).
 - **Sub-phase:** `/subphase-complete` is light — CI green, staging smoke, Sentry, reviews of unreviewed commits, scoped QA if screens changed. No gate may be "pending".
 - **Phase:** `/phase-complete` is the one heavy gate (`pnpm gate:phase`) + DoD + demo; the phase's hardening task is that same run.
 - **Phase start:** a brief review fills missing Edge cases / measurable Acceptance criteria in the phase file before its first task.
-- Week labels are targets for planning, not gates.
+- Target dates (plan v5 re-baseline, 9 Nov 2026) assume ≈ 2 tasks per working day (measured on 8–9 Nov), 6 working days a week across both developers, +1 day per phase for the brief review and phase gate, 24–27 Dec and 31 Dec–1 Jan off, and human tasks done on time. They are planning targets, not gates; PROGRESS.md shows the projected end date.
 
-## P0 — Foundation and design system (week 1)
+## P0 — Foundation and design system (target: Wed 18 Nov 2026)
 Details: [`docs/phases/P0.md`](phases/P0.md)
 
 **P0-A · Repository, tooling, local infrastructure**
@@ -40,7 +40,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 - [ ] P0-20 · Row-Level Security (mandatory)
 - [ ] P0-13 · Observability, SLOs and runbook
 - [ ] P0-21 · Compliance foundations (drafts)
-- [ ] P0-15 · Staging environment, deployment and rollback (needs H-05, H-06, H-07, H-21)
+- [ ] P0-15 · VPS provisioning, staging stack, deploy without a registry, backups, restore drill, uptime (needs H-06, H-07, H-08, H-26, H-27)
 - [ ] P0-16 · Demo seeds
 - [ ] P0-E closed with `/subphase-complete`
 
@@ -60,7 +60,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 - [ ] P0 closed with `/phase-complete`
 - [ ] P0 definition of done met and demo delivered
 
-## P1 — Core loyalty (week 2)
+## P1 — Core loyalty (target: Mon 30 Nov 2026)
 Details: [`docs/phases/P1.md`](phases/P1.md)
 
 **P1-A · Shops and entry**
@@ -99,7 +99,7 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 - [ ] P1 closed with `/phase-complete`
 - [ ] P1 definition of done met and demo delivered
 
-## P2 — Shop dashboard, onboarding and admin core (week 3)
+## P2 — Shop dashboard, onboarding and admin core (target: Thu 10 Dec 2026)
 Details: [`docs/phases/P2.md`](phases/P2.md)
 
 **P2-A · Shop operations**
@@ -132,7 +132,7 @@ Details: [`docs/phases/P2.md`](phases/P2.md)
 - [ ] P2 closed with `/phase-complete`
 - [ ] P2 definition of done met and demo delivered
 
-## P3 — Engagement (week 4)
+## P3 — Engagement (target: Sat 19 Dec 2026)
 Details: [`docs/phases/P3.md`](phases/P3.md)
 
 **P3-A · Reviews and feedback**
@@ -167,7 +167,7 @@ Details: [`docs/phases/P3.md`](phases/P3.md)
 - [ ] P3 closed with `/phase-complete`
 - [ ] P3 definition of done met and demo delivered
 
-## P4 — Marketplace, game, moderation and fraud (week 5)
+## P4 — Marketplace, game, moderation and fraud (target: Sat 2 Jan 2027)
 Details: [`docs/phases/P4.md`](phases/P4.md)
 
 **P4-A · Marketplace**
@@ -194,7 +194,7 @@ Details: [`docs/phases/P4.md`](phases/P4.md)
 - [ ] P4 closed with `/phase-complete`
 - [ ] P4 definition of done met and demo delivered
 
-## P5 — Completeness, hardening, PWA, Play Store, release candidate (week 6)
+## P5 — Completeness, hardening, PWA, Play Store, release candidate (target: Tue 12 Jan 2027)
 Details: [`docs/phases/P5.md`](phases/P5.md)
 
 **P5-A · Customer completeness and installable app**
@@ -229,7 +229,7 @@ Details: [`docs/phases/P5.md`](phases/P5.md)
 - [ ] P5 closed with `/phase-complete`
 - [ ] P5 definition of done met and demo delivered
 
-## S — Stabilisation and launch (stabilisation period)
+## S — Stabilisation and launch (launch target: Fri 22 Jan 2027)
 Details: [`docs/phases/S.md`](phases/S.md)
 
 - [ ] S-01 · Client acceptance testing (UAT)

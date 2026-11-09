@@ -39,7 +39,7 @@ The ROPA lists every purpose. Lawful basis per purpose (draft, solicitor to conf
 |---|---|---|
 | Account, sign-in, profile | Contract | Platform |
 | Loyalty membership, points, rewards, receipts | Contract | Shop (platform delivers) |
-| Marketing push / email / inbox from shops | Consent (`marketing_opt_in`) | Shop |
+| Marketing push / inbox from shops (never email) | Consent (`marketing_opt_in`) | Shop |
 | Transactional messages | Contract | Platform / shop |
 | Fraud and abuse prevention, device signals | Legitimate interests (LIA in DPIA) | Platform |
 | Security, audit and application logs | Legitimate interests; legal obligation where it applies | Platform |
@@ -57,7 +57,19 @@ The ROPA lists every purpose. Lawful basis per purpose (draft, solicitor to conf
 
 Each processor is listed with: purpose, data categories, location, transfer basis, DPA signed (yes/no), sub-processors link. Transfer basis is one of: UK adequacy (incl. EU/EEA and the UK–US data bridge for certified US companies), IDTA, or the UK Addendum to the EU SCCs. No processor goes live without an entry.
 
-Processors to register: app/worker hosting, managed Postgres, Redis, Cloudflare (CDN, WAF, R2, Turnstile), Resend and Brevo (email), Sentry, logs/metrics backend, analytics (Umami / PostHog EU), AI provider (review help: no training on our data, minimal input), Google (OAuth, Places / Business Profile), GitHub (code and CI only — no production personal data). postcodes.io receives postcodes only and is noted as a third party, not a processor.
+Processors to register:
+
+| Processor | Purpose | Notes |
+|---|---|---|
+| Hostinger | VPS host for the app, worker, Postgres, Redis, logs and Umami (production and staging) | Server located in the UK; confirm the contracting entity and any support-access locations in its DPA |
+| Cloudflare | DNS, CDN, Tunnel, WAF, Turnstile, R2 (uploads and encrypted backups) | Backups are encrypted before upload; retained 35 days |
+| Resend, Brevo | Email (primary, failover) | Transactional and auth mail only; marketing is never emailed (§3) |
+| Sentry | Error monitoring | PII scrubbing on; choose the EU data region at sign-up where offered |
+| UptimeRobot | Uptime monitoring | Receives public URLs and the developers' contact details only; no customer data |
+| Google | OAuth sign-in; Gemini API (review help); Business Profile API only if that optional feature is enabled | Gemini on **paid** services only: UK users may only use paid services, and paid terms do not use prompts or responses to improve Google's products. Minimal input (stars, chips, note) |
+| GitHub | Code and CI only | No production personal data; staging and test data are synthetic |
+
+Umami analytics is self-hosted on our VPS, so it adds no processor. postcodes.io receives postcodes only and is noted as a third party, not a processor.
 
 ### 2.4 DPIA
 
@@ -86,7 +98,7 @@ Defaults — solicitor to confirm. Removal is a scheduled job per row, except au
 | Receipt photos | 12 months |
 | Audit logs | 2 years (monthly partitions; dropping a partition is the only removal) |
 | Application logs | 30 days |
-| Backups | 35 days |
+| Backups (dumps, base backups and WAL) | 35 days |
 | Shop invoices and payment records | 6 years (accounting) |
 | Inactive customer accounts | Reviewed at 24 months of inactivity (notice, then erasure) |
 
@@ -104,13 +116,14 @@ Device signals (fingerprint hash, user agent, IP hash) are used **only** for fra
 
 ## 3. Marketing messages and cookies (PECR as amended)
 
-- **One marketing-consent rule for every channel** (push, email, in-app inbox):
+- **Marketing goes by push and in-app inbox only, never by email** (email budget, ARCHITECTURE §10).
+- **One marketing-consent rule for every channel** (push, in-app inbox, and email if marketing email is ever added):
   - `membership.marketing_opt_in` defaults to false and is asked clearly at join (unticked). It can be changed any time.
   - Marketing (announcements, offer notifications, private offers, birthday, win-back, happy-hour push, saved-offer and Daily Drop reminders) goes only to opted-in, unmuted members.
   - Transactional messages (approval, rejection, expiry, redeem, receipt, sign-in, security) ignore opt-in but respect mute for push.
   - Consent, mute and category checks run at send time; a change takes effect immediately.
   - Every consent change is recorded (who, when, how, wording version) and included in the DSAR export.
-- Every marketing email has a one-click unsubscribe.
+- If marketing email is ever added, every marketing email has a one-click unsubscribe. The weekly owner email (to shop owners, not customers) has an opt-out.
 - Announcement cap: 2 per shop per rolling 7 days.
 - **Quiet hours**: no marketing push 21:00–08:00 Europe/London.
 - **Cross-shop cap**: at most 5 marketing pushes per customer per rolling 7 days across all shops.

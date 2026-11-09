@@ -7,18 +7,20 @@ Baton: held by Syedbadeshah76 since 2026-11-09 10:12
 
 ## Handoff note
 _Overwritten by `/handoff`. The next developer reads this first._
-- **9 Nov (night), Syedbadeshah76:** plan v4 applied after the plan audit (DECISIONS "Plan v4"). P0 order is now **A → B → E → C → D**. Next task: **P0-14** (CI, gate scripts, production-build E2E, formatting fix). Nothing half-done in code.
+- **9 Nov (night), Syedbadeshah76:** plan v4 (audit) and **plan v5 (single VPS, free tiers)** applied — read DECISIONS "Plan v5" first. P0 order is **A → B → E → C → D**. Next task: **P0-14** (CI within the free Actions budget, gate scripts, production-build E2E, formatting fix); its last criterion needs H-25 (GitHub plan). Nothing half-done in code.
 - **Before your next session:** `git pull`, read CLAUDE.md (rewritten), TESTING §4 (single source for gates), docs/phases/P0.md "How to work this phase" and P0-14. `pnpm install --frozen-lockfile`, `pnpm services:up`, `pnpm db:migrate` (migrations 0005–0006 since 8 Nov). Two git stashes on the Windows laptop hold the 55-file Prettier reformat; P0-14 commits it (or regenerate it with `pnpm format` after pinning Prettier).
 - **Mac:** add `SENTRY_DSN` and the Google keys to `.env.local` from the shared note.
 
 ## Status
 - **Phase:** P0. Done: P0-01…07, P0-17. P0-A closed (post-push checks completed by P0-14/15). P0-B review fixes done; P0-B closes when P0-14's CI is green on its code.
 - **Next sub-phase:** P0-E production foundation: P0-14 → P0-19 → P0-18 → P0-20 → P0-13 → P0-21 → P0-15 → P0-16; then P0-C (P0-08…11), then P0-D (P0-12).
+- **GITHUB_MODE:** `free` until H-25 is answered (`pro` or `free`; ENGINEERING §16).
+- **Projected end:** P0 Wed 18 Nov 2026 · P1 Mon 30 Nov · P2 Thu 10 Dec · P3 Sat 19 Dec · P4 Sat 2 Jan 2027 · P5 Tue 12 Jan · **launch Fri 22 Jan 2027** (assumptions in PHASES.md; slips if human tasks are late or the Play account needs a 14-day closed test).
 - **Last updated:** 2026-11-09 (night), Syedbadeshah76
-- **Staging:** not deployed (P0-15; needs H-05/06/07/21) · **Production:** not deployed
+- **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- Plan v4 committed: CLAUDE.md, ENGINEERING, TESTING, ARCHITECTURE, SECURITY, PRODUCT, COMPLIANCE, PHASES, P0–P5/S phase files, `.claude` commands and agents. No code changed.
+- Plan v4 and plan v5 committed (docs, phase files, `.claude` commands/agents, progress, `infra/RESOURCES.md`). No code changed.
 
 ## Next (top 3)
 1. **P0-14**: pin Prettier + `.gitattributes` + commit the repo reformat; `pnpm e2e` on a production build, `e2e:dev`; `gate:task` / `gate:phase`; GitHub Actions + nightly; branch protection; then switch to `t/<task-id>` PRs.
@@ -42,13 +44,13 @@ _Overwritten by `/handoff`. The next developer reads this first._
 | C-12 | A-SEC-M4, A-CR-L4 | P0-20 | `systemScope` imports restricted; `dbFor().transaction` bypass closed; tenant repos take ShopScope/CustomerScope | lint + integration |
 | C-13 | A-QA-7, A-QA-8 | P0-09 | 320 px ShopCard titles and table scroll hint; Spinner under reduced motion | screenshots |
 | C-14 | P0-B close | P0-14 | Regression incl. production-build E2E green (22 failures before the limiter fix) | CI run |
-| C-15 | B-SEC-11 | P1-02 | Shop-name lookup by code behind a CDN/WAF rule | P1-02 test |
+| C-15 | B-SEC-11 | P1-02 | Shop-name lookup by code: data cached in redis-cache (60 s), HTML never CDN-cached, our Redis rate limit + Cloudflare free rule as backstop | P1-02 test |
 | C-16 | B-CR-12 | passkey UI task | Passkey re-sign-in over a stale session | E2E |
 | C-17 | Stryker | P0 phase gate | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 
 ## Blockers
-- Human 🟠 by 13 Nov: H-07 domain (+ staging Google URI), H-06 VPS, H-05 Neon, H-04 Resend, H-20 Turnstile, **H-21 capacity + hosting budget**, H-17 permissions. Before P1: H-22 loyalty defaults, H-23 solicitor review. **Start now:** H-12 Play organisation account.
-- Technical: none blocking P0-14/18/19/20/13/21.
+- Human 🟠: **H-25 GitHub plan (Tue 10 Nov, P0-14)**; by Sun 15 Nov for P0-15: H-06 Hostinger VPS, H-07 domain + Cloudflare, H-08 R2 buckets, H-26 backup key, H-27 UptimeRobot, H-04 Resend + Brevo, H-20 Turnstile, H-28 staging OAuth client, H-21 client's written risk acceptance, H-17 permissions. Before P1 (Thu 19 Nov): H-22 loyalty defaults. **Start now:** H-12 Play organisation account.
+- Technical: none blocking P0-14/18/19/20/13/21. Known risk for P0-15: wal-g `wal-push` hangs against R2 without `ca-certificates` in the Postgres image (wal-g #2550) — fix planned; fallback documented.
 
 ## Map of the codebase
 - `src/app/` — Next.js 16 App Router (`proxy.ts`, not middleware); `/sign-in`, `/staff/sign-in`, `/staff/security`, `/me/security`, `/sign-in/link-expired`; `src/app/dev/` (404 in production); `src/app/api/test/[action]/route.ts` test-only API (404 unless `APP_ENV=test`)
@@ -72,5 +74,6 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - CI: none yet · Staging: none yet.
 
 ## Open questions / assumptions
-- Hosting budget and capacity numbers are planning assumptions until H-21. Loyalty defaults pending H-22.
+- Launch-tier numbers await the client's written confirmation (H-21). Loyalty defaults pending H-22.
+- Untracked files `moz-plan-v5-prompt.md` (repo root) and `src/features/moz-plan-v5-prompt.md` (a duplicate) are the human's prompt — not committed; delete or move them when no longer needed.
 - Not yet tested: passkey sign-in (real device), real email provider (H-04).
