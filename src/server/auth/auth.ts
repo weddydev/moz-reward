@@ -21,7 +21,7 @@ import {
 } from "./mfa";
 import { hashPassword, verifyPassword } from "./password";
 import { isPrivilegedUser } from "./privileged";
-import { socialSignUpAllowed } from "./social";
+import { googleProviderOptions, socialSignUpAllowed } from "./social";
 import {
   checkSecondFactor,
   checkStaffLogin,
@@ -203,11 +203,10 @@ export const auth = betterAuth({
   socialProviders:
     e.GOOGLE_CLIENT_ID && e.GOOGLE_CLIENT_SECRET
       ? {
-          google: {
+          google: googleProviderOptions({
             clientId: e.GOOGLE_CLIENT_ID,
             clientSecret: e.GOOGLE_CLIENT_SECRET,
-            scope: ["openid", "email", "profile"],
-          },
+          }),
         }
       : {},
   plugins: [

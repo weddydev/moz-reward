@@ -14,3 +14,14 @@ export function socialSignUpAllowed(input: {
   const fromSocialCallback = input.path?.startsWith("/callback/") ?? false;
   return !fromSocialCallback || input.emailVerified;
 }
+
+/**
+ * Google provider options. Better Auth already requests `openid email profile` by default; listing them again
+ * duplicated every scope in the authorisation URL, so no `scope` is set here (least data, SECURITY §2).
+ */
+export function googleProviderOptions(input: { clientId: string; clientSecret: string }): {
+  clientId: string;
+  clientSecret: string;
+} {
+  return { clientId: input.clientId, clientSecret: input.clientSecret };
+}
