@@ -27,14 +27,14 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 - [x] P0-05 · Security baseline
 - [x] P0-06 · Authentication for all roles
 - [x] P0-07 · Authorisation layer, action template, error model
-- [ ] P0-B closed with `/subphase-complete` (review fixes done; closes when P0-14 CI is green on its code)
+- [x] P0-B closed with `/subphase-complete` (review fixes done; closed 10 Nov 2026: P0-14 CI green on main, run 42682167002)
 
 > **Plan v4 order:** after P0-B comes **P0-E** (production foundation), then P0-C, then P0-D.
 
 **P0-E · Production foundation (do before P0-C and P0-D)**
 
 - [x] P0-17 · Test infrastructure and self-verification tooling
-- [ ] P0-14 · CI pipeline, gate scripts and production-parity testing
+- [x] P0-14 · CI pipeline, gate scripts and production-parity testing
 - [ ] P0-19 · Auth hardening and library security conformance
 - [ ] P0-18 · Reliability primitives: outbox, Redis split, failure modes, safe migrations
 - [ ] P0-20 · Row-Level Security (mandatory)

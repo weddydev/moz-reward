@@ -150,3 +150,7 @@ Next: rerun CI on `wip/P0-14` → push the 5 `ci-red/*` branches (AC2, hooks ski
 ## 2026-11-10 (01:00) — P0 — P0-14 squashed onto main (talha.syed, Mac)
 Done: CI flake root-caused (button pressed before hydration; reproduced by holding JS chunks) and fixed with `useHydrated`; CI green on `wip/P0-14` run 42677704427 (E2E 68/0/0 flaky); AC2 red runs each failing for their reason (42678683969 unit, 42678688078 console.error, 42678695896 axe, 42678701681 Prettier, 42678708263 lock_timeout); throwaway branches deleted; squashed to main.
 Next: main CI (first image job + Trivy) green → tick P0-14 + P0-B (docs-only push = AC5 on main) → P0-19.
+
+## 2026-11-10 (00:30 local) — P0 — P0-14 ticked, P0-B closed (talha.syed, Mac)
+AC1: main CI green incl. image + Trivy (run 42682167002; first main run 42680350385 failed on Trivy → npm removed from runtime, esbuild/lefthook binaries skipped until P0-15 = C-21). AC2: 5 red runs, each for its reason (42678683969 unit, 42678688078 console.error, 42678695896 axe, 42678701681 Prettier, 42678708263 lock_timeout). AC3: `pnpm e2e` on a production build, E2E 68/0/0 flaky on CI projects; limiter-off runtime test. AC4: gate:task/gate:phase/ci:usage summaries, tree-clean step. AC5: docs-only pushes skip gate + CI (branch demo, and this push); ci:usage 89/2000 (4%), heavy day ×7 ≈ 31% < 75%. AC6 (free): pre-push refused a failing-gate push, force-push and deleting main.
+Next: P0-19.
