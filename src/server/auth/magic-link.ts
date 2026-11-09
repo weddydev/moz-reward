@@ -1,10 +1,9 @@
 import "server-only";
-import { createHmac } from "node:crypto";
 import { after } from "next/server";
 import { renderMagicLinkEmail } from "@/server/emails/MagicLinkEmail";
-import { env } from "@/server/env";
 import { sendEmail } from "@/server/integrations/email";
 import { log } from "@/server/log";
+import { emailKey } from "@/server/security/email-key";
 import { ipKey, limit, userKey } from "@/server/security/rate-limit";
 import { verifyTurnstile } from "@/server/security/turnstile";
 import { isPrivilegedEmail } from "./privileged";
@@ -26,12 +25,6 @@ export const MAGIC_LINK_LIMITS = {
 } as const;
 
 export type CheckResult = { ok: true } | { ok: false; status: 400 | 429; message: string };
-
-const emailKey = (email: string): string =>
-  createHmac("sha256", env().AUTH_SECRET)
-    .update(email.trim().toLowerCase())
-    .digest("base64url")
-    .slice(0, 22);
 
 export async function checkMagicLinkRequest(input: {
   email: string;

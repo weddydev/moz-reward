@@ -20,12 +20,24 @@ import {
 } from "./mfa";
 import { hashPassword, verifyPassword } from "./password";
 import { isPrivilegedUser } from "./privileged";
+import {
+  checkSecondFactor,
+  checkStaffLogin,
+  clearStaffLoginFailures,
+  recordStaffLoginFailure,
+} from "./staff-login";
 
 const e = env();
 const appUrl = new URL(e.APP_URL);
 /** Better Auth test utilities exist only in the test environment (never local/staging/production). */
 const isTest = e.APP_ENV === "test";
 
+/** Second-factor endpoints (sign-in challenge and enrolment): rate limited per IP. */ const SECOND_FACTOR_PATHS =
+  new Set(["/two-factor/verify-totp", "/two-factor/verify-backup-code"]);
+const bodyEmail = (body: unknown): string => {
+  const email = (body as { email?: unknown } | undefined)?.email;
+  return typeof email === "string" ? email : "";
+};
 export const SESSION_MAX_AGE = {
   customer: 60 * 60 * 24 * 30, // 30 days
   staff: 60 * 60 * 12, // 12 h (enforced in server/authz)
@@ -95,6 +107,20 @@ export const auth = betterAuth({
         }
         return;
       }
+      if (ctx.path === "/sign-in/email" && ctx.request) {
+        // Staff/admin password sign-in (customers have no passwords): per-IP limit + per-account backoff.
+        const check = await checkStaffLogin({
+          email: bodyEmail(ctx.body),
+          ip: clientIp(ctx.request.headers),
+        });
+        if (!check.ok) throw new APIError("TOO_MANY_REQUESTS", { message: check.message });
+        return;
+      }
+      if (SECOND_FACTOR_PATHS.has(ctx.path) && ctx.request) {
+        const check = await checkSecondFactor(clientIp(ctx.request.headers));
+        if (!check.ok) throw new APIError("TOO_MANY_REQUESTS", { message: check.message });
+        return;
+      }
       if (PRIVILEGED_FORBIDDEN_PATHS.has(ctx.path)) {
         const current = await getSessionFromCtx(ctx);
         if (current && (await isPrivilegedUser(current.user.id))) {
@@ -112,6 +138,18 @@ export const auth = betterAuth({
           message: "Turn on two-step verification before adding a passkey.",
         });
       }
+    }),
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/sign-in/email" || !ctx.request) return;
+      const email = bodyEmail(ctx.body);
+      const returned: unknown = ctx.context.returned;
+      if (returned instanceof APIError) {
+        // Wrong email or password (same 401 for both). Other errors (e.g. our 429) are not failures.
+        if (returned.statusCode === 401) await recordStaffLoginFailure({ email });
+        return;
+      }
+      // Correct password (signed in, or sent on to the second factor): forget earlier failures.
+      await clearStaffLoginFailures(email);
     }),
   },
   emailAndPassword: {

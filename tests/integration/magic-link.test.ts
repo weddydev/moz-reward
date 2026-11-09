@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { TURNSTILE_BYPASS_TOKEN } from "@/lib/turnstile";
@@ -11,7 +12,8 @@ import { makeShop, makeStaff, makeUser } from "../fixtures/factories";
 import { countEmailsTo, firstLink, latestEmailTo } from "../support/mailpit";
 
 const ORIGIN = "http://localhost:3000";
-const ip = (): string => `198.51.100.${String(Math.floor(Math.random() * 250) + 1)}`;
+/** Unique per call (IPv6 documentation range): limiter state outlives a test run, so shared IPs would collide. */
+const ip = (): string => `2001:db8::${randomUUID().slice(0, 4)}:${randomUUID().slice(0, 4)}`;
 
 /** Through the real HTTP handler, as the browser does (hooks see ctx.request). */
 const requestLink = (

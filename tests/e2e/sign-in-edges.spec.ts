@@ -72,6 +72,8 @@ test.describe("offline", () => {
     await page.goto("/sign-in");
     await page.getByLabel("Email").fill(uniqueEmail("e2e-offline"));
     await expect(page.getByRole("button", { name: SEND })).toBeEnabled();
+    // Page fully loaded first: a font still downloading when we go offline would fail on its own.
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
     await context.setOffline(true);
     await page.getByRole("button", { name: SEND }).click();
     await expect(page.locator("form").getByRole("alert")).toHaveText(/offline|couldn't reach/i);
@@ -95,6 +97,7 @@ test.describe("offline (staff)", () => {
     await page.getByLabel("Email").fill(uniqueEmail("e2e-staff-offline"));
     await page.getByLabel("Password").fill("correct horse battery");
     await expect(page.getByRole("button", { name: "Continue" })).toBeEnabled();
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
     await context.setOffline(true);
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.locator("form").getByRole("alert")).toHaveText(/offline|couldn't reach/i);

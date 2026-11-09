@@ -80,14 +80,20 @@ const state = ((
   globalThis as { __mozLimiter?: { redis?: Redis; limiter?: Limiter } }
 ).__mozLimiter ??= {});
 
-/** Shared limiter on its own connection (`limiter` role: short queue while connecting, 750 ms command deadline). */
+/** The limiter's connection (`limiter` role: short queue while connecting, 750 ms command deadline). */
+export function limiterRedis(): Redis {
+  state.redis ??= createRedis("limiter");
+  return state.redis;
+}
+
+/** Shared limiter on the limiter connection. */
 export const limit: Limiter = (opts) => {
-  if (!state.limiter) {
-    state.redis = createRedis("limiter");
-    state.limiter = createLimiter(state.redis);
-  }
+  state.limiter ??= createLimiter(limiterRedis());
   return state.limiter(opts);
 };
+
+/** Redis key for limiter-owned state, under the same prefix as the limits. */
+export const limiterKey = (key: string): string => `${env().REDIS_KEY_PREFIX}rl:${key}`;
 
 export async function closeLimiter(): Promise<void> {
   await state.redis?.quit();
