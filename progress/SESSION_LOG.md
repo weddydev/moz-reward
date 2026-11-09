@@ -158,3 +158,9 @@ Next: P0-19.
 ## 2026-11-10 (~01:45 local) — P0 — P0-19 half done, checkpoint (talha.syed, Mac)
 Done on `wip/P0-19` (`46599fe`): A boot fails closed + key/Redis/DB-role rules + per-purpose keys (image exits 1 on bad env); B migration 0007 trigger search_path (exploit test first); C prefetch security headers (E2E Chromium+WebKit); D Better Auth route allowlist + /update-user validation (mounted-vs-reviewed test). Evidence: unit 380+, int 278, E2E Chromium+WebKit 92/0; gate PASS each push. Also: CLAUDE.md now says human rules are written to the repo (both laptops).
 Next: P0-19 step E (blanket /api/auth/* limit + unknown-IP bucket), then F–J.
+
+## 2026-11-10 (02:01 IST) — P0 — P0-19 steps E–F, handoff (talha.syed, Mac)
+Done on `wip/P0-19`: E blanket `/api/auth/*` limit (100/min/IP, 503 fail-closed, sign-out exempt) + `ipLimit` (unknown IP = strict shared bucket, was a bypass); F email link → `/sign-in/confirm` page → POST-only token use (GET verify + `/error` now 404, OAuth errors → `/sign-in`).
+Evidence: gate:task PASS (unit 394, int 296, E2E P0-19 10/0); new tests `auth-limit`, `link-confirm` (scanner GET consumes nothing, CSRF 403, open-redirect fallback, staff → FORBIDDEN, retry keeps token), E2E scanner + no-JS sign-in on Chromium+WebKit.
+Fixed: axe-guard races (mid-fade contrast on WebKit 1/24 → 48/0; streamed `<title>` after client nav, CI run 42690679564). CI of `4b4f931` pending at handover.
+Next: check CI, then P0-19 G (lockout redesign) → H → I → J → security-reviewer → squash.

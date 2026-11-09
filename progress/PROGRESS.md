@@ -3,35 +3,31 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-10 01:33 IST
+Baton: free — last held by talha.syed, 2026-11-10 02:01 IST
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed (Mac), 2026-11-10 ~01:45 local.** P0-14 done, P0-B closed (main CI green incl. image + Trivy). **P0-19 about half done on pushed branch `wip/P0-19`** (head `46599fe`, gate PASS on every push; decisions already in DECISIONS.md, marked "on wip").
-- **Done on `wip/P0-19`:**
-  - A: boot fails closed (`src/server/boot.ts`; image exits 1 on bad env), deployed envs need `rediss://` + password + `REDIS_KEY_PREFIX`, DB owner/superuser role refused, crypto keys required (base64 32 bytes), per-purpose HKDF keys for email key + IP hash. **Closes C-09.**
-  - B: migration **0007** pins the trigger's search_path (SEC-9; exploit reproduced in a test first).
-  - C: static security headers on prefetch responses via next.config + X-Frame-Options (SEC-10; x-request-id validation already existed).
-  - D: Better Auth behind a reviewed route allowlist (`src/server/auth/routes.ts`; 19 allowed, 28 blocked; mounted-vs-reviewed test = AC2); `/update-user` name-only 1–80. Privileged-gate tests moved to still-enabled endpoints.
-- **Remaining P0-19 (in this order):** E blanket per-IP Redis limit on all `/api/auth/*` (429 + Retry-After) + unknown client IP = one strict shared bucket in staging/production; F magic link → our confirm page, token consumed only on POST (AC3; also set Better Auth `onAPIError.errorURL` to our page); G lockout redesign — Turnstile on a locked account, lock by account+IP, alert, atomic Lua check-and-reserve, 2FA failures per user (AC4, AC5); H secondary email provider (Brevo) wired as failover behind the email interface; I SECURITY conformance test on the production build (AC1); J secrets-handling notes (B4) in RUNBOOK/SECURITY; then security-reviewer on the whole diff, squash to main, tick P0-19.
-- **Local env note:** `.env.local` must have `DATA_ENCRYPTION_KEY`, `BLIND_INDEX_KEY`, `MEMBER_QR_SIGNING_KEY` (base64, 32 bytes). Older files without them now fail at boot with the variable's name — fix: `openssl rand -base64 32` for each. Run `pnpm db:migrate` (0007).
-- **After 10 Nov 01:30 UTC:** delete `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`, `pnpm install --frozen-lockfile` must pass, commit `chore(deps)`.
-- **Other developer (Windows):** confirm the pre-push hook prints `guard-and-gate.sh` on your next code push. `wip/P0-14` can be deleted (`git push origin --delete wip/P0-14`; the permission check blocked Claude from deleting a branch it didn't create).
-- **Untracked from the human:** `moz-plan-v5-prompt.md` files (not committed).
+- **Handed over by talha.syed (Mac), 2026-11-10 02:01 IST.** P0-19 is ~60% done on the pushed branch **`wip/P0-19`** (head `4b4f931`). `main` is untouched apart from progress files. The gate PASSed on every push. **First, check the CI run for `4b4f931` (run 42693725417, still queued at handover):** step F's run 42692488662 was green; step E's run 42690679564 was red with a one-off axe `document-title` failure, which `4b4f931` fixes.
+- **Done on `wip/P0-19`:** A boot fails closed + key/Redis/DB-role rules (closes C-09) · B migration 0007 trigger search_path · C prefetch security headers · D Better Auth route allowlist + `/update-user` validation · **E** blanket `/api/auth/*` limit of 100/min/IP (`src/server/security/auth-limit.ts`; Redis down → 503, sign-out exempt); `ipLimit()` makes an "unknown" IP one strict shared bucket (¼ of the allowance) for magic link, staff login, 2FA and anonymous actions (it used to be a bypass); `humanWait` "1 minutes" fixed · **F** email link → `/sign-in/confirm` (plain form, works without JS) → POST `/api/sign-in/confirm` (`src/server/auth/link-confirm.ts`) calls the library's verify through its handler; public GET `/api/auth/magic-link/verify` and `/error` are 404 (`INTERNAL_AUTH_ROUTES` in routes.ts); `onAPIError.errorURL` = `/sign-in`. Plus two E2E axe-guard fixes (waits for finite animations and for the streamed `<title>`).
+- **Remaining P0-19 (in this order):** G lockout redesign: Turnstile on a locked account, lock by account+IP, alert, atomic Lua check-and-reserve, 2FA failures per user (AC4, AC5; `src/server/auth/staff-login.ts` still uses a non-atomic HMGET then write) · H Brevo wired as failover behind the email interface · I SECURITY conformance test on the production build (AC1: cookies per role, session limits, client IP under spoofed XFF, §5 headers, `/api/auth/*` 429 + Retry-After; run the E2E server with TRUSTED_PROXY=caddy and set X-Forwarded-For per request, because "local" skips per-IP limits) · J secrets-handling notes (B4) in RUNBOOK/SECURITY · then security-reviewer on the whole branch diff, squash to main, tick P0-19, close C-08/C-09.
+- **Tested (this session):** `pnpm gate:task` PASS on the last push (unit 394, int 296, build, bundle, E2E P0-19 10/0); E2E Chromium+WebKit for link-confirm/auth/sign-in-edges/devices 31/1 → the failure was the axe fade race, fixed, then devices ×8 WebKit 48/0; auth.spec ×4 on desktop1440+pixel7 24/0.
+- **Not yet tested:** the CI run of `4b4f931`; the confirm page's design review (screenshot `customer-confirm-sign-in` in `.artifacts/screens`; design-reviewer not run); the Redis-down 503 on a real HTTP request (covered in integration via an injected limiter only).
+- **First steps for the next person:** `git checkout wip/P0-19 && git pull`; no new env vars or migrations since 0007. `.env.local` needs `DATA_ENCRYPTION_KEY`, `BLIND_INDEX_KEY`, `MEMBER_QR_SIGNING_KEY` (base64, 32 bytes; `openssl rand -base64 32`). Links emailed before step F (old `/api/auth/magic-link/verify` URL) now 404: request a new one.
+- **Still pending from earlier:** after 10 Nov 01:30 UTC, delete `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`, check that `pnpm install --frozen-lockfile` passes, commit `chore(deps)`. Windows developer: confirm the pre-push hook prints `guard-and-gate.sh`; `wip/P0-14` can be deleted. Untracked `moz-plan-v5-prompt.md` files are the human's (not committed).
 
 ## Status
 - **Phase:** P0. Done: P0-01…07, P0-14, P0-17. P0-A closed; **P0-B closed 10 Nov** (CI green on main). Next: P0-19.
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → P0-19 → P0-18 → P0-20 → P0-13 → P0-21 → P0-15 → P0-16; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Projected end:** P0 Wed 18 Nov 2026 · P1 Mon 30 Nov · P2 Thu 10 Dec · P3 Sat 19 Dec · P4 Sat 2 Jan 2027 · P5 Tue 12 Jan · **launch Fri 22 Jan 2027** (assumptions in PHASES.md; slips if human tasks are late or the Play account needs a 14-day closed test).
-- **Last updated:** 2026-11-10 00:30 local (19:30 UTC 9 Nov), talha.syed
+- **Last updated:** 2026-11-10 02:01 IST, talha.syed
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- P0-19 in progress on `wip/P0-19` (A–D done; E–J next). See handoff note.
+- P0-19 in progress on `wip/P0-19` (A–F done; G–J next). E: blanket `/api/auth/*` limit 100/min/IP, unknown IP = strict shared bucket. F: email link → `/sign-in/confirm` page, token consumed only by POST `/api/sign-in/confirm`; public GET verify and `/error` are 404; OAuth errors → `/sign-in`. Axe guard waits for transitions (WebKit flake fixed).
 
 ## Next (top 3)
-1. **P0-19** on `wip/P0-19`: steps E–J → security-reviewer → squash → tick (closes C-08, C-09).
+1. **P0-19** on `wip/P0-19`: check CI of `4b4f931`, then steps G–J → security-reviewer → squash → tick (closes C-08, C-09).
 2. **P0-18**: outbox, Redis split, failure modes, safe migrations (+ C-11, C-18).
 3. **P0-20**: mandatory RLS (+ C-12).
 
@@ -65,10 +61,10 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 ## Map of the codebase
 - `src/app/` — Next.js 16 App Router (`proxy.ts`, not middleware); `/sign-in`, `/staff/sign-in`, `/staff/security`, `/me/security`, `/sign-in/link-expired`; `src/app/dev/` (404 in production); `src/app/api/test/[action]/route.ts` test-only API (404 unless `APP_ENV=test`)
 - `src/server/actionTemplate.ts` — `defineAction` / `defineRoute` (ENGINEERING §4); `src/server/errors.ts` (ERROR_MESSAGES, Result)
-- `src/server/auth/` — Better Auth `auth.ts` (`getAuth()`, created on first use; + hooks, staff gate), `session.ts` (`sessionFromHeaders`, role limits), `mfa.ts`, `privileged.ts`, `cookies.ts`, `ip.ts`, `social.ts`, `magic-link.ts`, `staff-login.ts`; `src/server/integrations/breach/` (HIBP)
+- `src/server/auth/` — Better Auth `auth.ts` (`getAuth()`, created on first use; + hooks, staff gate), `session.ts` (`sessionFromHeaders`, role limits), `mfa.ts`, `privileged.ts`, `cookies.ts`, `ip.ts`, `social.ts`, `magic-link.ts`, `staff-login.ts`, `link-confirm.ts` (POST confirm of email links; page `/sign-in/confirm`, route `/api/sign-in/confirm`); `src/server/integrations/breach/` (HIBP)
 - `src/server/authz/` — `decide*` policies, `require*` (incl. `requireStaffAwardLimit`, `requireOwnAccount`), `principal.ts`, `scope.ts`
 - `src/server/repos/` — the only DB access (`_base.ts`: `dbFor`, `transaction`, `inShop`, `ownedBy`); `src/server/services/` (audit, flags, sessions)
-- `src/server/security/` — `headers.ts`, `rate-limit.ts`, `request.ts` (`clientIp`, `assertSameOrigin`), `turnstile.ts`; `src/server/log.ts` (pino + `serializeError`)
+- `src/server/security/` — `headers.ts`, `rate-limit.ts` (`ipLimit` policy), `auth-limit.ts` (blanket `/api/auth/*`), `request.ts` (`clientIp`, `assertSameOrigin`), `turnstile.ts`; `src/server/log.ts` (pino + `serializeError`)
 - `src/server/jobs/` + `src/worker/index.ts` — BullMQ registry, `enqueue`, DLQ, scheduler (Europe/London)
 - `src/server/db/` — Drizzle client, schema, `migrate.ts`, `seed.ts`, `reset.ts`; `drizzle/` migrations 0000–0006 (0005 lower-case email CHECK, 0006 session revocation trigger)
 - `src/server/integrations/` — email (SMTP→Mailpit, Resend, Brevo), storage (MinIO/R2), fakes (push, ai, postcodes, places)
@@ -78,7 +74,8 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - CI/tooling: `.github/workflows/ci.yml` + `scheduled.yml`; `scripts/gate-task.ts`, `gate-phase.ts`, `lib/gate.ts`, `pre-push.ts` (+ `.lefthook/pre-push/guard-and-gate.sh`), `osv-gate.ts`, `ci-usage.ts`, `e2e.ts`; `Dockerfile`, `tsconfig.build.json`, `renovate.json`
 - Tests: Vitest `unit` + `integration` (per-worker DBs); `tests/authz/` (matrix, harness self-test); `scripts/check-authz-coverage.ts` (AST, in `pnpm lint`); `tests/e2e/` (Playwright :3100, import `test` from `support/test.ts`); `tests/load/`, `tests/live/`, `stryker.config.mjs`
 
-## Last verified (10 Nov 2026, 00:30 local)
+## Last verified (10 Nov 2026, 02:00 IST)
+- `wip/P0-19` `4b4f931`: gate:task PASS (unit 394, int 296, E2E P0-19 10/0). CI: step F run 42692488662 green; step E run 42690679564 red (axe title race, fixed in `4b4f931`); run 42693725417 pending at handover.
 - main `9fd32ad` CI green (run 42682167002): check, integration + coverage, migration test, production build + bundle, E2E pixel7+desktop1440, OSV, audit, Semgrep, gitleaks, **image build + Trivy**. AC2 red runs 42678683969/42678688078/42678695896/42678701681/42678708263. `ci:usage`: 89 of 2000 min (4%) after a heavy day (×7 ≈ 31%).
 - Earlier: mutation 90.1% · `test:live`: storage ✅, email NOT VERIFIED (H-04).
 - Staging: none yet.
