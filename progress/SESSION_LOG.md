@@ -154,3 +154,7 @@ Next: main CI (first image job + Trivy) green → tick P0-14 + P0-B (docs-only p
 ## 2026-11-10 (00:30 local) — P0 — P0-14 ticked, P0-B closed (talha.syed, Mac)
 AC1: main CI green incl. image + Trivy (run 42682167002; first main run 42680350385 failed on Trivy → npm removed from runtime, esbuild/lefthook binaries skipped until P0-15 = C-21). AC2: 5 red runs, each for its reason (42678683969 unit, 42678688078 console.error, 42678695896 axe, 42678701681 Prettier, 42678708263 lock_timeout). AC3: `pnpm e2e` on a production build, E2E 68/0/0 flaky on CI projects; limiter-off runtime test. AC4: gate:task/gate:phase/ci:usage summaries, tree-clean step. AC5: docs-only pushes skip gate + CI (branch demo, and this push); ci:usage 89/2000 (4%), heavy day ×7 ≈ 31% < 75%. AC6 (free): pre-push refused a failing-gate push, force-push and deleting main.
 Next: P0-19.
+
+## 2026-11-10 (~01:45 local) — P0 — P0-19 half done, checkpoint (talha.syed, Mac)
+Done on `wip/P0-19` (`46599fe`): A boot fails closed + key/Redis/DB-role rules + per-purpose keys (image exits 1 on bad env); B migration 0007 trigger search_path (exploit test first); C prefetch security headers (E2E Chromium+WebKit); D Better Auth route allowlist + /update-user validation (mounted-vs-reviewed test). Evidence: unit 380+, int 278, E2E Chromium+WebKit 92/0; gate PASS each push. Also: CLAUDE.md now says human rules are written to the repo (both laptops).
+Next: P0-19 step E (blanket /api/auth/* limit + unknown-IP bucket), then F–J.

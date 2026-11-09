@@ -7,13 +7,17 @@ Baton: held by talha.syed since 2026-11-09 23:05
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **talha.syed (Mac), 2026-11-10 00:30 (local) — P0-14 done, P0-B closed.** main CI green incl. image + Trivy: run 42682167002. Next task: **P0-19** (auth hardening + Better Auth inventory + conformance test; closes C-08, C-09).
-- **Do first (both laptops):** `git pull && pnpm install` (installs the new lefthook *script* hook). **Syedbadeshah76 (Windows):** on your next code push confirm the hook prints `guard-and-gate.sh` and runs the gate; if the shell/script fails on Windows, fix before anything else.
-- **After 10 Nov 01:30 UTC:** delete the `minimumReleaseAgeExclude` list in `pnpm-workspace.yaml`, run `pnpm install --frozen-lockfile` (must pass), commit `chore(deps)`.
-- **New rules in force:** every code push runs `gate:task` (~1 min); CI on every push (docs/progress-only skipped); image job + Trivy on main; scheduled.yml Tue/Fri 03:17 UTC (E2E 5 projects) — first real run Tue 10 Nov; Renovate needs H-31.
-- **Not verified:** `gate:phase` end to end (phase gate), scheduled.yml real run, Windows hook behaviour.
-- **Known small issue:** pre-commit gitleaks Docker fallback fails inside a git worktree only.
-- **Untracked from the human:** `moz-plan-v5-prompt.md`, `src/features/moz-plan-v5-prompt.md` (not committed).
+- **Checkpoint by talha.syed (Mac), 2026-11-10 ~01:45 local.** P0-14 done, P0-B closed (main CI green incl. image + Trivy). **P0-19 about half done on pushed branch `wip/P0-19`** (head `46599fe`, gate PASS on every push; decisions already in DECISIONS.md, marked "on wip").
+- **Done on `wip/P0-19`:**
+  - A: boot fails closed (`src/server/boot.ts`; image exits 1 on bad env), deployed envs need `rediss://` + password + `REDIS_KEY_PREFIX`, DB owner/superuser role refused, crypto keys required (base64 32 bytes), per-purpose HKDF keys for email key + IP hash. **Closes C-09.**
+  - B: migration **0007** pins the trigger's search_path (SEC-9; exploit reproduced in a test first).
+  - C: static security headers on prefetch responses via next.config + X-Frame-Options (SEC-10; x-request-id validation already existed).
+  - D: Better Auth behind a reviewed route allowlist (`src/server/auth/routes.ts`; 19 allowed, 28 blocked; mounted-vs-reviewed test = AC2); `/update-user` name-only 1–80. Privileged-gate tests moved to still-enabled endpoints.
+- **Remaining P0-19 (in this order):** E blanket per-IP Redis limit on all `/api/auth/*` (429 + Retry-After) + unknown client IP = one strict shared bucket in staging/production; F magic link → our confirm page, token consumed only on POST (AC3; also set Better Auth `onAPIError.errorURL` to our page); G lockout redesign — Turnstile on a locked account, lock by account+IP, alert, atomic Lua check-and-reserve, 2FA failures per user (AC4, AC5); H secondary email provider (Brevo) wired as failover behind the email interface; I SECURITY conformance test on the production build (AC1); J secrets-handling notes (B4) in RUNBOOK/SECURITY; then security-reviewer on the whole diff, squash to main, tick P0-19.
+- **Local env note:** `.env.local` must have `DATA_ENCRYPTION_KEY`, `BLIND_INDEX_KEY`, `MEMBER_QR_SIGNING_KEY` (base64, 32 bytes). Older files without them now fail at boot with the variable's name — fix: `openssl rand -base64 32` for each. Run `pnpm db:migrate` (0007).
+- **After 10 Nov 01:30 UTC:** delete `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`, `pnpm install --frozen-lockfile` must pass, commit `chore(deps)`.
+- **Other developer (Windows):** confirm the pre-push hook prints `guard-and-gate.sh` on your next code push. `wip/P0-14` can be deleted (`git push origin --delete wip/P0-14`; the permission check blocked Claude from deleting a branch it didn't create).
+- **Untracked from the human:** `moz-plan-v5-prompt.md` files (not committed).
 
 ## Status
 - **Phase:** P0. Done: P0-01…07, P0-14, P0-17. P0-A closed; **P0-B closed 10 Nov** (CI green on main). Next: P0-19.
@@ -24,10 +28,10 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- P0-14 done; P0-B closed. Starting P0-19 next.
+- P0-19 in progress on `wip/P0-19` (A–D done; E–J next). See handoff note.
 
 ## Next (top 3)
-1. **P0-19**: auth hardening + Better Auth inventory + conformance test (closes C-08, C-09).
+1. **P0-19** on `wip/P0-19`: steps E–J → security-reviewer → squash → tick (closes C-08, C-09).
 2. **P0-18**: outbox, Redis split, failure modes, safe migrations (+ C-11, C-18).
 3. **P0-20**: mandatory RLS (+ C-12).
 
@@ -42,7 +46,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-06 | B-QA-8 | P0-13 | Slow-3G: sign-in button state explained before hydration | screenshot + E2E |
 | C-07 | B-SEC-2 | P0-16 + P2 invites | No staff TOTP enrolment with the password alone (invite token) | integration |
 | C-08 | B-SEC-5, B-CR-5, B-SEC-3, B-SEC-9, B-SEC-10, B-SEC-8, B-SEC-13, B-SEC-14, L10 | P0-19 | Items listed in P0-19 Build | P0-19 acceptance 1–7 |
-| C-09 | A-SEC-M2, A-SEC-M3, A-SEC-L3, A-QA-6 | P0-19 | Boot refuses owner DB role / Redis without password / weak keys; invalid env exits | integration |
+| C-09 | A-SEC-M2, A-SEC-M3, A-SEC-L3, A-QA-6 | P0-19 | Boot refuses owner DB role / Redis without password / weak keys; invalid env exits | integration — **done on wip/P0-19 (step A)** |
 | C-11 | A-CR-M3, B-CR-9, A-CR-L2 | P0-18 | `enqueue` and after-commit timeouts; schedule pruning safe in rolling deploys | integration |
 | C-12 | A-SEC-M4, A-CR-L4 | P0-20 | `systemScope` imports restricted; `dbFor().transaction` bypass closed; tenant repos take ShopScope/CustomerScope | lint + integration |
 | C-13 | A-QA-7, A-QA-8 | P0-09 | 320 px ShopCard titles and table scroll hint; Spinner under reduced motion | screenshots |
