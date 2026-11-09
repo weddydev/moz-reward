@@ -108,3 +108,35 @@ describe("[P0-07] Better Auth account endpoints obey staff/admin MFA and session
     });
   });
 });
+
+describe("[P0-07] staff/admin sessions end at their role limit everywhere, not only in shop/admin policies (review MEDIUM)", () => {
+  it("pages and actions see a 12 h+ staff session, or a 2 h+ admin session, as signed out", async () => {
+    const { sessionFromHeaders } = await import("@/server/auth/session");
+    const staffUser = await staff();
+    expect(
+      await sessionFromHeaders(await sessionFor(staffUser.id, { mfa: true, ageMs: 11 * HOUR })),
+    ).not.toBeNull();
+    expect(
+      await sessionFromHeaders(
+        await sessionFor(staffUser.id, { mfa: true, ageMs: 12 * HOUR + 60_000 }),
+      ),
+    ).toBeNull();
+
+    const admin = await createPasswordUser();
+    await makeAdmin(admin.id, "finance");
+    expect(
+      await sessionFromHeaders(await sessionFor(admin.id, { mfa: true, ageMs: HOUR })),
+    ).not.toBeNull();
+    expect(
+      await sessionFromHeaders(await sessionFor(admin.id, { mfa: true, ageMs: 2 * HOUR + 60_000 })),
+    ).toBeNull();
+  });
+
+  it("customers keep their 30-day sessions", async () => {
+    const { sessionFromHeaders } = await import("@/server/auth/session");
+    const { user } = await makeActor("customer");
+    expect(
+      await sessionFromHeaders(await sessionFor(user.id, { mfa: false, ageMs: 20 * 24 * HOUR })),
+    ).not.toBeNull();
+  });
+});

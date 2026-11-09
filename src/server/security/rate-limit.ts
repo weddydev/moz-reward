@@ -113,9 +113,12 @@ const retryAfterSec = (r: LimitResult): number =>
 export async function limitOrThrow(opts: LimitOptions): Promise<LimitResult> {
   const result = await limit(opts);
   if (!result.ok) {
+    const wait = retryAfterSec(result);
     throw new AppError(
       "RATE_LIMITED",
-      `Too many attempts. Please try again in ${humanWait(retryAfterSec(result))}.`,
+      `Too many attempts. Please try again in ${humanWait(wait)}.`,
+      undefined,
+      { retryAfterSec: wait },
     );
   }
   return result;

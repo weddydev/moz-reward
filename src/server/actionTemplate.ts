@@ -119,9 +119,14 @@ async function execute<Schema extends z.ZodType, Ctx extends ScopeContext, Out>(
 
   if (spec.rateLimit) {
     const bucket = `action:${spec.name}`;
+    // Custom keys stay namespaced per action, so two actions never share a bucket by accident.
+    const custom = spec.rateLimit.key?.(input, ctx);
     const key =
-      spec.rateLimit.key?.(input, ctx) ??
-      (principal ? userKey(bucket, principal.userId) : ipKey(bucket, facts.ip));
+      custom !== undefined
+        ? `${bucket}:${custom}`
+        : principal
+          ? userKey(bucket, principal.userId)
+          : ipKey(bucket, facts.ip);
     await limitOrThrow({ key, max: spec.rateLimit.max, windowSec: spec.rateLimit.windowSec });
   }
 
@@ -180,7 +185,7 @@ export function defineAction<Schema extends z.ZodType, Ctx extends ScopeContext,
 /**
  * A route handler following the same template, plus an `Origin` check for mutations (ENGINEERING §4).
  * Input is the JSON body for POST/PUT/PATCH/DELETE and the query string for GET. Errors become
- * `{ error: { code, message } }` with the code's HTTP status (429s carry Retry-After via the limiter message).
+ * `{ error: { code, message } }` with the code's HTTP status; 429s carry a Retry-After header.
  */
 export function defineRoute<Schema extends z.ZodType, Ctx extends ScopeContext, Out>(
   spec: Spec<Schema, Ctx, Out> & { status?: number },
@@ -200,7 +205,14 @@ export function defineRoute<Schema extends z.ZodType, Ctx extends ScopeContext, 
       return Response.json({ data }, { status: spec.status ?? 200 });
     } catch (err) {
       const appError = isAppError(err) ? err : unexpected(err, facts, spec.name);
-      return Response.json(errorResult(appError), { status: appError.status });
+      const retryAfter =
+        appError.retryAfterSec !== undefined
+          ? { "Retry-After": String(appError.retryAfterSec) }
+          : undefined;
+      return Response.json(errorResult(appError), {
+        status: appError.status,
+        ...(retryAfter ? { headers: retryAfter } : {}),
+      });
     }
   };
 }

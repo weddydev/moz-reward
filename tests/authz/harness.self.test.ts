@@ -23,13 +23,14 @@ describe("[P0-07] authz matrix self-test: the harness rejects wrong outcomes", (
     );
   });
 
-  it("allow: passes on success or a business outcome, fails on a denial or a crash", () => {
+  it("allow: passes on success or a declared business outcome; fails on anything else", () => {
     expect(matrixVerdict("allow", { ok: true, data: 1 })).toBeNull();
-    expect(matrixVerdict("allow", fail("NOT_FOUND"))).toBeNull();
-    expect(matrixVerdict("allow", fail("VALIDATION"))).toBeNull();
+    expect(matrixVerdict("allow", fail("NOT_FOUND"), ["NOT_FOUND"])).toBeNull();
+    expect(matrixVerdict("allow", fail("NOT_FOUND"))).toMatch(/expected allow, got NOT_FOUND/);
+    expect(matrixVerdict("allow", fail("VALIDATION"))).toMatch(/expected allow/); // malformed run input
     expect(matrixVerdict("allow", fail("FORBIDDEN"))).toMatch(/expected allow/);
     expect(matrixVerdict("allow", fail("LIMIT_REACHED"))).toMatch(/expected allow/);
-    expect(matrixVerdict("allow", fail("INTERNAL"))).toMatch(/crashed/);
+    expect(matrixVerdict("allow", fail("INTERNAL"), ["NOT_FOUND"])).toMatch(/crashed/);
   });
 
   it("deny: passes only on a policy denial, fails on success or any other error", () => {

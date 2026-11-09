@@ -1,8 +1,8 @@
 import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { and, eq } from "drizzle-orm";
-import { headers } from "next/headers";
-import { auth } from "@/server/auth/auth";
+
+import { getSession } from "@/server/auth/session";
 import { db } from "@/server/db/client";
 import { adminMembers, shopStaff } from "@/server/db/schema";
 import { env } from "@/server/env";
@@ -51,7 +51,7 @@ export async function currentPrincipal(): Promise<Principal | null> {
     if (env().APP_ENV !== "test") throw new Error("test principal outside tests");
     return override.principal;
   }
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession(); // applies the staff/admin session limits
   if (!session) return null;
   return loadPrincipal({
     userId: session.user.id,

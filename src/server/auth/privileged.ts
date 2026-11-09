@@ -1,5 +1,6 @@
 import "server-only";
 import { and, eq, sql } from "drizzle-orm";
+import { ADMIN_SESSION_MAX_MS, STAFF_SESSION_MAX_MS } from "@/server/authz/policies";
 import { db } from "@/server/db/client";
 import { accounts, adminMembers, shopStaff, users } from "@/server/db/schema";
 
@@ -40,4 +41,20 @@ export async function isPrivilegedEmail(email: string): Promise<boolean> {
     .where(sql`lower(${users.email}) = ${normalized}`)
     .limit(1);
   return user ? isPrivilegedUser(user.id) : false;
+}
+
+/**
+ * Whether a session has outlived its role's limit (admin 2 h, staff 12 h; customers never). Only sessions older
+ * than the shortest limit need a role lookup, so most requests cost nothing extra.
+ */
+export async function sessionPastRoleLimit(
+  userId: string,
+  createdAt: Date,
+  now: number = Date.now(),
+): Promise<boolean> {
+  const age = now - createdAt.getTime();
+  if (age <= ADMIN_SESSION_MAX_MS) return false;
+  const kind = await privilegedKind(userId);
+  if (kind === "admin") return true;
+  return kind === "staff" && age > STAFF_SESSION_MAX_MS;
 }

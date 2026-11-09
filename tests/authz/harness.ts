@@ -12,6 +12,7 @@ import type { AdminRole, Principal } from "@/server/authz/policies";
 import { loadPrincipal, runAsPrincipal } from "@/server/authz/principal";
 import { db } from "@/server/db/client";
 import { shops } from "@/server/db/schema";
+import type { AppErrorCode } from "@/server/errors";
 import { makeAdmin, makeShop, makeStaff, makeUser } from "../fixtures/factories";
 
 export const ROLES = [
@@ -49,20 +50,20 @@ export const DENIED = new Set([
 ]);
 
 /**
- * Verdict for one role case; null = as expected. "allow" means the policy let the call through: success, or a
- * business outcome after authorisation (e.g. NOT_FOUND, VALIDATION) — but never a crash (INTERNAL), which
- * would hide a broken action behind a passing matrix. "deny" must be a policy denial, not any failure.
+ * Verdict for one role case; null = as expected. "allow" means success, or one of the business codes the
+ * spec lists (never INTERNAL, never a denial). "deny" must be a policy denial, not any failure.
  */
 export function matrixVerdict(
   expected: "allow" | "deny",
   result: ActionResult<unknown>,
+  allowCodes: ReadonlyArray<AppErrorCode> = [],
 ): string | null {
   if (expected === "allow") {
     if (result.ok) return null;
-    if (DENIED.has(result.error.code)) return `expected allow, got ${result.error.code}`;
-    if (result.error.code === "INTERNAL")
-      return "expected allow, got INTERNAL (the action crashed)";
-    return null;
+    // Only the business outcomes the spec declares count as "allowed" (e.g. NOT_FOUND for a random id).
+    return allowCodes.includes(result.error.code)
+      ? null
+      : `expected allow, got ${result.error.code}${result.error.code === "INTERNAL" ? " (the action crashed)" : ""}`;
   }
   if (result.ok) return "expected deny, but the action succeeded";
   return DENIED.has(result.error.code)
@@ -140,7 +141,12 @@ export async function assertWorld() {
  */
 export function authzMatrix(
   actionName: string,
-  spec: { allow: ReadonlyArray<Role>; run: (w: World) => Promise<ActionResult<unknown>> },
+  spec: {
+    allow: ReadonlyArray<Role>;
+    run: (w: World) => Promise<ActionResult<unknown>>;
+    /** Business errors that still mean "the policy let it through" for allowed roles. */
+    allowCodes?: ReadonlyArray<AppErrorCode>;
+  },
 ) {
   describe(`[P0-07] authz: ${actionName}`, () => {
     for (const role of ROLES) {
@@ -148,7 +154,7 @@ export function authzMatrix(
       it(`${role} → ${expected}`, async () => {
         const w = await world();
         const result = await runAsPrincipal(w.principals[role], () => spec.run(w));
-        expect(matrixVerdict(expected, result), JSON.stringify(result)).toBeNull();
+        expect(matrixVerdict(expected, result, spec.allowCodes), JSON.stringify(result)).toBeNull();
       });
     }
   });

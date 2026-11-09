@@ -40,7 +40,8 @@ vi.mock("./security/rate-limit", () => ({
   userKey: (s: string, id: string) => `${s}:user:${id}`,
   limitOrThrow: (opts: { key: string }) => {
     calls.push(`rateLimit:${opts.key}`);
-    if (state.rateLimited) throw new AppError("RATE_LIMITED");
+    if (state.rateLimited)
+      throw new AppError("RATE_LIMITED", undefined, undefined, { retryAfterSec: 42 });
     return Promise.resolve({ ok: true });
   },
 }));
@@ -225,7 +226,7 @@ describe("[P0-07] defineAction runs the ENGINEERING §4 steps in order", () => {
         key: ({ shopId }: { shopId: string }) => `shop:${shopId}`,
       },
     })({ shopId: SHOP, name: "Brew" });
-    expect(calls).toContain(`rateLimit:shop:${SHOP}`);
+    expect(calls).toContain(`rateLimit:action:shop.rename:shop:${SHOP}`); // still namespaced per action
     expect(calls).toContain("audit:shop.rename:in-tx:unknown");
   });
 });
@@ -266,6 +267,20 @@ describe("[P0-07] defineRoute: same steps for route handlers, plus Origin checks
     expect((await route()(req({ body: JSON.stringify({ shopId: SHOP }) }))).status).toBe(400);
     state.principal = null;
     expect((await route()(req())).status).toBe(401);
+  });
+
+  it("a rate-limited route answers 429 with Retry-After", async () => {
+    state.rateLimited = true;
+    const limited = defineRoute({
+      name: "shop.rename.route",
+      input,
+      authorize: () => Promise.resolve(scope),
+      rateLimit: { max: 1, windowSec: 60 },
+      handler: () => Promise.resolve("ok"),
+    });
+    const res = await limited(req());
+    expect(res.status).toBe(429);
+    expect(res.headers.get("retry-after")).toBe("42");
   });
 
   it("reads GET input from the query string (no Origin needed for safe methods)", async () => {

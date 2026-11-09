@@ -13,6 +13,7 @@ import * as schema from "@/server/db/schema";
 import { env } from "@/server/env";
 import { checkBreachedPassword } from "@/server/integrations/breach";
 import { clientIp } from "@/server/security/request";
+import { recordAudit } from "@/server/services/audit";
 import { authCookieOptions } from "./cookies";
 import { betterAuthIpOptions } from "./ip";
 import { checkMagicLinkRequest, deliverMagicLink } from "./magic-link";
@@ -123,6 +124,21 @@ export const auth = betterAuth({
           return {
             data: { ...session, mfaVerified: isMfaSessionPath(ctx?.path) && !enrolling },
           };
+        },
+        // SECURITY §12: staff/admin sign-ins are audit-logged. Only the MFA-verified session is a sign-in;
+        // the password step alone is not (failures are throttled and counted in staff-login.ts).
+        after: async (session) => {
+          if (session.mfaVerified !== true) return;
+          const kind = await privilegedKind(session.userId);
+          if (!kind) return;
+          await recordAudit(db(), {
+            actorId: session.userId,
+            actorRole: kind,
+            action: "auth.sign_in",
+            entity: "session",
+            entityId: session.id,
+            ip: session.ipAddress || null,
+          });
         },
       },
     },

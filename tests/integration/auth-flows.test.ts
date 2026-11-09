@@ -1,9 +1,9 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { URI } from "otpauth";
 import { describe, expect, it } from "vitest";
 import { auth } from "@/server/auth/auth";
 import { db } from "@/server/db/client";
-import { sessions, users } from "@/server/db/schema";
+import { auditLogs, sessions, users } from "@/server/db/schema";
 import {
   TEST_PASSWORD,
   cookieHeaderFrom,
@@ -60,6 +60,14 @@ describe("[P0-06] staff password + TOTP", () => {
     expect(verified.status).toBe(200);
     const verifiedBody = (await verified.json()) as { token: string };
     expect((await sessionRow(verifiedBody.token))?.mfaVerified).toBe(true);
+
+    // SECURITY §12: staff/admin sign-ins are audit-logged (only the MFA-verified session counts).
+    const signIns = await db()
+      .select()
+      .from(auditLogs)
+      .where(and(eq(auditLogs.actorId, user.id), eq(auditLogs.action, "auth.sign_in")));
+    expect(signIns).toHaveLength(1);
+    expect(signIns[0]).toMatchObject({ actorRole: "staff", entity: "session" });
   });
 
   it("rejects a wrong password with the same generic error as an unknown email (no enumeration)", async () => {

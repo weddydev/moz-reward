@@ -101,3 +101,39 @@ describe("[P0-05] structured logger with redaction", () => {
     expect(out.lines().map((l) => l.msg)).toEqual(["shown"]);
   });
 });
+
+describe("[P0-07] error objects are scrubbed too (review MEDIUM: DB errors carry values)", () => {
+  it("redacts emails in message, stack and nested cause; drops query params and pg detail", () => {
+    const out = capture();
+    const logger = createLogger({ destination: out.stream, level: "info" });
+    const pg = Object.assign(
+      new Error('duplicate key value violates unique constraint "users_email_key"'),
+      {
+        code: "23505",
+        detail: "Key (email)=(victim@example.com) already exists.",
+        where: "SQL statement",
+      },
+    );
+    const drizzle = Object.assign(
+      new Error(
+        'Failed query: insert into "users" values ($1)\nparams: victim@example.com,s3cr3t-token',
+      ),
+      {
+        query: 'insert into "users" values ($1)',
+        params: ["victim@example.com", "s3cr3t-token"],
+        cause: pg,
+      },
+    );
+
+    logger.error({ err: drizzle }, "unexpected error");
+
+    const raw = out.raw();
+    expect(raw).not.toContain("victim@example.com");
+    expect(raw).not.toContain("s3cr3t-token");
+    const [line] = out.lines();
+    expect(line).toMatchObject({
+      err: { type: "Error", cause: { sqlState: "23505" } },
+    });
+    expect(JSON.stringify(line)).not.toMatch(/"params"|"detail"/);
+  });
+});

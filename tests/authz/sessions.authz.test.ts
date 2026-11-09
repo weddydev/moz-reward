@@ -25,6 +25,8 @@ const SIGNED_IN: Role[] = [
 
 authzMatrix("signOutOtherDevice", {
   allow: SIGNED_IN,
+  // A random id is never the caller's session: allowed roles get NOT_FOUND, never a denial.
+  allowCodes: ["NOT_FOUND"],
   run: () => signOutOtherDevice({ sessionId: newId() }),
 });
 

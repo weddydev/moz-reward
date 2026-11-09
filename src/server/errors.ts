@@ -49,14 +49,18 @@ export const ERROR_MESSAGES: Record<AppErrorCode, string> = {
 /** Typed error with a user-safe message (defaults to the code's message). Never put internals in `message`. */
 export class AppError extends Error {
   readonly status: number;
+  /** RATE_LIMITED only: seconds until a retry can succeed (sent as Retry-After by route handlers). */
+  readonly retryAfterSec: number | undefined;
   constructor(
     readonly code: AppErrorCode,
     message: string = ERROR_MESSAGES[code],
     readonly fieldErrors?: Record<string, string[]>,
+    opts: { retryAfterSec?: number } = {},
   ) {
     super(message);
     this.name = "AppError";
     this.status = ERROR_STATUS[code];
+    this.retryAfterSec = opts.retryAfterSec;
   }
 }
 
