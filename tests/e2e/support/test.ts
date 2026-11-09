@@ -21,7 +21,13 @@ type Options = {
   guardAllow: RegExp[];
 };
 
-type SignedIn = { userId: string; email: string; shopId: string | null; role: ActorRole };
+type SignedIn = {
+  userId: string;
+  email: string;
+  shopId: string | null;
+  shopCode: string | null;
+  role: ActorRole;
+};
 type CreatedUser = { userId: string; email: string; password: string; totpSecret?: string };
 
 /** Unique, undeliverable address (`.invalid` TLD); Mailpit still captures it. Specs never import server code. */

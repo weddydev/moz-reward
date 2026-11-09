@@ -146,6 +146,7 @@ async function createSession(body: unknown): Promise<Response> {
     userId: actor.user.id,
     email: actor.user.email,
     shopId: actor.shopId,
+    shopCode: actor.shopCode,
     role: parsed.data.role,
   });
   for (const c of login.cookies) {

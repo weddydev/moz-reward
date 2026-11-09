@@ -159,7 +159,7 @@ export type ActorRole = (typeof ACTOR_ROLES)[number];
 export async function makeActor(
   role: ActorRole,
   opts: { shopId?: string } = {},
-): Promise<{ user: UserRow; shopId: string | null }> {
+): Promise<{ user: UserRow; shopId: string | null; shopCode: string | null }> {
   const user = await makeUser({
     email: fakeEmail(role),
     name: `Test ${role}`,
@@ -168,19 +168,21 @@ export async function makeActor(
   switch (role) {
     case "customer":
       await makeCustomerProfile(user.id);
-      return { user, shopId: null };
+      return { user, shopId: null, shopCode: null };
     case "staff":
     case "owner": {
-      const shopId = opts.shopId ?? (await makeShop()).id;
+      // shopCode is known only for a shop created here (null when the caller passed shopId).
+      const shop = opts.shopId ? null : await makeShop();
+      const shopId = opts.shopId ?? shop?.id ?? "";
       await makeStaff(shopId, user.id, role);
-      return { user, shopId };
+      return { user, shopId, shopCode: shop?.shopCode ?? null };
     }
     case "admin_owner":
     case "admin_support":
     case "admin_moderator":
     case "admin_finance":
       await makeAdmin(user.id, role.slice("admin_".length) as AdminRole);
-      return { user, shopId: null };
+      return { user, shopId: null, shopCode: null };
     default: {
       const unreachable: never = role;
       throw new Error(`Unknown role ${String(unreachable)}`);
