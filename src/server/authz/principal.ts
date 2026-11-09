@@ -17,7 +17,11 @@ export async function loadPrincipal(input: {
 }): Promise<Principal> {
   const [staffRows, adminRows] = await Promise.all([
     db()
-      .select({ shopId: shopStaff.shopId, role: shopStaff.role })
+      .select({
+        shopId: shopStaff.shopId,
+        role: shopStaff.role,
+        perAwardLimit: shopStaff.perAwardLimit,
+      })
       .from(shopStaff)
       .where(and(eq(shopStaff.userId, input.userId), eq(shopStaff.active, true))),
     db()

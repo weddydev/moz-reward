@@ -6,6 +6,7 @@ import {
   decideAdminRole,
   decideCustomer,
   decideShopRole,
+  decideStaffAwardLimit,
 } from "./policies";
 
 const NOW = new Date("2026-11-08T12:00:00Z");
@@ -34,8 +35,8 @@ describe("[P0-07] decideCustomer", () => {
 });
 
 describe("[P0-07] decideShopRole", () => {
-  const staffA = principal({ shopRoles: [{ shopId: SHOP_A, role: "staff" }] });
-  const ownerA = principal({ shopRoles: [{ shopId: SHOP_A, role: "owner" }] });
+  const staffA = principal({ shopRoles: [{ shopId: SHOP_A, role: "staff", perAwardLimit: null }] });
+  const ownerA = principal({ shopRoles: [{ shopId: SHOP_A, role: "owner", perAwardLimit: null }] });
 
   it("denies anonymous", () => {
     expect(decideShopRole(null, SHOP_A, ["staff"], NOW)).toMatchObject({
@@ -91,7 +92,7 @@ describe("[P0-07] decideAdminRole", () => {
     expect(decideAdminRole(null, ["owner"], NOW)).toMatchObject({ reason: "unauthenticated" });
     expect(
       decideAdminRole(
-        principal({ shopRoles: [{ shopId: SHOP_A, role: "owner" }] }),
+        principal({ shopRoles: [{ shopId: SHOP_A, role: "owner", perAwardLimit: null }] }),
         ["owner"],
         NOW,
       ),
@@ -117,5 +118,56 @@ describe("[P0-07] decideAdminRole", () => {
       ok: true,
       value: { userId: "u1", role: "finance" },
     });
+  });
+});
+
+describe("[P0-07] decideStaffAwardLimit (SECURITY §3: per-award limit enforced server-side)", () => {
+  const staff = (perAwardLimit: number | null) =>
+    principal({ shopRoles: [{ shopId: SHOP_A, role: "staff", perAwardLimit }] });
+
+  it("allows staff up to and including their limit", () => {
+    expect(decideStaffAwardLimit(staff(50), SHOP_A, 50, NOW)).toEqual({
+      ok: true,
+      value: { userId: "u1", shopId: SHOP_A, role: "staff" },
+    });
+    expect(decideStaffAwardLimit(staff(50), SHOP_A, 1, NOW).ok).toBe(true);
+  });
+
+  it("denies staff one point over their limit (owner approval needed)", () => {
+    expect(decideStaffAwardLimit(staff(50), SHOP_A, 51, NOW)).toEqual({
+      ok: false,
+      reason: "over_limit",
+    });
+  });
+
+  it("owners and staff without a limit set have no cap", () => {
+    const owner = principal({ shopRoles: [{ shopId: SHOP_A, role: "owner", perAwardLimit: 5 }] });
+    expect(decideStaffAwardLimit(owner, SHOP_A, 10_000, NOW).ok).toBe(true);
+    expect(decideStaffAwardLimit(staff(null), SHOP_A, 10_000, NOW).ok).toBe(true);
+  });
+
+  it("keeps every shop-role rule: anonymous, other shop, no MFA, stale session", () => {
+    expect(decideStaffAwardLimit(null, SHOP_A, 1, NOW)).toMatchObject({
+      reason: "unauthenticated",
+    });
+    expect(decideStaffAwardLimit(staff(50), SHOP_B, 1, NOW)).toMatchObject({ reason: "forbidden" });
+    expect(
+      decideStaffAwardLimit({ ...staff(50), mfaVerified: false }, SHOP_A, 1, NOW),
+    ).toMatchObject({ reason: "mfa_required" });
+    const old = {
+      ...staff(50),
+      sessionCreatedAt: new Date(NOW.getTime() - STAFF_SESSION_MAX_MS - 1),
+    };
+    expect(decideStaffAwardLimit(old, SHOP_A, 1, NOW)).toMatchObject({ reason: "session_expired" });
+  });
+
+  it("refuses amounts that are not a positive whole number of points", () => {
+    for (const points of [0, -5, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(decideStaffAwardLimit(staff(null), SHOP_A, points, NOW), String(points)).toMatchObject(
+        {
+          reason: "forbidden",
+        },
+      );
+    }
   });
 });

@@ -13,13 +13,14 @@ export type Principal = {
   sessionCreatedAt: Date;
   /** Current session id (marks "this device" in the session list); absent for synthetic test principals. */
   sessionId?: string;
-  /** Active staff memberships only. */
-  shopRoles: ReadonlyArray<{ shopId: string; role: ShopRole }>;
+  /** Active staff memberships only; perAwardLimit null = no cap (owners always uncapped). */
+  shopRoles: ReadonlyArray<{ shopId: string; role: ShopRole; perAwardLimit: number | null }>;
   /** Active admin role, or null. */
   adminRole: AdminRole | null;
 };
 
-export type DenyReason = "unauthenticated" | "mfa_required" | "session_expired" | "forbidden";
+export type DenyReason =
+  "unauthenticated" | "mfa_required" | "session_expired" | "forbidden" | "over_limit";
 export type Decision<T = undefined> = { ok: true; value: T } | { ok: false; reason: DenyReason };
 
 export const STAFF_SESSION_MAX_MS = 12 * 60 * 60 * 1000;
@@ -47,6 +48,24 @@ export function decideShopRole(
     return deny("session_expired");
   }
   return allow({ userId: p.userId, shopId, role: membership.role });
+}
+
+/**
+ * Awarding points at a shop (PRODUCT §5): any shop role may award; staff are capped by their per-award limit
+ * (owners never are). Over the limit → "over_limit", so the caller can route the award to owner approval.
+ */
+export function decideStaffAwardLimit(
+  p: Principal | null,
+  shopId: string,
+  points: number,
+  now: Date = new Date(),
+): Decision<{ userId: string; shopId: string; role: ShopRole }> {
+  const base = decideShopRole(p, shopId, ALL_SHOP_ROLES, now);
+  if (!base.ok) return base;
+  if (!Number.isSafeInteger(points) || points <= 0) return deny("forbidden");
+  if (base.value.role === "owner") return base;
+  const limit = p?.shopRoles.find((r) => r.shopId === shopId)?.perAwardLimit ?? null;
+  return limit !== null && points > limit ? deny("over_limit") : base;
 }
 
 export function decideAdminRole(

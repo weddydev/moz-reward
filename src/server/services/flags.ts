@@ -1,8 +1,7 @@
 import "server-only";
-import { type AdminScope, auditActor, systemScope } from "@/server/authz/scope";
-import { transaction } from "@/server/repos/_base";
+import { type AdminScope, systemScope } from "@/server/authz/scope";
+import type { Transaction } from "@/server/db/client";
 import { findFlagEnabled, upsertFlag } from "@/server/repos/flags";
-import { recordAudit } from "./audit";
 
 /** Known flags (ARCHITECTURE §3). Env override: FLAG_<KEY>=true|false wins over the DB. */
 export const FLAGS = {
@@ -31,20 +30,15 @@ export async function isEnabled(key: FlagKey): Promise<boolean> {
   return (await findFlagEnabled(FLAG_READ, key)) ?? false;
 }
 
-/** Admin toggles a flag; the change and its audit row commit together. */
+/**
+ * Admin toggles a flag. Called from the `setFeatureFlag` action, whose template runs this in a transaction
+ * and writes the audit row in the same transaction.
+ */
 export async function setFlag(
   scope: AdminScope,
   input: { key: FlagKey; enabled: boolean },
+  tx?: Transaction,
 ): Promise<{ key: FlagKey; enabled: boolean }> {
-  return transaction(scope, async (tx) => {
-    await upsertFlag(scope, { ...input, description: FLAGS[input.key] }, tx);
-    await recordAudit(tx, {
-      ...auditActor(scope),
-      action: "feature_flag.set",
-      entity: "feature_flag",
-      entityId: input.key,
-      meta: { enabled: input.enabled },
-    });
-    return { key: input.key, enabled: input.enabled };
-  });
+  await upsertFlag(scope, { ...input, description: FLAGS[input.key] }, tx);
+  return { key: input.key, enabled: input.enabled };
 }

@@ -39,7 +39,36 @@ export type World = {
   principals: Record<Role, Principal | null>;
 };
 
-const DENIED = new Set(["UNAUTHENTICATED", "FORBIDDEN", "MFA_REQUIRED", "REAUTH_REQUIRED"]);
+/** Codes that mean "the policy said no". LIMIT_REACHED is a policy outcome too (per-award limit). */
+export const DENIED = new Set([
+  "UNAUTHENTICATED",
+  "FORBIDDEN",
+  "MFA_REQUIRED",
+  "REAUTH_REQUIRED",
+  "LIMIT_REACHED",
+]);
+
+/**
+ * Verdict for one role case; null = as expected. "allow" means the policy let the call through: success, or a
+ * business outcome after authorisation (e.g. NOT_FOUND, VALIDATION) — but never a crash (INTERNAL), which
+ * would hide a broken action behind a passing matrix. "deny" must be a policy denial, not any failure.
+ */
+export function matrixVerdict(
+  expected: "allow" | "deny",
+  result: ActionResult<unknown>,
+): string | null {
+  if (expected === "allow") {
+    if (result.ok) return null;
+    if (DENIED.has(result.error.code)) return `expected allow, got ${result.error.code}`;
+    if (result.error.code === "INTERNAL")
+      return "expected allow, got INTERNAL (the action crashed)";
+    return null;
+  }
+  if (result.ok) return "expected deny, but the action succeeded";
+  return DENIED.has(result.error.code)
+    ? null
+    : `expected a policy denial, got ${result.error.code}`;
+}
 
 let worldPromise: Promise<World> | undefined;
 
@@ -119,12 +148,7 @@ export function authzMatrix(
       it(`${role} → ${expected}`, async () => {
         const w = await world();
         const result = await runAsPrincipal(w.principals[role], () => spec.run(w));
-        if (expected === "allow") {
-          expect(result.ok || !DENIED.has(result.error.code), JSON.stringify(result)).toBe(true);
-        } else {
-          expect(result.ok, `${role} must be denied`).toBe(false);
-          if (!result.ok) expect(DENIED.has(result.error.code), JSON.stringify(result)).toBe(true);
-        }
+        expect(matrixVerdict(expected, result), JSON.stringify(result)).toBeNull();
       });
     }
   });

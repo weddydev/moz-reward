@@ -8,7 +8,7 @@
     "start": "next start",
     "worker": "tsx --conditions=react-server src/worker/index.ts",
     "typecheck": "next typegen && tsc --noEmit",
-    "lint": "eslint --max-warnings=0 && tsx scripts/check-css-hex.ts && tsx scripts/check-migrations.ts",
+    "lint": "eslint --max-warnings=0 && tsx scripts/check-css-hex.ts && tsx scripts/check-migrations.ts && tsx scripts/check-authz-coverage.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
