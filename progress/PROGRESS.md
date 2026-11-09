@@ -16,7 +16,7 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - **Windows laptop note:** `.env.local` in place (H-02, 8 Nov); `SENTRY_DSN` added (H-10): add it to the Mac copy via the shared note.
 
 ## Status
-- **Phase:** P0 — Foundation and design system. P0-A closed; P0-05 met; P0-06 rework in progress (pieces A + C done; B + D left). Remaining partial: P0-06/07/08/09; missing: P0-10…16.
+- **Phase:** P0 — Foundation and design system. P0-A closed; P0-05 met; P0-06 rework in progress (pieces A + C done, B code done; D left). Remaining partial: P0-06/07/08/09; missing: P0-10…16.
 - **Last updated:** 2026-11-09 12:39, Syedbadeshah76
 - **Staging:** not deployed yet
 - **Production:** not deployed
@@ -33,12 +33,12 @@ _Overwritten by `/handoff`. The next developer reads this first._
 - Open, small: CR-M3 `enqueue` timeout (`commandTimeout` + unreachable-Redis test); CR-L2 schedule pruning during rolling deploys; CR-L4 `dbFor().transaction` bypasses the ALS guard; CR-L6 migration checker gaps; CR-L7 RuleTester for `no-server-in-client`; SEC-L2 gitleaks image digest; SEC-L4 + QA-9 test API: token/loopback gate and 404 (not 405) for every method.
 
 ## Next (top 3)
-1. P0-06 piece B: reject unverified Google emails (DB hook on user/account create from `/callback/google`; test with a stubbed profile) + document the account-linking rule (one user per verified email; Google and magic link resolve to the same user) in DECISIONS.
+1. P0-06 piece B: code done (`3a6a0cc`: unverified Google emails refused, linking rule in DECISIONS). Left: once H-03 step 5 (redirect URI) is done, re-run the live check (POST /api/auth/sign-in/social → Google page must not show `redirect_uri_mismatch`) and a real Google sign-in with a test-user account on Chromium; screenshot it.
 2. P0-06 piece D: `__Host-` cookie names on https (`advanced.cookies`); revoke sessions on role change (`repos/sessions.ts deleteUserSessions` from the staff/admin role writers); session list + "sign out everywhere" (Better Auth `listSessions`/`revokeOtherSessions`, page under /staff/security and a customer equivalent); customer 30-day timeout test with an injected clock; user deleted mid-session test; optional `CHECK (email = lower(email))` migration. Then screenshots of the sign-in screens (320/390 Chromium+WebKit, 1440), walk the P0-06 acceptance list, and tick it.
 3. P0-07 (security #8, defineAction + requestLogger + audit + 429 mapping), then `/subphase-complete P0-B`.
 
 ## Blockers
-- Human: 🔴 none blocking code work. 🟠 by 13 Nov: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth, H-04 Resend, H-20 Turnstile keys, H-17 permissions decision.
+- Human: 🔴 none blocking code work. 🟠 by 13 Nov: H-07 domain, H-06 VPS, H-05 Neon, H-03 Google OAuth (keys in; redirect URI missing), H-04 Resend, H-20 Turnstile keys, H-17 permissions decision.
 - Technical: post-push verification (CI, staging, Sentry) can't run until P0-14/15. WebKit E2E intermittent: both parts root-caused and fixed (gallery b4e1b1c; staff TOTP flow split in d7f2c34, 24/24 under repeat load).
 - Technical: audit HIGH findings in `progress/AUDIT.md` (top risks). 14 surviving Stryker mutants (codes 7, return-to 3, policies 4) to review at phase end (TESTING §2).
 
