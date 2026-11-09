@@ -3,7 +3,7 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: free — last held by Syedbadeshah76, 2026-11-09 22:45
+Baton: held by talha.syed since 2026-11-09 23:05
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
