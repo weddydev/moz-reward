@@ -31,6 +31,7 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 | H-23 | 🟠 | Solicitor: review compliance drafts (ROPA, DPIA, processor register, retention schedule) after P0-21 | Before any real customer data (launch, Fri 22 Jan 2027); DPIA ideally by Mon 30 Nov 2026 | UK GDPR / PECR / DUAA obligations | Client side |
 | H-09 | 🟢 | Gemini **paid** (pay-as-you-go) API key with a project spend cap | Fri 11 Dec 2026 (P3 start) | AI review help; UK apps may use only Gemini's paid services | 15 min |
 | H-24 | 🟢 | Client: pen test (optional, client-funded); support after launch | Sat 2 Jan 2027 (P5 start) | Launch readiness; see steps | 20 min with the client |
+| H-29 | 🟢 | Phase-end backup check: run `pnpm backup:verify` on your laptop (needs the backup private key from the password manager) | Every phase end, from P0 | Proves the encrypted backups can really be restored (the server never holds the private key) | 10 min / phase |
 | H-13 | 🟢 | Test each demo on a real Android phone and a real iPhone | Every phase end | Real-device check | 15 min / phase |
 | H-14 | 🟢 | Send the client the demo notes and collect feedback | Every phase end | Client sign-off | — |
 | H-15 | 🟢 | Client's solicitor reviews the legal page drafts | P5 (by Tue 12 Jan 2027) | Launch | Client side |
