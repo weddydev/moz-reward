@@ -10,12 +10,15 @@ import { closeQueues } from "@/server/jobs/queues";
 import { registerSchedules } from "@/server/jobs/scheduler";
 import { createShutdown } from "@/server/jobs/shutdown";
 import { type RunningWorkers, startWorkers } from "@/server/jobs/worker";
+import { log as appLog } from "@/server/log";
 
 /** Longest we wait for in-flight jobs on shutdown (container stop grace period is 60 s). */
 const SHUTDOWN_TIMEOUT_MS = 45_000;
 
 const log = (event: string, fields: Record<string, unknown> = {}): void => {
-  console.warn(JSON.stringify({ at: new Date().toISOString(), src: "worker", event, ...fields }));
+  appLog()
+    .child({ src: "worker" })
+    .warn({ event, ...fields }, event);
 };
 
 async function main(): Promise<void> {

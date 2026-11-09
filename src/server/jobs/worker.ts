@@ -1,6 +1,7 @@
 import "server-only";
 import { type Job, UnrecoverableError, Worker } from "bullmq";
 import { systemScope } from "@/server/authz/scope";
+import { log as appLog } from "@/server/log";
 import { recordFailedJob } from "@/server/repos/jobs";
 import { bullPrefix, createRedis } from "./connection";
 import { HANDLERS } from "./handlers";
@@ -28,7 +29,9 @@ export const isFinalAttempt = (job: Pick<Job, "attemptsMade" | "opts">, err: unk
   err instanceof UnrecoverableError || job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
 
 const log = (event: string, fields: Record<string, unknown>): void => {
-  console.warn(JSON.stringify({ at: new Date().toISOString(), src: "worker", event, ...fields }));
+  appLog()
+    .child({ src: "worker" })
+    .warn({ event, ...fields }, event);
 };
 
 const errorText = (err: unknown): string =>
