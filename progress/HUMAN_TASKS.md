@@ -128,6 +128,12 @@ Suggested extra deny entries you may add yourself: `Read(./.env.*)`, `Bash(docke
 2. **Support after launch:** best-effort business hours by the two developers, uptime alerts to both phones, no 24/7 rota. Ongoing support is outside the build scope and needs a separate agreement.
 3. Admin SSO is dropped (super admins use passkeys).
 
+### H-31 — Renovate GitHub App
+1. Open https://github.com/apps/renovate → **Install** (or **Configure** if it is already on the account).
+2. Choose **Only select repositories** → `weddydev/moz-reward` → **Install**.
+3. If Renovate opens an onboarding PR, close it without merging (`renovate.json` is in the repo once P0-14 is on main).
+4. Tell Claude "H-31 done". In `free` mode nothing auto-merges: a developer merges a Renovate PR after its CI is green.
+
 ### H-16 — Reference images (done; kept for reference)
 Images live in `design/reference/desktop-view/` and `mobile-view/`.
 
@@ -147,3 +153,4 @@ Images live in `design/reference/desktop-view/` and `mobile-view/`.
 | H-19 | Windows laptop: local PostgreSQL services stopped, port 5432 free for Docker | Syedbadeshah76 | 8 Nov 2026 |
 | H-16 | Reference images: 17 desktop + 11 mobile screenshots in `design/reference/` | Syedbadeshah76 | 8 Nov 2026 |
 | H-21 | **Answered (plan v5):** single VPS, free tiers; client written acknowledgement still open (see Open) | client | 9 Nov 2026 |
+| H-31 | 🟠 | Install the **Renovate** GitHub App on the `moz-reward` repo only (free) | Sun 15 Nov 2026 (P0-E close) | `renovate.json` (P0-14) does nothing until the app is installed; weekly dependency PRs | 5 min |

@@ -13,6 +13,29 @@ Consequence / revisit when: …
 
 ---
 
+_The P0-14 entries down to "Postgres healthcheck" describe code on `wip/P0-14` until it is squashed onto main._
+
+## 2026-11-09 — CI supply-chain gates: OSV policy, Semgrep, Trivy, release age (P0-14)
+Decision: (1) `pnpm osv:gate` applies SECURITY §10 to osv-scanner JSON: fail on HIGH/CRITICAL (CVSS ≥ 7, else the advisory label; unknown or ungrouped = judged fail-closed) **with a fixed version**; everything else is listed in the log. At switch-on: 7 findings, none blocking (qs ×4, minimatch, esbuild 0.18 — dev-only via Stryker/ESLint/drizzle-kit; deepmerge LOW, no fix, via react-email). CI also runs `pnpm audit --prod --audit-level high`. (2) Semgrep runs `p/default` + `p/owasp-top-ten` + `p/secrets`; findings were fixed in code (no shell for k6/gitleaks; RegExp-from-data replaced) except three justified `nosemgrep`: pnpm.cmd on Windows needs a shell (arguments enforced by `assertShellSafe`), Cloudflare's published Turnstile test secret, and pnpm `minimumReleaseAge` 3 days (rule suggests 7). (3) Image job (main + dispatch only, to save minutes) builds without pushing and scans with Trivy v0.76.1 fetched by checksum — not `aquasecurity/trivy-action`, whose tags were hijacked in 2026. (4) pnpm `minimumReleaseAge: 4320` (3 days, ENGINEERING §14); pnpm 12 also verifies the existing lockfile, so 15 exact versions already locked (AWS SDK 3.1164 family, commander 15.1.0) sit in `minimumReleaseAgeExclude` until 10 Nov 01:30 UTC. 7 days would have needed dozens of exceptions (Better Auth 1.7.18 family etc.). Renovate proposes nothing younger than 7 days (harmless for proposals; satisfies Semgrep's rule).
+Why: block what the policy says to block; keep exceptions exact, visible and dated.
+Consequence / revisit when: delete the exclude list after 10 Nov 01:30 UTC. A security fix younger than 3 days needs a one-line exact exclude. gitleaks/OSV/Trivy downloads are bumped by hand with their checksums (Renovate doesn't manage them).
+
+## 2026-11-09 — Pre-push guard is a lefthook *script*; workflow tokens least-privilege (P0-14)
+Decision: the pre-push guard runs as a lefthook `scripts:` entry (`.lefthook/pre-push/guard-and-gate.sh`), not a `commands:` entry. Scheduled CI: only a no-checkout `pause` job holds `actions: write`; every checkout sets `persist-credentials: false`; repo variables reach shell via `env`.
+Why: lefthook 2.2.2 skips a pre-push *command* when `git diff HEAD @{push}` is empty — every new branch and `git push origin :main` — even with a custom `files:`; in GITHUB_MODE=free the hook is the only guard, so deleting main went through (found on a dry run). security-reviewer MEDIUM: `pnpm install` scripts could otherwise use an `actions: write` token from `.git/config`.
+Consequence / revisit when: a test asserts the lefthook shape. Re-check if lefthook is upgraded.
+
+## 2026-11-09 — Better Auth instance created on first use; `next build` type-checks app code only (P0-14)
+Decision: `auth.ts` exports `getAuth()` (memoised `createAuth()`) instead of a module-level `auth`; the auth route resolves it per request. `next build` uses `tsconfig.build.json` (src/ without tests, via `typescript.tsconfigPath`); `pnpm typecheck` still checks everything.
+Why: `next build` imports route modules to collect config; a module-level Better Auth instance read runtime secrets, so the production image could not be built without secrets (it must never be). The image context also leaves out tests/. Env is still validated at boot by instrumentation.ts; config values are unchanged (security-reviewer: no finding).
+Consequence / revisit when: new modules must not read `env()` at import time. Known gap (CARRIED C-09 → P0-19): the image logs the invalid-env error at boot but the Next process keeps running.
+
+## 2026-11-10 — Postgres healthcheck over TCP (P0-14)
+Decision: dev/CI compose checks `pg_isready -h 127.0.0.1` instead of the Unix socket.
+Why: the image's first-start init runs a temporary socket-only server and then restarts it; the socket check passed during init and CI's first migration got ECONNRESET (reproduced: socket ready 1.8 s before TCP, shutdown in between).
+Consequence / revisit when: P0-15's production/staging compose uses the same TCP check.
+
+
 ## 2026-11-09 — P0-14 gate and E2E design choices
 Decision: (1) `gate:task` builds once: its build step is the E2E production build (`.next-e2e`, APP_ENV=test) and `check:bundle` runs on it; the build is reused while app sources are unchanged (fingerprint). (2) Better Auth's limiter-off is proven by `/api/test/runtime` reading the resolved value, because locally (TRUSTED_PROXY=none) its limiter is a no-op anyway, so a request burst proves nothing. (3) Test API second wall = header token HMAC(AUTH_SECRET) (no new env var). (4) Migration locking rules apply from 0007 (0001–0006 are applied and hash-tracked); non-CONCURRENTLY index rule waits for P0-18's helper (C-18). (5) The production image keeps the full install for now (worker runs via tsx, a dev dependency); slimming is P0-15. (6) `tsconfig.json` is prettier-ignored (Next rewrites it). (7) The pre-push hook skips the gate for docs/progress-only pushes, same globs as CI's paths-ignore (test-enforced).
 Why: one build per gate run (time), meaningful tests over vacuous ones, no extra secrets to manage, Drizzle can't edit applied migrations.
