@@ -11,8 +11,10 @@ export function socialSignUpAllowed(input: {
   path: string | undefined;
   emailVerified: boolean;
 }): boolean {
-  const fromSocialCallback = input.path?.startsWith("/callback/") ?? false;
-  return !fromSocialCallback || input.emailVerified;
+  // Deny by default: only an email link (which proves the address) or internal creation without a request
+  // may create an unverified user. Every provider path, present or future, needs a verified email.
+  if (input.path === undefined || input.path === "/magic-link/verify") return true;
+  return input.emailVerified;
 }
 
 /**
@@ -22,6 +24,8 @@ export function socialSignUpAllowed(input: {
 export function googleProviderOptions(input: { clientId: string; clientSecret: string }): {
   clientId: string;
   clientSecret: string;
+  disableIdTokenSignIn: true;
 } {
-  return { clientId: input.clientId, clientSecret: input.clientSecret };
+  // No client-submitted ID tokens: that path skips state + PKCE (review P0-B HIGH). Redirect flow only.
+  return { clientId: input.clientId, clientSecret: input.clientSecret, disableIdTokenSignIn: true };
 }

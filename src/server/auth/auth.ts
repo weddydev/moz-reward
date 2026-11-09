@@ -14,6 +14,7 @@ import { env } from "@/server/env";
 import { checkBreachedPassword } from "@/server/integrations/breach";
 import { clientIp } from "@/server/security/request";
 import { authCookieOptions } from "./cookies";
+import { betterAuthIpOptions } from "./ip";
 import { checkMagicLinkRequest, deliverMagicLink } from "./magic-link";
 import {
   PASSKEY_REGISTRATION_PATHS,
@@ -68,7 +69,13 @@ export const auth = betterAuth({
   advanced: {
     database: { generateId: () => newId() },
     ...authCookieOptions(e.APP_URL),
+    ipAddress: betterAuthIpOptions(e.TRUSTED_PROXY),
   },
+  // Better Auth's built-in limiter is off: it is in-memory per process, production-only, and keyed by its own
+  // IP reading. SECURITY §6 limits are ours, in Redis: sign-in links (magic-link.ts), staff password and second
+  // factor (staff-login.ts), actions (actionTemplate). Without this, staging allowed 5 link requests/min per
+  // IP across all users (P0-B QA). Every other Better Auth endpoint needs a session (and the staff gate).
+  rateLimit: { enabled: false },
   session: {
     expiresIn: SESSION_MAX_AGE.customer,
     updateAge: 60 * 60 * 24,

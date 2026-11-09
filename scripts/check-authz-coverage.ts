@@ -20,7 +20,44 @@ export const EXEMPT_ROUTES: Readonly<Record<string, string>> = {
     "test-only API: 404 for every method unless APP_ENV=test (tests/integration/test-api.test.ts)",
 };
 
-export type Entry = { name: string; file: string };
+/** An endpoint; `problem` is set when it can never be valid (e.g. a server action outside the template). */
+export type Entry = { name: string; file: string; problem?: string };
+
+const NOT_TEMPLATE =
+  'exported from a "use server" file but not `export const x = defineAction(…)`: every export there is a callable server action';
+
+const hasUseServer = (statements: ts.NodeArray<ts.Statement>): boolean =>
+  statements.some(
+    (st) =>
+      ts.isExpressionStatement(st) &&
+      ts.isStringLiteral(st.expression) &&
+      st.expression.text === "use server",
+  );
+
+/** Functions with their own "use server" directive (inline server actions), anywhere in the file. */
+function inlineServerActions(sf: ts.SourceFile, file: string): Entry[] {
+  const out: Entry[] = [];
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isFunctionLike(node) &&
+      "body" in node &&
+      node.body &&
+      ts.isBlock(node.body) &&
+      hasUseServer(node.body.statements)
+    ) {
+      const name = node.name && ts.isIdentifier(node.name) ? node.name.text : "anonymous function";
+      out.push({
+        name: `inline "use server" in ${name}`,
+        file,
+        problem:
+          'inline server actions bypass the action template; move it to a "use server" file as defineAction',
+      });
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
+  return out;
+}
 
 const isExported = (node: ts.Node): boolean =>
   ts.canHaveModifiers(node) &&
@@ -46,8 +83,22 @@ export function routePath(file: string): string {
 export function exportedEndpoints(file: string, source: string): Entry[] {
   const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
   const isRoute = /(^|\/)route\.tsx?$/.test(file.replace(/\\/g, "/"));
+  const serverFile = hasUseServer(sf.statements);
   const out: Entry[] = [];
   for (const stmt of sf.statements) {
+    if (serverFile && ts.isExportDeclaration(stmt)) {
+      // `export { a }` / `export * from` in a server file can't be checked as defineAction.
+      const spec =
+        stmt.moduleSpecifier && ts.isStringLiteral(stmt.moduleSpecifier)
+          ? stmt.moduleSpecifier.text
+          : "?";
+      const names =
+        stmt.exportClause && ts.isNamedExports(stmt.exportClause)
+          ? stmt.exportClause.elements.map((el) => el.name.text)
+          : [`* from ${spec}`];
+      for (const name of names) out.push({ name, file, problem: NOT_TEMPLATE });
+      continue;
+    }
     if (!isExported(stmt)) continue;
     const names: Array<{ name: string; init?: ts.Expression }> = [];
     if (ts.isVariableStatement(stmt)) {
@@ -61,9 +112,10 @@ export function exportedEndpoints(file: string, source: string): Entry[] {
     for (const { name, init } of names) {
       if (isRoute && HTTP_METHODS.has(name)) out.push({ name: `${name} ${routePath(file)}`, file });
       else if (calls(init, "defineAction")) out.push({ name, file });
+      else if (serverFile) out.push({ name, file, problem: NOT_TEMPLATE });
     }
   }
-  return out;
+  return [...out, ...inlineServerActions(sf, file)];
 }
 
 /** Names given to `authzMatrix("…", …)` calls in matrix files. */
@@ -107,15 +159,17 @@ export function uncovered(root: string): Entry[] {
     for (const n of matrixNames(readFileSync(path.join(root, "tests", "authz", f), "utf8")))
       matrix.add(n);
   }
-  return endpoints.filter((e) => !matrix.has(e.name));
+  return endpoints.filter((e) => e.problem !== undefined || !matrix.has(e.name));
 }
 
 function main(): void {
   const missing = uncovered(process.cwd());
   if (missing.length > 0) {
     console.error(
-      `[authz] ${String(missing.length)} endpoint(s) without an authzMatrix entry in tests/authz/*.authz.test.ts:\n` +
-        missing.map((m) => `  - ${m.name}  (${m.file})`).join("\n"),
+      `[authz] ${String(missing.length)} endpoint(s) outside the action template or without an authzMatrix entry in tests/authz/*.authz.test.ts:\n` +
+        missing
+          .map((m) => `  - ${m.name}  (${m.file})${m.problem ? `: ${m.problem}` : ""}`)
+          .join("\n"),
     );
     process.exit(1);
   }

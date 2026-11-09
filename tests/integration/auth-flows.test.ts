@@ -157,3 +157,16 @@ describe("[P0-06] second-factor edge cases", () => {
     expect(await challenge(email, useCode)).not.toBe(200);
   });
 });
+
+describe("[P0-07] client IP comes from TRUSTED_PROXY, not client headers (security review #6)", () => {
+  it("with no trusted proxy, a spoofed X-Forwarded-For is not recorded on the session", async () => {
+    const user = await createPasswordUser();
+    const res = await auth.api.signInEmail({
+      body: { email: user.email, password: TEST_PASSWORD },
+      headers: new Headers({ "x-forwarded-for": "6.6.6.6" }),
+      asResponse: true,
+    });
+    const { token } = (await res.json()) as { token: string };
+    expect((await sessionRow(token))?.ipAddress || null).toBeNull(); // stored as "" when unknown
+  });
+});
