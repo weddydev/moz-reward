@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { ApplyPreferences } from "@/components/system/ApplyPreferences";
 import { fraunces, manrope } from "@/styles/fonts";
 import { colourTokens } from "@/styles/tokens";
@@ -16,7 +17,11 @@ export const viewport: Viewport = {
   themeColor: colourTokens.bg,
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">): React.JSX.Element {
+export default async function RootLayout({
+  children,
+}: LayoutProps<"/">): Promise<React.JSX.Element> {
+  // Render per request so Next can put this request's CSP nonce (set by src/proxy.ts) on every script.
+  await connection();
   return (
     <html lang="en-GB" className={`${fraunces.variable} ${manrope.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">

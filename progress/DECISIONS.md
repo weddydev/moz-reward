@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-09 — Nonce CSP means per-request rendering: Cache Components / PPR turned off (P0-05)
+Decision: `cacheComponents` and `partialPrefetching` are removed from `next.config.ts`; the root layout calls `connection()`, so every page renders per request. `src/proxy.ts` sets a fresh script nonce per request (`script-src 'self' 'nonce-…' 'strict-dynamic'`). Styles use `'unsafe-inline'` (React renders `style` attributes that a nonce can't cover; SECURITY §5 only requires script nonces). `X-Powered-By` is off.
+Why: SECURITY §5 (higher precedence than ARCHITECTURE) requires per-request nonces. Verified in a production build: with PPR on, Next's own chunks were blocked and **no page hydrated** in Chromium or WebKit. After the change, every page hydrates with zero console issues, and an injected nonce-less inline script is blocked (`tests/e2e/csp-injection.spec.ts`). Nothing used `"use cache"`; PPR was only on because the scaffold generated it.
+Consequence: no static/PPR shells. ARCHITECTURE's 60 s CDN caching of anonymous shop landing pages (P1-02) must cache the whole response (HTML + CSP header together) or skip HTML caching. Revisit if Next adds nonce support for prerendered shells. Client IP for rate limits comes from `TRUSTED_PROXY` (none|caddy|cloudflare; not `none` outside local/test). The P0-15 Caddyfile must accept Cloudflare IPs only when `cloudflare` is used. The limiter fails open by default (logged) and closed per call.
+
 ## 2026-11-09 — Sub-phases P0-A…P0-D close with post-push checks marked pending
 Decision: P0-A is ticked once local gates are green (regression, exploratory QA, reviews with no BLOCK/HIGH open, push). Step 6 of `/subphase-complete` (CI, staging deploy, staging smoke, Sentry) is recorded as **pending**, not passed, because CI is built in P0-14 and staging in P0-15 (needs H-05/06/07).
 Why: otherwise no sub-phase before P0-E could close. The checks are deferred and explicitly recorded, not skipped (TESTING §4).
