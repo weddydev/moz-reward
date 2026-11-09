@@ -53,3 +53,52 @@ describe("[P0-03] expand-only check: statement position", () => {
     expect(checkMigration("0004_x.sql", sql)).toEqual([]);
   });
 });
+
+describe("[P0-14] locking rules (from migration 0007)", () => {
+  const LOCK = "SET lock_timeout = '5s';\n";
+
+  it.each([
+    ['ALTER TABLE "users" ADD COLUMN "nickname" text;', /without "SET lock_timeout/],
+    ['ALTER TABLE "public"."users" ADD COLUMN "x" text;', /without "SET lock_timeout/],
+    ['CREATE INDEX "users_x_idx" ON "users" ("x");', /without "SET lock_timeout/],
+    [
+      'ALTER TABLE "sessions" ADD CONSTRAINT "s_u_fk" FOREIGN KEY ("user_id") REFERENCES "users"("id");',
+      /without NOT VALID/,
+    ],
+    ['ALTER TABLE "users" ADD CONSTRAINT "c" CHECK ("x" > 0);', /without NOT VALID/],
+  ])("flags %s", (sql, problem) => {
+    expect(checkMigration("0007_x.sql", sql).join("\n")).toMatch(problem);
+  });
+
+  it("flags DROP INDEX as destructive and as locking", () => {
+    const problems = checkMigration("0007_x.sql", 'DROP INDEX "users_x_idx";').join("\n");
+    expect(problems).toMatch(/DROP INDEX without a "-- contract/);
+    expect(problems).toMatch(/without "SET lock_timeout/);
+  });
+
+  it("passes the same statements done safely", () => {
+    for (const sql of [
+      `${LOCK}ALTER TABLE "users" ADD COLUMN "nickname" text;`,
+      `${LOCK}ALTER TABLE "sessions" ADD CONSTRAINT "s_u_fk" FOREIGN KEY ("user_id") REFERENCES "users"("id") NOT VALID;`,
+      `${LOCK}ALTER TABLE "sessions" VALIDATE CONSTRAINT "s_u_fk";`,
+      'CREATE INDEX CONCURRENTLY "users_x_idx" ON "users" ("x");',
+    ]) {
+      expect(checkMigration("0007_x.sql", sql), sql).toEqual([]);
+    }
+  });
+
+  it("does not need a lock timeout for tables created in the same migration", () => {
+    const sql = [
+      'CREATE TABLE "offers" ("id" uuid PRIMARY KEY, "shop_id" uuid);',
+      "--> statement-breakpoint",
+      'ALTER TABLE "offers" ADD CONSTRAINT "o_s_fk" FOREIGN KEY ("shop_id") REFERENCES "shops"("id");',
+      "--> statement-breakpoint",
+      'CREATE INDEX "offers_shop_idx" ON "offers" ("shop_id");',
+    ].join("\n");
+    expect(checkMigration("0007_x.sql", sql)).toEqual([]);
+  });
+
+  it("leaves migrations applied before the rules (0001–0006) to the destructive check only", () => {
+    expect(checkMigration("0006_x.sql", 'ALTER TABLE "users" ADD COLUMN "x" text;')).toEqual([]);
+  });
+});

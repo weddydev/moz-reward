@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { TURNSTILE_BYPASS_TOKEN } from "@/lib/turnstile";
-import { auth } from "@/server/auth/auth";
+import { getAuth } from "@/server/auth/auth";
 import { checkMagicLinkRequest } from "@/server/auth/magic-link";
 import { db } from "@/server/db/client";
 import { verifications } from "@/server/db/schema";
@@ -20,7 +20,7 @@ const requestLink = (
   email: string,
   headers: Record<string, string> = { "x-turnstile-token": TURNSTILE_BYPASS_TOKEN },
 ): Promise<Response> =>
-  auth.handler(
+  getAuth().handler(
     new Request(`${ORIGIN}/api/auth/sign-in/magic-link`, {
       method: "POST",
       headers: { origin: ORIGIN, "content-type": "application/json", ...headers },
@@ -134,9 +134,9 @@ describe("[P0-06] magic-link over HTTP", () => {
     const link = firstLink((await latestEmailTo(email)).text) ?? "";
 
     // Used once: second use goes to the error page.
-    const first = await auth.handler(new Request(link, { headers: { origin: ORIGIN } }));
+    const first = await getAuth().handler(new Request(link, { headers: { origin: ORIGIN } }));
     expect(first.status).toBe(302);
-    const reuse = await auth.handler(new Request(link, { headers: { origin: ORIGIN } }));
+    const reuse = await getAuth().handler(new Request(link, { headers: { origin: ORIGIN } }));
     expect(reuse.headers.get("location")).toMatch(/\/sign-in\/link-expired\?error=/);
 
     // Expired: push the stored expiry into the past.
@@ -147,7 +147,7 @@ describe("[P0-06] magic-link over HTTP", () => {
       .update(verifications)
       .set({ expiresAt: new Date(Date.now() - 1000) })
       .where(eq(verifications.expiresAt, verifications.expiresAt));
-    const expired = await auth.handler(new Request(link2, { headers: { origin: ORIGIN } }));
+    const expired = await getAuth().handler(new Request(link2, { headers: { origin: ORIGIN } }));
     expect(expired.headers.get("location")).toMatch(/\/sign-in\/link-expired\?error=/);
     expect(expired.headers.getSetCookie().some((c) => c.includes("session_token="))).toBe(false);
   });

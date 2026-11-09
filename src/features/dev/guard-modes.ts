@@ -6,5 +6,6 @@ export const GUARD_MODES = [
   "rejection",
   "fetch-500",
   "hydration",
+  "axe",
 ] as const;
 export type GuardMode = (typeof GUARD_MODES)[number];

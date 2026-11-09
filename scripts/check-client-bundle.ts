@@ -34,13 +34,23 @@ export interface Hit {
   name: string;
 }
 
+const isWordChar = (c: string | undefined): boolean => c !== undefined && /\w/.test(c);
+
+/** `word` occurs in `text` as a whole word (the `\b…\b` rule) — without building a RegExp from data. */
+export function containsWord(text: string, word: string): boolean {
+  if (word === "") return false;
+  for (let i = text.indexOf(word); i !== -1; i = text.indexOf(word, i + 1))
+    if (!isWordChar(text[i - 1]) && !isWordChar(text[i + word.length])) return true;
+  return false;
+}
+
 export function findHits(files: { file: string; content: string }[], names: string[]): Hit[] {
   const hits: Hit[] = [];
   for (const { file, content } of files) {
     for (const name of names) {
       let scrubbed = content;
       for (const a of ALLOWED) if (a.name === name) scrubbed = scrubbed.replace(a.pattern, "");
-      if (new RegExp(`\\b${name}\\b`).test(scrubbed)) hits.push({ file, name });
+      if (containsWord(scrubbed, name)) hits.push({ file, name });
     }
   }
   return hits;

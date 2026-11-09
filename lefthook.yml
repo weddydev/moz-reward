@@ -17,3 +17,13 @@ pre-commit:
       run: pnpm exec eslint --max-warnings=0 {staged_files}
     secrets:
       run: pnpm exec tsx scripts/gitleaks-staged.ts
+
+# Pre-push (P0-14): refuses force-pushes and deleting main; runs `pnpm gate:task` unless the push is
+# docs/progress-only (scripts/pre-push.ts). In GITHUB_MODE=free this hook is the only push guard.
+pre-push:
+  # A script, not a command: lefthook skips pre-push *commands* when `git diff HEAD @{push}` is empty (every new
+  # branch, `git push origin :main`), even with a custom `files`. Scripts always run; the script reads git's stdin.
+  scripts:
+    "guard-and-gate.sh":
+      runner: sh
+      use_stdin: true

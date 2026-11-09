@@ -30,6 +30,7 @@ export function GuardCheck({ mode }: { mode: GuardMode }): React.JSX.Element {
         return;
       case "ok":
       case "hydration": // the mismatch is rendered below, nothing to do here
+      case "axe": // the violation is rendered below
         break;
     }
     // Deferred so "ready" only shows after the misbehaviour above has run (tests wait for it).
@@ -45,6 +46,8 @@ export function GuardCheck({ mode }: { mode: GuardMode }): React.JSX.Element {
       <p data-testid="guard-status">{status}</p>
       {/* Hydration mode renders different text on server and client on purpose. */}
       {mode === "hydration" ? <p>{typeof window === "undefined" ? "server" : "client"}</p> : null}
+      {/* Axe mode: a button with no accessible name (axe `button-name`, critical) — deliberately broken. */}
+      {mode === "axe" ? <button type="button" /> : null}
     </main>
   );
 }

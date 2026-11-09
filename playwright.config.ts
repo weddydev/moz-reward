@@ -4,6 +4,15 @@ import { E2E_PORT, e2eServerEnv } from "./tests/e2e/support/server-env";
 
 /** E2E_BASE_URL points the suite at a deployed environment (staging smoke); otherwise a local test server. */
 const isRemote = Boolean(process.env.E2E_BASE_URL);
+/**
+ * Local server mode (P0-14). Default `prod`: `next start` on the build `pnpm e2e` made in `.next-e2e` — the
+ * evidence run. `dev` (`pnpm e2e:dev`): `next dev`, inner loop only. A running server is reused only in dev
+ * mode, so a stray `next dev` on :3100 can never pass for a production run (the port clash fails loudly).
+ */
+const devServer = process.env.E2E_MODE === "dev";
+const serverCommand = devServer
+  ? `pnpm exec next dev --port ${E2E_PORT}`
+  : `pnpm exec next start --port ${E2E_PORT}`;
 const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${E2E_PORT}`;
 
 // Locally, the Playwright process shares the server's env so spec-level factories hit the same database.
@@ -45,9 +54,9 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          command: `pnpm exec tsx tests/e2e/support/prepare-server.ts && pnpm exec next dev --port ${E2E_PORT}`,
+          command: `pnpm exec tsx tests/e2e/support/prepare-server.ts && ${serverCommand}`,
           url: baseURL,
-          reuseExistingServer: !process.env.CI,
+          reuseExistingServer: devServer && !process.env.CI,
           timeout: 180_000,
           env: e2eServerEnv(),
           stdout: "ignore" as const,

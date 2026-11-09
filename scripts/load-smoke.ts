@@ -5,19 +5,17 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 
-const K6_IMAGE = "grafana/k6:1.0.0";
+// Pinned by digest (ENGINEERING §14); same image as .github/workflows/scheduled.yml.
+const K6_IMAGE =
+  "grafana/k6:1.0.0@sha256:f21270290d702cbf0a7d6ba5d7ed100b63bcb233b558b885ed787547b3488279";
 const script = path.resolve("tests/load/smoke.js");
 const passEnv = ["BASE_URL", "VUS", "DURATION"].filter((k) => process.env[k]);
 
-const hasK6 =
-  spawnSync("k6", ["version"], { stdio: "ignore", shell: process.platform === "win32" }).status ===
-  0;
+// No shell: k6 is a real executable on every OS. A Windows .cmd shim fails to spawn and falls back to Docker.
+const hasK6 = spawnSync("k6", ["version"], { stdio: "ignore" }).status === 0;
 let result;
 if (hasK6) {
-  result = spawnSync("k6", ["run", script], {
-    stdio: "inherit",
-    shell: process.platform === "win32",
-  });
+  result = spawnSync("k6", ["run", script], { stdio: "inherit" });
 } else {
   // Inside Docker, "localhost" is the container; reach the host app via host.docker.internal.
   const baseUrl = (process.env.BASE_URL ?? "http://localhost:3000").replace(

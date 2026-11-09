@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { auth } from "@/server/auth/auth";
+import { getAuth } from "@/server/auth/auth";
 import { db } from "@/server/db/client";
 import { sessions, users } from "@/server/db/schema";
 import { makeActor } from "@/server/testing/factories";
@@ -14,14 +14,14 @@ const DAY_MS = 86_400_000;
 /** Signs a user in through Better Auth's test helper (same session record a real sign-in creates). */
 async function signedInCustomer(): Promise<{ userId: string; headers: Headers; token: string }> {
   const { user } = await makeActor("customer");
-  const helpers = ((await auth.$context) as unknown as { test?: TestHelpers }).test;
+  const helpers = ((await getAuth().$context) as unknown as { test?: TestHelpers }).test;
   if (!helpers) throw new Error("test utilities unavailable");
   const { headers, token } = await helpers.login({ userId: user.id });
   return { userId: user.id, headers, token };
 }
 
 const sessionFor = (headers: Headers) =>
-  auth.api.getSession({ headers, query: { disableCookieCache: true } });
+  getAuth().api.getSession({ headers, query: { disableCookieCache: true } });
 
 afterEach(() => {
   vi.useRealTimers();

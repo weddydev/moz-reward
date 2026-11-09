@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Badge, Button } from "@/components/ui";
 import { cx } from "@/lib/cx";
+import { useHydrated } from "@/lib/use-hydrated";
 import { withNetworkGuard } from "./network";
 import { signOutAllDevices, signOutOtherDevice } from "./session-actions";
 
@@ -30,6 +31,8 @@ export function DeviceList({
   signInPath: string;
 }): React.JSX.Element {
   const router = useRouter();
+  /** Buttons are disabled until React owns the page: a press before hydration would be lost (P0-14 CI). */
+  const hydrated = useHydrated();
   const busy = useRef(false);
   const [pending, setPending] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -117,7 +120,7 @@ export function DeviceList({
                 variant="secondary"
                 size={40}
                 loading={pending === device.id}
-                disabled={pending !== null && pending !== device.id}
+                disabled={!hydrated || (pending !== null && pending !== device.id)}
                 onClick={() => void signOutOne(device)}
                 aria-label={`Sign out of ${device.device}`}
               >
@@ -159,7 +162,7 @@ export function DeviceList({
           id="sign-out-everywhere"
           variant="secondary"
           block
-          disabled={pending !== null}
+          disabled={!hydrated || pending !== null}
           onClick={openConfirm}
         >
           Sign out everywhere

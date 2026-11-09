@@ -1,0 +1,8 @@
+# Reviewed gitleaks findings that are not secrets (P0-14, C-10). One fingerprint per line:
+# <commit>:<file>:<rule>:<line>. Add a line only after checking the value is not a real credential.
+#
+# Sample "common password" in the breach-check code (it is the point of the check):
+780ffbe6da412212e0513bd4ce6e38e19f029100:src/server/integrations/breach/index.ts:generic-api-key:46
+# The shared test-only password for seeded test users (never valid outside APP_ENV=test):
+f5b6b3d171fba0f6225b8f9315506772e9c6b471:src/server/testing/factories.ts:generic-api-key:27
+37e406853dd4f3e6449d61138a4122bc56b8ea6c:tests/fixtures/auth.ts:generic-api-key:6

@@ -146,3 +146,7 @@ Done on `wip/P0-14` (`bab7c80`): CI fixes (Semgrep, OSV gate, audit, coverage), 
 Evidence: gate:task PASS (unit 373, int 269, E2E P0-14 23/0); coverage 637 PASS; CI green on GitHub through OSV/Semgrep/check at `623e343`; AC6 real refusal of a failing gate + dry-run refusals; AC5 docs-only branch → no CI run.
 Blocked: GitHub Actions major outage (9 Nov 18:30–18:43 UTC) — no CI evidence for the final head yet.
 Next: rerun CI on `wip/P0-14` → push the 5 `ci-red/*` branches (AC2, hooks skipped with human approval) → squash to main → tick P0-14, close P0-B.
+
+## 2026-11-10 (01:00) — P0 — P0-14 squashed onto main (talha.syed, Mac)
+Done: CI flake root-caused (button pressed before hydration; reproduced by holding JS chunks) and fixed with `useHydrated`; CI green on `wip/P0-14` run 42677704427 (E2E 68/0/0 flaky); AC2 red runs each failing for their reason (42678683969 unit, 42678688078 console.error, 42678695896 axe, 42678701681 Prettier, 42678708263 lock_timeout); throwaway branches deleted; squashed to main.
+Next: main CI (first image job + Trivy) green → tick P0-14 + P0-B (docs-only push = AC5 on main) → P0-19.

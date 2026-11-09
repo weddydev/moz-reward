@@ -28,3 +28,10 @@ describe("[P0-02] services pre-flight", () => {
     expect(new Set(SERVICE_PORTS.map((p) => p.port))).toEqual(new Set(published));
   });
 });
+
+describe("[P0-14] services health checks", () => {
+  it("Postgres is healthy only when the real server accepts TCP (not the init-time socket-only server)", () => {
+    const compose = readFileSync(COMPOSE_FILE, "utf8");
+    expect(compose).toMatch(/pg_isready -h 127\.0\.0\.1 /);
+  });
+});

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { auth } from "@/server/auth/auth";
+import { getAuth } from "@/server/auth/auth";
 import { isPrivilegedEmail } from "@/server/auth/privileged";
 import { db } from "@/server/db/client";
 import { sessions, twoFactors, users } from "@/server/db/schema";
@@ -21,7 +21,7 @@ import { countEmailsTo, firstLink, latestEmailTo } from "../support/mailpit";
  */
 const ORIGIN = { origin: "http://localhost:3000" };
 const sendLink = (email: string) =>
-  auth.api.signInMagicLink({
+  getAuth().api.signInMagicLink({
     body: { email, callbackURL: "/wallet" },
     headers: new Headers(ORIGIN),
     asResponse: true,
@@ -29,7 +29,7 @@ const sendLink = (email: string) =>
 const sessionsOf = async (userId: string) =>
   db().select().from(sessions).where(eq(sessions.userId, userId));
 const registerOptions = (headers: Headers) =>
-  auth.handler(
+  getAuth().handler(
     new Request("http://localhost:3000/api/auth/passkey/generate-register-options", { headers }),
   );
 
@@ -85,14 +85,14 @@ describe("[P0-06] staff/admin MFA bypass is closed (audit security #1, #6)", () 
 
     const shop = await makeShop();
     await makeStaff(shop.id, user.id, "staff");
-    const res = await auth.handler(new Request(link!, { headers: ORIGIN }));
+    const res = await getAuth().handler(new Request(link!, { headers: ORIGIN }));
     expect(res.headers.getSetCookie().some((c) => c.includes("session_token="))).toBe(false);
     expect(await sessionsOf(user.id)).toEqual([]);
   });
 
   it("refuses passkey registration on a session that is not MFA-verified (password-only staff)", async () => {
     const staff = await staffUser();
-    const signedIn = await auth.api.signInEmail({
+    const signedIn = await getAuth().api.signInEmail({
       body: { email: staff.email, password: TEST_PASSWORD },
       asResponse: true,
     });
@@ -105,29 +105,32 @@ describe("[P0-06] staff/admin MFA bypass is closed (audit security #1, #6)", () 
     const email = testEmail("customer-passkey");
     await sendLink(email);
     const link = firstLink((await latestEmailTo(email)).text);
-    const signedIn = await auth.handler(new Request(link!, { headers: ORIGIN }));
+    const signedIn = await getAuth().handler(new Request(link!, { headers: ORIGIN }));
     const res = await registerOptions(cookieHeaderFrom(signedIn));
     expect(res.status).toBe(403);
   });
 
   it("refuses to turn off two-step verification for staff, leaving it fully on (security review row 3)", async () => {
     const staff = await staffUser();
-    const signedIn = await auth.api.signInEmail({
+    const signedIn = await getAuth().api.signInEmail({
       body: { email: staff.email, password: TEST_PASSWORD },
       asResponse: true,
     });
     const headers = cookieHeaderFrom(signedIn);
-    const enabled = await auth.api.enableTwoFactor({ body: { password: TEST_PASSWORD }, headers });
+    const enabled = await getAuth().api.enableTwoFactor({
+      body: { password: TEST_PASSWORD },
+      headers,
+    });
     if (enabled.method !== "totp") throw new Error("expected TOTP enrolment");
     // Enrolment verification issues a fresh (MFA) session cookie; use it.
-    const verified = await auth.api.verifyTOTP({
+    const verified = await getAuth().api.verifyTOTP({
       body: { code: totpFromUri(enabled.totpURI) },
       headers,
       asResponse: true,
     });
     const mfaHeaders = cookieHeaderFrom(verified);
 
-    const res = await auth.handler(
+    const res = await getAuth().handler(
       new Request("http://localhost:3000/api/auth/two-factor/disable", {
         method: "POST",
         headers: { ...Object.fromEntries(mfaHeaders), "content-type": "application/json" },
@@ -144,11 +147,11 @@ describe("[P0-06] staff/admin MFA bypass is closed (audit security #1, #6)", () 
 
   it("lets staff change their password; the new session must pass MFA again (security review row 3)", async () => {
     const staff = await staffUser();
-    const signedIn = await auth.api.signInEmail({
+    const signedIn = await getAuth().api.signInEmail({
       body: { email: staff.email, password: TEST_PASSWORD },
       asResponse: true,
     });
-    const res = await auth.api.changePassword({
+    const res = await getAuth().api.changePassword({
       body: {
         currentPassword: TEST_PASSWORD,
         newPassword: "a-brand-new-password-2026",
@@ -161,7 +164,7 @@ describe("[P0-06] staff/admin MFA bypass is closed (audit security #1, #6)", () 
     const rows = await sessionsOf(staff.id);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.mfaVerified).toBe(false);
-    const again = await auth.api.signInEmail({
+    const again = await getAuth().api.signInEmail({
       body: { email: staff.email, password: "a-brand-new-password-2026" },
       asResponse: true,
     });
@@ -170,7 +173,7 @@ describe("[P0-06] staff/admin MFA bypass is closed (audit security #1, #6)", () 
 
   it("allows passkey registration on an MFA-verified session and requires user verification", async () => {
     const staff = await staffUser();
-    const signedIn = await auth.api.signInEmail({
+    const signedIn = await getAuth().api.signInEmail({
       body: { email: staff.email, password: TEST_PASSWORD },
       asResponse: true,
     });
@@ -188,24 +191,27 @@ describe("[P0-06] staff/admin MFA bypass is closed (audit security #1, #6)", () 
 describe("[P0-06] first enrolment can't stand in for the second factor (audit security #5)", () => {
   it("verifying the code while enrolling leaves no MFA-verified session; only the sign-in challenge creates one", async () => {
     const user = await staffUser();
-    const first = await auth.api.signInEmail({
+    const first = await getAuth().api.signInEmail({
       body: { email: user.email, password: TEST_PASSWORD },
       asResponse: true,
     });
     const headers = cookieHeaderFrom(first);
-    const enabled = await auth.api.enableTwoFactor({ body: { password: TEST_PASSWORD }, headers });
+    const enabled = await getAuth().api.enableTwoFactor({
+      body: { password: TEST_PASSWORD },
+      headers,
+    });
     if (enabled.method !== "totp") throw new Error("expected TOTP enrolment");
     // Someone holding only the password enrols and verifies a code from *their* app…
-    await auth.api.verifyTOTP({ body: { code: totpFromUri(enabled.totpURI) }, headers });
+    await getAuth().api.verifyTOTP({ body: { code: totpFromUri(enabled.totpURI) }, headers });
     // …but no session of this account may count as MFA-verified from that.
     expect((await sessionsOf(user.id)).map((s) => s.mfaVerified)).not.toContain(true);
 
     // The real sign-in challenge (password, then code with the two-factor cookie) still works.
-    const challenge = await auth.api.signInEmail({
+    const challenge = await getAuth().api.signInEmail({
       body: { email: user.email, password: TEST_PASSWORD },
       asResponse: true,
     });
-    const verified = await auth.api.verifyTOTP({
+    const verified = await getAuth().api.verifyTOTP({
       body: { code: totpFromUri(enabled.totpURI) },
       headers: cookieHeaderFrom(challenge),
       asResponse: true,
@@ -219,15 +225,15 @@ describe("[P0-06] first enrolment can't stand in for the second factor (audit se
 describe("[P0-06] breached passwords are refused when a password is set", () => {
   it("change-password to a known-breached password fails with a clear message; the old one keeps working", async () => {
     const staff = await staffUser();
-    const signedIn = await auth.api.signInEmail({
+    const signedIn = await getAuth().api.signInEmail({
       body: { email: staff.email, password: TEST_PASSWORD },
       asResponse: true,
     });
-    // Through the HTTP handler, as the browser calls it (auth.api rethrows before-hook errors).
+    // Through the HTTP handler, as the browser calls it (getAuth().api rethrows before-hook errors).
     const headers = cookieHeaderFrom(signedIn);
     headers.set("origin", ORIGIN.origin);
     headers.set("content-type", "application/json");
-    const res = await auth.handler(
+    const res = await getAuth().handler(
       new Request(`${ORIGIN.origin}/api/auth/change-password`, {
         method: "POST",
         headers,
@@ -236,7 +242,7 @@ describe("[P0-06] breached passwords are refused when a password is set", () => 
     );
     expect(res.status).toBe(400);
     expect(((await res.json()) as { message?: string }).message).toMatch(/data breach/);
-    const again = await auth.api.signInEmail({
+    const again = await getAuth().api.signInEmail({
       body: { email: staff.email, password: TEST_PASSWORD },
       asResponse: true,
     });

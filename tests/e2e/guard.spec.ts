@@ -15,8 +15,8 @@ test.describe("[P0-17] console/network guard", () => {
     await expect(page.getByTestId("guard-status")).toHaveText("ready");
   });
 
-  for (const mode of ["console-error", "throw", "rejection", "hydration"] as const) {
-    test(`fails on ${mode}`, async ({ page }) => {
+  for (const mode of ["console-error", "throw", "rejection", "hydration", "axe"] as const) {
+    test(`${mode === "axe" ? "[P0-14] " : ""}fails on ${mode}`, async ({ page }) => {
       test.fail();
       await page.goto(`/dev/guard-check?mode=${mode}`);
       await expect(page.getByTestId("guard-mode")).toHaveText(mode);

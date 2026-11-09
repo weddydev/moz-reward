@@ -1,0 +1,193 @@
+# Scheduled CI (P0-14, TESTING §4): what push CI skips to save Actions minutes.
+#   Tue + Fri: E2E on all 5 Playwright projects (adds WebKit / iPhone) on the production build,
+#              + k6 smoke against staging once `vars.STAGING_URL` exists (P0-15).
+#   Mon:       ZAP baseline against staging once `vars.STAGING_URL` exists (P0-15).
+# Budget (ENGINEERING §16): the first job runs `pnpm ci:usage`; at ≥ 80% of the monthly allowance the suites are
+# skipped and a separate job (the only one with actions: write) disables this workflow (push CI continues). Re-enable next month: `gh workflow enable scheduled.yml`.
+# Any failure opens (or comments on) one issue labelled `scheduled-ci`; fix it the next working session.
+name: Scheduled
+
+on:
+  schedule:
+    - cron: "17 3 * * 2,5" # Tue + Fri 03:17 UTC — E2E (all projects) + k6
+    - cron: "41 4 * * 1" # Mon 04:41 UTC — ZAP baseline
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Which suite to run
+        type: choice
+        options: [e2e, k6, zap, all]
+        default: e2e
+
+concurrency:
+  group: scheduled-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  FORCE_COLOR: "0"
+  NEXT_TELEMETRY_DISABLED: "1"
+  E2E_CRON: "17 3 * * 2,5"
+  ZAP_CRON: "41 4 * * 1"
+
+jobs:
+  budget:
+    name: Actions budget (pause at 80%)
+    runs-on: ubuntu-slim # 1 vCPU: light job
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read # list this month's runs for the estimate; nothing here can change workflows
+    outputs:
+      state: ${{ steps.usage.outputs.state }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Exit 2 = "pause" (state already written); anything else non-zero is a real error.
+      - id: usage
+        run: pnpm ci:usage || [ $? -eq 2 ]
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  pause:
+    name: pause this workflow (≥ 80% of the allowance)
+    needs: budget
+    if: needs.budget.outputs.state == 'pause'
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    # The only job holding actions: write — no checkout, no install, one gh command.
+    permissions:
+      actions: write
+    steps:
+      - run: gh workflow disable scheduled.yml
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+
+  e2e:
+    name: E2E on the production build (all 5 projects)
+    needs: budget
+    if: >
+      needs.budget.outputs.state != 'pause' && (github.event.schedule == '17 3 * * 2,5' ||
+      (github.event_name == 'workflow_dispatch' && (inputs.suite == 'e2e' || inputs.suite == 'all')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: local env (generated test-only secrets, never real ones)
+        run: pnpm setup:env
+      - name: services (Postgres+PostGIS, Redis, Mailpit, MinIO; health waits)
+        run: pnpm services:up
+      - run: pnpm db:migrate
+      - name: production build (.next-e2e)
+        run: pnpm e2e --build-only
+      - name: Playwright browser cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-all-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium webkit
+      - name: E2E, all projects (flaky = failure)
+        run: pnpm e2e --fail-on-flaky-tests
+      - name: artefacts on failure (small, 7 days)
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scheduled-e2e-${{ github.run_id }}
+          path: |
+            playwright-report/
+            .artifacts/e2e/build.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  k6:
+    name: k6 smoke against staging
+    needs: budget
+    # Dormant until P0-15 sets the STAGING_URL repository variable (and the staging basic-auth secret).
+    if: >
+      vars.STAGING_URL != '' && needs.budget.outputs.state != 'pause' &&
+      (github.event.schedule == '17 3 * * 2,5' ||
+      (github.event_name == 'workflow_dispatch' && (inputs.suite == 'k6' || inputs.suite == 'all')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: k6 smoke (tests/load/smoke.js)
+        env:
+          STAGING_URL: ${{ vars.STAGING_URL }}
+        run: >
+          docker run --rm -e BASE_URL="$STAGING_URL" -v "$PWD/tests/load:/scripts:ro"
+          grafana/k6:1.0.0@sha256:f21270290d702cbf0a7d6ba5d7ed100b63bcb233b558b885ed787547b3488279
+          run /scripts/smoke.js
+
+  zap:
+    name: ZAP baseline against staging
+    needs: budget
+    # Dormant until P0-15 sets the STAGING_URL repository variable.
+    if: >
+      vars.STAGING_URL != '' && needs.budget.outputs.state != 'pause' &&
+      (github.event.schedule == '41 4 * * 1' ||
+      (github.event_name == 'workflow_dispatch' && (inputs.suite == 'zap' || inputs.suite == 'all')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # Passive scan only (baseline); a FAIL-level alert fails the job, warnings are in the report.
+      - name: ZAP baseline
+        env:
+          STAGING_URL: ${{ vars.STAGING_URL }}
+        run: |
+          mkdir -p zap && chmod 777 zap
+          docker run --rm -v "$PWD/zap:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:2.16.1@sha256:7840969c7c9fead565bf9734b12f49f6886db90b1d35b1f74d79710bbd081dab \
+            zap-baseline.py -t "$STAGING_URL" -I -r report.html
+      - name: ZAP report (7 days)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: zap-${{ github.run_id }}
+          path: zap/report.html
+          retention-days: 7
+          if-no-files-found: ignore
+
+  report:
+    name: open an issue on failure
+    needs: [budget, pause, e2e, k6, zap]
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: open or update the scheduled-ci issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create scheduled-ci --color B60205 --description "Scheduled CI failure" 2>/dev/null || true
+          body="Scheduled CI failed: $RUN_URL (TESTING §4: fix it the next working session)."
+          issue=$(gh issue list --label scheduled-ci --state open --limit 1 --json number --jq '.[0].number')
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "$body"
+          else
+            gh issue create --title "Scheduled CI failing" --label scheduled-ci --body "$body"
+          fi

@@ -4,10 +4,14 @@ import { describe, expect, it } from "vitest";
 
 /** WCAG 2.2 contrast checks for every text/background pair the design uses (DESIGN §3, §13). */
 const css = readFileSync(join(__dirname, "tokens.css"), "utf8");
+/** First declaration of each token with a 6-digit hex value (later ones are theme overrides). */
+const declared = new Map<string, string>();
+for (const [, name = "", hex = ""] of css.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6})/g))
+  if (!declared.has(name)) declared.set(name, hex);
 const token = (name: string): string => {
-  const m = css.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`));
-  if (!m) throw new Error(`token --${name} not found`);
-  return m[1]!;
+  const hex = declared.get(name);
+  if (!hex) throw new Error(`token --${name} not found`);
+  return hex;
 };
 
 const channel = (c: number) => {

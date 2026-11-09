@@ -1,0 +1,28 @@
+# Keep the build context small and secret-free (P0-14).
+.git
+.github
+.claude
+node_modules
+.next
+.next-e2e
+.artifacts
+.stryker-tmp
+coverage
+playwright-report
+test-results
+docs
+progress
+design
+tests
+infra
+*.md
+.env*
+!.env.example
+*.log
+# Local-only secrets and signing material (git-ignored, but present in working trees) never enter the build context.
+*.pem
+*.key
+*.keystore
+*.jks
+twa/
+.npmrc

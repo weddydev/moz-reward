@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { URI } from "otpauth";
 import { describe, expect, it } from "vitest";
-import { auth } from "@/server/auth/auth";
+import { getAuth } from "@/server/auth/auth";
 import { db } from "@/server/db/client";
 import { auditLogs, sessions, users } from "@/server/db/schema";
 import {
@@ -18,7 +18,7 @@ const sessionRow = async (token: string) =>
   (await db().select().from(sessions).where(eq(sessions.token, token)))[0];
 
 const signIn = (email: string, password = TEST_PASSWORD) =>
-  auth.api.signInEmail({ body: { email, password }, asResponse: true });
+  getAuth().api.signInEmail({ body: { email, password }, asResponse: true });
 
 describe("[P0-06] staff password + TOTP", () => {
   it("password-only session is not MFA verified; after enrolment sign-in requires TOTP and marks the session", async () => {
@@ -32,12 +32,12 @@ describe("[P0-06] staff password + TOTP", () => {
     const firstHeaders = cookieHeaderFrom(first);
 
     // 2. Enrol TOTP.
-    const enabled = await auth.api.enableTwoFactor({
+    const enabled = await getAuth().api.enableTwoFactor({
       body: { password: TEST_PASSWORD },
       headers: firstHeaders,
     });
     if (enabled.method !== "totp") throw new Error("expected TOTP enrolment");
-    await auth.api.verifyTOTP({
+    await getAuth().api.verifyTOTP({
       body: { code: totpFromUri(enabled.totpURI) },
       headers: firstHeaders,
     });
@@ -52,7 +52,7 @@ describe("[P0-06] staff password + TOTP", () => {
     expect(secondBody.token).toBeUndefined();
 
     // 4. TOTP verification creates an MFA-verified session.
-    const verified = await auth.api.verifyTOTP({
+    const verified = await getAuth().api.verifyTOTP({
       body: { code: totpFromUri(enabled.totpURI) },
       headers: cookieHeaderFrom(second),
       asResponse: true,
@@ -79,7 +79,7 @@ describe("[P0-06] staff password + TOTP", () => {
   });
 
   it("does not allow public email sign-up", async () => {
-    const res = await auth.api.signUpEmail({
+    const res = await getAuth().api.signUpEmail({
       body: { email: testEmail("signup"), password: TEST_PASSWORD, name: "X" },
       asResponse: true,
     });
@@ -90,7 +90,7 @@ describe("[P0-06] staff password + TOTP", () => {
 describe("[P0-06] customer magic link", () => {
   it("emails a single-use link that signs the customer in (not MFA)", async () => {
     const email = testEmail("customer");
-    await auth.api.signInMagicLink({
+    await getAuth().api.signInMagicLink({
       body: { email, callbackURL: "/wallet" },
       headers: new Headers({ origin: "http://localhost:3000" }),
     });
@@ -100,7 +100,7 @@ describe("[P0-06] customer magic link", () => {
     const link = firstLink(message.text);
     expect(link).toBeDefined();
 
-    const res = await auth.handler(
+    const res = await getAuth().handler(
       new Request(link!, { headers: { origin: "http://localhost:3000" } }),
     );
     expect(res.status).toBe(302);
@@ -114,7 +114,7 @@ describe("[P0-06] customer magic link", () => {
     expect((await sessionRow(signedToken))?.mfaVerified).toBe(false);
 
     // Re-using the same link must not create another session.
-    const reuse = await auth.handler(
+    const reuse = await getAuth().handler(
       new Request(link!, { headers: { origin: "http://localhost:3000" } }),
     );
     expect(reuse.headers.getSetCookie().some((c) => c.includes("session_token="))).toBe(false);
@@ -125,9 +125,12 @@ describe("[P0-06] second-factor edge cases", () => {
   async function enrolledStaff(): Promise<{ email: string; uri: string; backupCodes: string[] }> {
     const user = await createPasswordUser();
     const headers = cookieHeaderFrom(await signIn(user.email));
-    const enabled = await auth.api.enableTwoFactor({ body: { password: TEST_PASSWORD }, headers });
+    const enabled = await getAuth().api.enableTwoFactor({
+      body: { password: TEST_PASSWORD },
+      headers,
+    });
     if (enabled.method !== "totp") throw new Error("expected TOTP enrolment");
-    await auth.api.verifyTOTP({ body: { code: totpFromUri(enabled.totpURI) }, headers });
+    await getAuth().api.verifyTOTP({ body: { code: totpFromUri(enabled.totpURI) }, headers });
     return { email: user.email, uri: enabled.totpURI, backupCodes: enabled.backupCodes };
   }
 
@@ -144,7 +147,7 @@ describe("[P0-06] second-factor edge cases", () => {
     const { email, uri } = await enrolledStaff();
     const totp = URI.parse(uri) as TOTP;
     const at = (offsetSec: number) => (headers: Headers) =>
-      auth.api.verifyTOTP({
+      getAuth().api.verifyTOTP({
         body: { code: totp.generate({ timestamp: Date.now() + offsetSec * 1000 }) },
         headers,
         asResponse: true,
@@ -160,7 +163,7 @@ describe("[P0-06] second-factor edge cases", () => {
     expect(backupCodes).toHaveLength(10);
     const code = backupCodes[0] ?? "";
     const useCode = (headers: Headers) =>
-      auth.api.verifyBackupCode({ body: { code }, headers, asResponse: true });
+      getAuth().api.verifyBackupCode({ body: { code }, headers, asResponse: true });
     expect(await challenge(email, useCode)).toBe(200);
     expect(await challenge(email, useCode)).not.toBe(200);
   });
@@ -169,7 +172,7 @@ describe("[P0-06] second-factor edge cases", () => {
 describe("[P0-07] client IP comes from TRUSTED_PROXY, not client headers (security review #6)", () => {
   it("with no trusted proxy, a spoofed X-Forwarded-For is not recorded on the session", async () => {
     const user = await createPasswordUser();
-    const res = await auth.api.signInEmail({
+    const res = await getAuth().api.signInEmail({
       body: { email: user.email, password: TEST_PASSWORD },
       headers: new Headers({ "x-forwarded-for": "6.6.6.6" }),
       asResponse: true,

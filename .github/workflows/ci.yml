@@ -1,0 +1,139 @@
+# CI on every push and PR (P0-14, TESTING §4). Budget: GitHub Free Actions credit (ENGINEERING §16) —
+# one main job (single install), a 1-core job for gitleaks, the image job on main only, cancel-in-progress,
+# docs-only pushes skipped. Every check has a local twin: pnpm check / gate:task / e2e / docker build.
+# Actions and downloaded tools pinned by SHA or checksum (ENGINEERING §14).
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    # Keep equal to DOCS_ONLY_GLOBS in scripts/pre-push.ts (a unit test enforces it).
+    paths-ignore:
+      - "docs/**"
+      - "progress/**"
+      - ".claude/**"
+      - "design/**"
+      - "**/*.md"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_COLOR: "0"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  scans:
+    name: secrets (gitleaks)
+    runs-on: ubuntu-slim # 1 vCPU: light job
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # full history for gitleaks
+          persist-credentials: false
+      - name: gitleaks (full history; reviewed findings in .gitleaksignore)
+        run: |
+          curl -sSfL -o gl.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gl.tgz" | sha256sum -c -
+          tar -xzf gl.tgz gitleaks && rm gl.tgz
+          ./gitleaks git . --redact --no-banner --exit-code 1
+
+  ci:
+    name: check, integration, build, E2E (production build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: local env (generated test-only secrets, never real ones)
+        run: pnpm setup:env
+      - run: pnpm check
+      - run: pnpm test:titles --strict
+      # Exit 0 = no findings, 1 = findings (the gate decides); anything else is a scanner error and fails here.
+      - name: OSV (blocks high/critical with a fix available; lists the rest — SECURITY §10)
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/osv" https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_linux_amd64
+          echo "160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b  $RUNNER_TEMP/osv" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/osv"
+          status=0; "$RUNNER_TEMP/osv" scan source --lockfile pnpm-lock.yaml --format json --output-file "$RUNNER_TEMP/osv.json" || status=$?
+          if [ "$status" -gt 1 ]; then echo "osv-scanner failed (exit $status)"; exit "$status"; fi
+          pnpm osv:gate "$RUNNER_TEMP/osv.json"
+      - name: pnpm audit (production dependencies, high/critical — SECURITY §10)
+        run: pnpm audit --prod --audit-level high
+      - name: Semgrep (SAST — default + OWASP Top 10 + secrets rules, SECURITY §10)
+        run: >
+          docker run --rm -v "$PWD:/src" -w /src
+          semgrep/semgrep:1.183.0@sha256:2e45517a85e13a9cca14a2a00df6bb48affd66b8ebfae1b0991cd57578362fb0
+          semgrep scan --config p/default --config p/owasp-top-ten --config p/secrets --metrics=off --error --quiet
+          --exclude node_modules --exclude .next --exclude .next-e2e
+      - name: services (Postgres+PostGIS, Redis, Mailpit, MinIO; health waits)
+        run: pnpm services:up
+      - name: migration test (all migrations on an empty database)
+        run: pnpm db:migrate
+      - name: unit + integration + authz with coverage thresholds
+        run: pnpm test:coverage
+      - name: production build (.next-e2e) + client bundle check
+        run: pnpm e2e --build-only && pnpm check:bundle .next-e2e
+      - name: Playwright browser cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: E2E on the production build (pixel7 + desktop1440; flaky = failure)
+        run: pnpm e2e --project pixel7 --project desktop1440 --fail-on-flaky-tests
+      - name: artefacts on failure (small, 7 days)
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-${{ github.sha }}
+          path: |
+            playwright-report/
+            .artifacts/e2e/build.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  image:
+    # The production image (Dockerfile) tagged with the commit SHA; the deploy (P0-15) ships it over SSH, so
+    # nothing is pushed to a registry. Only on main (what gets deployed) and on demand, to save Actions minutes.
+    name: production image (build + Trivy)
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: build moz-rewards:${{ github.sha }} (no push; layer cache in GitHub Actions cache)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          push: false
+          tags: moz-rewards:${{ github.sha }}
+          cache-from: type=gha,scope=image
+          cache-to: type=gha,scope=image,mode=max
+      # Binary pinned by checksum, not the trivy-action (its tags were hijacked in 2026). Blocks HIGH/CRITICAL
+      # with a fix available, like OSV (ENGINEERING §14, SECURITY §10).
+      - name: Trivy image scan (HIGH/CRITICAL with a fix)
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/trivy.tgz" https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-64bit.tar.gz
+          echo "c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0  $RUNNER_TEMP/trivy.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/trivy.tgz" -C "$RUNNER_TEMP" trivy
+          "$RUNNER_TEMP/trivy" image --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL --exit-code 1 --no-progress "moz-rewards:${{ github.sha }}"

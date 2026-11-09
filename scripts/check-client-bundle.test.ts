@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findHits, serverVariableNames } from "./check-client-bundle";
+import { containsWord, findHits, serverVariableNames } from "./check-client-bundle";
 
 describe("[P0-02] client bundle check", () => {
   it("collects server variable names (including commented examples) and skips NEXT_PUBLIC_*", () => {
@@ -15,6 +15,14 @@ describe("[P0-02] client bundle check", () => {
       { file: "b.js", content: "MY_DATABASE_URL_X" },
     ];
     expect(findHits(files, ["DATABASE_URL"])).toEqual([{ file: "a.js", name: "DATABASE_URL" }]);
+  });
+
+  it("[P0-14] whole-word match at the edges and after a partial occurrence", () => {
+    expect(containsWord("KEY", "KEY")).toBe(true);
+    expect(containsWord("xKEY KEY", "KEY")).toBe(true);
+    expect(containsWord("KEY_2 KEYx", "KEY")).toBe(false);
+    expect(containsWord('"KEY"', "KEY")).toBe(true);
+    expect(containsWord("anything", "")).toBe(false);
   });
 
   it("allows only the reviewed Better Auth env-shim getter; any other AUTH_SECRET mention still fails", () => {

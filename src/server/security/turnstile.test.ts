@@ -95,6 +95,8 @@ describe("[P0-05] Turnstile verification (server)", () => {
 
   it("refuses Cloudflare's public always-pass test secrets outside local/test", async () => {
     const { fetch } = fakeFetch({ success: true, hostname: "mozrewards.co.uk" });
+    // Cloudflare's published always-pass test secret (developers.cloudflare.com/turnstile), not a real key.
+    // nosemgrep: generic.secrets.security.detected-generic-secret.detected-generic-secret
     const withTestKey = verifier(fetch, { secret: "1x0000000000000000000000000000000AA" });
     expect(await withTestKey("tok", "1.2.3.4")).toEqual({ ok: false, reason: "not-configured" });
   });

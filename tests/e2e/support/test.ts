@@ -5,16 +5,45 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import AxeBuilder from "@axe-core/playwright";
 import { test as base, expect, type Page, type TestInfo } from "@playwright/test";
 import type { ActorRole } from "@/server/testing/factories";
+import { TEST_API_HEADER, testApiToken } from "../../../src/lib/test-api-token";
 import { countEmailsTo, firstLink, latestEmailTo } from "../../support/mailpit";
 
 export { expect };
 
+/** Header every `/api/test/*` call needs (SEC-L4); the Playwright process shares the server's AUTH_SECRET. */
+export function testApiHeaders(): Record<string, string> {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) throw new Error("AUTH_SECRET is not set: run pnpm setup:env");
+  return { [TEST_API_HEADER]: testApiToken(secret) };
+}
+
 export type GuardProblem = {
-  kind: "pageerror" | "console" | "requestfailed" | "http5xx";
+  kind: "pageerror" | "console" | "requestfailed" | "http5xx" | "axe";
   text: string;
 };
+
+/** The accessibility bar every page meets (DESIGN/ENGINEERING §1): WCAG 2.2 AA, serious + critical. */
+export const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"];
+
+/**
+ * axe scan of the page a test ends on (P0-14 guard). Skipped for pages outside the app (about:blank in
+ * API-only tests, external sites) and for tests that already failed (their own error is the one to read).
+ */
+async function axeProblems(page: Page, baseURL: string | undefined): Promise<GuardProblem[]> {
+  if (page.isClosed() || !baseURL) return [];
+  const url = page.url();
+  if (!url.startsWith(new URL(baseURL).origin)) return [];
+  const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
+  return results.violations
+    .filter((v) => v.impact === "serious" || v.impact === "critical")
+    .map((v) => ({
+      kind: "axe" as const,
+      text: `${v.id} on ${new URL(url).pathname}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
+    }));
+}
 
 type Options = {
   /** Problems this test expects (e.g. a deliberate 500). Matched against `kind: text`. */
@@ -109,10 +138,13 @@ export const test = base.extend<Fixtures & Options>({
   },
 
   guard: [
-    async ({ page, guardAllow }, provide, testInfo) => {
+    async ({ page, guardAllow, baseURL }, provide, testInfo) => {
       const problems: GuardProblem[] = [];
       watch(page, problems);
       await provide({ problems });
+      // Only when the body itself passed (not `=== expectedStatus`: a `test.fail()` self-test expects
+      // "failed", and its axe check is exactly what must run).
+      if (testInfo.status === "passed") problems.push(...(await axeProblems(page, baseURL)));
       const unexpected = problems.filter(
         (p) => !guardAllow.some((re) => re.test(`${p.kind}: ${p.text}`)),
       );
@@ -132,7 +164,10 @@ export const test = base.extend<Fixtures & Options>({
   signInAs: async ({ page }, provide) => {
     await provide(async (role, opts = {}) => {
       // page.request shares the browser context's cookie jar, so the session cookie applies to `page`.
-      const res = await page.request.post("/api/test/session", { data: { role, ...opts } });
+      const res = await page.request.post("/api/test/session", {
+        data: { role, ...opts },
+        headers: testApiHeaders(),
+      });
       expect(res.status(), `test session for ${role}`).toBe(200);
       return (await res.json()) as SignedIn;
     });
@@ -140,7 +175,10 @@ export const test = base.extend<Fixtures & Options>({
 
   createUser: async ({ request }, provide) => {
     await provide(async (label = "e2e-user", opts = {}) => {
-      const res = await request.post("/api/test/user", { data: { label, ...opts } });
+      const res = await request.post("/api/test/user", {
+        data: { label, ...opts },
+        headers: testApiHeaders(),
+      });
       expect(res.status(), "test user").toBe(200);
       return (await res.json()) as CreatedUser;
     });
@@ -175,7 +213,7 @@ export const test = base.extend<Fixtures & Options>({
 
   pushes: async ({ page }, provide) => {
     await provide(async () => {
-      const res = await page.request.get("/api/test/push");
+      const res = await page.request.get("/api/test/push", { headers: testApiHeaders() });
       expect(res.status()).toBe(200);
       return (await res.json()) as Awaited<ReturnType<Fixtures["pushes"]>>;
     });

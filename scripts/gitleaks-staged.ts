@@ -5,17 +5,22 @@
  */
 import { spawnSync } from "node:child_process";
 
-const IMAGE = "zricethezav/gitleaks:v8.21.2";
-const shell = process.platform === "win32";
+// Same version as CI (.github/workflows/ci.yml), pinned by digest (ENGINEERING §14).
+const IMAGE =
+  "zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f";
+// No shell: gitleaks and docker are real executables on every OS. A Windows .cmd shim fails to spawn, and the
+// script then falls back to Docker (or blocks the commit), never to a silent skip.
 const ok = (cmd: string, args: string[]): boolean =>
-  spawnSync(cmd, args, { stdio: "ignore", shell }).status === 0;
+  spawnSync(cmd, args, { stdio: "ignore" }).status === 0;
 
 let status: number | null;
 if (ok("gitleaks", ["version"])) {
   status = spawnSync(
     "gitleaks",
     ["git", "--pre-commit", "--staged", "--redact", "--no-banner", "-v"],
-    { stdio: "inherit", shell },
+    {
+      stdio: "inherit",
+    },
   ).status;
 } else if (ok("docker", ["info", "--format", "{{.ServerVersion}}"])) {
   const repo = process.cwd();

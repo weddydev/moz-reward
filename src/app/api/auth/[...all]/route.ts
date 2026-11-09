@@ -1,4 +1,6 @@
-import { toNextJsHandler } from "better-auth/next-js";
-import { auth } from "@/server/auth/auth";
+import { getAuth } from "@/server/auth/auth";
 
-export const { GET, POST } = toNextJsHandler(auth);
+// Resolved per request so `next build` never needs runtime secrets (P0-14; see getAuth).
+const handler = (request: Request): Promise<Response> => getAuth().handler(request);
+
+export { handler as GET, handler as POST };

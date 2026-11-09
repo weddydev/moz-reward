@@ -6,7 +6,7 @@ import type { FullConfig } from "@playwright/test";
  * (seen as Chromium-only failures on a cold server). Compiling the routes once up front removes that.
  * Add new top-level routes here as they are built.
  */
-const ROUTES = [
+export const ROUTES = [
   "/",
   "/sign-in",
   "/sign-in/link-expired",

@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   // Do not advertise the framework (SECURITY §5 baseline).
   poweredByHeader: false,
+  // `next build` type-checks app code only (tests, scripts and tool configs are checked by `pnpm typecheck`), so
+  // the Docker build context can leave them out. Build errors still fail the build.
+  typescript: { tsconfigPath: "tsconfig.build.json" },
   // Keep the dev badge out of E2E screenshots and visual snapshots; normal `pnpm dev` still shows it.
   ...(process.env.APP_ENV === "test" ? { devIndicators: false as const } : {}),
   // No Cache Components / Partial Prerendering: SECURITY §5 requires a per-request CSP script nonce, and a

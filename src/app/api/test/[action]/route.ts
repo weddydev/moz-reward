@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/server/auth/auth";
+import { getAuth } from "@/server/auth/auth";
 import { systemScope } from "@/server/authz/scope";
 import { fakeAi } from "@/server/integrations/ai";
 import { fakePushSink } from "@/server/integrations/push";
@@ -13,7 +13,7 @@ import {
   makeUser,
   markSessionMfaVerified,
 } from "@/server/testing/factories";
-import { testApiEnabled } from "@/server/testing/test-api";
+import { testApiAllowed } from "@/server/testing/test-api";
 
 /**
  * Test-only seeding API (APP_ENV=test). Lets E2E specs create exactly the data they need and sign in
@@ -54,16 +54,19 @@ const userInput = z
  * whole enrolment flow first.
  */
 async function enrolTotp(userId: string): Promise<string> {
-  const helpers = ((await auth.$context) as unknown as { test?: TestHelpers }).test;
+  const helpers = ((await getAuth().$context) as unknown as { test?: TestHelpers }).test;
   if (!helpers) throw new Error("test utilities unavailable");
   const { cookies } = await helpers.login({ userId });
   const headers = new Headers({ cookie: cookies.map((c) => `${c.name}=${c.value}`).join("; ") });
-  const enabled = await auth.api.enableTwoFactor({ body: { password: TEST_PASSWORD }, headers });
+  const enabled = await getAuth().api.enableTwoFactor({
+    body: { password: TEST_PASSWORD },
+    headers,
+  });
   if (!("totpURI" in enabled)) throw new Error("TOTP enrolment did not return a URI");
   const { TOTP, URI } = await import("otpauth");
   const totp = URI.parse(enabled.totpURI);
   if (!(totp instanceof TOTP)) throw new Error("unexpected OTP type");
-  await auth.api.verifyTOTP({ body: { code: totp.generate() }, headers });
+  await getAuth().api.verifyTOTP({ body: { code: totp.generate() }, headers });
   await deleteUserSessions(systemScope("test API: drop TOTP setup sessions"), userId);
   return totp.secret.base32;
 }
@@ -83,7 +86,7 @@ type Ctx = { params: Promise<{ action: string }> };
 const invalid = (): Response => NextResponse.json({ error: "invalid input" }, { status: 400 });
 
 export async function POST(req: Request, ctx: Ctx): Promise<Response> {
-  if (!testApiEnabled()) return notFound();
+  if (!testApiAllowed(req)) return notFound();
   const { action } = await ctx.params;
   const body: unknown = await req.json().catch(() => null);
   switch (action) {
@@ -120,12 +123,41 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
   }
 }
 
-/** GET /api/test/push → payloads recorded by the fake push sink. */
-export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
-  if (!testApiEnabled()) return notFound();
+/**
+ * GET /api/test/push → payloads recorded by the fake push sink.
+ * GET /api/test/runtime → how the running server was built (P0-14 production parity): NODE_ENV and
+ * Better Auth's *resolved* limiter setting. A request burst can't prove the limiter is off locally
+ * (TRUSTED_PROXY=none disables Better Auth's IP tracking, which also no-ops its limiter), so the E2E
+ * spec reads the value the library actually resolved.
+ */
+export async function GET(req: Request, ctx: Ctx): Promise<Response> {
+  if (!testApiAllowed(req)) return notFound();
   const { action } = await ctx.params;
-  return action === "push" ? NextResponse.json(fakePushSink.list()) : notFound();
+  switch (action) {
+    case "push":
+      return NextResponse.json(fakePushSink.list());
+    case "runtime": {
+      const context = (await getAuth().$context) as unknown as {
+        rateLimit?: { enabled?: unknown };
+      };
+      return NextResponse.json({
+        nodeEnv: process.env.NODE_ENV,
+        betterAuthRateLimitEnabled: context.rateLimit?.enabled ?? null,
+      });
+    }
+    default:
+      return notFound();
+  }
 }
+
+/**
+ * Every other method is a plain 404 too, in every environment (A-QA-9): left unexported, Next would answer
+ * 405 (and OPTIONS 204 with an Allow header), which reveals that the route exists. HEAD follows GET.
+ */
+export const PUT = notFound;
+export const PATCH = notFound;
+export const DELETE = notFound;
+export const OPTIONS = notFound;
 
 async function createSession(body: unknown): Promise<Response> {
   const parsed = sessionInput.safeParse(body);
@@ -135,7 +167,7 @@ async function createSession(body: unknown): Promise<Response> {
     parsed.data.role,
     parsed.data.shopId ? { shopId: parsed.data.shopId } : {},
   );
-  const helpers = ((await auth.$context) as unknown as { test?: TestHelpers }).test;
+  const helpers = ((await getAuth().$context) as unknown as { test?: TestHelpers }).test;
   if (!helpers) return NextResponse.json({ error: "test utilities unavailable" }, { status: 500 });
 
   const login = await helpers.login({ userId: actor.user.id });

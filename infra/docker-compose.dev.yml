@@ -19,7 +19,9 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./local/postgres-init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U moz -d moz"]
+      # Over TCP: during first-start init the image runs a temporary server on the Unix socket only, then
+      # restarts it. A socket check passes during init and the first TCP client gets ECONNRESET (seen in CI).
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U moz -d moz"]
       interval: 2s
       timeout: 3s
       retries: 30

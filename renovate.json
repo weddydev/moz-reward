@@ -1,0 +1,61 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "P0-14, ENGINEERING §14. Weekly, grouped; no automerge in GITHUB_MODE=free (no auto-merge or branch protection on GitHub Free private repos), so a developer merges after CI is green. In pro mode add automerge for the patch group. Tools downloaded by checksum in workflows (gitleaks, OSV, Trivy) are bumped by hand together with their checksums.",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests", "docker:pinDigests"],
+  "timezone": "Europe/London",
+  "schedule": ["before 7am on monday"],
+  "internalChecksFilter": "strict",
+  "prConcurrentLimit": 4,
+  "automerge": false,
+  "rangeStrategy": "pin",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 7am on monday"]
+  },
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "schedule": ["at any time"],
+    "minimumReleaseAge": null
+  },
+  "packageRules": [
+    {
+      "description": "Supply chain (ENGINEERING §14): propose no version younger than 7 days (pnpm's install floor is 3 days).",
+      "matchPackageNames": ["*"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "One PR for every non-major npm update.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "npm non-major",
+      "groupSlug": "npm-non-major"
+    },
+    {
+      "description": "One PR for GitHub Actions and Docker digests.",
+      "matchManagers": ["github-actions", "dockerfile", "docker-compose"],
+      "groupName": "actions and images",
+      "groupSlug": "actions-images"
+    },
+    {
+      "description": "Majors one at a time, created only when approved on the dependency dashboard.",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Security-relevant libraries: a separate PR, because an upgrade needs its configuration inventory (ENGINEERING §14).",
+      "matchPackageNames": [
+        "better-auth",
+        "@better-auth/**",
+        "next",
+        "ioredis",
+        "bullmq",
+        "drizzle-orm",
+        "pg",
+        "postgres"
+      ],
+      "groupName": null,
+      "labels": ["security-relevant"],
+      "minimumReleaseAge": "7 days"
+    }
+  ]
+}

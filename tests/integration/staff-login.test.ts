@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { auth } from "@/server/auth/auth";
+import { getAuth } from "@/server/auth/auth";
 import {
   checkStaffLogin,
   clearStaffLoginFailures,
@@ -23,7 +23,7 @@ async function staff(label: string): Promise<{ email: string }> {
 }
 
 const signInHttp = (email: string, password: string): Promise<Response> =>
-  auth.handler(
+  getAuth().handler(
     new Request(`${ORIGIN}/api/auth/sign-in/email`, {
       method: "POST",
       headers: { origin: ORIGIN, "content-type": "application/json" },

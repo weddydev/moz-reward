@@ -14,7 +14,7 @@ export const FLAG_KEYS = Object.keys(FLAGS) as [FlagKey, ...FlagKey[]];
 
 export function envOverride(
   key: FlagKey,
-  source: NodeJS.ProcessEnv = process.env,
+  source: Readonly<Record<string, string | undefined>> = process.env,
 ): boolean | undefined {
   const raw = source[`FLAG_${key.toUpperCase()}`]?.trim().toLowerCase();
   if (raw === "true" || raw === "1" || raw === "on") return true;

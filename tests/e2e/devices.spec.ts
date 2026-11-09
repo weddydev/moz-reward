@@ -91,6 +91,7 @@ test("[P0-06] keyboard: the confirm takes focus, Escape and Cancel return it, no
   await signInAs("customer");
   await page.goto("/me/security");
   const trigger = page.locator("#sign-out-everywhere");
+  await expect(trigger).toBeEnabled(); // hydrated: a key press before that would be lost
   await trigger.focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("#confirm-everywhere-yes")).toBeFocused();
@@ -108,4 +109,29 @@ test("[P0-06] a customer who opens the staff security page is sent to their own 
   await signInAs("customer");
   await page.goto("/staff/security");
   await expect(page).toHaveURL(/\/me\/security$/);
+});
+
+test("[P0-14] before hydration the devices buttons are disabled, so no press is silently lost", async ({
+  page,
+  signInAs,
+}) => {
+  await signInAs("customer");
+  // Hold the app's JavaScript until the test releases it: a deterministic "slow phone", no timing.
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/_next/static/chunks/**/*.js", async (route) => {
+    await gate;
+    await route.continue();
+  });
+  await page.goto("/me/security", { waitUntil: "commit" });
+  const trigger = page.locator("#sign-out-everywhere");
+  await expect(trigger).toBeDisabled();
+
+  release();
+  await expect(trigger).toBeEnabled();
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#confirm-everywhere-yes")).toBeFocused();
 });

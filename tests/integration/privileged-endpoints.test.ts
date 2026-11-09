@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { auth } from "@/server/auth/auth";
+import { getAuth } from "@/server/auth/auth";
 import { db } from "@/server/db/client";
 import { sessions } from "@/server/db/schema";
 import { createPasswordUser } from "../fixtures/auth";
@@ -9,7 +9,7 @@ import { makeActor, makeAdmin, makeShop, makeStaff } from "../fixtures/factories
 /**
  * Audit security #8: Better Auth's own account endpoints (list/revoke sessions, update user, link accounts)
  * bypass our require* policies, so staff/admin sessions that haven't passed MFA, or are past their role's limit
- * (staff 12 h, admin 2 h), must be refused there too. Driven over HTTP through auth.handler.
+ * (staff 12 h, admin 2 h), must be refused there too. Driven over HTTP through getAuth().handler.
  */
 const BASE = "http://localhost:3000/api/auth";
 const HOUR = 3_600_000;
@@ -20,7 +20,7 @@ type TestHelpers = {
   }): Promise<{ token: string; cookies: Array<{ name: string; value: string }> }>;
 };
 const helpers = async () => {
-  const h = ((await auth.$context) as unknown as { test?: TestHelpers }).test;
+  const h = ((await getAuth().$context) as unknown as { test?: TestHelpers }).test;
   if (!h) throw new Error("test utilities unavailable");
   return h;
 };
@@ -39,12 +39,12 @@ async function sessionFor(userId: string, opts: { mfa: boolean; ageMs?: number }
 }
 
 const get = (path: string, headers: Headers) =>
-  auth.handler(new Request(`${BASE}${path}`, { headers }));
+  getAuth().handler(new Request(`${BASE}${path}`, { headers }));
 const post = (path: string, headers: Headers, body: unknown = {}) => {
   const h = new Headers(headers);
   h.set("content-type", "application/json");
   h.set("origin", "http://localhost:3000");
-  return auth.handler(
+  return getAuth().handler(
     new Request(`${BASE}${path}`, { method: "POST", headers: h, body: JSON.stringify(body) }),
   );
 };

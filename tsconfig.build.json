@@ -1,0 +1,14 @@
+{
+  "//": "Type-check scope of `next build` (next.config.ts typescript.tsconfigPath): app code only, so the production image builds without tests/, scripts/ or tool configs in its context. `pnpm typecheck` still checks everything through tsconfig.json. P0-14, DECISIONS 2026-11-09.",
+  "extends": "./tsconfig.json",
+  "include": [
+    "next-env.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    ".next-e2e/types/**/*.ts",
+    ".next-e2e/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", ".next", ".next-e2e", "src/**/*.test.ts", "src/**/*.test.tsx"]
+}
