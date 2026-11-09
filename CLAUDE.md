@@ -22,7 +22,9 @@ This file is loaded every session, so it stays short and points to the single so
 5. Sound: `node .claude/hooks/notify.mjs task "<task ID> done: <name>" < /dev/null`
 6. Start the next task. Check the previous push's CI result before the next push; red CI is fixed first.
 
-**Cadence (human's standing rule):** after 3–5 tasks (fewer if large), and always at phase end, stop for review: everything pushed, then `node .claude/hooks/notify.mjs review "<what was done>" < /dev/null` and a short summary (done, verified, next, open 🔴/🟠 human tasks). Stop early if blocked on a 🔴 human task with nothing else to do, or when context is heavy (`/checkpoint` first).
+**Standing rules from the human apply on both laptops.** When the human gives a rule meant to last ("from now on", "always", "never", "every time"), write it into this file (or the doc it belongs to) in the same session, commit and push it — never only into Claude's local memory or local settings, which exist on one laptop only. On `/resume`, rules in this file are the full set; if the human mentions a rule that isn't here, add it.
+
+**Cadence (human's standing rule):** stop at sub-phase/task-group granularity, not after every single task: after 3–5 tasks (fewer if large), and always at phase end, stop for review: everything pushed, then `node .claude/hooks/notify.mjs review "<what was done>" < /dev/null` and a short summary (done, verified, next, open 🔴/🟠 human tasks). Stop early if blocked on a 🔴 human task with nothing else to do, or when context is heavy (`/checkpoint` first).
 
 **Sub-phase close:** `/subphase-complete` (light: CI green, staging smoke, Sentry, reviews of unreviewed commits, scoped QA if screens changed). **Phase close:** `/phase-complete` (the one heavy gate + demo). **Handover:** `/handoff`. **Context heavy:** `/checkpoint`.
 
