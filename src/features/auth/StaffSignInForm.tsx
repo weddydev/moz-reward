@@ -6,6 +6,7 @@ import { authClient } from "@/lib/auth-client";
 import { safeReturnTo } from "@/lib/return-to";
 import { formString, formValue, useHydrated } from "@/lib/use-hydrated";
 import { inputClass, primaryButtonClass } from "./AuthCard";
+import { withNetworkGuard } from "./network";
 
 const GENERIC = "Email or password is incorrect.";
 
@@ -30,8 +31,13 @@ export function StaffSignInForm(): React.JSX.Element {
     }
     setBusy(true);
     setError(null);
-    const { data, error: err } = await authClient.signIn.email({ email, password });
+    const call = await withNetworkGuard(() => authClient.signIn.email({ email, password }));
     setBusy(false);
+    if (!call.ok) {
+      setError(call.message);
+      return;
+    }
+    const { data, error: err } = call.value;
     if (err) {
       setError(err.status === 429 ? "Too many attempts — please wait and try again." : GENERIC);
       return;
@@ -53,11 +59,17 @@ export function StaffSignInForm(): React.JSX.Element {
     }
     setBusy(true);
     setError(null);
-    const res = useBackup
-      ? await authClient.twoFactor.verifyBackupCode({ code })
-      : await authClient.twoFactor.verifyTotp({ code: code.replace(/\s/g, "") });
+    const call = await withNetworkGuard(() =>
+      useBackup
+        ? authClient.twoFactor.verifyBackupCode({ code })
+        : authClient.twoFactor.verifyTotp({ code: code.replace(/\s/g, "") }),
+    );
     setBusy(false);
-    if (res.error) {
+    if (!call.ok) {
+      setError(call.message);
+      return;
+    }
+    if (call.value.error) {
       setError("That code didn't work. Check your authenticator app and try again.");
       return;
     }

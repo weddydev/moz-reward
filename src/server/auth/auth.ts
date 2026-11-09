@@ -6,10 +6,12 @@ import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/a
 import { nextCookies } from "better-auth/next-js";
 import { haveIBeenPwned, magicLink, testUtils, twoFactor } from "better-auth/plugins";
 import { newId } from "@/lib/id";
+import { TURNSTILE_HEADER } from "@/lib/turnstile";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { env } from "@/server/env";
-import { sendEmail } from "@/server/integrations/email";
+import { clientIp } from "@/server/security/request";
+import { checkMagicLinkRequest, deliverMagicLink } from "./magic-link";
 import {
   PASSKEY_REGISTRATION_PATHS,
   PRIVILEGED_FORBIDDEN_PATHS,
@@ -17,7 +19,7 @@ import {
   privilegedSessionAllowed,
 } from "./mfa";
 import { hashPassword, verifyPassword } from "./password";
-import { isPrivilegedEmail, isPrivilegedUser } from "./privileged";
+import { isPrivilegedUser } from "./privileged";
 
 const e = env();
 const appUrl = new URL(e.APP_URL);
@@ -71,6 +73,21 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/sign-in/magic-link" && ctx.request) {
+        // Browser requests only: server code calling auth.api directly is trusted (SECURITY §6 limits).
+        const body = ctx.body as { email?: unknown } | undefined;
+        const check = await checkMagicLinkRequest({
+          email: typeof body?.email === "string" ? body.email : "",
+          ip: clientIp(ctx.request.headers),
+          turnstileToken: ctx.request.headers.get(TURNSTILE_HEADER),
+        });
+        if (!check.ok) {
+          throw new APIError(check.status === 429 ? "TOO_MANY_REQUESTS" : "BAD_REQUEST", {
+            message: check.message,
+          });
+        }
+        return;
+      }
       if (PRIVILEGED_FORBIDDEN_PATHS.has(ctx.path)) {
         const current = await getSessionFromCtx(ctx);
         if (current && (await isPrivilegedUser(current.user.id))) {
@@ -111,15 +128,11 @@ export const auth = betterAuth({
   plugins: [
     magicLink({
       expiresIn: 60 * 15,
-      sendMagicLink: async ({ email, url }) => {
-        // Staff/admins never get email links. Same response either way, so this reveals nothing about the account.
-        if (await isPrivilegedEmail(email)) return;
-        await sendEmail({
-          kind: "magic-link",
-          to: email,
-          subject: "Your Moz Rewards sign-in link",
-          text: `Tap the link below to sign in. It works once and expires in 15 minutes.\n\n${url}\n\nIf you didn't ask for this, you can ignore this email.`,
-        });
+      // Only a hash is stored: a database leak can't be turned into sign-ins (SECURITY §2).
+      storeToken: "hashed",
+      // Delivery (incl. the staff/admin refusal) happens after the response: same answer, same timing.
+      sendMagicLink: ({ email, url }) => {
+        deliverMagicLink(email, url);
       },
     }),
     twoFactor({ issuer: "Moz Rewards" }),

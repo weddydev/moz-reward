@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/server/auth/auth";
+import { systemScope } from "@/server/authz/scope";
 import { fakeAi } from "@/server/integrations/ai";
 import { fakePushSink } from "@/server/integrations/push";
+import { deleteUserSessions } from "@/server/repos/sessions";
 import {
   ACTOR_ROLES,
   TEST_PASSWORD,
@@ -41,8 +43,30 @@ const userInput = z
       .string()
       .regex(/^[a-z0-9-]{1,40}$/)
       .default("e2e-user"),
+    /** Enrol TOTP up front (through Better Auth's own endpoints) and return the secret. */
+    totp: z.boolean().default(false),
   })
   .strict();
+
+/**
+ * Turns on TOTP the way the UI does (enable with the password, then verify a code), then drops the setup
+ * sessions so the browser starts signed out. Lets specs test the code challenge without re-running the
+ * whole enrolment flow first.
+ */
+async function enrolTotp(userId: string): Promise<string> {
+  const helpers = ((await auth.$context) as unknown as { test?: TestHelpers }).test;
+  if (!helpers) throw new Error("test utilities unavailable");
+  const { cookies } = await helpers.login({ userId });
+  const headers = new Headers({ cookie: cookies.map((c) => `${c.name}=${c.value}`).join("; ") });
+  const enabled = await auth.api.enableTwoFactor({ body: { password: TEST_PASSWORD }, headers });
+  if (!("totpURI" in enabled)) throw new Error("TOTP enrolment did not return a URI");
+  const { TOTP, URI } = await import("otpauth");
+  const totp = URI.parse(enabled.totpURI);
+  if (!(totp instanceof TOTP)) throw new Error("unexpected OTP type");
+  await auth.api.verifyTOTP({ body: { code: totp.generate() }, headers });
+  await deleteUserSessions(systemScope("test API: drop TOTP setup sessions"), userId);
+  return totp.secret.base32;
+}
 
 const fakesInput = z
   .object({
@@ -73,7 +97,13 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
         name: "Test Staff",
         password: TEST_PASSWORD,
       });
-      return NextResponse.json({ userId: user.id, email: user.email, password: TEST_PASSWORD });
+      const totpSecret = parsed.data.totp ? await enrolTotp(user.id) : undefined;
+      return NextResponse.json({
+        userId: user.id,
+        email: user.email,
+        password: TEST_PASSWORD,
+        ...(totpSecret ? { totpSecret } : {}),
+      });
     }
     case "fakes": {
       const parsed = fakesInput.safeParse(body);

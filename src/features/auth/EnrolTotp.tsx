@@ -8,6 +8,7 @@ import { safeReturnTo } from "@/lib/return-to";
 import { formString, formValue, useHydrated } from "@/lib/use-hydrated";
 import { colourTokens } from "@/styles/tokens";
 import { inputClass, primaryButtonClass, secondaryButtonClass } from "./AuthCard";
+import { withNetworkGuard } from "./network";
 
 type Enrolment = { qr: string; secret: string; backupCodes: string[] };
 
@@ -31,8 +32,13 @@ export function EnrolTotp(): React.JSX.Element {
     }
     setBusy(true);
     setError(null);
-    const { data, error: err } = await authClient.twoFactor.enable({ password });
+    const call = await withNetworkGuard(() => authClient.twoFactor.enable({ password }));
     setBusy(false);
+    if (!call.ok) {
+      setError(call.message);
+      return;
+    }
+    const { data, error: err } = call.value;
     if (err || !("totpURI" in data)) {
       setError("Password is incorrect.");
       return;
@@ -56,8 +62,15 @@ export function EnrolTotp(): React.JSX.Element {
     }
     setBusy(true);
     setError(null);
-    const { error: err } = await authClient.twoFactor.verifyTotp({ code: code.replace(/\s/g, "") });
-    if (err) {
+    const call = await withNetworkGuard(() =>
+      authClient.twoFactor.verifyTotp({ code: code.replace(/\s/g, "") }),
+    );
+    if (!call.ok) {
+      setBusy(false);
+      setError(call.message);
+      return;
+    }
+    if (call.value.error) {
       setBusy(false);
       setError("That code didn't work. Check the time on your phone and try again.");
       return;

@@ -22,7 +22,7 @@ type Options = {
 };
 
 type SignedIn = { userId: string; email: string; shopId: string | null; role: ActorRole };
-type CreatedUser = { userId: string; email: string; password: string };
+type CreatedUser = { userId: string; email: string; password: string; totpSecret?: string };
 
 /** Unique, undeliverable address (`.invalid` TLD); Mailpit still captures it. Specs never import server code. */
 export const uniqueEmail = (label: string): string =>
@@ -32,7 +32,7 @@ type Fixtures = {
   guard: { problems: GuardProblem[] };
   signInAs: (role: ActorRole, opts?: { shopId?: string }) => Promise<SignedIn>;
   /** A password user with no session, via `/api/test/user` (for flows that sign in through the UI). */
-  createUser: (label?: string) => Promise<CreatedUser>;
+  createUser: (label?: string, opts?: { totp?: boolean }) => Promise<CreatedUser>;
   /** Freezes the page clock at an ISO instant (Europe/London is the app's zone; pass an explicit offset). */
   freezeTime: (iso: string) => Promise<void>;
   /** Screenshot to `.artifacts/screens/<task-id>/<name>--<project>.png`; returns the path to inspect. */
@@ -133,8 +133,8 @@ export const test = base.extend<Fixtures & Options>({
   },
 
   createUser: async ({ request }, provide) => {
-    await provide(async (label = "e2e-user") => {
-      const res = await request.post("/api/test/user", { data: { label } });
+    await provide(async (label = "e2e-user", opts = {}) => {
+      const res = await request.post("/api/test/user", { data: { label, ...opts } });
       expect(res.status(), "test user").toBe(200);
       return (await res.json()) as CreatedUser;
     });

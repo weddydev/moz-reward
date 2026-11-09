@@ -5,3 +5,5 @@
 export const TURNSTILE_BYPASS_TOKEN = "local-turnstile-bypass";
 /** Form field the widget writes its token into. */
 export const TURNSTILE_FIELD = "cf-turnstile-response";
+/** Header the sign-in client sends the token in (Better Auth endpoints take JSON, not form fields). */
+export const TURNSTILE_HEADER = "x-turnstile-token";
