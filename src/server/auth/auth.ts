@@ -7,6 +7,7 @@ import { nextCookies } from "better-auth/next-js";
 import { magicLink, testUtils, twoFactor } from "better-auth/plugins";
 import { newId } from "@/lib/id";
 import { TURNSTILE_HEADER } from "@/lib/turnstile";
+import { ADMIN_SESSION_MAX_MS, STAFF_SESSION_MAX_MS } from "@/server/authz/policies";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { env } from "@/server/env";
@@ -18,10 +19,12 @@ import {
   PASSKEY_REGISTRATION_PATHS,
   PRIVILEGED_FORBIDDEN_PATHS,
   isMfaSessionPath,
+  isPrivilegedAlwaysPath,
+  privilegedRequestAllowed,
   privilegedSessionAllowed,
 } from "./mfa";
 import { hashPassword, verifyPassword } from "./password";
-import { isPrivilegedUser } from "./privileged";
+import { isPrivilegedUser, privilegedKind } from "./privileged";
 import { googleProviderOptions, socialSignUpAllowed } from "./social";
 import {
   checkSecondFactor,
@@ -119,6 +122,26 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      // Staff/admin sessions: Better Auth's own account endpoints obey the same MFA and role-age rules as our
+      // actions (audit security #8). Customers and signed-out callers are not affected.
+      if (!isPrivilegedAlwaysPath(ctx.path)) {
+        const current = await getSessionFromCtx(ctx);
+        const kind = current ? await privilegedKind(current.user.id) : null;
+        if (
+          current &&
+          kind &&
+          !privilegedRequestAllowed({
+            path: ctx.path,
+            mfaVerified: current.session.mfaVerified === true,
+            sessionAgeMs: Date.now() - new Date(current.session.createdAt).getTime(),
+            maxAgeMs: kind === "admin" ? ADMIN_SESSION_MAX_MS : STAFF_SESSION_MAX_MS,
+          })
+        ) {
+          throw new APIError("FORBIDDEN", {
+            message: "For your security, please sign in again with two-step verification.",
+          });
+        }
+      }
       if (ctx.path === "/sign-in/magic-link" && ctx.request) {
         // Browser requests only: server code calling auth.api directly is trusted (SECURITY §6 limits).
         const body = ctx.body as { email?: unknown } | undefined;

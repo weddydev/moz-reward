@@ -37,3 +37,50 @@ export const PASSKEY_REGISTRATION_PATHS = new Set([
   "/passkey/generate-register-options",
   "/passkey/verify-registration",
 ]);
+
+/**
+ * Endpoints any staff/admin may call whatever state their current session is in: reading or ending it, and
+ * signing in again (a stale cookie must never block a fresh sign-in or its second-factor challenge).
+ */
+const PRIVILEGED_ALWAYS_PATHS = new Set([
+  "/get-session",
+  "/sign-out",
+  "/magic-link/verify",
+  "/two-factor/verify-totp",
+  "/two-factor/verify-backup-code",
+  "/two-factor/verify-otp",
+  "/passkey/generate-authenticate-options",
+  "/passkey/verify-authentication",
+  "/request-password-reset",
+  "/reset-password",
+]);
+const isAlwaysAllowed = (path: string): boolean =>
+  PRIVILEGED_ALWAYS_PATHS.has(path) ||
+  path.startsWith("/sign-in/") ||
+  path.startsWith("/callback/");
+
+/** What a password-only staff/admin session may do: finish enrolling a second factor, or change its password. */
+const PRIVILEGED_PRE_MFA_PATHS = new Set([
+  "/two-factor/enable",
+  "/two-factor/get-totp-uri",
+  "/change-password",
+]);
+
+/**
+ * Better Auth's own account endpoints (list/revoke sessions, update user, link accounts…) bypass our
+ * require* policies, so the same rules are applied to them here (audit security #8): a staff/admin session
+ * past its role's limit (staff 12 h, admin 2 h) may only sign out; one that hasn't passed a second factor
+ * may only enrol one or change its password.
+ */
+export function privilegedRequestAllowed(input: {
+  path: string;
+  mfaVerified: boolean;
+  sessionAgeMs: number;
+  maxAgeMs: number;
+}): boolean {
+  if (isAlwaysAllowed(input.path)) return true;
+  if (input.sessionAgeMs > input.maxAgeMs) return false;
+  return input.mfaVerified || PRIVILEGED_PRE_MFA_PATHS.has(input.path);
+}
+
+export const isPrivilegedAlwaysPath = isAlwaysAllowed;

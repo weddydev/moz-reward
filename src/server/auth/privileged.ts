@@ -4,10 +4,11 @@ import { db } from "@/server/db/client";
 import { accounts, adminMembers, shopStaff, users } from "@/server/db/schema";
 
 /**
- * Staff, admins and anyone with a password credential (only staff/admins have one: public sign-up is off).
+ * Admin, staff (incl. anyone with a password credential: only staff/admins have one, public sign-up is off),
+ * or neither. Admin wins (shorter session limit).
  * Inactive staff rows count too, so a suspended member can't fall back to a customer-style sign-in.
  */
-export async function isPrivilegedUser(userId: string): Promise<boolean> {
+export async function privilegedKind(userId: string): Promise<"admin" | "staff" | null> {
   const [staff, admin, credential] = await Promise.all([
     db().select({ id: shopStaff.id }).from(shopStaff).where(eq(shopStaff.userId, userId)).limit(1),
     db()
@@ -21,7 +22,12 @@ export async function isPrivilegedUser(userId: string): Promise<boolean> {
       .where(and(eq(accounts.userId, userId), eq(accounts.providerId, "credential")))
       .limit(1),
   ]);
-  return staff.length > 0 || admin.length > 0 || credential.length > 0;
+  if (admin.length > 0) return "admin";
+  return staff.length > 0 || credential.length > 0 ? "staff" : null;
+}
+
+export async function isPrivilegedUser(userId: string): Promise<boolean> {
+  return (await privilegedKind(userId)) !== null;
 }
 
 /** Same check by email, for flows that start before there is a session (email links). */
