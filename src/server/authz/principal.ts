@@ -13,6 +13,7 @@ export async function loadPrincipal(input: {
   userId: string;
   mfaVerified: boolean;
   sessionCreatedAt: Date;
+  sessionId?: string;
 }): Promise<Principal> {
   const [staffRows, adminRows] = await Promise.all([
     db()
@@ -52,5 +53,6 @@ export async function currentPrincipal(): Promise<Principal | null> {
     userId: session.user.id,
     mfaVerified: session.session.mfaVerified === true,
     sessionCreatedAt: new Date(session.session.createdAt),
+    sessionId: session.session.id,
   });
 }

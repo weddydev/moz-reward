@@ -11,6 +11,8 @@ export type Principal = {
   /** Session was created by TOTP/backup code/passkey verification. */
   mfaVerified: boolean;
   sessionCreatedAt: Date;
+  /** Current session id (marks "this device" in the session list); absent for synthetic test principals. */
+  sessionId?: string;
   /** Active staff memberships only. */
   shopRoles: ReadonlyArray<{ shopId: string; role: ShopRole }>;
   /** Active admin role, or null. */

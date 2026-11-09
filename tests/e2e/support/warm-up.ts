@@ -12,6 +12,7 @@ const ROUTES = [
   "/sign-in/link-expired",
   "/staff/sign-in",
   "/staff/security",
+  "/me/security",
   "/wallet",
   "/dashboard",
   "/dev/ui",

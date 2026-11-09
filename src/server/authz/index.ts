@@ -53,6 +53,18 @@ export async function requireCustomer(principal?: Principal | null): Promise<Cus
   return mintCustomerScope(unwrap(decideCustomer(p)));
 }
 
+/**
+ * Any signed-in user acting on their own account (e.g. signed-in devices), with the current session's id so
+ * "this device" can be told apart. Same allow rule as requireCustomer: the user id always comes from the session.
+ */
+export async function requireOwnAccount(): Promise<{
+  scope: CustomerScope;
+  sessionId: string | null;
+}> {
+  const p = await currentPrincipal();
+  return { scope: mintCustomerScope(unwrap(decideCustomer(p))), sessionId: p?.sessionId ?? null };
+}
+
 export async function requireShopRole(
   shopId: string,
   roles: ReadonlyArray<ShopRole>,

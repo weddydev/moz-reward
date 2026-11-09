@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AuthCard } from "@/features/auth/AuthCard";
 import { EnrolTotp } from "@/features/auth/EnrolTotp";
+import { SignedInDevices } from "@/features/auth/SignedInDevices";
 import { SignOutButton } from "@/features/auth/SignOutButton";
 import { getSession } from "@/server/auth/session";
 import type { Metadata } from "next";
@@ -19,6 +20,7 @@ async function SecurityContent() {
           <span className="font-semibold">{session.user.email}</span>.
         </p>
         <SignOutButton to="/staff/sign-in" />
+        <SignedInDevices signInPath="/staff/sign-in" />
       </>
     );
   }
