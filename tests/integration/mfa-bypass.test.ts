@@ -221,3 +221,31 @@ describe("[P0-06] first enrolment can't stand in for the second factor (audit se
     expect(rows.find((s) => s.token === token)?.mfaVerified).toBe(true);
   });
 });
+
+describe("[P0-06] breached passwords are refused when a password is set", () => {
+  it("change-password to a known-breached password fails with a clear message; the old one keeps working", async () => {
+    const staff = await staffUser();
+    const signedIn = await auth.api.signInEmail({
+      body: { email: staff.email, password: TEST_PASSWORD },
+      asResponse: true,
+    });
+    // Through the HTTP handler, as the browser calls it (auth.api rethrows before-hook errors).
+    const headers = cookieHeaderFrom(signedIn);
+    headers.set("origin", ORIGIN.origin);
+    headers.set("content-type", "application/json");
+    const res = await auth.handler(
+      new Request(`${ORIGIN.origin}/api/auth/change-password`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ currentPassword: TEST_PASSWORD, newPassword: "password123456" }),
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { message?: string }).message).toMatch(/data breach/);
+    const again = await auth.api.signInEmail({
+      body: { email: staff.email, password: TEST_PASSWORD },
+      asResponse: true,
+    });
+    expect(again.status).toBe(200);
+  });
+});

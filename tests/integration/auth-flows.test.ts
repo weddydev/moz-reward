@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { URI } from "otpauth";
 import { describe, expect, it } from "vitest";
 import { auth } from "@/server/auth/auth";
 import { db } from "@/server/db/client";
@@ -11,6 +12,7 @@ import {
   totpFromUri,
 } from "../fixtures/auth";
 import { firstLink, latestEmailTo } from "../support/mailpit";
+import type { TOTP } from "otpauth";
 
 const sessionRow = async (token: string) =>
   (await db().select().from(sessions).where(eq(sessions.token, token)))[0];
@@ -108,5 +110,50 @@ describe("[P0-06] customer magic link", () => {
       new Request(link!, { headers: { origin: "http://localhost:3000" } }),
     );
     expect(reuse.headers.getSetCookie().some((c) => c.includes("session_token="))).toBe(false);
+  });
+});
+
+describe("[P0-06] second-factor edge cases", () => {
+  async function enrolledStaff(): Promise<{ email: string; uri: string; backupCodes: string[] }> {
+    const user = await createPasswordUser();
+    const headers = cookieHeaderFrom(await signIn(user.email));
+    const enabled = await auth.api.enableTwoFactor({ body: { password: TEST_PASSWORD }, headers });
+    if (enabled.method !== "totp") throw new Error("expected TOTP enrolment");
+    await auth.api.verifyTOTP({ body: { code: totpFromUri(enabled.totpURI) }, headers });
+    return { email: user.email, uri: enabled.totpURI, backupCodes: enabled.backupCodes };
+  }
+
+  /** A fresh sign-in challenge (password accepted, two-factor cookie set), then one code attempt. */
+  async function challenge(
+    email: string,
+    verify: (headers: Headers) => Promise<Response>,
+  ): Promise<number> {
+    const headers = cookieHeaderFrom(await signIn(email));
+    return (await verify(headers)).status;
+  }
+
+  it("accepts a TOTP code one step (30 s) early or late for clock drift, rejects two steps", async () => {
+    const { email, uri } = await enrolledStaff();
+    const totp = URI.parse(uri) as TOTP;
+    const at = (offsetSec: number) => (headers: Headers) =>
+      auth.api.verifyTOTP({
+        body: { code: totp.generate({ timestamp: Date.now() + offsetSec * 1000 }) },
+        headers,
+        asResponse: true,
+      });
+    expect(await challenge(email, at(-30))).toBe(200);
+    expect(await challenge(email, at(30))).toBe(200);
+    expect(await challenge(email, at(-65))).not.toBe(200);
+    expect(await challenge(email, at(65))).not.toBe(200);
+  });
+
+  it("a recovery code signs in once; reusing it is refused", async () => {
+    const { email, backupCodes } = await enrolledStaff();
+    expect(backupCodes).toHaveLength(10);
+    const code = backupCodes[0] ?? "";
+    const useCode = (headers: Headers) =>
+      auth.api.verifyBackupCode({ body: { code }, headers, asResponse: true });
+    expect(await challenge(email, useCode)).toBe(200);
+    expect(await challenge(email, useCode)).not.toBe(200);
   });
 });

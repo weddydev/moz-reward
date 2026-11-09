@@ -4,12 +4,13 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
-import { haveIBeenPwned, magicLink, testUtils, twoFactor } from "better-auth/plugins";
+import { magicLink, testUtils, twoFactor } from "better-auth/plugins";
 import { newId } from "@/lib/id";
 import { TURNSTILE_HEADER } from "@/lib/turnstile";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { env } from "@/server/env";
+import { checkBreachedPassword } from "@/server/integrations/breach";
 import { clientIp } from "@/server/security/request";
 import { checkMagicLinkRequest, deliverMagicLink } from "./magic-link";
 import {
@@ -32,12 +33,21 @@ const appUrl = new URL(e.APP_URL);
 /** Better Auth test utilities exist only in the test environment (never local/staging/production). */
 const isTest = e.APP_ENV === "test";
 
-/** Second-factor endpoints (sign-in challenge and enrolment): rate limited per IP. */ const SECOND_FACTOR_PATHS =
-  new Set(["/two-factor/verify-totp", "/two-factor/verify-backup-code"]);
+/** Second-factor endpoints (sign-in challenge and enrolment): rate limited per IP. */
+const SECOND_FACTOR_PATHS = new Set(["/two-factor/verify-totp", "/two-factor/verify-backup-code"]);
+
+/** Endpoints that set a password, and the body field carrying it (breached-password check). */
+const PASSWORD_SET_PATHS: Record<string, "password" | "newPassword"> = {
+  "/sign-up/email": "password",
+  "/change-password": "newPassword",
+  "/reset-password": "newPassword",
+};
+
 const bodyEmail = (body: unknown): string => {
   const email = (body as { email?: unknown } | undefined)?.email;
   return typeof email === "string" ? email : "";
 };
+
 export const SESSION_MAX_AGE = {
   customer: 60 * 60 * 24 * 30, // 30 days
   staff: 60 * 60 * 12, // 12 h (enforced in server/authz)
@@ -116,6 +126,19 @@ export const auth = betterAuth({
         if (!check.ok) throw new APIError("TOO_MANY_REQUESTS", { message: check.message });
         return;
       }
+      const passwordField = Object.hasOwn(PASSWORD_SET_PATHS, ctx.path)
+        ? PASSWORD_SET_PATHS[ctx.path]
+        : undefined;
+      if (passwordField) {
+        // Own k-anonymity check with a timeout that fails open (the library plugin had no timeout and failed closed).
+        const value = (ctx.body as Record<string, unknown> | undefined)?.[passwordField];
+        if (typeof value === "string" && (await checkBreachedPassword(value)).breached) {
+          throw new APIError("BAD_REQUEST", {
+            message: "This password has appeared in a data breach. Please choose a different one.",
+          });
+        }
+        return;
+      }
       if (SECOND_FACTOR_PATHS.has(ctx.path) && ctx.request) {
         const check = await checkSecondFactor(clientIp(ctx.request.headers));
         if (!check.ok) throw new APIError("TOO_MANY_REQUESTS", { message: check.message });
@@ -187,10 +210,6 @@ export const auth = betterAuth({
       origin: e.APP_URL,
       // Counts as a second factor only with user verification (PIN/biometric), enforced on register and sign-in (audit #6).
       authenticatorSelection: { userVerification: "required" },
-    }),
-    haveIBeenPwned({
-      customPasswordCompromisedMessage:
-        "This password has appeared in a data breach. Please choose a different one.",
     }),
     ...(isTest ? [testUtils()] : []),
     nextCookies(), // must stay last

@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-09 — Staff auth hardening details (P0-06)
+Decision: (1) A second-factor verify marks a session `mfaVerified` only in the sign-in challenge (no session yet); the enrolment verify (inside a password-only session) does not (audit security #5). (2) Staff/admin login: 10/15 min per IP, per-account pause after 5 wrong passwords (1 min doubling to 15 min, from any IP), counted for unknown emails too, and one lockout email to real staff/admin accounts. Second-factor endpoints: 10/15 min per IP. (3) Breached-password check is our own HIBP k-anonymity client (3 s timeout, fail-open with a warning; test fake list in APP_ENV=test) instead of Better Auth's plugin, which had no timeout and failed closed and called the real API from tests. (4) Recovery codes stay **encrypted** (Better Auth's only options are reversible: it decrypts to compare and remove used codes), not hashed as the brief says; single use is tested.
+Why: SECURITY §2/§6; the brief's "hashed" recovery codes would need a re-implementation of Better Auth's backup-code verification.
+Consequence: a database leak alone doesn't reveal recovery codes (the key derives from AUTH_SECRET); rotating AUTH_SECRET invalidates them. Revisit if Better Auth adds hashed storage.
+
 ## 2026-11-09 — Sign-in links: checks in a Better Auth hook, delivery after the response, not queued (P0-06)
 Decision: browser requests to `/sign-in/magic-link` pass Turnstile (`x-turnstile-token` header) and SECURITY §6 limits (5/h per email keyed by HMAC, 20/h per IP) in a `before` hook; direct `auth.api` calls from server code skip them. The per-IP limit is skipped when the client IP is `local` (TRUSTED_PROXY=none). The email, including the staff/admin refusal, is sent in Next `after()`, so known, unknown and staff addresses get the same response in the same time. Tokens are stored hashed.
 Why: queueing would put the raw sign-in token in Redis (BullMQ keeps failed jobs 7 days), which defeats hashed storage. Locally every request shares the `local` IP, so an IP limit would lock out dev and E2E.
