@@ -225,3 +225,4 @@ Evidence: AC1 `pnpm db:reset && pnpm db:seed` twice on the local DB: identical c
 Evidence: AC2 integration `[P0-16]` 13/13 as moz_worker: for all 6 staff/admin accounts the password alone returns the two-step challenge, no session, `/two-factor/enable` 401; password + derived code → `mfaVerified` session. Seen failing (8 of 13) with TOTP pre-enrolment switched off.
 Evidence: gate:task result in the commit's PROGRESS "Last verified".
 Not verified: anything on staging (none yet) → C-38.
+Left off: checkpoint 22:05 IST, baton kept. Next: P0-08 (P0-C) while P0-15 waits on H-06/07/08/26/27; check CI on `89a2a1e` first.
