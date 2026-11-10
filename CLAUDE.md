@@ -26,6 +26,8 @@ This file is loaded every session, so it stays short and points to the single so
 
 **Cadence (human's standing rule):** stop at sub-phase/task-group granularity, not after every single task: after 3–5 tasks (fewer if large), and always at phase end, stop for review: everything pushed, then `node .claude/hooks/notify.mjs review "<what was done>" < /dev/null` and a short summary (done, verified, next, open 🔴/🟠 human tasks). Stop early if blocked on a 🔴 human task with nothing else to do, or when context is heavy (`/checkpoint` first).
 
+**Every stop says what to do with the context (human's standing rule, 10 Nov 2026):** whenever Claude stops working for any reason (task or step checkpoint, review stop, blocked on a human task, handoff, a question), the last line of the reply tells the human plainly what to do next with the session: "Now run `/clear` (or open a new chat), then `/resume`." when the work is saved and pushed, or "Don't clear yet: <what is still unsaved or needed>" when it is not. Never leave the human guessing whether clearing is safe.
+
 **Pace (human's standing rule, 10 Nov 2026):** the one target is **everything done by 10 Dec 2026**. Don't track or report per-phase dates, projections or slips. Work fast and efficiently, but never by cutting scope: every acceptance criterion, edge case, security measure and test stays. Speed comes from less overhead (fewer re-reads, no repeated green suites, batched progress updates), never from lower quality.
 
 **Sub-phase close:** `/subphase-complete` (light: CI green, staging smoke, Sentry, reviews of unreviewed commits, scoped QA if screens changed). **Phase close:** `/phase-complete` (the one heavy gate + demo). **Handover:** `/handoff`. **Context heavy:** `/checkpoint`.
