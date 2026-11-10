@@ -11,21 +11,3 @@ allowBuilds:
 # 3 days is the project standard (ENGINEERING §14); Semgrep's rule suggests 7. DECISIONS 2026-11-09.
 # nosemgrep: package_managers.pnpm.pnpm-missing-minimum-release-age.pnpm-minimum-release-age
 minimumReleaseAge: 4320
-# Reviewed exceptions: exact versions already in the lockfile when the policy was switched on (9 Nov 2026).
-# All are older than 3 days from 10 Nov 2026 01:30 UTC; delete this list after that (DECISIONS 2026-11-09).
-minimumReleaseAgeExclude:
-  - "@aws-sdk/checksums@3.1002.3"
-  - "@aws-sdk/client-s3@3.1164.0"
-  - "@aws-sdk/core@3.980.1"
-  - "@aws-sdk/credential-provider-env@3.972.82"
-  - "@aws-sdk/credential-provider-http@3.972.84"
-  - "@aws-sdk/credential-provider-ini@3.973.27"
-  - "@aws-sdk/credential-provider-login@3.972.89"
-  - "@aws-sdk/credential-provider-node@3.972.94"
-  - "@aws-sdk/credential-provider-process@3.972.82"
-  - "@aws-sdk/credential-provider-sso@3.973.26"
-  - "@aws-sdk/credential-provider-web-identity@3.972.88"
-  - "@aws-sdk/middleware-sdk-s3@3.972.87"
-  - "@aws-sdk/nested-clients@3.998.1"
-  - "@aws-sdk/token-providers@3.1164.0"
-  - "commander@15.1.0"
