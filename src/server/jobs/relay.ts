@@ -7,7 +7,8 @@ import {
   markDispatched,
   markDispatchFailed,
   type OutboxRow,
-  pruneCompletedOutbox,
+  lostOutbox,
+  pruneFinishedOutbox,
   replayCandidates,
   type ReplayCursor,
   staleOutbox,
@@ -135,9 +136,11 @@ export function startRelay(opts: { intervalMs?: number; batchSize?: number } = {
  */
 export async function replayOutbox(
   since: Date,
-  opts: { batchSize?: number; dispatch?: Dispatch } = {},
+  opts: { batchSize?: number; dispatch?: Dispatch; dryRun?: boolean } = {},
 ): Promise<{ replayed: number }> {
-  const dispatch = opts.dispatch ?? defaultDispatch;
+  const dispatch: Dispatch = opts.dryRun
+    ? async () => undefined
+    : (opts.dispatch ?? defaultDispatch);
   const batchSize = opts.batchSize ?? 500;
   let after: ReplayCursor | null = null;
   let replayed = 0;
@@ -151,23 +154,34 @@ export async function replayOutbox(
     if (!last || rows.length < batchSize) break;
     after = last.cursor;
   }
-  log("relay.replayed", { since: since.toISOString(), replayed });
+  log(opts.dryRun ? "relay.replay_dry_run" : "relay.replayed", {
+    since: since.toISOString(),
+    replayed,
+  });
   return { replayed };
 }
 
 /** Rows waiting longer than this are an incident (ARCHITECTURE §6). */
 export const STALE_AFTER_SEC = 120;
-/** Completed rows are kept this long (debugging); a restore brings back the rows of its own point in time. */
+/**
+ * A dispatched row still open after this long has most likely lost its job (redis-queue AOF loss or flush, or
+ * no worker for its queue). Generous: retries with backoff and deferred jobs finish well inside it.
+ */
+export const LOST_AFTER_SEC = 10 * 60;
+/** Finished rows (completed or dead-lettered) are kept this long; a restore brings back its own point in time. */
 export const OUTBOX_RETENTION_DAYS = 7;
 
 /**
- * Reconciliation (scheduled every minute, AC6): alerts when any undispatched row is older than 2 min, and
- * prunes one batch of completed rows past retention.
+ * Reconciliation (scheduled every minute, AC6): alerts when any undispatched row is older than 2 min;
+ * re-dispatches rows whose job was lost (same job id, so a job still in the queue is untouched and a completed
+ * row is skipped by the worker) and alerts on them; prunes one batch of finished rows past retention.
  */
-export async function sweepOutbox(): Promise<{
+export async function sweepOutbox(opts: { dispatch?: Dispatch } = {}): Promise<{
   stale: Awaited<ReturnType<typeof staleOutbox>>;
+  redispatched: number;
   pruned: number;
 }> {
+  const dispatch = opts.dispatch ?? defaultDispatch;
   const stale = await staleOutbox(RELAY_SCOPE, STALE_AFTER_SEC);
   if (stale.count > 0) {
     opsAlert("outbox.stale", {
@@ -176,8 +190,20 @@ export async function sweepOutbox(): Promise<{
       sample: stale.sample,
     });
   }
-  const pruned = await pruneCompletedOutbox(RELAY_SCOPE, OUTBOX_RETENTION_DAYS, 1_000);
-  return { stale, pruned };
+  const lost = await lostOutbox(RELAY_SCOPE, LOST_AFTER_SEC, 100);
+  let redispatched = 0;
+  for (const row of lost) {
+    await dispatch(row);
+    redispatched++;
+  }
+  if (lost.length > 0) {
+    opsAlert("outbox.lost", {
+      count: lost.length,
+      sample: lost.slice(0, 10).map((r) => ({ id: r.id, queue: r.queue, jobName: r.jobName })),
+    });
+  }
+  const pruned = await pruneFinishedOutbox(RELAY_SCOPE, OUTBOX_RETENTION_DAYS, 1_000);
+  return { stale, redispatched, pruned };
 }
 
 /**

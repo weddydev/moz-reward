@@ -2,13 +2,16 @@ import "server-only";
 import postgres from "postgres";
 import { DB_POOL_MAX } from "@/server/db/client";
 import { env } from "@/server/env";
+import { cacheUrl } from "@/server/jobs/connection";
+import type { Redis } from "ioredis";
 
 /**
  * Startup checks for the web server (src/instrumentation.ts) and the worker (P0-19). A failure stops the
  * process: a server that cannot run safely must not serve 500s or run with the wrong privileges (QA-6).
  *   - The server environment parses (variable names only in errors, never values).
  *   - Staging/production: the database role is not the schema owner (or a member of it), a superuser or a
- *     BYPASSRLS role (SEC-M2, SECURITY §11); the connection budget fits max_connections (P0-18).
+ *     BYPASSRLS role (SEC-M2, SECURITY §11); the connection budget fits max_connections (P0-18); redis-queue
+ *     and redis-cache are two different servers with the right eviction policies (P0-18, AC3).
  */
 export async function runBootChecks(): Promise<void> {
   const e = env();
@@ -26,6 +29,42 @@ export async function runBootChecks(): Promise<void> {
   } finally {
     await sql.end({ timeout: 5 });
   }
+  const { Redis: RedisClient } = await import("ioredis");
+  const connect = (url: string): Redis =>
+    new RedisClient(url, { lazyConnect: true, maxRetriesPerRequest: 1, connectTimeout: 5_000 });
+  const queue = connect(e.REDIS_URL);
+  const cache = connect(cacheUrl());
+  try {
+    const problem = redisPairProblem(await redisFacts(queue), await redisFacts(cache));
+    if (problem) throw new Error(`REDIS_URL / REDIS_CACHE_URL: ${problem}`);
+  } finally {
+    queue.disconnect();
+    cache.disconnect();
+  }
+}
+
+export type RedisFacts = { runId: string; policy: string };
+
+/** The server's identity and eviction policy, from INFO (works where CONFIG is disabled). */
+export async function redisFacts(redis: Redis): Promise<RedisFacts> {
+  const info = (await redis.info("server")) + (await redis.info("memory"));
+  const field = (name: string): string =>
+    new RegExp(`^${name}:(.*)$`, "m").exec(info)?.[1]?.trim() ?? "";
+  return { runId: field("run_id"), policy: field("maxmemory_policy") };
+}
+
+/**
+ * Two URL strings can still name one server (another db number, a host alias). One shared allkeys-lru server
+ * would let a full cache evict limiter and queue keys (a rate-limit bypass), so compare server identities.
+ */
+export function redisPairProblem(queue: RedisFacts, cache: RedisFacts): string | null {
+  if (!queue.runId || !cache.runId) return "could not read the Redis server identity (INFO server)";
+  if (queue.runId === cache.runId) return "queue and cache point at the same Redis server";
+  if (queue.policy !== "noeviction")
+    return `the queue server evicts keys (maxmemory-policy ${queue.policy || "unknown"}, needs noeviction)`;
+  if (cache.policy === "noeviction")
+    return "the cache server never evicts (maxmemory-policy noeviction): a full cache would fail writes";
+  return null;
 }
 
 /** Why this connection's role must not run the app, or null when it is a plain data role. */

@@ -122,7 +122,7 @@ function validationError(error: z.ZodError): AppError {
   return new AppError("VALIDATION", undefined, fieldErrors);
 }
 
-/** Longest the response waits for one after-commit follow-up (it keeps running; the response doesn't wait). */
+/** Longest the response waits for all after-commit follow-ups together (they keep running; it moves on). */
 export const AFTER_COMMIT_TIMEOUT_MS = 2_000;
 
 class TimeoutError extends Error {
@@ -209,16 +209,28 @@ async function execute<Schema extends z.ZodType, Ctx extends ScopeContext, Out>(
         requestId: facts.requestId,
       });
 
-  // The change is committed: a failing or slow follow-up is logged, never turned into a failed action, and
-  // never holds the response for more than AFTER_COMMIT_TIMEOUT_MS each (B-CR-9).
-  for (const fn of pending) {
-    try {
-      await withTimeout(Promise.resolve().then(fn), AFTER_COMMIT_TIMEOUT_MS);
-    } catch (err) {
+  // The change is committed: a failing or slow follow-up is logged, never turned into a failed action, and all
+  // of them together hold the response for at most AFTER_COMMIT_TIMEOUT_MS (B-CR-9). They run in order.
+  if (pending.length > 0) {
+    const logFailure = (err: unknown): void => {
       requestLogger(facts.requestId, { action: spec.name }).error(
         { err },
         "after-commit follow-up failed or timed out",
       );
+    };
+    const runAll = async (): Promise<void> => {
+      for (const fn of pending) {
+        try {
+          await fn();
+        } catch (err) {
+          logFailure(err);
+        }
+      }
+    };
+    try {
+      await withTimeout(runAll(), AFTER_COMMIT_TIMEOUT_MS);
+    } catch (err) {
+      logFailure(err);
     }
   }
   return out;

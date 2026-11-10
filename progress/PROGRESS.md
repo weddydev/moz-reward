@@ -16,20 +16,20 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Watch out:** E2E specs that open their own browser context must pass `extraHTTPHeaders: clientHeaders()` (E2E server runs as behind Caddy). Server-side `auth.api.signInEmail/verify*` is a lint error. Untracked `moz-plan-v5-prompt.md` files are the human's (never commit them).
 
 ## Status
-- **Phase:** P0. Done: P0-01…07, P0-14, P0-17, **P0-19**. P0-A closed; P0-B closed 10 Nov. Next: P0-18.
-- **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → P0-18 → P0-20 → P0-13 → P0-21 → P0-15 → P0-16; then P0-C (P0-08…11), then P0-D (P0-12).
+- **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, **P0-18**. P0-A closed; P0-B closed 10 Nov. Next: P0-20.
+- **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → P0-20 → P0-13 → P0-21 → P0-15 → P0-16; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-10 11:48 IST, Syedbadeshah76
+- **Last updated:** 2026-11-10, talha.syed
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- P0-18 in progress on `wip/P0-18` (A–B done; C–D next). P0-19 done 10 Nov (see SESSION_LOG).
+- P0-18 done 10 Nov (outbox, Redis split, fail modes, safe migrations; see SESSION_LOG). Next: P0-20.
 
 ## Next (top 3)
-1. **P0-18** on `wip/P0-18`: step C (outbox + relay + replay + payload versioning), step D (fail-closed actions, timeouts, schedule pruning, drain), reviewer, squash (closes C-11, C-18).
-2. **P0-20**: mandatory RLS (+ C-12).
-3. **P0-13**: observability (+ C-03, C-06, C-22, C-26).
+1. **P0-20**: mandatory RLS (+ C-12). The outbox and worker run under systemScope: RLS must leave the relay/worker able to read every tenant's rows (worker DB role).
+2. **P0-13**: observability (+ C-03, C-06, C-22, C-26).
+3. **P0-21**: compliance drafts.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
@@ -41,20 +41,23 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-05 | B-QA-6, B-QA-7 | P0-12 | Signed-in staff on /staff/sign-in redirected; /wallet and /dashboard exist after sign-in | E2E |
 | C-06 | B-QA-8 | P0-13 | Slow-3G: sign-in button state explained before hydration | screenshot + E2E |
 | C-07 | B-SEC-2 | P0-16 + P2 invites | No staff TOTP enrolment with the password alone (invite token) | integration |
-| C-11 | A-CR-M3, B-CR-9, A-CR-L2 | P0-18 | `enqueue` and after-commit timeouts; schedule pruning safe in rolling deploys | integration |
-| C-12 | A-SEC-M4, A-CR-L4 | P0-20 | `systemScope` imports restricted; `dbFor().transaction` bypass closed; tenant repos take ShopScope/CustomerScope | lint + integration |
+| C-12 | A-SEC-M4, A-CR-L4, P0-18 review | P0-20 | `systemScope` imports restricted (allowlist incl. staff-login lockout, with reason); `dbFor().transaction` bypass closed; tenant repos take ShopScope/CustomerScope | lint + integration |
 | C-13 | A-QA-7, A-QA-8 | P0-09 | 320 px ShopCard titles and table scroll hint; Spinner under reduced motion | screenshots |
 | C-15 | B-SEC-11 | P1-02 | Shop-name lookup by code: data cached in redis-cache (60 s), HTML never CDN-cached, our Redis rate limit + Cloudflare free rule as backstop | P1-02 test |
 | C-16 | B-CR-12 | passkey UI task | Passkey re-sign-in over a stale session | E2E |
-| C-18 | A-CR-L6 (part) | P0-18 | Migration linter: CREATE INDEX on an existing table must be CONCURRENTLY (needs the non-transactional migration helper) | lint negative fixture |
 | C-19 | P0-14 | P0-15 | Migration test against the previous release's schema + seed (no release exists yet) | CI/staging deploy |
 | C-20 | P0-14 | P0-09 | Interactive UI primitives (Tabs, Chip, Switch, SegmentedControl, Toast, Table) never lose a press before hydration (disabled/inert until hydrated, like `useHydrated` in DeviceList/SignOutButton) | E2E with JS chunks held |
 | C-21 | P0-14 | P0-15 | Runtime image without dev deps/tool binaries; Trivy passes with no `--skip-dirs` (esbuild + lefthook skipped until then) | CI image job |
-| C-22 | P0-19 (G) | P0-13 | `securityAlert()` events (first: `auth.lockout`) reach both developers (Sentry alert rule or health-job email), not only the log, **deduplicated** (e.g. one per event kind per 5 min with a count) so a spray of unknown emails can't flood both inboxes or the email quota | integration + received alert |
+| C-22 | P0-19 (G), P0-18 | P0-13 | `securityAlert()` and `opsAlert()` events (first: `auth.lockout`, `outbox.stale`) reach both developers (Sentry alert rule or health-job email), not only the log, **deduplicated** (e.g. one per event kind per 5 min with a count) so a spray of unknown emails can't flood both inboxes or the email quota | integration + received alert |
 | C-23 | P0-19 (I) | P0-15 | Caddy sets `X-Request-Id` itself on every request, overwriting any client value (the app keeps a well-formed incoming id when a trusted proxy is configured) | staging curl with a chosen id → not reflected |
 | C-24 | B-SEC-13 (P0-19) | P0-12 | `ADMIN_IP_ALLOWLIST` (parsed, not yet enforced) applied to admin sign-in and the admin route group when set; a request from outside it gets the same answer as a wrong password / the 403 page | integration + E2E |
 | C-25 | B-SEC-9 (P0-19) | P2-04 | Creating a password credential for an existing user (staff invite) revokes that user's existing sessions, like trigger 0006 does on role changes | integration |
 | C-26 | P0-19 review | P0-13 | Sentry (`beforeSend` + breadcrumbs) and Umami strip `token` (and any `code`) query parameters: the sign-in confirm page URL carries the token | unit + Sentry event |
+| C-29 | P0-18 review | P0-20 | `moz_app` INSERT-only on `outbox`; relay/worker as `moz_worker` | integration |
+| C-30 | P0-18 review | P0-20 | Outbox rows carry the originating scope; tenant handlers run under it (RLS), authz matrix covers jobs | integration + matrix |
+| C-31 | P0-18 review | P0-13 | RUNBOOK restore: replay limits (effects after the restore point may repeat; external idempotency keys), `outbox.stale`/`outbox.lost` deduped with C-22, lockout-email per-user daily cap | runbook + test |
+| C-27 | P0-18 | P0-15 | Worker container stop grace ≥ 75 s (60 s drain); bundled worker keeps the `server-only` hook (emails render) | staging deploy log + worker-process test |
+| C-28 | P0-18 | P1-10 | SSE streams get a jittered `retry:` before close on shutdown | integration |
 | C-17 | Stryker | P0 phase gate | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 
 ## Blockers
@@ -68,10 +71,10 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - `src/server/authz/` — `decide*` policies, `require*` (incl. `requireStaffAwardLimit`, `requireOwnAccount`), `principal.ts`, `scope.ts`
 - `src/server/repos/` — the only DB access (`_base.ts`: `dbFor`, `transaction`, `inShop`, `ownedBy`); `src/server/services/` (audit, flags, sessions)
 - `src/server/security/` — `headers.ts`, `rate-limit.ts` (`ipLimit` policy), `auth-limit.ts` (blanket `/api/auth/*`), `request.ts` (`clientIp`, `assertSameOrigin`), `turnstile.ts`, `ip-bucket.ts` (IPv6 /64), `alert.ts` (`securityAlert`), `keys.ts` (HKDF purposes); `src/server/log.ts` (pino + `serializeError`)
-- `src/server/jobs/` + `src/worker/index.ts` — BullMQ registry, `enqueue`, DLQ, scheduler (Europe/London)
-- `src/server/db/` — Drizzle client, schema, `migrate.ts`, `seed.ts`, `reset.ts`; `drizzle/` migrations 0000–0007 (0005 lower-case email CHECK, 0006 session revocation trigger, 0007 pinned search_path)
+- `src/server/jobs/` + `src/worker/index.ts` — BullMQ registry (`defineJob`: versioned `{ v, data }` payloads, `envelope.ts`), `outbox.ts` (`writeOutbox`; `tools.outbox` in actions), `relay.ts` (relay loop, `replayOutbox`, `sweepOutbox`), DLQ, scheduler (Europe/London, `RETIRED_SCHEDULES`); `scripts/relay.ts` (`pnpm relay --replay-since`); worker/CLI run via `scripts/server-only-hook.mjs` (not react-server)
+- `src/server/db/` — Drizzle client, schema, `migrate.ts`, `seed.ts`, `reset.ts`; `drizzle/` migrations 0000–0008 (0005 lower-case email CHECK, 0006 session revocation trigger, 0007 pinned search_path, 0008 outbox); `drizzle/concurrent/` non-transactional index builds
 - `src/server/integrations/` — email (SMTP→Mailpit, Resend, Brevo), storage (MinIO/R2), fakes (push, ai, postcodes, places)
-- `infra/docker-compose.dev.yml` via `pnpm services:up` — Postgres 17 + PostGIS, Redis queue instance (:6379, noeviction) + redis-cache (:6380, allkeys-lru, from P0-18 branch), Mailpit (:8025), MinIO (:9000/:9001)
+- `infra/docker-compose.dev.yml` via `pnpm services:up` — Postgres 17 + PostGIS, Redis queue instance (:6379, noeviction) + redis-cache (:6380, allkeys-lru), Mailpit (:8025), MinIO (:9000/:9001)
 - `src/server/env.ts` (fail-closed server env) / `src/lib/env.ts` (client); `.env.local` never committed
 - UI: `src/styles/tokens.css`, `src/app/globals.css`, `src/components/ui/`, `src/features/auth/`
 - CI/tooling: `.github/workflows/ci.yml` + `scheduled.yml`; `scripts/gate-task.ts`, `gate-phase.ts`, `lib/gate.ts`, `pre-push.ts` (+ `.lefthook/pre-push/guard-and-gate.sh`), `osv-gate.ts`, `ci-usage.ts`, `e2e.ts`; `Dockerfile`, `tsconfig.build.json`, `renovate.json`

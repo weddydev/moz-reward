@@ -47,17 +47,18 @@ export async function claimOutbox(
     payload: unknown;
     attempts: number;
   }>(sql`
-    UPDATE ${outbox} SET
-      next_attempt_at = now() + make_interval(secs => ${leaseSec}),
-      attempts = ${outbox.attempts} + 1
-    WHERE ${outbox.id} IN (
-      SELECT ${outbox.id} FROM ${outbox}
+    WITH claimed AS MATERIALIZED (
+      SELECT ${outbox.id} AS id FROM ${outbox}
       WHERE ${outbox.dispatchedAt} IS NULL AND ${outbox.nextAttemptAt} <= now()
       ORDER BY ${outbox.createdAt}, ${outbox.id}
       LIMIT ${limit}
       FOR UPDATE SKIP LOCKED
     )
-    RETURNING id, queue, job_name, payload, attempts`);
+    UPDATE ${outbox} SET
+      next_attempt_at = now() + make_interval(secs => ${leaseSec}),
+      attempts = ${outbox.attempts} + 1
+    FROM claimed WHERE ${outbox.id} = claimed.id
+    RETURNING "outbox".id, queue, job_name, payload, attempts`);
   return rows
     .map((r) => ({
       id: r.id,
@@ -114,6 +115,47 @@ export async function markOutboxCompleted(scope: SystemScope, id: string): Promi
     .where(eq(outbox.id, id));
 }
 
+/** The job exhausted its retries (dead-lettered in failed_jobs): the row leaves replay and the sweeps. */
+export async function markOutboxFailed(scope: SystemScope, id: string): Promise<void> {
+  await dbFor(scope)
+    .update(outbox)
+    .set({
+      failedAt: sql`coalesce(${outbox.failedAt}, now())`,
+      dispatchedAt: sql`coalesce(${outbox.dispatchedAt}, now())`,
+    })
+    .where(and(eq(outbox.id, id), isNull(outbox.completedAt)));
+}
+
+/**
+ * Rows dispatched more than `olderThanSec` ago that never completed nor failed: their job is gone from
+ * redis-queue (AOF loss, flush, lost host) or no worker knows its queue. Oldest first, at most `limit`.
+ */
+export async function lostOutbox(
+  scope: SystemScope,
+  olderThanSec: number,
+  limit: number,
+): Promise<OutboxRow[]> {
+  return dbFor(scope)
+    .select({
+      id: outbox.id,
+      queue: outbox.queue,
+      jobName: outbox.jobName,
+      payload: outbox.payload,
+      attempts: outbox.attempts,
+    })
+    .from(outbox)
+    .where(
+      and(
+        isNotNull(outbox.dispatchedAt),
+        isNull(outbox.completedAt),
+        isNull(outbox.failedAt),
+        lt(outbox.dispatchedAt, sql`now() - make_interval(secs => ${olderThanSec})`),
+      ),
+    )
+    .orderBy(asc(outbox.dispatchedAt), asc(outbox.id))
+    .limit(limit);
+}
+
 /** Undispatched rows created more than `olderThanSec` ago (reconciliation, AC6). */
 export async function staleOutbox(
   scope: SystemScope,
@@ -145,7 +187,7 @@ export async function staleOutbox(
 export type ReplayCursor = { dispatchedAt: string; id: string };
 
 /**
- * Rows dispatched at or after `since` whose side effect is not recorded as done, keyset-paged by
+ * Rows dispatched at or after `since` whose side effect is not recorded as done (nor dead-lettered), keyset-paged by
  * (dispatched_at, id) (replay after a restore, AC7).
  */
 export async function replayCandidates(
@@ -168,6 +210,7 @@ export async function replayCandidates(
       and(
         isNotNull(outbox.dispatchedAt),
         isNull(outbox.completedAt),
+        isNull(outbox.failedAt),
         gte(outbox.dispatchedAt, since),
         after
           ? sql`(${outbox.dispatchedAt}, ${outbox.id}) > (${after.dispatchedAt}::timestamptz, ${after.id}::uuid)`
@@ -179,8 +222,8 @@ export async function replayCandidates(
   return rows.map(({ dispatchedAt, ...r }) => ({ ...r, cursor: { dispatchedAt, id: r.id } }));
 }
 
-/** Deletes up to `limit` rows completed more than `olderThanDays` ago. Returns how many went. */
-export async function pruneCompletedOutbox(
+/** Deletes up to `limit` rows finished (completed or dead-lettered) more than `olderThanDays` ago. */
+export async function pruneFinishedOutbox(
   scope: SystemScope,
   olderThanDays: number,
   limit: number,
@@ -188,8 +231,9 @@ export async function pruneCompletedOutbox(
   const rows = await dbFor(scope).execute<{ id: string }>(sql`
     DELETE FROM ${outbox} WHERE ${outbox.id} IN (
       SELECT ${outbox.id} FROM ${outbox}
-      WHERE ${outbox.completedAt} < now() - make_interval(days => ${olderThanDays})
-      ORDER BY ${outbox.completedAt}
+      WHERE (${outbox.completedAt} IS NOT NULL OR ${outbox.failedAt} IS NOT NULL)
+        AND coalesce(${outbox.completedAt}, ${outbox.failedAt}) < now() - make_interval(days => ${olderThanDays})
+      ORDER BY coalesce(${outbox.completedAt}, ${outbox.failedAt})
       LIMIT ${limit}
     ) RETURNING id`);
   return rows.length;

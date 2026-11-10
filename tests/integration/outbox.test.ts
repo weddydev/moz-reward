@@ -1,3 +1,4 @@
+import { UnrecoverableError } from "bullmq";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -11,6 +12,7 @@ import { writeOutbox } from "@/server/jobs/outbox";
 import { closeQueues, dispatchJob, getQueue } from "@/server/jobs/queues";
 import { defineJob, jobDef } from "@/server/jobs/registry";
 import {
+  LOST_AFTER_SEC,
   relayEnvelope,
   relayOnce,
   replayOutbox,
@@ -18,7 +20,12 @@ import {
   startRelay,
   sweepOutbox,
 } from "@/server/jobs/relay";
-import { createQueueWorker, jobProcessor, type Processor } from "@/server/jobs/worker";
+import {
+  createQueueWorker,
+  jobProcessor,
+  type Processor,
+  UNKNOWN_JOB_GRACE_MS,
+} from "@/server/jobs/worker";
 import { transaction } from "@/server/repos/_base";
 import { claimOutbox } from "@/server/repos/outbox";
 import { opsAlert } from "@/server/security/alert";
@@ -34,6 +41,8 @@ if (!lockoutDef) throw new Error("email:staff-lockout is not registered");
 
 /** Side effects seen by the test worker, by outbox id: "exactly once" means one entry per id. */
 let delivered: string[] = [];
+/** Outbox ids whose handler fails for good (UnrecoverableError → dead letter at once). */
+let poisoned = new Set<string>();
 const open: { close: () => Promise<void> }[] = [];
 
 /** A worker on the email queue whose handler records the delivery instead of sending mail. */
@@ -43,6 +52,7 @@ function countingWorker(): void {
       ? {
           def: lockoutDef as NonNullable<typeof lockoutDef>,
           handler: async (_payload, job) => {
+            if (poisoned.has(job.id ?? "")) throw new UnrecoverableError("poison payload");
             delivered.push(job.id ?? "?");
           },
         }
@@ -78,6 +88,7 @@ const drained = async (): Promise<boolean> => {
 
 beforeEach(async () => {
   delivered = [];
+  poisoned = new Set();
   await db().delete(outbox);
   await getQueue(QUEUE).obliterate({ force: true });
   vi.mocked(opsAlert).mockClear();
@@ -418,5 +429,79 @@ describe("[P0-18] replay after a restore (AC7)", () => {
     });
     expect(res).toEqual({ replayed: 5 });
     expect(seen).toEqual([...ids].sort());
+  });
+});
+
+describe("[P0-18] review fixes: lost jobs, dead letters, unknown job names", () => {
+  const ageDispatch = (id: string, sec: number) =>
+    db()
+      .update(outbox)
+      .set({ dispatchedAt: sql`now() - make_interval(secs => ${sec})` })
+      .where(eq(outbox.id, id));
+
+  it("a dispatched job lost from redis-queue is re-dispatched by the sweep (once) and alerted", async () => {
+    const lost = await write("0190a0b0-0000-7000-8000-000000000091");
+    const queued = await write("0190a0b0-0000-7000-8000-000000000092");
+    await relayOnce(); // both enqueued; no worker yet
+    await getQueue(QUEUE).remove(lost); // the job vanished (AOF loss, flush)
+    await ageDispatch(lost, LOST_AFTER_SEC + 60);
+    await ageDispatch(queued, LOST_AFTER_SEC + 60); // still in the queue: re-dispatch is a no-op
+    const report = await sweepOutbox();
+    expect(report.redispatched).toBe(2);
+    expect(vi.mocked(opsAlert)).toHaveBeenCalledWith(
+      "outbox.lost",
+      expect.objectContaining({ count: 2 }),
+    );
+    countingWorker();
+    await waitFor(
+      async () =>
+        (await row(lost))?.completedAt != null && (await row(queued))?.completedAt != null,
+    );
+    await waitFor(drained);
+    expect([...delivered].sort()).toEqual([lost, queued].sort());
+    expect((await sweepOutbox()).redispatched).toBe(0);
+  });
+
+  it("a recently dispatched job is not treated as lost", async () => {
+    await write("0190a0b0-0000-7000-8000-000000000093");
+    await relayOnce();
+    expect((await sweepOutbox()).redispatched).toBe(0);
+  });
+
+  it("a dead-lettered job closes its row: out of replay and the sweeps, pruned with the finished rows", async () => {
+    const id = await write("0190a0b0-0000-7000-8000-000000000094");
+    poisoned.add(id);
+    countingWorker();
+    await relayOnce();
+    await waitFor(async () => (await row(id))?.failedAt != null);
+    expect(await row(id)).toMatchObject({ completedAt: null });
+    expect(delivered).toEqual([]);
+    expect(await replayOutbox(new Date(Date.now() - 60 * 60_000))).toEqual({ replayed: 0 });
+    await ageDispatch(id, LOST_AFTER_SEC + 60);
+    expect((await sweepOutbox()).redispatched).toBe(0);
+    await db()
+      .update(outbox)
+      .set({ failedAt: sql`now() - interval '8 days'` })
+      .where(eq(outbox.id, id));
+    expect((await sweepOutbox()).pruned).toBe(1);
+    expect(await row(id)).toBeUndefined();
+  });
+
+  it("an unknown job name waits for a newer worker; past the grace period it is dead-lettered", async () => {
+    countingWorker();
+    const fresh = await getQueue(QUEUE).add("from-a-newer-release", { v: 1, data: {} });
+    await waitFor(async () => (await fresh.getState()) === "delayed");
+    expect(delivered).toEqual([]);
+    const stale = await getQueue(QUEUE).add(
+      "from-a-newer-release",
+      { v: 1, data: {} },
+      { timestamp: Date.now() - UNKNOWN_JOB_GRACE_MS - 60_000 },
+    );
+    await waitFor(async () => (await stale.getState()) === "failed");
+    const [dead] = await db()
+      .select()
+      .from(failedJobs)
+      .where(eq(failedJobs.jobId, stale.id ?? ""));
+    expect(dead?.error).toMatch(/No handler/);
   });
 });

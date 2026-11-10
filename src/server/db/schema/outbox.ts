@@ -9,7 +9,7 @@
  * - `next_attempt_at` is both the retry backoff and the relay's lease: claiming a row pushes it 30 s ahead, so
  *   a relay that crashes mid-batch leaves its rows to be claimed again (the job id makes that idempotent).
  * - `completed_at` is set by the worker after the handler succeeds; a replayed job whose row is complete is a
- *   no-op (`relay --replay-since`, RUNBOOK restore).
+ *   no-op (`relay --replay-since`, RUNBOOK restore). `failed_at` marks a dead-lettered job (failed_jobs).
  */
 import { sql } from "drizzle-orm";
 import { check, index, integer, jsonb, pgTable, text } from "drizzle-orm/pg-core";
@@ -28,20 +28,24 @@ export const outbox = pgTable(
     lastError: text(),
     dispatchedAt: tz(),
     completedAt: tz(),
+    /** Set when the job exhausted its retries (dead-lettered): out of replay and the stale checks, pruned. */
+    failedAt: tz(),
   },
   (t) => [
     // The relay's poll: undispatched rows, oldest first (keyset on created_at, id).
     index("outbox_pending_idx")
       .on(t.createdAt, t.id)
       .where(sql`${t.dispatchedAt} IS NULL`),
-    // Replay after a restore: dispatched but not completed, by dispatch time.
+    // Replay after a restore and the lost-job sweep: dispatched, still open, by dispatch time.
     index("outbox_replay_idx")
       .on(t.dispatchedAt, t.id)
-      .where(sql`${t.dispatchedAt} IS NOT NULL AND ${t.completedAt} IS NULL`),
-    // Retention: completed rows by age.
-    index("outbox_completed_idx")
-      .on(t.completedAt)
-      .where(sql`${t.completedAt} IS NOT NULL`),
+      .where(
+        sql`${t.dispatchedAt} IS NOT NULL AND ${t.completedAt} IS NULL AND ${t.failedAt} IS NULL`,
+      ),
+    // Retention: finished rows (completed or dead-lettered) by age.
+    index("outbox_finished_idx")
+      .on(sql`coalesce(${t.completedAt}, ${t.failedAt})`)
+      .where(sql`${t.completedAt} IS NOT NULL OR ${t.failedAt} IS NOT NULL`),
     check("outbox_attempts_non_negative", sql`${t.attempts} >= 0`),
     check("outbox_payload_small", sql`octet_length(${t.payload}::text) <= 16384`),
     check(

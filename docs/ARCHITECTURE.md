@@ -123,11 +123,11 @@ Core tables (snake_case). Columns abbreviated; add `created_at`, `updated_at` ev
 - **fraud_flags**: id, rule, entity, details, status
 - **data_requests**: id, user_id, kind (export/delete), due_at, status
 - **audit_logs** (append-only, partitioned monthly by `at`): id, actor_id, actor_role, action, entity, entity_id, meta, ip_hash, at. Dropping a whole partition past retention is the only removal
-- **outbox**: id, topic, payload (jsonb, ids only, no PII), created_at, dispatched_at, attempts — written in the same transaction as the change it describes (§5, §6)
+- **outbox**: id, queue, job_name, payload (jsonb `{ v, data }`, ids only, no PII, ≤ 8 KB), created_at, next_attempt_at (backoff + relay lease), attempts, last_error, dispatched_at, completed_at (set by the worker; a replayed job of a completed row is a no-op) — written in the same transaction as the change it describes (§5, §6)
 - **feature_flags**, **content_settings** (chips, keywords, templates, categories)
 - **integrity_issues**: id, check, entity, details, detected_at, resolved_at
 
-Indexes: every FK; `memberships(user_id, shop_id)` unique; `point_requests(membership_id) WHERE status IN ('pending','awaiting_owner')` partial unique (one open request per membership); `offers(shop_id, kind, starts_at)`; GiST on `shops.location`; `listings(status, category, created_at)`; `outbox(created_at) WHERE dispatched_at IS NULL`.
+Indexes: every FK; `memberships(user_id, shop_id)` unique; `point_requests(membership_id) WHERE status IN ('pending','awaiting_owner')` partial unique (one open request per membership); `offers(shop_id, kind, starts_at)`; GiST on `shops.location`; `listings(status, category, created_at)`; `outbox(created_at, id) WHERE dispatched_at IS NULL`, `outbox(dispatched_at, id) WHERE dispatched_at IS NOT NULL AND completed_at IS NULL` (replay).
 
 Partitions: monthly partitions for `audit_logs` and `notifications` are created ahead by a scheduled job (at least 2 months ahead); a missing future partition raises an alert.
 

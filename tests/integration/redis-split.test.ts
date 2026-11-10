@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Redis } from "ioredis";
 import { afterAll, describe, expect, it, vi } from "vitest";
+import { redisFacts, redisPairProblem } from "@/server/boot";
 import { cached, cacheKey, cacheRedis, closeCache } from "@/server/cache";
 import { createRedis } from "@/server/jobs/connection";
 import { enqueue, getQueue } from "@/server/jobs/queues";
@@ -26,6 +27,20 @@ const runId = async (r: Redis): Promise<string | undefined> =>
   /run_id:(\w+)/.exec(await r.info("server"))?.[1];
 
 describe("[P0-18] Redis split: queue and limiter never share an instance with the cache (AC3)", () => {
+  it("the boot check reads both servers and accepts the real pair; one server twice is refused", async () => {
+    const queue = await redisFacts(limiterRedis());
+    const cache = await redisFacts(cacheRedis());
+    expect(queue.policy).toBe("noeviction");
+    expect(redisPairProblem(queue, cache)).toBeNull();
+    // A second connection to the queue server posing as the cache (e.g. another db number).
+    const sameServer = createRedis("worker");
+    try {
+      expect(redisPairProblem(queue, await redisFacts(sameServer))).toMatch(/same Redis server/);
+    } finally {
+      sameServer.disconnect();
+    }
+  });
+
   it("queue + limiter run on a noeviction instance; the cache on a separate allkeys-lru one", async () => {
     expect(await policy(limiterRedis())).toBe("noeviction");
     expect(await policy(producer)).toBe("noeviction");

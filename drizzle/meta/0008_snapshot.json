@@ -1,5 +1,5 @@
 {
-  "id": "50fc8f20-58e1-4db8-9ca3-e3d141b1666b",
+  "id": "d06c06c9-cc44-4f36-bdb6-195cbd707be3",
   "prevId": "cb1d5b3b-0605-4a6c-96d6-968ba7f24d99",
   "version": "7",
   "dialect": "postgresql",
@@ -1901,6 +1901,12 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "failed_at": {
+          "name": "failed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -1943,23 +1949,23 @@
             }
           ],
           "isUnique": false,
-          "where": "\"outbox\".\"dispatched_at\" IS NOT NULL AND \"outbox\".\"completed_at\" IS NULL",
+          "where": "\"outbox\".\"dispatched_at\" IS NOT NULL AND \"outbox\".\"completed_at\" IS NULL AND \"outbox\".\"failed_at\" IS NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}
         },
-        "outbox_completed_idx": {
-          "name": "outbox_completed_idx",
+        "outbox_finished_idx": {
+          "name": "outbox_finished_idx",
           "columns": [
             {
-              "expression": "completed_at",
-              "isExpression": false,
+              "expression": "coalesce(\"completed_at\", \"failed_at\")",
               "asc": true,
+              "isExpression": true,
               "nulls": "last"
             }
           ],
           "isUnique": false,
-          "where": "\"outbox\".\"completed_at\" IS NOT NULL",
+          "where": "\"outbox\".\"completed_at\" IS NOT NULL OR \"outbox\".\"failed_at\" IS NOT NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}

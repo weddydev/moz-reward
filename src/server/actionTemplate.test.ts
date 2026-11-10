@@ -205,19 +205,22 @@ describe("[P0-07] defineAction runs the ENGINEERING §4 steps in order", () => {
     expect(logged.map((l) => l.msg)).toEqual(["after-commit follow-up failed or timed out"]);
   });
 
-  it("[P0-18] a hung after-commit follow-up never holds the response past its timeout (B-CR-9)", async () => {
+  it("[P0-18] after-commit follow-ups never hold the response past one overall timeout (B-CR-9)", async () => {
     vi.useFakeTimers();
     try {
       const pending = sample({
         handler: (_i: unknown, _c: unknown, { afterCommit }: HandlerTools) => {
-          afterCommit(() => new Promise(() => undefined)); // never settles
-          afterCommit(() => calls.push("second follow-up"));
+          // Three slow follow-ups: together they may hold the response for one timeout, not three.
+          for (let i = 0; i < 3; i++) afterCommit(() => new Promise((r) => setTimeout(r, 1_500)));
           return Promise.resolve("ok");
         },
       })({ shopId: SHOP, name: "Brew" });
-      await vi.advanceTimersByTimeAsync(AFTER_COMMIT_TIMEOUT_MS);
+      let settled = false;
+      void pending.then(() => (settled = true));
+      await vi.advanceTimersByTimeAsync(AFTER_COMMIT_TIMEOUT_MS - 1);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
       expect(await pending).toEqual({ ok: true, data: "ok" });
-      expect(calls).toContain("second follow-up");
       expect(logged.map((l) => l.msg)).toEqual(["after-commit follow-up failed or timed out"]);
     } finally {
       vi.useRealTimers();

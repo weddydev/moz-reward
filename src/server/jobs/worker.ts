@@ -3,9 +3,9 @@ import { DelayedError, type Job, UnrecoverableError, Worker } from "bullmq";
 import { systemScope } from "@/server/authz/scope";
 import { log as appLog } from "@/server/log";
 import { recordFailedJob } from "@/server/repos/jobs";
-import { isOutboxCompleted, markOutboxCompleted } from "@/server/repos/outbox";
+import { isOutboxCompleted, markOutboxCompleted, markOutboxFailed } from "@/server/repos/outbox";
 import { bullPrefix, createRedis } from "./connection";
-import { openEnvelope } from "./envelope";
+import { isEnvelope, openEnvelope } from "./envelope";
 import { HANDLERS } from "./handlers";
 import { redact, redactText } from "./redact";
 import { type JobDef, jobDef, QUEUE_NAMES, QUEUES, type QueueName } from "./registry";
@@ -53,6 +53,21 @@ const deadLetterRow = (
   attempts,
 });
 
+const OUTBOX_DLQ_SCOPE = systemScope(
+  "dead-letter bookkeeping: close the outbox row of a failed job",
+);
+
+/** A dead-lettered outbox job leaves replay and the sweeps (its failure is in failed_jobs). */
+async function closeFailedOutboxRow(job: Job): Promise<void> {
+  const data: unknown = job.data;
+  if (!isEnvelope(data) || !data.outboxId) return;
+  try {
+    await markOutboxFailed(OUTBOX_DLQ_SCOPE, data.outboxId);
+  } catch (err) {
+    log("job.outbox_fail_mark_failed", { id: job.id, error: errorText(err) });
+  }
+}
+
 /** Wraps a processor with dead-letter recording. Exported so tests can drive any processor through it. */
 export function withDeadLetter(
   queue: string,
@@ -75,6 +90,7 @@ export function withDeadLetter(
         error: message,
       });
       if (final) {
+        await closeFailedOutboxRow(job);
         try {
           await record(DLQ_SCOPE, deadLetterRow(queue, job, message, job.attemptsMade + 1));
         } catch (dbErr) {
@@ -98,6 +114,7 @@ export function onJobFailed(
 ): (job: Job | undefined, err: Error) => Promise<void> {
   return async (job, err) => {
     if (!job || typeof job.finishedOn !== "number") return;
+    await closeFailedOutboxRow(job);
     try {
       await record(DLQ_SCOPE, deadLetterRow(queue, job, errorText(err), job.attemptsMade));
     } catch (dbErr) {
@@ -112,8 +129,10 @@ export function onJobFailed(
   };
 }
 
-/** How long a job from a newer payload version waits for a newer worker (rolling deploy). */
+/** How long a deferred job (newer payload version, unknown name) waits before its next try (rolling deploy). */
 export const FUTURE_VERSION_DELAY_MS = 30_000;
+/** How long a job whose name this worker doesn't know keeps waiting for a newer worker. */
+export const UNKNOWN_JOB_GRACE_MS = 60 * 60_000;
 
 const OUTBOX_SCOPE = systemScope("worker: outbox completion bookkeeping for every tenant");
 
@@ -141,7 +160,16 @@ export function jobProcessor(
 ): Processor {
   return async (job, token) => {
     const entry = lookup(job.name);
-    if (!entry) throw new UnrecoverableError(`No handler for ${queue}:${job.name}`);
+    if (!entry) {
+      // Probably written by a newer release (rolling deploy, rollback): wait for a worker that knows it, for
+      // a while; after that it is a real bug and goes to the dead-letter table.
+      if (Date.now() - job.timestamp < UNKNOWN_JOB_GRACE_MS) {
+        log("job.deferred_unknown_name", { queue, job: job.name, id: job.id });
+        await job.moveToDelayed(Date.now() + FUTURE_VERSION_DELAY_MS, token);
+        throw new DelayedError();
+      }
+      throw new UnrecoverableError(`No handler for ${queue}:${job.name}`);
+    }
     const opened = openEnvelope(entry.def, job.data);
     if (opened.kind === "future") {
       log("job.deferred_newer_version", { queue, job: job.name, id: job.id, v: opened.v });

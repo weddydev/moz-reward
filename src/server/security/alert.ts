@@ -13,10 +13,10 @@ export function securityAlert(event: SecurityAlertEvent, detail: Record<string, 
 }
 
 /**
- * Operational alerts (P0-18: outbox rows waiting > 2 min). Same route as security alerts once P0-13 lands
+ * Operational alerts (P0-18: outbox rows waiting > 2 min, dispatched jobs lost from redis-queue). Same route as security alerts once P0-13 lands
  * (C-22: both developers, deduplicated). Ids and counts only.
  */
-export type OpsAlertEvent = "outbox.stale";
+export type OpsAlertEvent = "outbox.stale" | "outbox.lost";
 
 export function opsAlert(event: OpsAlertEvent, detail: Record<string, unknown>): void {
   log().warn({ alert: event, category: "ops", ...detail }, `ops alert: ${event}`);
