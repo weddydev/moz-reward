@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-10 — Safe migrations and Redis split (P0-18 A–B, on wip/P0-18)
+Decision: indexes on existing tables live in `drizzle/concurrent/` (one `CREATE INDEX CONCURRENTLY IF NOT EXISTS` per file, applied after Drizzle's transactional migrations, tracked in `drizzle.moz_concurrent_migrations`, INVALID leftovers rebuilt); migration sessions lock_timeout 5 s / statement 5 min; app statement_timeout 5 s web / 60 s worker; connection budget (web + worker + 1 deploy overlap) × 10 + reserved ≤ 80% of max_connections, checked at boot (staging max_connections 60). Two Redis instances: queue (BullMQ + limiter, noeviction, AOF) and cache (data + pub/sub, allkeys-lru); the dev queue service keeps the name `redis` so existing containers don't orphan port 6379.
+Why: ENGINEERING §6, ARCHITECTURE §6/§9, C-18, CR-M3; Drizzle runs every pending migration in one transaction, where CONCURRENTLY can't run.
+Consequence: `pnpm db:generate` output must be split by hand when it indexes an existing table (drizzle/concurrent/README.md).
+
 ## 2026-11-10 — P0-19 security review: outage fallback, key derivation, accepted risks
 Decision: (1) Turnstile **outage** (timeout/5xx): customer sign-in links still go out under extra limits (2/h per email, 5/h per IP, on top of the normal ones); staff sign-in is denied (503). A rejected or missing token is refused as before. (2) **Human decision:** keyed hashes keep HKDF subkeys of `BLIND_INDEX_KEY` (email key, IP hash, phone blind index via `purposeKey("blind-index")`); SECURITY §7 reworded. (3) Boot refuses equal secrets, a missing Turnstile secret and SMTP on staging/production, and DB roles with BYPASSRLS or membership of the table owner. (4) Credential endpoints are lint-banned from server-side `auth.api.*` calls (the guards only see HTTP). (5) Failed staff/admin sign-ins are audit-logged for real accounts. (6) Passkey sign-in gets the per-IP second-factor limit only.
 Why: security-reviewer on the P0-19 branch (no blockers; 5 should-fix, 12 nits).

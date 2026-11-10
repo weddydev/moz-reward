@@ -3,29 +3,31 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by Syedbadeshah76 since 2026-11-10 08:08 IST
+Baton: held by talha.syed since 2026-11-10 11:59 IST
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Session of Syedbadeshah76 (Windows), 10 Nov 2026 — P0-19 done** (squashed to main). Steps A–J plus the security-reviewer and design-reviewer fixes; C-08/C-09 closed. Next: **P0-18**.
-- **What changed that you will notice:** E2E server runs with `TRUSTED_PROXY=caddy`; every test sends its own X-Forwarded-For (`clientIp` fixture) — a context you open yourself must pass `extraHTTPHeaders: clientHeaders()` or it lands in the strict shared "unknown" bucket. Server-side `auth.api.signInEmail/verify*` is a lint error (the lockout only sees HTTP). Per-IP limits key IPv6 by its /64. `defineRoute` refuses bodies over 64 KB (413).
-- **New env vars:** `EMAIL_FALLBACK_PROVIDER`, `EMAIL_FALLBACK_API_KEY` (optional locally). Staging/production now also refuse to boot without `TURNSTILE_SECRET_KEY`, with SMTP as a provider, or with two equal secrets. No migrations since 0007.
-- **Not yet tested:** real Resend/Brevo sends (H-04); Turnstile widget at 320 px with a real site key (compact mode is unit-tested only); X-Request-Id overwrite needs Caddy (C-23 → P0-15).
-- **Still pending:** `wip/P0-14` and `wip/P0-19` can be deleted (both squashed into main; human to confirm). Untracked `moz-plan-v5-prompt.md` files are the human's (locally excluded on the Windows clone).
+- **Handed over by Syedbadeshah76 (Windows), 2026-11-10 11:48 IST.** P0-19 is done and on `main` (`a1fc0c5`, CI green 42761722399). **P0-18 is ~40% done on the pushed branch `wip/P0-18`** (head `dd2314a`); `main` has no P0-18 code.
+- **Done on `wip/P0-18`:** **A** `drizzle/concurrent/` non-transactional `CREATE INDEX CONCURRENTLY IF NOT EXISTS` helper (applied after Drizzle migrations, once each, INVALID leftovers rebuilt) + linter rules (C-18, AC5); migration sessions lock_timeout 5 s / statement 5 min; web pool statement_timeout 5 s, worker 60 s (`setDbProcess`); connection budget checked at boot (staging `max_connections` → 60 in infra/RESOURCES.md) · **B** Redis split: dev `redis` = queue instance (noeviction, AOF everysec) + new `redis-cache` on 6380 (allkeys-lru); `REDIS_CACHE_URL`; `cached()` fail-open helper (`src/server/cache.ts`); producer commands time out after 2 s (CR-M3) — AC3 tested.
+- **Remaining P0-18 (in this order):** **C** `outbox` table (migration 0008) + writer in the action template (`tools.outbox(queue, name, payload)` inside the tx) + relay in the worker (keyset, `FOR UPDATE SKIP LOCKED`, `jobId = outbox.id`, mark `dispatched_at`, exponential retry) + per-row `completed_at` so replayed jobs are no-ops + sweeper alert for rows > 2 min (`securityAlert`→ generalise to an ops alert) + `relay --replay-since` CLI + payload versioning in the registry (`{ v, data }` + upgrade chain) — AC1, AC4, AC6, AC7; first real producer: move the staff lockout email to the outbox (job `email:staff-lockout`) · **D** action-template `rateLimit.failMode: "closed"` → 503 for auth/money (AC2), after-commit callback timeout (B-CR-9), schedule pruning only for an explicit `RETIRED_SCHEDULES` list (CR-L2), worker drain 60 s, SSE `retry:`+jitter helper (or carry to the SSE task) · then DECISIONS (Redis split + fail modes + concurrent helper), security-reviewer, squash to main, tick P0-18, close C-11/C-18.
+- **First steps for the next person:** `git fetch && git checkout wip/P0-18`; **`pnpm services:up`** (starts the new `redis-cache` container on 127.0.0.1:6380); `pnpm db:migrate`. Optional `.env.local` lines: `REDIS_CACHE_URL=redis://:moz@localhost:6380`, `REDIS_CACHE_URL_TEST=redis://:moz@localhost:6380/1` (both default to these). From P0-19: `EMAIL_FALLBACK_PROVIDER`/`EMAIL_FALLBACK_API_KEY` optional locally.
+- **Tested (this session):** gate:task PASS on the last push of `wip/P0-18` (unit 430, int 331, build, bundle); new tests `concurrent-migrations`, `db-session` (5 s statement cancel), `redis-split` (eviction only on the cache), boot budget unit test. One earlier gate run failed only because the Windows clock was stepped back mid-run (heartbeat age 128 s, timeouts); the same files passed alone and the re-run was green.
+- **Not yet tested:** CI run 42767558077 of `dd2314a` was queued at handover (step A's run 42765978050 green); real Resend/Brevo sends (H-04); Turnstile at 320 px with a real site key; X-Request-Id overwrite needs Caddy (C-23 → P0-15).
+- **Watch out:** E2E specs that open their own browser context must pass `extraHTTPHeaders: clientHeaders()` (E2E server runs as behind Caddy). Server-side `auth.api.signInEmail/verify*` is a lint error. Untracked `moz-plan-v5-prompt.md` files are the human's (never commit them).
 
 ## Status
 - **Phase:** P0. Done: P0-01…07, P0-14, P0-17, **P0-19**. P0-A closed; P0-B closed 10 Nov. Next: P0-18.
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → P0-18 → P0-20 → P0-13 → P0-21 → P0-15 → P0-16; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Projected end:** P0 Wed 18 Nov 2026 · P1 Mon 30 Nov · P2 Thu 10 Dec · P3 Sat 19 Dec · P4 Sat 2 Jan 2027 · P5 Tue 12 Jan · **launch Fri 22 Jan 2027** (assumptions in PHASES.md; slips if human tasks are late or the Play account needs a 14-day closed test).
-- **Last updated:** 2026-11-10 ~10:00 IST, Syedbadeshah76
+- **Last updated:** 2026-11-10 11:48 IST, Syedbadeshah76
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- P0-19 done 10 Nov: atomic lockout guard (`attempt-guard.ts`; per-account Turnstile challenge, account+IP backoff, 2FA per user, alert/audit/owner mail, failed sign-ins audited); email failover; SECURITY conformance spec on the production build (`tests/e2e/security-conformance.spec.ts`); staff/admin cookie Max-Age per role; IPv6 limits per /64; boot refuses equal secrets / no Turnstile secret / SMTP / BYPASSRLS roles; Turnstile outage → customers degraded limits, staff 503. Decisions 10 Nov in DECISIONS.md (HKDF key derivation kept by human decision).
+- P0-18 in progress on `wip/P0-18` (A–B done; C–D next). P0-19 done 10 Nov (see SESSION_LOG).
 
 ## Next (top 3)
-1. **P0-18**: outbox, Redis split, failure modes, safe migrations (+ C-11, C-18).
+1. **P0-18** on `wip/P0-18`: step C (outbox + relay + replay + payload versioning), step D (fail-closed actions, timeouts, schedule pruning, drain), reviewer, squash (closes C-11, C-18).
 2. **P0-20**: mandatory RLS (+ C-12).
 3. **P0-13**: observability (+ C-03, C-06, C-22, C-26).
 
@@ -69,15 +71,15 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - `src/server/jobs/` + `src/worker/index.ts` — BullMQ registry, `enqueue`, DLQ, scheduler (Europe/London)
 - `src/server/db/` — Drizzle client, schema, `migrate.ts`, `seed.ts`, `reset.ts`; `drizzle/` migrations 0000–0007 (0005 lower-case email CHECK, 0006 session revocation trigger, 0007 pinned search_path)
 - `src/server/integrations/` — email (SMTP→Mailpit, Resend, Brevo), storage (MinIO/R2), fakes (push, ai, postcodes, places)
-- `infra/docker-compose.dev.yml` via `pnpm services:up` — Postgres 17 + PostGIS, Redis 7, Mailpit (:8025), MinIO (:9000/:9001)
+- `infra/docker-compose.dev.yml` via `pnpm services:up` — Postgres 17 + PostGIS, Redis queue instance (:6379, noeviction) + redis-cache (:6380, allkeys-lru, from P0-18 branch), Mailpit (:8025), MinIO (:9000/:9001)
 - `src/server/env.ts` (fail-closed server env) / `src/lib/env.ts` (client); `.env.local` never committed
 - UI: `src/styles/tokens.css`, `src/app/globals.css`, `src/components/ui/`, `src/features/auth/`
 - CI/tooling: `.github/workflows/ci.yml` + `scheduled.yml`; `scripts/gate-task.ts`, `gate-phase.ts`, `lib/gate.ts`, `pre-push.ts` (+ `.lefthook/pre-push/guard-and-gate.sh`), `osv-gate.ts`, `ci-usage.ts`, `e2e.ts`; `Dockerfile`, `tsconfig.build.json`, `renovate.json`
 - Tests: Vitest `unit` + `integration` (per-worker DBs); `tests/authz/` (matrix, harness self-test); `scripts/check-authz-coverage.ts` (AST, in `pnpm lint`); `tests/e2e/` (Playwright :3100, import `test` from `support/test.ts`); `tests/load/`, `tests/live/`, `stryker.config.mjs`
 
-## Last verified (10 Nov 2026, ~10:00 IST)
-- P0-19 on `wip/P0-19` `52b734d`: gate:task PASS (unit 419, int 322, E2E P0-19 30/0); full E2E Chromium+WebKit 116/0 (as behind Caddy); CI green 42747422177 (G), 42748449980 (H), 42751913848 (I+J), 42755271081 (review fixes).
-- main `0ec75a7` (`chore(deps)` release-age cleanup): gate:task PASS on push.
+## Last verified (10 Nov 2026, 11:48 IST)
+- `wip/P0-18` `dd2314a`: gate:task PASS (unit 430, int 331, build, bundle). CI: step A run 42765978050 green; step B run 42767558077 queued at handover.
+- main `a1fc0c5` (P0-19): gate:task PASS; CI green 42761722399 incl. image + Trivy; full E2E Chromium+WebKit 116/0.
 - Earlier: mutation 90.1% · `test:live`: storage ✅, email NOT VERIFIED (H-04).
 - Staging: none yet.
 
