@@ -5,14 +5,14 @@ export type BadgeTone =
   "open" | "closed" | "happy-hour" | "featured" | "private" | "business" | "neutral" | "warning";
 
 const TONE: Record<BadgeTone, string> = {
-  open: "bg-[color-mix(in_srgb,var(--success)_6%,white)] text-success",
+  open: "bg-success-tint text-success",
   closed: "bg-surface-2 text-ink-2",
   "happy-hour": "bg-gold-100 text-ink",
   featured: "bg-ink text-surface",
   private: "bg-surface-2 text-ink",
   business: "bg-gold-100 text-ink",
   neutral: "bg-surface-2 text-ink-2",
-  warning: "bg-[color-mix(in_srgb,var(--warning)_14%,white)] text-ink",
+  warning: "bg-warning-tint text-ink",
 };
 
 export function Badge({

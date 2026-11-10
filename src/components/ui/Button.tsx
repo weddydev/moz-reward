@@ -9,7 +9,7 @@ const VARIANT: Record<ButtonVariant, string> = {
   primary: "btn-gold text-ink",
   secondary: "pressable bg-surface text-ink border border-line shadow-1",
   ghost: "pressable bg-transparent text-ink [@media(hover:hover)]:hover:bg-surface-2",
-  destructive: "pressable bg-danger text-white",
+  destructive: "pressable bg-danger text-on-danger",
 };
 const SIZE: Record<ButtonSize, string> = {
   40: "h-10 px-4 text-small gap-2 rounded-md",
