@@ -101,6 +101,51 @@ export const serverEnvSchema = z
     TURNSTILE_SECRET_KEY: optional,
     SENTRY_DSN: optional,
     LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
+    /**
+     * P0-13 (C-22): both developers' addresses for security/ops alerts and health mail, comma-separated.
+     * Required outside local/test; locally the default lands in Mailpit.
+     */
+    ALERT_EMAILS: z
+      .string()
+      .optional()
+      .transform((v, ctx) => {
+        const list = (v ?? "")
+          .split(",")
+          .map((a) => a.trim())
+          .filter(Boolean);
+        for (const address of list) {
+          if (!z.email().safeParse(address).success) {
+            ctx.addIssue({ code: "custom", message: "every entry must be an email address" });
+            return z.NEVER;
+          }
+        }
+        return list;
+      }),
+    /** Combined daily send cap of the email providers (ARCHITECTURE §10: Resend 100 + Brevo 300). */
+    EMAIL_DAILY_CAP: z.coerce.number().int().positive().default(400),
+    /**
+     * P0-13: `/api/health/ready` returns its per-check detail only with `Authorization: Bearer <this value>`
+     * (deploy scripts, the System page); everyone else gets the status alone. Unset = never any detail.
+     */
+    HEALTH_TOKEN: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.string().min(32, "must be at least 32 characters").optional(),
+    ),
+    /** Filesystem the health monitor watches for the 80% disk alert (the data volume on the VPS). */
+    DISK_PATH: z.string().default("/"),
+    /** P0-15 turns this on once the backup jobs write their heartbeats (dump, WAL, restore drill). */
+    BACKUPS_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
+    /** Release tag (git SHA, set by the deploy in P0-15): on every Sentry event. Not SENTRY_*: the browser SDK contains that name. */
+    APP_RELEASE: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(64).optional()),
+    /** Share of error events sent (0–1). Errors stay under ~4,000/month with this and the per-process cap. */
+    SENTRY_ERROR_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(1),
+    /** Browser errors forwarded by the /api/monitoring tunnel per UK day (security review HIGH-1). */
+    SENTRY_BROWSER_DAILY_CAP: z.coerce.number().int().min(0).default(60),
+    /** Sentry free plan: errors per month (ARCHITECTURE §10); the 70% alert uses our own sent counter. */
+    SENTRY_MONTHLY_QUOTA: z.coerce.number().int().positive().default(5000),
   })
   .superRefine((e, ctx) => {
     // Zod 4 still runs object refinements after a field failed; `z.url()` has already reported a bad
@@ -113,6 +158,7 @@ export const serverEnvSchema = z
       ["DATA_ENCRYPTION_KEY", e.DATA_ENCRYPTION_KEY],
       ["BLIND_INDEX_KEY", e.BLIND_INDEX_KEY],
       ["MEMBER_QR_SIGNING_KEY", e.MEMBER_QR_SIGNING_KEY],
+      ["HEALTH_TOKEN", e.HEALTH_TOKEN ?? ""],
     ] as const;
     for (let i = 0; i < secrets.length; i++) {
       for (let j = i + 1; j < secrets.length; j++) {
@@ -122,6 +168,13 @@ export const serverEnvSchema = z
           ctx.addIssue({ code: "custom", path: [b], message: `must differ from ${a}` });
         }
       }
+    }
+    if (!isLocalEnv && e.ALERT_EMAILS.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ALERT_EMAILS"],
+        message: "required outside local/test (alerts and health mail to both developers)",
+      });
     }
     if (!isLocalEnv && !e.TURNSTILE_SECRET_KEY) {
       ctx.addIssue({

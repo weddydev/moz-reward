@@ -123,6 +123,7 @@ Redis sliding-window limits (per IP + per user where signed in). Defaults:
   | `GOOGLE_CLIENT_SECRET` | human, Google Cloud (H-28), separate staging/production clients | same | |
   | `TURNSTILE_SECRET_KEY` | human, Cloudflare (H-20) | same | Cloudflare's public test secrets are refused outside local/test |
   | `SENTRY_DSN` | Sentry project (P0-13) | same | Low sensitivity (write-only), still not committed |
+  | `HEALTH_TOKEN` | `openssl rand -base64 32` (P0-13) | same | Unlocks only the per-check detail of `/api/health/ready`; rotation needs the deploy scripts updated too |
   | Backup OpenPGP **private** key | human (H-26) | password manager only, never on the VPS | The public key is not a secret |
 
   Rules that make the list hold: `.env*` except `.env.example` is git-ignored and gitleaks runs on every commit and in CI; a developer's `.env.local` holds only values `pnpm setup:env` generated (or dev-only provider keys); the deploy job writes the host env files from GitHub secrets and never echoes them (`::add-mask::`, no `set -x`); `docker inspect`/logs never print env values (pino redaction, SECURITY §12). A suspected leak follows the key-leak runbook (P0-13 RUNBOOK.md): rotate first, then investigate.

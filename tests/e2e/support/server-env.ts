@@ -48,5 +48,10 @@ export function e2eServerEnv(): Record<string, string> {
     // address (support/test.ts), so per-IP limits run as on staging instead of being skipped for "local".
     TRUSTED_PROXY: "caddy",
     NEXT_DIST_DIR: ".next-e2e",
+    // P0-13: the browser Sentry SDK loads as on staging; without SENTRY_DSN the tunnel drops its envelopes.
+    NEXT_PUBLIC_SENTRY_ENABLED: "true",
+    // P0-13: analytics configured as on staging, so the consent notice and loader are built in.
+    NEXT_PUBLIC_UMAMI_PATH: "/u",
+    NEXT_PUBLIC_UMAMI_WEBSITE_ID: "0a3e5c1e-1111-4222-8333-444455556666",
   };
 }

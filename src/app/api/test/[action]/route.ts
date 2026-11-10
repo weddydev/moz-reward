@@ -14,6 +14,7 @@ import {
   fakeEmail,
   makeActor,
   makeAdmin,
+  makeOpsSnapshot,
   makeUser,
   markSessionMfaVerified,
 } from "@/server/testing/factories";
@@ -158,6 +159,11 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
       if (!parsed.success) return invalid();
       if (parsed.data.ai) fakeAi.script(parsed.data.ai);
       return NextResponse.json({ ok: true });
+    }
+    case "ops-snapshot": {
+      // P0-13: a sample health snapshot for the System page (the E2E server runs no worker).
+      const snapshot = await makeOpsSnapshot();
+      return NextResponse.json({ takenAt: snapshot.takenAt });
     }
     case "reset-fakes":
       fakePushSink.reset();

@@ -4,7 +4,16 @@
  * last run of scheduled jobs for the health check and the admin System page.
  */
 import { sql } from "drizzle-orm";
-import { check, index, integer, jsonb, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  check,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  smallint,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { id, timestamps, tz } from "./_columns";
 
 export const failedJobs = pgTable(
@@ -37,3 +46,18 @@ export const jobHeartbeats = pgTable("job_heartbeats", {
   lastRunAt: tz().notNull(),
   ...timestamps(),
 });
+
+/**
+ * Latest health snapshot (P0-13): one row, written by the worker's health monitor every minute, read by the
+ * admin System page (admin owner only, RLS). Ids, counts and timings only — never personal data.
+ */
+export const opsSnapshot = pgTable(
+  "ops_snapshot",
+  {
+    id: smallint().primaryKey().default(1),
+    takenAt: tz().notNull(),
+    data: jsonb().$type<unknown>().notNull(),
+    ...timestamps(),
+  },
+  (t) => [check("ops_snapshot_single_row", sql`${t.id} = 1`)],
+);

@@ -198,3 +198,8 @@ Evidence: new tests seen failing first (5), then pass; gate:task PASS (unit 462,
 Found: an outbox flake was two orphaned worker processes (3–4 h old) relaying `moz_test_w4`'s outbox; killed (human allowed); `tests/support/exit-with-parent.mjs` makes the spawned worker exit when Vitest dies (Node 26 caches `process.ppid`, so it probes with signal 0; verified).
 Then: scheduled CI red (Linux WebKit refused a Chromium-only flag in csp-injection spec) fixed `dd05afe`, re-run green 42812524717. P0-13 started on `wip/P0-13`: A alerts (dedup, delivery, lockout cap) 8/8 tests, B health endpoints + monitor + ops_snapshot (0012) 18 tests; unit 474, int 422, gate:task PASS on push.
 Blocked: `.env.example` edits (H-33 deny rule), closing issue #1 (human). Checkpoint 17:45 IST. Next: P0-13 step C (Sentry) on `wip/P0-13` after `git rebase main`.
+
+## 2026-11-10 (17:50–18:45 IST) — P0 — P0-13 done (talha.syed, macOS)
+Done: C Sentry web/worker/browser tunnel + scrubbing (C-03, C-26) · D `/admin/system` · E consent-gated Umami + cookie notice, C-06 hint · F RUNBOOK, log rotation, SLO measurement · security review (2 HIGH: tunnel budget, alert ceiling; 5 should-fix) + re-review (2 should-fix) all fixed · walk-through fixes: scheduler grace, worker.error throttle.
+Evidence: gate:task PASS (unit 491, int 444, E2E 16/0); full 5-project E2E 313/0; AC2 by hand (ready 503, `health.redis` mail); worker-down 503 after 3 min; restore drill + replay dry run; screens system-page 320/390/1440, cookie-notice, preparing hint.
+Carried: C-36 (Umami proxy scope), C-37 (VPS RUNBOOK walks) → P0-15. H-33 done; H-35 close issue #1. Next: P0-21.

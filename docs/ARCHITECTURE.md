@@ -272,11 +272,11 @@ The human creates accounts; you write the integration and document the exact env
 Built in P0-13 (not P5).
 
 - Structured JSON logs (pino) with request IDs; never log tokens, phone numbers, emails, codes. Kept on the host with Docker log rotation, 30-day retention. No paid log or metrics backend.
-- Health split: `/api/health/live` (public, process up, no detail) and `/api/health/ready` (internal only: DB, Redis, queue lag; used by Caddy and deploys).
+- Health split (P0-13): `/api/health/live` (public, process up, no detail), `/api/health/ready` (DB + redis-queue; Caddy and deploys; public status only, per-check detail with `Authorization: Bearer <HEALTH_TOKEN>`) and `/api/health/worker` (the worker's health monitor ticked within 3 min; UptimeRobot). The worker is not part of `ready`, so a stopped worker never takes the web out of Caddy (RUNBOOK §3).
 - Sentry for web + worker (free Developer plan, one owner account): release tags per deploy; alert rules forward to both developers (email / webhook to the health-mail channel); the second developer gets details through the owner or the forwarded alert.
 - UptimeRobot monitors staging and production (one owner account; both developers' emails as alert contacts; the mobile app on both phones).
 - **Admin "System" page** (instead of a metrics backend): queue depth and lag, outbox age, failed jobs; last backup, WAL archive lag, last restore drill; disk, DB size, SSE connections; request rate, p95 latency and error rate per route over the last hour (aggregated from the request logs by a scheduled job); email sends today vs cap; provider quota usage.
-- **Health job** (scheduled, every 5 min): checks the alert thresholds (outbox age > 2 min, queue lag, failed jobs, backup age > 26 h, WAL lag > 10 min, disk > 80%, quotas ≥ 70%, missing partitions, job runtime alarms) and emails both developers. These alerts are critical mail (never dropped, §10).
+- **Health monitor** (in the worker on its own 1-minute timer, not a BullMQ job, so it still runs and emails while redis-queue is down; P0-13): checks the alert thresholds (outbox age > 2 min, queue lag, failed jobs, backup age > 26 h, WAL lag > 10 min, disk > 80%, quotas ≥ 70%, missing partitions, job runtime alarms) and emails both developers. These alerts are critical mail (never dropped, §10).
 - On-call: best-effort business hours by the two developers, uptime alerts to both phones, no 24/7 rota (post-launch support is a separate agreement).
 
 **SLOs** (internal targets, measured from logs and synthetic checks; never a client SLA).
@@ -287,6 +287,8 @@ Built in P0-13 (not P5).
 | Approve → points credited on the customer screen | p95 < 2 s |
 | SSE delivery | p95 < 3 s |
 | Sign-in email sent | p95 < 30 s |
+
+How each is measured: availability from UptimeRobot on `/api/health/ready` and `/api/health/worker` (5-min checks, P0-15); approve → credited and SSE delivery from the request/job logs (timestamps of the approval, the ledger write and the SSE send; per-route aggregation on the System page, C-35) and the P1 E2E timings; sign-in email from the outbox row's `created_at` to the job's completion (logs).
 
 **Error-budget policy.** Reviewed at each sub-phase close and monthly after launch. If an SLO was missed in the month, the next task is the reliability fix for its cause, recorded in PROGRESS; feature work continues once that fix ships.
 

@@ -16,7 +16,7 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 | ID | Priority | Task | Needed by | Why | Est. time |
 |---|---|---|---|---|---|
 | H-32 | 🔴 | **Windows laptop only now** (Mac done 10 Nov):  update the database lines in `.env.local` to the P0-20 roles, then `pnpm db:reset` (see steps) | Before your next `pnpm dev` / `pnpm worker` on that laptop | The app now refuses to start as the `moz` superuser (RLS would be skipped); Claude never reads or edits `.env.local` | 3 min / laptop |
-| H-33 | 🟠 | Narrow one deny rule in `.claude/settings.json` so Claude can edit the committed `.env.example` (see steps) | Now (P0-13 adds variables to `.env.example`) | `Read(./.env.*)` also blocks `.env.example` (no secrets in it); Claude may not edit its own permission rules | 2 min |
+| H-35 | 🟢 | Close GitHub issue #1 "Scheduled CI failing" (fixed in `dd05afe`, re-run 42812524717 green) | Any time | Claude may not write to GitHub issues | 1 min |
 | H-34 | 🟠 | Sentry free account (one owner), one project, alert rule emailing the owner; DSN into GitHub secrets for staging | Sun 15 Nov 2026 (P0-15 staging) | Error reporting for web + worker (P0-13 builds the code; local proof uses a fake Sentry endpoint) | 15 min |
 | H-07 | 🟠 | Buy domain; Cloudflare account (free); move DNS to Cloudflare | Sun 15 Nov 2026 (P0-15) | Tunnel hostnames, email domain, Turnstile | 30 min (+ up to 24 h DNS) |
 | H-06 | 🟠 | Buy Hostinger KVM 4 (UK location), add both developers' SSH keys, give Claude the IP | Sun 15 Nov 2026 (P0-15) | Hosts production **and** staging (plan v5) | 30 min |
@@ -146,12 +146,6 @@ Suggested extra deny entries you may add yourself: `Read(./.env.*)`, `Bash(docke
 3. If Renovate opens an onboarding PR, close it without merging (`renovate.json` is in the repo once P0-14 is on main).
 4. Tell Claude "H-31 done". In `free` mode nothing auto-merges: a developer merges a Renovate PR after its CI is green.
 
-### H-33 — Let Claude edit `.env.example` (one deny rule)
-1. Open `.claude/settings.json`, find `"Read(./.env.*)",` in `permissions.deny`.
-2. Replace that one line with three: `"Read(./.env.*.local)",` `"Read(./.env.development)",` `"Read(./.env.test)",` (`.env`, `.env.local`, `.env.production`, `.env.staging` stay denied by their own lines). Deny rules beat allow rules, so an allow entry would not help.
-3. Commit (`chore(claude): deny rules name the secret env files`) and push; tell Claude "H-33 done".
-4. Also close GitHub issue #1 ("Scheduled CI failing"): fixed in `dd05afe`, re-run 42812524717 green (Claude may not write to GitHub issues).
-
 ### H-34 — Sentry (free Developer plan)
 1. Sign up at https://sentry.io with the shared developer email (one owner; free plan has one user).
 2. Create organisation `moz-rewards`, project platform **Next.js**, name `moz-rewards`.
@@ -166,6 +160,7 @@ Images live in `design/reference/desktop-view/` and `mobile-view/`.
 
 | ID | Task | Done by | Date |
 |---|---|---|---|
+| H-33 | Deny rules narrowed so `.env.example` is editable (committed `ca9d3d8`) | talha.syed | 10 Nov 2026 |
 | H-22 | Loyalty-rule defaults accepted as written (DECISIONS "Plan v4 defaults"); may be revised later | talha.syed | 10 Nov 2026 |
 | H-32 (Mac) | `.env.local` DB roles updated, `pnpm db:reset`, app starts; Windows laptop still to do | talha.syed | 10 Nov 2026 |
 | H-21 | Client confirmed in writing: launch tier (200 shops, 50,000 members, 30 req/s peak, 1,000 concurrent, 10,000-member announcement < 10 min), single-host risk (≈2 h down, ≤5 min data loss, internal target), Hostinger renewal ≈ £24.99/month | client (via talha.syed) | 10 Nov 2026 |

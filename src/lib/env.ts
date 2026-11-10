@@ -16,6 +16,24 @@ export const clientEnvSchema = z
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: optional,
     /** Web Push VAPID public key (the browser needs it to subscribe; the private key stays server-side). */
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: optional,
+    /**
+     * P0-13: Umami analytics, same origin under this path (Caddy proxies it, P0-15), e.g. `/u`. Loaded only
+     * after consent; unset = no analytics and no cookie notice.
+     */
+    NEXT_PUBLIC_UMAMI_PATH: z
+      .string()
+      .regex(/^\/[a-z0-9-]+$/, "must be a same-origin path like /u")
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
+    NEXT_PUBLIC_UMAMI_WEBSITE_ID: z
+      .uuid()
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
+    /** P0-13: load the browser Sentry SDK (events go through /api/monitoring; the real DSN stays server-side). */
+    NEXT_PUBLIC_SENTRY_ENABLED: z
+      .enum(["true", "false", ""])
+      .optional()
+      .transform((v) => v === "true"),
   })
   .strict();
 
@@ -51,4 +69,7 @@ export function parseClientEnv(source: Record<string, string | undefined>): Clie
 export const clientEnv: ClientEnv = parseClientEnv({
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+  NEXT_PUBLIC_SENTRY_ENABLED: process.env.NEXT_PUBLIC_SENTRY_ENABLED,
+  NEXT_PUBLIC_UMAMI_PATH: process.env.NEXT_PUBLIC_UMAMI_PATH,
+  NEXT_PUBLIC_UMAMI_WEBSITE_ID: process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID,
 });

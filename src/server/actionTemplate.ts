@@ -36,6 +36,7 @@ import { AppError, errorResult, isAppError, type Result } from "@/server/errors"
 import { writeOutbox } from "@/server/jobs/outbox";
 import type { JobName, JobPayload, QueueName } from "@/server/jobs/registry";
 import { requestLogger } from "@/server/log";
+import { reportUnexpected } from "@/server/observability/sentry";
 import { transaction } from "@/server/repos/_base";
 import { ipKey, ipLimit, limitOrThrow, userKey } from "@/server/security/rate-limit";
 import { assertSameOrigin, clientIp } from "@/server/security/request";
@@ -217,6 +218,7 @@ async function execute<Schema extends z.ZodType, Ctx extends ScopeContext, Out>(
         { err },
         "after-commit follow-up failed or timed out",
       );
+      reportUnexpected(err, { where: `${spec.name} after-commit`, requestId: facts.requestId });
     };
     const runAll = async (): Promise<void> => {
       for (const fn of pending) {
@@ -238,6 +240,8 @@ async function execute<Schema extends z.ZodType, Ctx extends ScopeContext, Out>(
 
 function unexpected(err: unknown, facts: RequestFacts, name: string): AppError {
   requestLogger(facts.requestId, { action: name }).error({ err }, "unexpected error");
+  // P0-13 (C-03): Sentry with the request id + the developers' `error.unexpected` alert.
+  reportUnexpected(err, { where: name, requestId: facts.requestId });
   return new AppError("INTERNAL");
 }
 

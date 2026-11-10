@@ -1,5 +1,7 @@
 import { connection } from "next/server";
 import { ApplyPreferences } from "@/components/system/ApplyPreferences";
+import { CookieNotice } from "@/features/consent/CookieNotice";
+import { clientEnv } from "@/lib/env";
 import { fraunces, manrope } from "@/styles/fonts";
 import { colourTokens } from "@/styles/tokens";
 import type { Metadata, Viewport } from "next";
@@ -33,6 +35,12 @@ export default async function RootLayout({
         </a>
         <ApplyPreferences />
         {children}
+        {clientEnv.NEXT_PUBLIC_UMAMI_PATH && clientEnv.NEXT_PUBLIC_UMAMI_WEBSITE_ID ? (
+          <CookieNotice
+            path={clientEnv.NEXT_PUBLIC_UMAMI_PATH}
+            websiteId={clientEnv.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
+          />
+        ) : null}
       </body>
     </html>
   );

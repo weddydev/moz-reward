@@ -15,11 +15,14 @@ import {
   customerProfiles,
   featureFlags,
   memberships,
+  opsSnapshot,
   sessions,
   shopStaff,
   shops,
   users,
 } from "@/server/db/schema";
+import { QUEUE_NAMES } from "@/server/jobs/registry";
+import type { HealthSnapshot } from "@/server/ops/health-rules";
 
 export type UserRow = typeof users.$inferSelect;
 export type ShopRow = typeof shops.$inferSelect;
@@ -224,4 +227,39 @@ export async function userSessionIps(userId: string): Promise<Array<string | nul
     .from(sessions)
     .where(eq(sessions.userId, userId));
   return rows.map((r) => r.ip);
+}
+
+/**
+ * P0-13: a realistic health snapshot for the System page in E2E (the web process has no worker pool, so the
+ * monitor itself can't run there; integration tests cover the real tick).
+ */
+export async function makeOpsSnapshot(now = new Date()): Promise<HealthSnapshot> {
+  const ago = (sec: number): string => new Date(now.getTime() - sec * 1000).toISOString();
+  const snapshot: HealthSnapshot = {
+    takenAt: now.toISOString(),
+    db: { ok: true, ms: 4, sizeBytes: 48 * 1024 * 1024 },
+    redis: { ok: true, ms: 1 },
+    cache: { ok: true, ms: 1 },
+    scheduler: { lastRunAt: ago(25), uptimeSec: 3600 },
+    queues: QUEUE_NAMES.map((name) => ({
+      name,
+      waiting: name === "email" ? 3 : 0,
+      active: name === "email" ? 1 : 0,
+      delayed: 0,
+      failed: 0,
+      lagSec: name === "email" ? 75 : 0,
+    })),
+    outbox: { pending: 2, oldestAgeSec: 14 },
+    failedJobs: { unresolved: 1, recent: 0 },
+    disk: { path: "/", usedPct: 41 },
+    backups: { enabled: false, lastDumpAt: null, lastWalAt: null, lastRestoreDrillAt: null },
+    email: { sentToday: 12, cap: 400 },
+    sentry: { sentThisMonth: 3, quota: 5000 },
+    sse: { connections: null },
+  };
+  await db()
+    .insert(opsSnapshot)
+    .values({ id: 1, takenAt: now, data: snapshot })
+    .onConflictDoUpdate({ target: opsSnapshot.id, set: { takenAt: now, data: snapshot } });
+  return snapshot;
 }

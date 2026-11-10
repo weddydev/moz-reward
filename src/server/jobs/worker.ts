@@ -2,11 +2,13 @@ import "server-only";
 import { DelayedError, type Job, UnrecoverableError, Worker } from "bullmq";
 import { systemScope, type TenantScope, tenantScopeFromOutbox } from "@/server/authz/scope";
 import { log as appLog } from "@/server/log";
+import { captureJobFailure } from "@/server/observability/sentry";
 import { recordFailedJob } from "@/server/repos/jobs";
 import { markOutboxCompleted, markOutboxFailed, outboxJobFacts } from "@/server/repos/outbox";
 import { bullPrefix, createRedis } from "./connection";
 import { isEnvelope, openEnvelope } from "./envelope";
 import { HANDLERS } from "./handlers";
+import { createLogThrottle } from "./log-throttle";
 import { redact, redactText } from "./redact";
 import { type JobDef, jobDef, QUEUE_NAMES, QUEUES, type QueueName } from "./registry";
 import type { Redis } from "ioredis";
@@ -90,6 +92,7 @@ export function withDeadLetter(
         error: message,
       });
       if (final) {
+        captureJobFailure(err, { queue, job: job.name });
         await closeFailedOutboxRow(job);
         try {
           await record(DLQ_SCOPE, deadLetterRow(queue, job, message, job.attemptsMade + 1));
@@ -269,10 +272,17 @@ export function createQueueWorker(
     void backstop(job, err);
   });
   worker.on("error", (err) => {
-    log("worker.error", { queue, error: redactText(err.message) });
+    // While Redis is down this fires several times a second per queue: one line per kind per 30 s.
+    const code = (err as { code?: unknown }).code;
+    const error = redactText(err.message || (typeof code === "string" ? code : err.name));
+    workerErrorThrottle(`${queue}:${error}`, (repeated) => {
+      log("worker.error", { queue, error, ...(repeated > 0 ? { repeated } : {}) });
+    });
   });
   return { worker, connection };
 }
+
+const workerErrorThrottle = createLogThrottle({ windowMs: 30_000 });
 
 /** Starts one worker per queue. `close()` waits for in-flight jobs to finish, then closes connections. */
 export function startWorkers(queues: readonly QueueName[] = QUEUE_NAMES): RunningWorkers {

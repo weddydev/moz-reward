@@ -1,8 +1,10 @@
 import "server-only";
+import { londonDay } from "@/lib/format-date";
 import { systemScope } from "@/server/authz/scope";
 import { type LockoutReason, renderStaffLockoutEmail } from "@/server/emails/StaffLockoutEmail";
 import { sendEmail } from "@/server/integrations/email";
 import { log } from "@/server/log";
+import { lockoutEmailAllowed } from "@/server/ops/alerts";
 import { userEmailById } from "@/server/repos/users";
 import { privilegedKind } from "./privileged";
 
@@ -24,6 +26,12 @@ export async function sendStaffLockoutEmail(userId: string, reason: LockoutReaso
       { job: "email:staff-lockout", userId, found: email !== null },
       "lockout email skipped: account gone or no longer staff/admin",
     );
+    return;
+  }
+  // C-31: at most LOCKOUT_EMAILS_PER_DAY per account per UK day (a sustained attack must not flood the
+  // owner's inbox or our email quota); the security alert to the developers is not capped by this.
+  if (!(await lockoutEmailAllowed(userId, londonDay(new Date())))) {
+    log().warn({ job: "email:staff-lockout", userId }, "lockout email skipped: daily cap reached");
     return;
   }
   await sendEmail({ kind: "staff-lockout", to: email, ...(await renderStaffLockoutEmail(reason)) });

@@ -16,6 +16,7 @@ export function stubDeployedEnv(appEnv: "staging" | "production"): void {
   vi.stubEnv("EMAIL_FALLBACK_PROVIDER", "brevo");
   vi.stubEnv("EMAIL_FALLBACK_API_KEY", "xkeysib_test_key");
   vi.stubEnv("TURNSTILE_SECRET_KEY", "0x4AAAAAAA-test-only-secret");
+  vi.stubEnv("ALERT_EMAILS", "dev-a@test.moz.invalid,dev-b@test.moz.invalid");
   vi.stubEnv("TRUSTED_PROXY", appEnv === "production" ? "cloudflare" : "caddy");
   vi.stubEnv("REDIS_URL", "rediss://:test-only@redis.invalid:6380");
   vi.stubEnv("REDIS_CACHE_URL", "rediss://:test-only@redis-cache.invalid:6380");

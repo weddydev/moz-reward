@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { LockoutReason } from "@/server/emails/StaffLockoutEmail";
+import { ALERT_KINDS } from "@/server/ops/alert-kinds";
 
 /**
  * Queue registry (P0-04, ARCHITECTURE §6). Every queue, its worker concurrency and the payload schema of each
@@ -67,6 +68,19 @@ export const JOBS = {
     /** P0-19/P0-18: tell a staff/admin owner their account was locked (written to the outbox with the audit row). */
     "staff-lockout": defineJob(
       z.object({ userId: z.uuid(), reason: z.enum(LOCKOUT_REASONS) }).strict(),
+    ),
+    /** P0-13 (C-22): a deduplicated security/ops alert raised in a web process, emailed to both developers. */
+    "ops-alert": defineJob(
+      z
+        .object({
+          kind: z.enum(ALERT_KINDS),
+          category: z.enum(["security", "ops"]),
+          suppressed: z.number().int().min(0),
+          summary: z.boolean(),
+          at: z.iso.datetime(),
+          detail: z.record(z.string(), z.unknown()),
+        })
+        .strict(),
     ),
   },
   images: {},

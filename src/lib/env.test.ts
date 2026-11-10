@@ -10,10 +10,22 @@ describe("[P0-02] client env", () => {
   });
 
   it("accepts an empty environment (all public keys are optional) and treats blank as unset", () => {
-    expect(parseClientEnv({})).toEqual({});
+    expect(parseClientEnv({})).toEqual({ NEXT_PUBLIC_SENTRY_ENABLED: false });
     expect(
       parseClientEnv({ NEXT_PUBLIC_TURNSTILE_SITE_KEY: "" }).NEXT_PUBLIC_TURNSTILE_SITE_KEY,
     ).toBeUndefined();
+  });
+
+  it("[P0-13] NEXT_PUBLIC_SENTRY_ENABLED is on only for the exact value true", () => {
+    expect(parseClientEnv({ NEXT_PUBLIC_SENTRY_ENABLED: "true" }).NEXT_PUBLIC_SENTRY_ENABLED).toBe(
+      true,
+    );
+    expect(parseClientEnv({ NEXT_PUBLIC_SENTRY_ENABLED: "" }).NEXT_PUBLIC_SENTRY_ENABLED).toBe(
+      false,
+    );
+    expect(() => parseClientEnv({ NEXT_PUBLIC_SENTRY_ENABLED: "yes" })).toThrow(
+      /NEXT_PUBLIC_SENTRY_ENABLED/,
+    );
   });
 
   it("rejects a server variable passed to the client schema, naming it without its value", () => {

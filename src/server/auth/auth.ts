@@ -19,6 +19,7 @@ import { clientIp } from "@/server/security/request";
 import { recordAudit } from "@/server/services/audit";
 import { authCookieOptions } from "./cookies";
 import { betterAuthIpOptions } from "./ip";
+import { betterAuthLogger } from "./logger";
 import { checkMagicLinkRequest, deliverMagicLink } from "./magic-link";
 import {
   PASSKEY_REGISTRATION_PATHS,
@@ -128,6 +129,8 @@ function createAuth() {
   const isTest = e.APP_ENV === "test";
   return betterAuth({
     appName: "Moz Rewards",
+    // P0-13 (C-03): the library's logs go through pino (redaction, JSON); its errors to Sentry.
+    logger: betterAuthLogger(),
     baseURL: e.APP_URL,
     secret: e.AUTH_SECRET,
     trustedOrigins: [e.APP_URL],

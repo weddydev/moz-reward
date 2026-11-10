@@ -76,6 +76,8 @@ async function axeProblems(page: Page, baseURL: string | undefined): Promise<Gua
 type Options = {
   /** Problems this test expects (e.g. a deliberate 500). Matched against `kind: text`. */
   guardAllow: RegExp[];
+  /** P0-13: the analytics choice already stored when the page opens (null = undecided: the notice shows). */
+  analyticsConsent: "granted" | "denied" | null;
 };
 
 type SignedIn = {
@@ -187,8 +189,22 @@ export const test = base.extend<Fixtures & Options>({
     await provide({ ...extraHTTPHeaders, ...clientHeaders(clientIp) });
   },
 
+  analyticsConsent: ["denied", { option: true }],
+
   // Unhandled promise rejections don't always surface as `pageerror` (WebKit); re-raise them as errors.
-  page: async ({ page }, provide) => {
+  page: async ({ page, analyticsConsent, baseURL }, provide) => {
+    // P0-13: a stored analytics choice, so the cookie notice doesn't sit over other specs' controls.
+    // The consent spec sets `analyticsConsent: null` to start undecided.
+    if (analyticsConsent && baseURL) {
+      await page.context().addCookies([
+        {
+          name: "moz_consent",
+          value: `analytics-v1-${analyticsConsent}`,
+          url: baseURL,
+          sameSite: "Lax",
+        },
+      ]);
+    }
     await page.addInitScript(() => {
       window.addEventListener("unhandledrejection", (e) => {
         const reason = e.reason instanceof Error ? e.reason.message : String(e.reason);

@@ -31,3 +31,9 @@ export function formatDateTime(date: Date): string {
   const p = londonParts(date);
   return `${formatDate(date)}, ${p.hour}:${p.minute}`;
 }
+
+/** The UK calendar day as `YYYY-MM-DD` (daily counters and caps reset at UK midnight, across BST). */
+export function londonDay(date: Date): string {
+  const p = londonParts(date);
+  return `${p.year}-${p.month.padStart(2, "0")}-${p.day.padStart(2, "0")}`;
+}

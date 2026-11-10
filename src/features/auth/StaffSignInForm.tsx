@@ -9,6 +9,7 @@ import { TURNSTILE_HEADER, TURNSTILE_REQUIRED_CODE } from "@/lib/turnstile";
 import { formString, formValue, useHydrated } from "@/lib/use-hydrated";
 import { inputClass, primaryButtonClass } from "./AuthCard";
 import { withNetworkGuard } from "./network";
+import { PreparingHint } from "./PreparingHint";
 
 const GENERIC = "Email or password is incorrect.";
 
@@ -35,6 +36,7 @@ export function StaffSignInForm(): React.JSX.Element {
   const [step, setStep] = useState<"password" | "code">("password");
   const [useBackup, setUseBackup] = useState(false);
   const hydrated = useHydrated();
+  const preparingId = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Security check (P0-19): an account past its failure limit needs a Turnstile token with the password.
@@ -251,9 +253,15 @@ export function StaffSignInForm(): React.JSX.Element {
       </p>
       {check ? <Turnstile key={check.round} action="staff-sign-in" onToken={onCheckToken} /> : null}
       {errorEl}
-      <button type="submit" className={primaryButtonClass} disabled={!hydrated || busy || waiting}>
+      <button
+        type="submit"
+        className={primaryButtonClass}
+        disabled={!hydrated || busy || waiting}
+        aria-describedby={hydrated ? undefined : preparingId}
+      >
         {busy ? "Signing in…" : waiting ? "Checking…" : "Continue"}
       </button>
+      <PreparingHint id={preparingId} hydrated={hydrated} />
     </form>
   );
 }

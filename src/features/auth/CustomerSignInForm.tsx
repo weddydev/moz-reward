@@ -10,6 +10,7 @@ import { TURNSTILE_HEADER } from "@/lib/turnstile";
 import { formValue, useHydrated } from "@/lib/use-hydrated";
 import { inputClass, primaryButtonClass, secondaryButtonClass } from "./AuthCard";
 import { networkErrorMessage } from "./network";
+import { PreparingHint } from "./PreparingHint";
 
 /** Pragmatic shape check; the server validates again. */
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -32,6 +33,7 @@ export function CustomerSignInForm({
   const emailId = useId();
   const errorId = useId();
   const hydrated = useHydrated();
+  const preparingId = useId();
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState<string | null>(
@@ -162,9 +164,11 @@ export function CustomerSignInForm({
           type="submit"
           className={primaryButtonClass}
           disabled={!hydrated || state === "sending"}
+          aria-describedby={hydrated ? undefined : preparingId}
         >
           {state === "sending" ? "Sending…" : "Email me a sign-in link"}
         </button>
+        <PreparingHint id={preparingId} hydrated={hydrated} />
       </form>
     </>
   );
