@@ -226,3 +226,8 @@ Evidence: AC2 integration `[P0-16]` 13/13 as moz_worker: for all 6 staff/admin a
 Evidence: gate:task result in the commit's PROGRESS "Last verified".
 Not verified: anything on staging (none yet) → C-38.
 Left off: checkpoint 22:05 IST, baton kept. Next: P0-08 (P0-C) while P0-15 waits on H-06/07/08/26/27; check CI on `89a2a1e` first.
+
+## 2026-11-10 (22:10–22:55 IST) — P0 — P0-08 step A (talha.syed, macOS)
+Done: standing rule "every stop says whether to /clear" in CLAUDE.md §1 (`d86eb08`); P0-08 brief tightened (8 ACs, edge cases, tests); step A tokens + global styles on `wip/P0-08`.
+Evidence: gate:task PASS (unit 562, int 457, build, bundle, sast); full 5-project E2E 313 passed / 0 failed; gallery screenshots (1440, iPhone 14) inspected.
+Left off: checkpoint, baton kept. Next: step B on `wip/P0-08` (preference hooks, pre-paint script, profile sync, toggles), then step C (token page, contrast table, E2E, snapshots).
