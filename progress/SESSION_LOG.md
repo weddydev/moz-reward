@@ -190,3 +190,4 @@ Open: security-reviewer result pending (task not ticked). Found 2 orphaned test 
 Review: 2 HIGH (system job from tenant row; 0009 definer ownership needs superuser) + 7 should-fix, listed in PROGRESS handoff; fix in 0010 before tick.
 Review fixes: 0010 (moz_rls definer owner, worker refuses system job from tenant row, role-bound staff/admin/outbox writes, narrow identity grants, audit actor bound, flags admin-only); C-33 → P0-15, C-34 → P1-01. P0-20 ticked.
 Handoff 14:15 IST by talha.syed: P0-20 ticked; CI on 9130581 running at handover (e0fc442 green); next P0-13; H-32 for both laptops.
+Handoff 14:30 IST by talha.syed: CI green on 9130581; H-21/H-22/H-17 closed, H-32 Mac done (Windows pending); baton free.

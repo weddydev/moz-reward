@@ -3,14 +3,14 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: free — last held by talha.syed, 2026-11-10 14:15 IST
+Baton: free — last held by talha.syed, 2026-11-10 14:30 IST
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handed over by talha.syed, 2026-11-10 14:15 IST (macOS).** Finished: **P0-20 Row-Level Security** (ticked), commits `e0fc442` (RLS) and `9130581` (review hardening, migration 0010). Nothing half-done; no wip branch.
+- **Handed over by talha.syed, 2026-11-10 14:30 IST (macOS).** Finished: **P0-20 Row-Level Security** (ticked), commits `e0fc442` (RLS) and `9130581` (review hardening, migration 0010). Nothing half-done; no wip branch.
 - **What P0-20 is:** roles `moz_app` (web/tenant, RLS), `moz_auth` (Better Auth + identity lookups), `moz_worker` (BYPASSRLS, worker/CLI only), `moz_rls` (NOLOGIN owner of the SECURITY DEFINER helpers). ENABLE + FORCE + per-role policies on every table except failed_jobs/job_heartbeats; DB re-checks shop/admin roles. Repos: `withScope(scope, q => …, tx?)` / `transaction(scope, fn)` / `adminRead`; `dbFor` is gone. Scopes `publicScope`, `authScope`; ESLint allowlists for `systemScope`/`authScope`. Outbox: web INSERT-only, rows carry their scope (role-bound); jobs declare `runAs` (`tenant` jobs get `ctx.scope`; system jobs refused from tenant rows). Sweeps/replays audited. `pnpm db:rls-bench` = AC3 evidence (DECISIONS P0-20).
-- **Do first (H-32, 🔴):** update `.env.local` (the three `DATABASE_URL*` lines from `.env.example`), `pnpm services:up`, `pnpm db:reset`. Without it `pnpm dev`/`worker` refuse to start.
-- **Tested:** gate:task PASS on 9130581 (unit 462, int 401, build, bundle, sast, E2E P0-20 2/0 Chromium+WebKit); full E2E 272 + P0-20 5/5 on e0fc442; CI green on e0fc442 (42783610640); CI on 9130581 (42785082564) was **still running at handover** — check it first; red = fix first.
+- **After P0-20:** H-21 confirmed, H-22 defaults accepted, H-17 deny rules added (DECISIONS / HUMAN_TASKS). **Windows laptop first (H-32, 🔴):** update `.env.local` (the three `DATABASE_URL*` lines from `.env.example`), `pnpm services:up`, `pnpm db:reset`. Without it `pnpm dev`/`worker` refuse to start.
+- **Tested:** gate:task PASS on 9130581 (unit 462, int 401, build, bundle, sast, E2E P0-20 2/0 Chromium+WebKit); full E2E 272 + P0-20 5/5 on e0fc442; CI green on e0fc442 (42783610640); CI green on 9130581 (42785082564); later commits are progress/settings only.
 - **Not yet tested:** full E2E after 0010 (only the P0-20 spec ran); security-reviewer re-run on 0010; real Resend/Brevo (H-04); Turnstile at 320 px with a real key; X-Request-Id via Caddy (C-23); RLS cost on staging data and the migration as a non-superuser owner (C-32/C-33 → P0-15).
 - **Next:** P0-13 observability (+ C-03, C-06, C-22, C-26, C-31). New tables need grants in `tests/integration/db-foundation.test.ts` (MOZ_APP_GRANTS) and RLS policies, or lint/tests fail; tenant jobs in tests via `tests/support/tenant-job.ts`.
 - **Watch out:** E2E specs opening their own context pass `extraHTTPHeaders: clientHeaders()`. Server-side `auth.api.signInEmail/verify*` is a lint error. Untracked `moz-plan-v5-prompt.md` files are the human's (never commit). Remote `wip/P0-18` still exists (delete only with the human's OK).
@@ -81,7 +81,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - Tests: Vitest `unit` + `integration` (per-worker DBs); `tests/authz/` (matrix, harness self-test); `scripts/check-authz-coverage.ts` (AST, in `pnpm lint`); `tests/e2e/` (Playwright :3100, import `test` from `support/test.ts`); `tests/load/`, `tests/live/`, `stryker.config.mjs`
 
 ## Last verified (10 Nov 2026)
-- P0-20 (`9130581`): gate:task PASS (unit 462, int 401, E2E P0-20 2/0); CI 42785082564 running at handover; e0fc442 CI green 42783610640; full E2E 272 + 5/5.
+- P0-20 (`9130581`): gate:task PASS (unit 462, int 401, E2E P0-20 2/0); CI 42785082564 green; e0fc442 CI green 42783610640; full E2E 272 + 5/5.
 - P0-18 (`wip/P0-18` `cffc65b` → squashed to main): gate:task PASS (unit 448, int 357, build, bundle, sast); full E2E locally 268/0; real worker smoke (outbox → Mailpit, SIGTERM exit 0). CI: step C green 42771794684; step D red 42772627338 (axe flake, fixed), review fixes red 42774087662 (Semgrep, fixed); final branch run 42775110214 green.
 - main `a1fc0c5` (P0-19): CI green 42761722399 incl. image + Trivy; full E2E Chromium+WebKit 116/0.
 - Earlier: mutation 90.1% · `test:live`: storage ✅, email NOT VERIFIED (H-04).
