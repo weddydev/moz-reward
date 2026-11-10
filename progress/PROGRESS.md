@@ -3,17 +3,17 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-10 11:59 IST
+Baton: free — last held by talha.syed, 2026-11-10 14:15 IST
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **talha.syed, 2026-11-10 (macOS): P0-20 (RLS) done and ticked** (review fixes in 0010). Baton still held. Next: **P0-13**.
-- **P0-20 in short:** migration 0009: roles `moz_app` (web/tenant, RLS), `moz_auth` (Better Auth + identity lookups), `moz_worker` (BYPASSRLS, worker/CLI only); ENABLE + FORCE + per-role policies on every table except 4 declared `-- rls: global`; the DB re-checks shop/admin roles (`app_in_shop()`, `app_is_admin()`). Repos use `withScope(scope, q => …, tx?)` / `transaction(scope, fn)` (SET LOCAL settings); `dbFor` is gone. New scopes `publicScope`, `authScope`; ESLint allowlists for `systemScope`/`authScope`. Outbox: web role INSERT-only; rows carry their scope; jobs declare `runAs` (`tenant` jobs get `ctx.scope` rebuilt from the row). Sweeps/replays audited. `pnpm db:rls-bench` = AC3 EXPLAIN evidence.
-- **P0-20 review:** both HIGH and should-fix 4–8 + nits 10/13 fixed in **0010** (moz_rls owns the definer helpers; role-bound staff/admin/outbox writes; narrow identity grants; audit actor bound; flags admin-only). Carried: C-33 (boot role identity) → P0-15, C-34 (checker `USING (true)` rule, adminRead guard, membership column grants) → P1-01.
-- **First steps for the next person (H-32, 🔴):** update `.env.local` (three `DATABASE_URL*` lines from `.env.example`), `pnpm services:up`, `pnpm db:reset`. Without it `pnpm dev`/`worker` refuse to start (boot role check now runs in every environment).
-- **Tests:** fixtures/assertions use `testOwnerDb()` (owner, APP_ENV=test only); app code runs as the RLS roles. A new table needs grants in `tests/integration/db-foundation.test.ts` (MOZ_APP_GRANTS) and RLS (or a `-- rls: global` line), or lint/tests fail. A tenant job in tests: `tests/support/tenant-job.ts`.
-- **Not yet tested:** real Resend/Brevo sends (H-04); Turnstile at 320 px with a real site key; X-Request-Id overwrite needs Caddy (C-23 → P0-15); RLS cost on staging data (C-32 → P0-15).
-- **Watch out:** E2E specs that open their own browser context must pass `extraHTTPHeaders: clientHeaders()`. Server-side `auth.api.signInEmail/verify*` is a lint error. Untracked `moz-plan-v5-prompt.md` files are the human's (never commit them). Remote branch `wip/P0-18` still exists (not deleted without the human's OK).
+- **Handed over by talha.syed, 2026-11-10 14:15 IST (macOS).** Finished: **P0-20 Row-Level Security** (ticked), commits `e0fc442` (RLS) and `9130581` (review hardening, migration 0010). Nothing half-done; no wip branch.
+- **What P0-20 is:** roles `moz_app` (web/tenant, RLS), `moz_auth` (Better Auth + identity lookups), `moz_worker` (BYPASSRLS, worker/CLI only), `moz_rls` (NOLOGIN owner of the SECURITY DEFINER helpers). ENABLE + FORCE + per-role policies on every table except failed_jobs/job_heartbeats; DB re-checks shop/admin roles. Repos: `withScope(scope, q => …, tx?)` / `transaction(scope, fn)` / `adminRead`; `dbFor` is gone. Scopes `publicScope`, `authScope`; ESLint allowlists for `systemScope`/`authScope`. Outbox: web INSERT-only, rows carry their scope (role-bound); jobs declare `runAs` (`tenant` jobs get `ctx.scope`; system jobs refused from tenant rows). Sweeps/replays audited. `pnpm db:rls-bench` = AC3 evidence (DECISIONS P0-20).
+- **Do first (H-32, 🔴):** update `.env.local` (the three `DATABASE_URL*` lines from `.env.example`), `pnpm services:up`, `pnpm db:reset`. Without it `pnpm dev`/`worker` refuse to start.
+- **Tested:** gate:task PASS on 9130581 (unit 462, int 401, build, bundle, sast, E2E P0-20 2/0 Chromium+WebKit); full E2E 272 + P0-20 5/5 on e0fc442; CI green on e0fc442 (42783610640); CI on 9130581 (42785082564) was **still running at handover** — check it first; red = fix first.
+- **Not yet tested:** full E2E after 0010 (only the P0-20 spec ran); security-reviewer re-run on 0010; real Resend/Brevo (H-04); Turnstile at 320 px with a real key; X-Request-Id via Caddy (C-23); RLS cost on staging data and the migration as a non-superuser owner (C-32/C-33 → P0-15).
+- **Next:** P0-13 observability (+ C-03, C-06, C-22, C-26, C-31). New tables need grants in `tests/integration/db-foundation.test.ts` (MOZ_APP_GRANTS) and RLS policies, or lint/tests fail; tenant jobs in tests via `tests/support/tenant-job.ts`.
+- **Watch out:** E2E specs opening their own context pass `extraHTTPHeaders: clientHeaders()`. Server-side `auth.api.signInEmail/verify*` is a lint error. Untracked `moz-plan-v5-prompt.md` files are the human's (never commit). Remote `wip/P0-18` still exists (delete only with the human's OK).
 
 ## Status
 - **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20. Next: P0-13.
@@ -81,6 +81,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - Tests: Vitest `unit` + `integration` (per-worker DBs); `tests/authz/` (matrix, harness self-test); `scripts/check-authz-coverage.ts` (AST, in `pnpm lint`); `tests/e2e/` (Playwright :3100, import `test` from `support/test.ts`); `tests/load/`, `tests/live/`, `stryker.config.mjs`
 
 ## Last verified (10 Nov 2026)
+- P0-20 (`9130581`): gate:task PASS (unit 462, int 401, E2E P0-20 2/0); CI 42785082564 running at handover; e0fc442 CI green 42783610640; full E2E 272 + 5/5.
 - P0-18 (`wip/P0-18` `cffc65b` → squashed to main): gate:task PASS (unit 448, int 357, build, bundle, sast); full E2E locally 268/0; real worker smoke (outbox → Mailpit, SIGTERM exit 0). CI: step C green 42771794684; step D red 42772627338 (axe flake, fixed), review fixes red 42774087662 (Semgrep, fixed); final branch run 42775110214 green.
 - main `a1fc0c5` (P0-19): CI green 42761722399 incl. image + Trivy; full E2E Chromium+WebKit 116/0.
 - Earlier: mutation 90.1% · `test:live`: storage ✅, email NOT VERIFIED (H-04).
