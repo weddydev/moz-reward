@@ -13,6 +13,10 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-10 — Launch tier and single-host risk confirmed (H-21)
+Decision: the client confirmed in writing the plan v5 launch tier (200 shops, 50,000 members, 30 req/s peak, 1,000 concurrent, a 10,000-member announcement in < 10 min), the single-host risk (≈ 2 h rebuild, ≤ 5 min data loss; internal target, not an SLA) and the Hostinger renewal (≈ £24.99/month).
+Why: H-21. Consequence: load tests and RUNBOOK targets use these numbers; no change to the plan.
+
 ## 2026-11-10 — Row-Level Security: three roles, one pool each (P0-20)
 Decision: `moz_app` (web + tenant jobs, NOBYPASSRLS, DATABASE_URL), `moz_auth` (Better Auth + identity lookups: identity tables, read-only `shop_staff`/`admin_members`, append-only audit/outbox; NOBYPASSRLS, DATABASE_URL_AUTH), `moz_worker` (BYPASSRLS, worker/CLI only, DATABASE_URL_WORKER). Group roles created NOLOGIN by 0009; each environment gives them LOGIN + a password (local/test: `pnpm db:migrate` from the URLs in `.env.example`; VPS: the P0-15 bootstrap, C-32). The scope picks the pool (`repos/_base.ts`): tenant/public → app with `SET LOCAL app.scope/user_id/shop_id` in every transaction (`withScope`, `transaction`; `dbFor` removed, closing CR-L4); auth → auth; system → system (the web process has no system pool, and in staging/production refuses to start holding DATABASE_URL_WORKER). Boot checks every pool's role in every environment.
 Why: Better Auth's adapter queries outside our transactions, before any scope exists, so identity tables can't be filtered by a user setting; a separate, narrowly granted role keeps RLS forced on them without BYPASSRLS. Seeds run as moz_worker (SECURITY §3), never on owner privilege.

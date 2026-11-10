@@ -24,8 +24,6 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 | H-04 | 🟠 | Email: Resend (primary) + Brevo (failover), domain verification for both | Sun 15 Nov 2026 (staging sign-in) | Sign-in links, invites; failover when Resend's 100/day is reached | 30 min (+ DNS wait) |
 | H-20 | 🟠 | Cloudflare Turnstile keys (after H-07) | Sun 15 Nov 2026 | Bot protection on sign-in; staging fails closed without a real secret | 5 min |
 | H-28 | 🟠 | Google OAuth: separate **staging** and **production** clients; publish the consent screen with branding before P5-04 | Staging client Sun 15 Nov 2026; branding before Fri 8 Jan 2027 | Staging/production isolation; app name and logo on the Google screen | 20 min (+ Google brand review: minutes to 3 working days) |
-| H-21 | 🟠 | Client: confirm launch-tier numbers and accept the single-host risk **in writing**; note the Hostinger renewal price | Sun 15 Nov 2026 | Plan v5 targets and risk acceptance | 20 min with the client |
-| H-17 | 🟠 | Your decision on Claude Code permissions (see steps: deny rules are best effort; the real controls are B4/A5) | Sun 15 Nov 2026 (before staging secrets exist) | Tooling safety; Claude will not change its own permissions | 10 min |
 | H-12 | 🟠 | Google Play Console — **organisation** developer account (avoids the 14-day closed test for new personal accounts); verification takes days | **Start now**; verified before P5-04 (~Fri 8 Jan 2027) | Android app; launch date | 20 min + Google verification |
 | H-22 | 🟠 | Client: confirm loyalty-rule defaults (PRODUCT §4–§6, §15, §16; DECISIONS "Plan v4 defaults") | Thu 19 Nov 2026 (P1 start) | P1 builds these rules | 45 min with the client |
 | H-23 | 🟠 | Solicitor: review compliance drafts (ROPA, DPIA, processor register, retention schedule) after P0-21 | Before any real customer data (launch, Fri 22 Jan 2027); DPIA ideally by Mon 30 Nov 2026 | UK GDPR / PECR / DUAA obligations | Client side |
@@ -154,6 +152,8 @@ Images live in `design/reference/desktop-view/` and `mobile-view/`.
 
 | ID | Task | Done by | Date |
 |---|---|---|---|
+| H-21 | Client confirmed in writing: launch tier (200 shops, 50,000 members, 30 req/s peak, 1,000 concurrent, 10,000-member announcement < 10 min), single-host risk (≈2 h down, ≤5 min data loss, internal target), Hostinger renewal ≈ £24.99/month | client (via talha.syed) | 10 Nov 2026 |
+| H-17 | Human delegated the choice: Claude added the suggested deny rules (`Read(./.env.*)`, force-push to main, remote branch delete, `git clean`, `docker compose down -v`); real controls stay dev-only keys + pre-push hook | talha.syed | 10 Nov 2026 |
 | H-25 | GitHub plan: **Free** for now (`GITHUB_MODE=free`: pre-push hook, CI on every push, manual production deploy gated on green CI). Upgrade to Pro later only if server-side branch protection is wanted | human | 9 Nov 2026 |
 | H-05 | **Removed (plan v5):** the database is self-hosted on the VPS (no Neon). The owner connection string goes only into the password manager and GitHub secrets | — | 9 Nov 2026 |
 | H-11 | **Merged into H-06 (plan v5):** production runs on the same VPS; no separate production VPS or database | — | 9 Nov 2026 |
