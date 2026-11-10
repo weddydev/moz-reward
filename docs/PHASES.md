@@ -41,7 +41,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 - [x] P0-13 · Observability, SLOs and runbook
 - [x] P0-21 · Compliance foundations (drafts)
 - [ ] P0-15 · VPS provisioning, staging stack, deploy without a registry, backups, restore drill, uptime (needs H-06, H-07, H-08, H-26, H-27)
-- [ ] P0-16 · Demo seeds
+- [x] P0-16 · Demo seeds
 - [ ] P0-E closed with `/subphase-complete`
 
 **P0-C · Design system, motion, sound**

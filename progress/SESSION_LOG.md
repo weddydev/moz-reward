@@ -217,3 +217,11 @@ Done: `docs/compliance/` — README (10 questions for the solicitor), ROPA (41 a
 Evidence: AC1 every ⚠ ROPA row maps to a proposed period G1–G11; AC2 register rows checked against ARCHITECTURE §1/§10; AC3 DPIA §5 "Built in" column; AC4 H-23 open. Documents only: no tests; docs-only push skips the gate and CI.
 Not verified: nothing run on this laptop this session (no services:up, migrate or `pnpm check`); H-32 still open on Windows.
 Left off: next P0-16 demo seeds (P0-15 waits on H-06/07/08/26/27).
+
+
+## 2026-11-10 (21:20–21:50 IST) — P0 — P0-16 done (talha.syed, macOS)
+Done: demo seed in `pnpm db:seed` (3 shops, 7 accounts, fixed ids, ON CONFLICT DO NOTHING), `--reset`, derived credentials (HKDF purpose `demo-seed`), `pnpm demo:credentials`, staff/admin pre-enrolled with TOTP, staging check for password-only staff; H-36, C-38 → P0-15, C-07 now P2-04 only.
+Evidence: AC1 `pnpm db:reset && pnpm db:seed` twice on the local DB: identical counts (users 7, accounts 6, two_factors 6, shops 3, staff 2, admins 4, memberships 3) and identical id/code/email checksums; second seed inserts 0.
+Evidence: AC2 integration `[P0-16]` 13/13 as moz_worker: for all 6 staff/admin accounts the password alone returns the two-step challenge, no session, `/two-factor/enable` 401; password + derived code → `mfaVerified` session. Seen failing (8 of 13) with TOTP pre-enrolment switched off.
+Evidence: gate:task result in the commit's PROGRESS "Last verified".
+Not verified: anything on staging (none yet) → C-38.

@@ -121,7 +121,9 @@ pnpm test:titles       # warn on tests without [Pn-nn]/[Jn]; --strict exits 1
 pnpm test:mutation     # stryker on rules modules (phase gate, changed modules)
 pnpm test:load:smoke   # k6 smoke (BASE_URL/VUS/DURATION)
 pnpm test:live         # real-provider smoke; --require-all at phase gate (missing keys = NOT VERIFIED)
-pnpm db:migrate | db:generate | db:seed | db:reset   # drizzle migrations / generate / idempotent seed / LOCAL reset
+pnpm db:migrate | db:generate | db:seed | db:reset   # drizzle migrations / generate / idempotent seed (baseline + demo data) / LOCAL reset
+pnpm db:seed --reset   # delete and re-create the demo shops and accounts (staging: weekly and before a demo)
+pnpm demo:credentials  # print this environment's demo sign-in details (derived, never stored); --codes = current TOTP codes
 pnpm format | format:check
 pnpm fix               # eslint --fix + prettier --write (run before typecheck / gate:task)
 pnpm services:up | services:down   # Docker: Postgres+PostGIS, Redis, Mailpit, MinIO

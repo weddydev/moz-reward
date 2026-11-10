@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-10 — P0-16 demo seed: fixed ids, derived credentials, TOTP pre-enrolled
+Decision: `pnpm db:seed` now also creates the demo data (`src/server/db/demo-seed.ts`): 3 shops and 7 accounts (customer, staff, owner, 4 admin roles) with fixed ids/codes, ON CONFLICT DO NOTHING; `--reset` deletes exactly those ids and re-creates them. Passwords and TOTP secrets are not random and not stored anywhere: they are derived with HKDF from the environment's `BLIND_INDEX_KEY` (new purpose `demo-seed`); `pnpm demo:credentials` prints them. Staff/admin accounts are inserted with TOTP already on and no backup codes (C-07). Demo emails plus-address one inbox (`DEMO_EMAIL_BASE`; required outside local/test). On staging the seed fails while any staff/admin account has no verified TOTP.
+Why: a weekly reset must not break the authenticator entries on the developers' phones; nothing secret is written to disk, logs or Git; each environment gets different credentials; the customer signs in by email link, so staging needs a real inbox.
+Consequence / revisit when: rotating `BLIND_INDEX_KEY` on staging changes the demo credentials after the next `--reset`. P2-04 (staff invites) must narrow the staging TOTP check to accounts that are past their invite. The 40 customers, 90 days of history, offers, listings and fraud examples of TESTING §6 are added by the phases that create those tables (P1-17, P2-16, P3-14, P4-12 seeds). The other two shops have no owner account ("one account per role").
+
 ## 2026-11-10 — P0-21 compliance drafts: defaults chosen where the rules were silent
 Decision: `docs/compliance/` proposes 11 retention periods the product rules lack (RETENTION_SCHEDULE §2, e.g. offer claims 24 months, export files 7 days, request and complaint records 3 years), shop-to-platform timings in the Shop Terms table (2 working days, 24 h breach notice), and records analytics as consent-based because P0-13 built it that way (COMPLIANCE §2.2 says legitimate interests with opt-out).
 Why: a ROPA row needs a retention period, and the retention job (P2-13) needs numbers. Consequence: all are marked for the solicitor (H-23, README questions 2 and 6); COMPLIANCE §2.6 is updated when they answer.

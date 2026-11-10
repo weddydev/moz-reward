@@ -18,6 +18,7 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 | H-32 | 🔴 | **Windows laptop only now** (Mac done 10 Nov):  update the database lines in `.env.local` to the P0-20 roles, then `pnpm db:reset` (see steps) | Before your next `pnpm dev` / `pnpm worker` on that laptop | The app now refuses to start as the `moz` superuser (RLS would be skipped); Claude never reads or edits `.env.local` | 3 min / laptop |
 | H-35 | 🟢 | Close GitHub issue #1 "Scheduled CI failing" (fixed in `dd05afe`, re-run 42812524717 green) | Any time | Claude may not write to GitHub issues | 1 min |
 | H-34 | 🟠 | Sentry free account (one owner), one project, alert rule emailing the owner; DSN into GitHub secrets for staging | Sun 15 Nov 2026 (P0-15 staging) | Error reporting for web + worker (P0-13 builds the code; local proof uses a fake Sentry endpoint) | 15 min |
+| H-36 | 🟠 | Demo accounts on staging: choose one real inbox for `DEMO_EMAIL_BASE` (GitHub secret); after the first staging deploy, save the output of `demo:credentials` in the password manager and add the six TOTP keys to your authenticator apps | Sun 15 Nov 2026 (P0-15 staging) | The demo customer signs in by email link; staff/admin demo accounts need password + code. Credentials are never committed or pasted into chat | 15 min |
 | H-07 | 🟠 | Buy domain; Cloudflare account (free); move DNS to Cloudflare | Sun 15 Nov 2026 (P0-15) | Tunnel hostnames, email domain, Turnstile | 30 min (+ up to 24 h DNS) |
 | H-06 | 🟠 | Buy Hostinger KVM 4 (UK location), add both developers' SSH keys, give Claude the IP | Sun 15 Nov 2026 (P0-15) | Hosts production **and** staging (plan v5) | 30 min |
 | H-08 | 🟠 | Cloudflare R2: two buckets (uploads, backups) with separate bucket-scoped tokens | Sun 15 Nov 2026 (P0-15) | Uploads (P2) and encrypted backups (P0-15) | 15 min |
@@ -153,6 +154,15 @@ Suggested extra deny entries you may add yourself: `Read(./.env.*)`, `Bash(docke
 3. Settings → Projects → moz-rewards → Client Keys: copy the **DSN** (not secret, but keep it out of the repo) into GitHub secrets as `SENTRY_DSN_STAGING` (and later `SENTRY_DSN_PRODUCTION`).
 4. Alerts → Create alert → Issues → "A new issue is created" → action: email the owner. In the owner's mailbox add a forwarding rule for mail from sentry.io to the second developer.
 5. Settings → Subscription: leave on the free plan (no pay-as-you-go budget). Tell Claude "H-34 done".
+
+### H-36 — Demo accounts on staging (P0-16)
+1. Choose one mailbox both developers can read (no `+` in it), e.g. a shared team address. Gmail, Google Workspace, Outlook and Fastmail all deliver `name+anything@…` to `name@…`; check yours does.
+2. GitHub → repo → Settings → Secrets and variables → Actions → New repository secret: `DEMO_EMAIL_BASE_STAGING` = that address. Tell Claude "H-36 step 2 done".
+3. After the first staging deploy (P0-15), SSH to the VPS and run the `demo:credentials` command (P0-15 writes the exact line into RUNBOOK). Run it in your own terminal, never through Claude.
+4. Copy the whole output into the password manager entry "Moz Rewards staging demo accounts". Do not paste it into chat, email or a ticket.
+5. In your authenticator app add the six accounts (staff, owner, four admins) using each "TOTP key" (or the TOTP URI as a QR code). Both developers can add the same keys.
+6. The weekly reset keeps the same passwords and keys, so this is done once. They change only if the staging `BLIND_INDEX_KEY` is rotated: then repeat steps 3–5.
+7. Locally nothing is needed: `pnpm demo:credentials` shows your laptop's own demo sign-in details and `pnpm demo:credentials --codes` the current codes.
 
 ### H-16 — Reference images (done; kept for reference)
 Images live in `design/reference/desktop-view/` and `mobile-view/`.

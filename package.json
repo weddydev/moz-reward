@@ -25,6 +25,7 @@
     "db:migrate:test": "tsx src/server/db/migrate.ts --test",
     "db:seed": "tsx --conditions=react-server src/server/db/seed.ts",
     "db:reset": "tsx src/server/db/reset.ts && pnpm db:seed",
+    "demo:credentials": "tsx --conditions=react-server scripts/demo-credentials.ts",
     "db:studio": "drizzle-kit studio",
     "setup:env": "tsx scripts/setup-env.ts",
     "services:up": "tsx scripts/services.ts up",

@@ -6,9 +6,10 @@ import { env } from "@/server/env";
  * One key per purpose for keyed hashes of personal data (SECURITY §7, L10), derived with HKDF-SHA256 from
  * BLIND_INDEX_KEY. AUTH_SECRET is Better Auth's alone: rotating it never changes stored hashes, and a hash
  * made for one purpose can't be replayed as another. The phone blind index (P1-04) uses `purposeKey("blind-index")`,
- * never the master key itself (SECURITY §7, DECISIONS 10 Nov).
+ * never the master key itself (SECURITY §7, DECISIONS 10 Nov). `demo-seed` (P0-16) is the root the demo accounts'
+ * passwords and TOTP secrets are derived from; the seed never runs in production.
  */
-export const PURPOSES = ["email-key", "ip-hash", "blind-index"] as const;
+export const PURPOSES = ["email-key", "ip-hash", "blind-index", "demo-seed"] as const;
 export type Purpose = (typeof PURPOSES)[number];
 
 const SALT = "moz-rewards/v1";

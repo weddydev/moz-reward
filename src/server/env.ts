@@ -102,6 +102,11 @@ export const serverEnvSchema = z
     SENTRY_DSN: optional,
     LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
     /**
+     * P0-16: the one real inbox the demo accounts plus-address (`team+moz-owner@…`). Needed only by
+     * `pnpm db:seed` / `pnpm demo:credentials` outside local/test; never used in production.
+     */
+    DEMO_EMAIL_BASE: optional,
+    /**
      * P0-13 (C-22): both developers' addresses for security/ops alerts and health mail, comma-separated.
      * Required outside local/test; locally the default lands in Mailpit.
      */

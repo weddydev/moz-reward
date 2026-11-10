@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { assertExtensionsAvailable, MissingExtensionError } from "./migrate";
 import { assertResetAllowed } from "./reset";
-import { assertSeedAllowed } from "./seed";
+import { assertNoPasswordOnlyStaff, assertSeedAllowed } from "./seed";
 
 const LOCAL = "postgres://moz:moz@localhost:5432/moz";
 
@@ -44,6 +44,29 @@ describe("[P0-03] db:seed guard", () => {
     expect(() => {
       assertSeedAllowed(appEnv);
     }).not.toThrow();
+  });
+});
+
+describe("[P0-16] db:seed refuses to leave a password-only staff account on staging (C-07)", () => {
+  it("passes when every staff/admin account has two-step verification", () => {
+    expect(() => {
+      assertNoPasswordOnlyStaff("staging", []);
+    }).not.toThrow();
+  });
+
+  it("fails on staging, naming the accounts", () => {
+    expect(() => {
+      assertNoPasswordOnlyStaff("staging", ["a@test.moz.invalid", "b@test.moz.invalid"]);
+    }).toThrow(/2 staff\/admin account\(s\).*a@test\.moz\.invalid, b@test\.moz\.invalid/);
+  });
+
+  it("only warns locally (developers create throwaway accounts)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    expect(() => {
+      assertNoPasswordOnlyStaff("local", ["a@test.moz.invalid"]);
+    }).not.toThrow();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("a@test.moz.invalid"));
+    warn.mockRestore();
   });
 });
 
