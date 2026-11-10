@@ -19,7 +19,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Phase:** P0. Done: P0-01…07, P0-14, P0-17, **P0-19**. P0-A closed; P0-B closed 10 Nov. Next: P0-18.
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → P0-18 → P0-20 → P0-13 → P0-21 → P0-15 → P0-16; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
-- **Projected end:** P0 Wed 18 Nov 2026 · P1 Mon 30 Nov · P2 Thu 10 Dec · P3 Sat 19 Dec · P4 Sat 2 Jan 2027 · P5 Tue 12 Jan · **launch Fri 22 Jan 2027** (assumptions in PHASES.md; slips if human tasks are late or the Play account needs a 14-day closed test).
+- **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
 - **Last updated:** 2026-11-10 11:48 IST, Syedbadeshah76
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
