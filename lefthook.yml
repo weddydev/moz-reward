@@ -1,3 +1,8 @@
+# Only failures are printed (token/speed rule, human 10 Nov 2026): a passing hook prints nothing, a failing one
+# prints its full output. The exit code is unchanged.
+output:
+  - failure
+
 # Pre-commit (P0-01): format and lint only what is staged, then scan staged changes for secrets.
 # Installed by `pnpm install` (the "prepare" script). Skip once in an emergency with LEFTHOOK=0 git commit …
 pre-commit:

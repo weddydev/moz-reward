@@ -10,6 +10,8 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { resolveTaskIds, unpushedCommitMessages } from "./gate-task";
+import { commitTreeHash, covers, readStamp, type Stamp } from "./lib/gate-stamp";
 import { isDirectRun } from "../src/lib/is-direct-run";
 
 export type PushLine = { localRef: string; localSha: string; remoteRef: string; remoteSha: string };
@@ -52,6 +54,25 @@ export function needsGate(changedFiles: string[]): boolean {
   return changedFiles.some((f) => !DOCS_ONLY_GLOBS.some((g) => path.posix.matchesGlob(f, g)));
 }
 
+/**
+ * True when every pushed commit's tree already passed `gate:task` for the same task IDs (scripts/lib/gate-stamp.ts):
+ * byte-identical code, so running the gate again would only repeat the same result. Anything unknown → false.
+ */
+export function canSkipGate(
+  pushes: ReadonlyArray<{ sha: string; ids: string[] }>,
+  deps: {
+    treeOf: (sha: string) => string | null;
+    stampOf: (tree: string) => Stamp | null;
+    now: number;
+  },
+): boolean {
+  if (pushes.length === 0) return false;
+  return pushes.every(({ sha, ids }) => {
+    const tree = deps.treeOf(sha);
+    return tree !== null && covers(deps.stampOf(tree), ids, deps.now);
+  });
+}
+
 export type Git = (args: string[]) => { ok: boolean; out: string };
 
 const git: Git = (args) => {
@@ -90,6 +111,19 @@ function main(): void {
       files.length === 0
         ? "[pre-push] nothing new to check (branch deletion or no new commits): gate:task skipped"
         : "[pre-push] docs/progress-only push: gate:task skipped (same rule as CI)",
+    );
+    process.exit(0);
+  }
+  // The same task IDs the gate would pick when spawned below (unpushed commits, else the next unticked task).
+  const { ids } = resolveTaskIds(
+    [],
+    unpushedCommitMessages(),
+    readFileSync(path.join("docs", "PHASES.md"), "utf8"),
+  );
+  const pushes = lines.filter((l) => !ZERO.test(l.localSha)).map((l) => ({ sha: l.localSha, ids }));
+  if (canSkipGate(pushes, { treeOf: commitTreeHash, stampOf: readStamp, now: Date.now() })) {
+    console.warn(
+      `[pre-push] gate:task already passed for this exact code (tasks ${ids.join(", ")}): not re-run`,
     );
     process.exit(0);
   }

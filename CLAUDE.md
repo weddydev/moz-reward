@@ -69,6 +69,16 @@ Never report done without evidence from this session (command + result, screensh
 - Reviews at sub-phase close cover only commits not already reviewed at task level.
 - Skills are loaded only when they add something (§6).
 
+**Speed and token rules (human's standing rule, 10 Nov 2026). None of these removes a check, criterion, review or test.**
+- Tasks stay as defined in the phase files (not split); a session works through them as before.
+- **No duplicate gate:** `gate:task` stamps the exact tree it passed (`scripts/lib/gate-stamp.ts`); the pre-push hook skips re-running it only for byte-identical code with the same task IDs (≤ 12 h old). Any change re-runs it; CI runs on every push.
+- **Quiet hooks:** lefthook prints failures only.
+- **`pnpm fix` before checks:** run it (ESLint autofix + Prettier) before `typecheck`/`gate:task`, so import-order and format nits don't cost a round trip.
+- **Security design check first:** for a security-relevant task, `security-reviewer` checks the plan (data flows, limits, defaults, failure modes) before building; the full review of the final diff stays, and so does a re-review after any HIGH.
+- **Full 5-project E2E** at sub-phase close and in nightly CI, as TESTING §4 says — **plus immediately** for any change that affects every page (root layout, global CSS, `tests/e2e/support` fixtures, proxy/headers). Per task otherwise: `gate:task` only.
+- **Screenshots:** customer screens at 320, 390 (iPhone) and 1440, all inspected; admin and developer pages at 320 and 1440.
+- **QA agent stays on Opus, high effort** (`.claude/agents/qa-engineer.md`), never a cheaper model.
+
 ## 5. Non-negotiables
 
 - **Never** build review gating: every star rating gets identical "Post on Google" and "Send privately" options. No rewards for reviews, no offers triggered by feedback. (COMPLIANCE §1.)
@@ -107,6 +117,7 @@ pnpm test:load:smoke   # k6 smoke (BASE_URL/VUS/DURATION)
 pnpm test:live         # real-provider smoke; --require-all at phase gate (missing keys = NOT VERIFIED)
 pnpm db:migrate | db:generate | db:seed | db:reset   # drizzle migrations / generate / idempotent seed / LOCAL reset
 pnpm format | format:check
+pnpm fix               # eslint --fix + prettier --write (run before typecheck / gate:task)
 pnpm services:up | services:down   # Docker: Postgres+PostGIS, Redis, Mailpit, MinIO
 pnpm setup:env         # create .env.local with generated local secrets (never overwrites)
 pnpm check:bundle      # after build: fail if server-only env names appear in .next/static

@@ -26,6 +26,7 @@ import {
   vitestStep,
   type StepResult,
 } from "./lib/gate";
+import { writeStamp, workingTreeHash } from "./lib/gate-stamp";
 import { isDirectRun } from "../src/lib/is-direct-run";
 
 const TASK_ID = /\b((?:P\d|S)-\d{2}|J\d{1,2})\b/g;
@@ -63,7 +64,7 @@ export function resolveTaskIds(
 export const grepFor = (ids: string[]): string =>
   `\\[(${ids.map((id) => id.replace(/[-]/g, "\\-")).join("|")})\\]`;
 
-function unpushedCommitMessages(): string {
+export function unpushedCommitMessages(): string {
   const r = spawnSync("git", ["log", "--format=%B", "@{upstream}..HEAD"], { encoding: "utf8" });
   return r.status === 0 ? r.stdout : "";
 }
@@ -96,6 +97,7 @@ export function e2eStep(name: string, args: string[]): StepResult {
 
 function main(): void {
   const before = treeState();
+  const testedTree = workingTreeHash();
   const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
     scripts: Record<string, string>;
   };
@@ -169,8 +171,13 @@ function main(): void {
   }
 
   const { results, skipped } = runSteps(steps);
-  results.push(treeStep(before));
-  process.exit(summarise("gate:task", results, skipped));
+  const tree = treeStep(before);
+  results.push(tree);
+  const code = summarise("gate:task", results, skipped);
+  // Pass stamp for the exact content tested, so the pre-push hook needn't run the same gate again.
+  if (code === 0 && tree.status === "pass" && testedTree && ids.length > 0)
+    writeStamp(testedTree, ids);
+  process.exit(code);
 }
 
 if (isDirectRun(import.meta.url)) main();
