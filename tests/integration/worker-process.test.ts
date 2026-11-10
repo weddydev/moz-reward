@@ -25,7 +25,16 @@ function startWorker(): { proc: ChildProcess; output: () => string; started: Pro
     process.execPath,
     // One process (tsx as a loader, not its CLI): the CLI starts the worker as a grandchild, which a failed
     // test's SIGKILL left running, consuming later runs' jobs (P0-20). Same hook as `pnpm worker`.
-    ["--import", "tsx", "--import", "./scripts/server-only-hook.mjs", "src/worker/index.ts"],
+    // exit-with-parent: if this test process is killed, the worker follows (no orphan reads the test DB).
+    [
+      "--import",
+      "./tests/support/exit-with-parent.mjs",
+      "--import",
+      "tsx",
+      "--import",
+      "./scripts/server-only-hook.mjs",
+      "src/worker/index.ts",
+    ],
     // Same database and Redis prefix as this test worker (set by tests/setup.integration.ts).
     { env: { ...process.env }, stdio: ["ignore", "pipe", "pipe"] },
   );

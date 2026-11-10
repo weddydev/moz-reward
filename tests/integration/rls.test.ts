@@ -518,6 +518,120 @@ describe("[P0-20] review fixes: role-bound writes and narrow identity grants", (
   });
 });
 
+describe("[P0-20] re-review (0011): admin writes bound to the admin role; definer helpers locked", () => {
+  const ADMIN_ROLES = ["owner", "support", "moderator", "finance"] as const;
+  async function adminScopeOf(role: (typeof ADMIN_ROLES)[number]): Promise<Scope> {
+    const u = await makeUser();
+    await makeAdmin(u.id, role);
+    return mintAdminScope({ userId: u.id, role });
+  }
+
+  it("shop teams and shops: only admin owner/support write; every admin role still reads", async () => {
+    for (const role of ADMIN_ROLES) {
+      const scope = await adminScopeOf(role);
+      const writer = role === "owner" || role === "support";
+      const target = await makeUser();
+      const shop = await makeShop({ status: "active" });
+      const insert = await pgCode(() =>
+        withScope(scope, (q) =>
+          q.execute(
+            sql`INSERT INTO shop_staff (id, user_id, shop_id, role) VALUES (${newId()}, ${target.id}, ${shop.id}, 'owner')`,
+          ),
+        ),
+      );
+      expect(insert, `${role} insert shop_staff`).toBe(writer ? undefined : "42501");
+      const renamed = await withScope(scope, (q) =>
+        q.execute<{ id: string }>(
+          sql`UPDATE shops SET name = 'renamed' WHERE id = ${shop.id} RETURNING id`,
+        ),
+      );
+      expect([...renamed].length, `${role} update shops`).toBe(writer ? 1 : 0);
+      expect(await visible(scope, "shops"), `${role} reads shops`).toContain(shop.id);
+      expect(await visible(scope, "shop_staff", "shop_id"), `${role} reads teams`).toContain(
+        w.shopA.id,
+      );
+    }
+  });
+
+  it("feature flags: admin owner only; content settings: admin owner and moderator", async () => {
+    for (const role of ADMIN_ROLES) {
+      const scope = await adminScopeOf(role);
+      const flag = await pgCode(() =>
+        withScope(scope, (q) =>
+          q.execute(
+            sql`INSERT INTO feature_flags (key, enabled) VALUES (${`probe_${role}_${newId().slice(0, 8)}`}, false)`,
+          ),
+        ),
+      );
+      expect(flag, `${role} flag`).toBe(role === "owner" ? undefined : "42501");
+      const setting = await pgCode(() =>
+        withScope(scope, (q) =>
+          q.execute(
+            sql`INSERT INTO content_settings (key, value) VALUES (${`probe_${role}_${newId().slice(0, 8)}`}, '{}'::jsonb)`,
+          ),
+        ),
+      );
+      expect(setting, `${role} content setting`).toBe(
+        role === "owner" || role === "moderator" ? undefined : "42501",
+      );
+    }
+  });
+
+  it("every SECURITY DEFINER function: NOLOGIN owner, pinned search_path, no PUBLIC EXECUTE", async () => {
+    const fns = await db().execute<{
+      name: string;
+      canLogin: boolean;
+      config: string[] | null;
+      publicExec: boolean;
+    }>(sql`
+      SELECT p.proname AS name, r.rolcanlogin AS "canLogin", p.proconfig AS config,
+             has_function_privilege('public', p.oid, 'EXECUTE')
+               OR p.proacl IS NULL
+               OR EXISTS (SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee = 0) AS "publicExec"
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_roles r ON r.oid = p.proowner
+      WHERE n.nspname = 'public' AND p.prosecdef ORDER BY 1`);
+    expect([...fns].map((f) => f.name)).toEqual([
+      "app_admin_role",
+      "app_in_shop",
+      "app_is_admin",
+      "app_shop_role",
+      "revoke_sessions_on_privilege_change",
+    ]);
+    for (const f of fns) {
+      expect(f.canLogin, `${f.name} owner can log in`).toBe(false);
+      expect(f.config ?? [], `${f.name} search_path`).toContain(
+        "search_path=pg_catalog, public, pg_temp",
+      );
+      expect(f.publicExec, `${f.name} PUBLIC EXECUTE`).toBe(false);
+    }
+  });
+
+  it("an outbox row of a shop/admin scope must carry its role (no NULL role)", async () => {
+    const shop = await makeShop({ status: "active" });
+    const u = await makeUser();
+    await makeStaff(shop.id, u.id, "staff");
+    // A shop scope whose user is not actually on the team: app_shop_role() is NULL.
+    const outsider = await makeUser();
+    const fake = mintShopScope({ userId: outsider.id, shopId: shop.id, role: "staff" });
+    expect(
+      await pgCode(() =>
+        withScope(fake, (q) =>
+          q.insert(outbox).values({
+            id: newId(),
+            queue: "email",
+            jobName: "tenant-probe",
+            payload: { v: 1, data: {} },
+            scopeKind: "shop",
+            scopeUserId: outsider.id,
+            scopeShopId: shop.id,
+            scopeRole: null,
+          }),
+        ),
+      ),
+    ).toBe("42501");
+  });
+});
+
 describe("[P0-20] C-29: the web role may only append to the outbox", () => {
   it("cannot read, complete or delete an outbox row", async () => {
     const { custA, shopA } = scopes();

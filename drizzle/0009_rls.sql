@@ -103,9 +103,8 @@ REVOKE ALL ON FUNCTION public.revoke_sessions_on_privilege_change() FROM PUBLIC;
 
 -- 6. Enable and force RLS (FORCE: the table owner is filtered too; only superusers and BYPASSRLS skip it).
 --    Written out per table (no dynamic SQL) so scripts/check-migrations.ts can verify every scoped table.
---    Every table gets RLS unless a migration declares it global with a reason (deny by default):
--- rls: global feature_flags — global configuration read by every request; no tenant rows
--- rls: global content_settings — global configuration (chips, categories, templates); no tenant rows
+--    Every table gets RLS unless a migration declares it global with a reason (deny by default).
+--    (feature_flags and content_settings were listed here before 0010 gave them RLS; markers removed.)
 -- rls: global failed_jobs — dead-letter rows of the worker; moz_app has no grant at all
 -- rls: global job_heartbeats — scheduler liveness rows of the worker; moz_app has no grant at all
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;--> statement-breakpoint

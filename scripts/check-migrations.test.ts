@@ -203,12 +203,9 @@ describe("[P0-20] every table has RLS enabled, forced and a policy unless declar
       .map((name) => ({ name, sql: readFileSync(`drizzle/${name}`, "utf8") }));
     expect(checkRls(committed)).toEqual([]);
     const state = rlsState(committed);
-    expect([...state.global.keys()].sort()).toEqual([
-      "content_settings",
-      "failed_jobs",
-      "feature_flags",
-      "job_heartbeats",
-    ]);
+    // feature_flags/content_settings got RLS in 0010, so the checker verifies them (re-review 10).
+    expect([...state.global.keys()].sort()).toEqual(["failed_jobs", "job_heartbeats"]);
+    expect(state.tables.get("feature_flags")).toMatchObject({ enabled: true, forced: true });
     expect(state.tables.get("memberships")).toMatchObject({ enabled: true, forced: true });
   });
 });

@@ -193,6 +193,11 @@ export function jobProcessor(
     // the job data in Redis), so its handler meets the same RLS walls as the request that produced it.
     let scope: TenantScope | null = null;
     // A system job (BYPASSRLS) runs only from a row the identity layer or the system wrote (review HIGH-1).
+    // An outbox id whose row is gone is never legitimate (the sweep prunes only completed/failed rows): a
+    // forged envelope in Redis must not run with BYPASSRLS (re-review 3).
+    if (entry.def.runAs === "system" && outboxId && !facts) {
+      throw new UnrecoverableError(`${queue}:${job.name} is a system job without its outbox row`);
+    }
     if (
       entry.def.runAs === "system" &&
       facts &&

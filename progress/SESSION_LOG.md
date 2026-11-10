@@ -191,3 +191,8 @@ Review: 2 HIGH (system job from tenant row; 0009 definer ownership needs superus
 Review fixes: 0010 (moz_rls definer owner, worker refuses system job from tenant row, role-bound staff/admin/outbox writes, narrow identity grants, audit actor bound, flags admin-only); C-33 → P0-15, C-34 → P1-01. P0-20 ticked.
 Handoff 14:15 IST by talha.syed: P0-20 ticked; CI on 9130581 running at handover (e0fc442 green); next P0-13; H-32 for both laptops.
 Handoff 14:30 IST by talha.syed: CI green on 9130581; H-21/H-22/H-17 closed, H-32 Mac done (Windows pending); baton free.
+
+## 2026-11-10 (16:20– IST) — P0 — P0-20 re-review fixed (talha.syed, macOS)
+Done: full E2E after 0010 (Chromium 69 / WebKit 51 pass, 0 fail) · security-reviewer on 9130581: 1 HIGH (any admin role could write shop_staff/shops → owner of any shop) + 5 should-fix, fixed in 0011 (admin-role-bound writes, flags owner-only, content settings owner/moderator, helpers not PUBLIC, NULL-role outbox rows refused), worker refuses a system job whose outbox row is missing, stale `rls: global` markers removed, C-32 updated (moz_rls NOLOGIN WITH ADMIN to the migration owner).
+Evidence: new tests seen failing first (5), then pass; gate:task PASS (unit 462, int 406, E2E P0-20 2/0).
+Found: an outbox flake was two orphaned worker processes (3–4 h old) relaying `moz_test_w4`'s outbox; killed (human allowed); `tests/support/exit-with-parent.mjs` makes the spawned worker exit when Vitest dies (Node 26 caches `process.ppid`, so it probes with signal 0; verified).

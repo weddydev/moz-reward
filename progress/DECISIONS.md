@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-10 — RLS admin writes bound to the admin role (P0-20 re-review, 0011)
+Decision: writes to `shops`/`shop_staff` need admin owner or support; `feature_flags` admin owner only; `content_settings` owner or moderator (PRODUCT §2); every admin role keeps SELECT. The four role helpers are EXECUTE-able only by moz_app/moz_auth (not PUBLIC). A shop/admin outbox row must carry a non-NULL role; the worker refuses a system job whose outbox row is missing. Finance gets shop writes only if P2 plan columns land on `shops` (then a DECISIONS entry).
+Why: the re-review of 0010 found any admin role could make itself owner of any shop (HIGH). `moz_auth` may name any actor in `audit_logs` (`WITH CHECK (true)`): accepted, identity events have no scope; its identity tables stay full-CRUD by design. Stale `rls: global` markers for feature_flags/content_settings were removed from 0009's comments (no deployed DB yet), so the checker verifies them.
+Consequence: catalog test pins every SECURITY DEFINER function (NOLOGIN owner, search_path, no PUBLIC EXECUTE). PostGIS revokes (0010) must be repeated wherever the extension is (re)created (C-32).
+
 ## 2026-11-10 — Loyalty-rule defaults accepted (H-22)
 Decision: the "Plan v4 defaults" loyalty rules (award cap £500/500 gold, 15-min own reversal, rewards 90 days, rolling expiry with 30/7-day warnings, ISO-week streaks, repeating milestones, multiplied multipliers rounded down, 30-day rejoin, two-admin 72 h recovery, quiet hours 21:00–08:00, 5 marketing pushes / 7 days) are confirmed by the human for P1.
 Why: H-22. Consequence: P1 builds them as specified; a later change updates PRODUCT/DECISIONS and the tests.

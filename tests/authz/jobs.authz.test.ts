@@ -184,6 +184,35 @@ describe("[P0-20] C-30 producers and the worker refuse mismatched origins", () =
     expect(ran).toBe(false);
   });
 
+  it("a system job naming an outbox row that doesn't exist is refused for good (re-review 3)", async () => {
+    const id = newId(); // never inserted: a forged or pruned row
+    const def = jobDef("email", "staff-lockout");
+    let ran = false;
+    const processor = jobProcessor("email", () =>
+      def
+        ? {
+            def,
+            handler: async () => {
+              ran = true;
+            },
+          }
+        : undefined,
+    );
+    const owner = w.principals.owner_own_shop;
+    if (!owner) throw new Error("owner");
+    const job = {
+      name: "staff-lockout",
+      id,
+      data: relayEnvelope({
+        id,
+        payload: { v: 1, data: { userId: owner.userId, reason: "password" } },
+      }),
+      timestamp: Date.now(),
+    } as unknown as Job;
+    await expect(processor(job)).rejects.toThrow(/without its outbox row/);
+    expect(ran).toBe(false);
+  });
+
   it("a tenant job whose outbox row is gone, or was not written by a tenant scope, is refused for good", async () => {
     const missing = newId();
     await db()
