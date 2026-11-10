@@ -44,7 +44,8 @@ export const customerProfiles = pgTable(
     birthdayDay: smallint(),
     birthdayMonth: smallint(),
     memberId: text().notNull().unique(),
-    soundOn: boolean().notNull().default(true),
+    /** null = no choice yet (sounds are on by default, DESIGN §9). */
+    soundOn: boolean(),
     /** null = follow the system setting (prefers-reduced-motion). */
     reduceMotion: boolean(),
     isAdultConfirmed: boolean().notNull().default(false),

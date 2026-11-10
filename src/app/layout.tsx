@@ -1,7 +1,11 @@
+import { headers } from "next/headers";
 import { connection } from "next/server";
-import { ApplyPreferences } from "@/components/system/ApplyPreferences";
+import { Suspense } from "react";
 import { CookieNotice } from "@/features/consent/CookieNotice";
+import { ApplyPreferences } from "@/features/preferences/ApplyPreferences";
+import { loadAccountPreferences } from "@/features/preferences/load";
 import { clientEnv } from "@/lib/env";
+import { PREPAINT_SCRIPT } from "@/lib/preferences-prepaint";
 import { fraunces, manrope } from "@/styles/fonts";
 import { colourTokens } from "@/styles/tokens";
 import type { Metadata, Viewport } from "next";
@@ -19,13 +23,33 @@ export const viewport: Viewport = {
   themeColor: colourTokens.bg,
 };
 
+/** Streams in after the shell: the profile lookup never delays first paint. */
+async function AccountPreferences(): Promise<React.JSX.Element> {
+  return <ApplyPreferences account={await loadAccountPreferences()} />;
+}
+
 export default async function RootLayout({
   children,
 }: LayoutProps<"/">): Promise<React.JSX.Element> {
   // Render per request so Next can put this request's CSP nonce (set by src/proxy.ts) on every script.
   await connection();
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
-    <html lang="en-GB" className={`${fraunces.variable} ${manrope.variable} h-full antialiased`}>
+    // suppressHydrationWarning: the pre-paint script sets data-reduce-motion on <html> before React hydrates.
+    <html
+      lang="en-GB"
+      className={`${fraunces.variable} ${manrope.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
+      <head>
+        {/* Stored motion choice onto <html> before first paint (P0-08 AC 7). Our own constant; nonce from proxy.ts. */}
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          // eslint-disable-next-line react/no-danger -- a constant from our own module, no request data
+          dangerouslySetInnerHTML={{ __html: PREPAINT_SCRIPT }}
+        />
+      </head>
       <body className="flex min-h-full flex-col">
         <a
           href="#main"
@@ -33,7 +57,9 @@ export default async function RootLayout({
         >
           Skip to content
         </a>
-        <ApplyPreferences />
+        <Suspense fallback={null}>
+          <AccountPreferences />
+        </Suspense>
         {children}
         {clientEnv.NEXT_PUBLIC_UMAMI_PATH && clientEnv.NEXT_PUBLIC_UMAMI_WEBSITE_ID ? (
           <CookieNotice

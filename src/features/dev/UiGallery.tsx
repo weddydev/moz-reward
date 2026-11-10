@@ -24,6 +24,7 @@ import {
   Toaster,
   toast,
 } from "@/components/ui";
+import { PreferenceToggles } from "@/features/preferences/PreferenceToggles";
 
 const COLOURS = [
   "bg",
@@ -266,12 +267,16 @@ export function UiGallery(): React.JSX.Element {
         </Tabs>
         <div className="max-w-sm">
           <Switch
-            label="Sounds"
-            description="Soft chimes when gold arrives."
+            label="Birthday treat reminders"
+            description="One email a year, a week before."
             checked={sounds}
             onCheckedChange={setSounds}
           />
         </div>
+      </Section>
+
+      <Section title="Preferences">
+        <PreferenceToggles />
       </Section>
 
       <Section title="Badges and progress">

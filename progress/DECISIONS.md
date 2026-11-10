@@ -13,6 +13,16 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-10 — P0-08: display preferences, device and profile
+Decision: `customer_profiles.sound_on` is now nullable with no default (migration 0013), like `reduce_motion`: null = no choice (sounds on, motion follows the system). The device keeps the choice in localStorage (`moz:motion`, `moz:sound`) plus a sync marker (`moz:prefs-sync`). Rule (`reconcile` in `src/lib/preferences.ts`): an unsent change on the device wins and is sent again; a device already in step follows the profile (also back to "no choice"); a choice made signed out is saved when the profile has none, otherwise the profile wins. Signed out or no customer profile → device-only, and the marker is cleared.
+Why: AC 8 needs "the profile has none" to be detectable for sounds too; without the marker a second device could never return to "follow the system".
+Consequence: the root layout reads the caller's preferences inside a Suspense boundary on full loads (one session + one profile query, only when a session cookie is present; anonymous requests cost nothing). Revisit if P1 adds a shared per-request session cache.
+
+## 2026-11-10 — P0-08: pre-paint script is inline with the CSP nonce
+Decision: the stored motion choice is put on `<html data-reduce-motion>` by a ~250-byte inline script in `<head>` (`src/lib/preferences-prepaint.ts`, constant, no request data) carrying the per-request nonce from `x-nonce`; `<html>` has `suppressHydrationWarning`.
+Why: AC 7 (no flash of full motion before hydration); Next's own guide for this case. A cookie-based server render would make every page vary per user.
+Consequence: the script and `applyMotionPreference` must stay the same rule (a unit test compares them).
+
 ## 2026-11-10 — P0-16 demo seed: fixed ids, derived credentials, TOTP pre-enrolled
 Decision: `pnpm db:seed` now also creates the demo data (`src/server/db/demo-seed.ts`): 3 shops and 7 accounts (customer, staff, owner, 4 admin roles) with fixed ids/codes, ON CONFLICT DO NOTHING; `--reset` deletes exactly those ids and re-creates them. Passwords and TOTP secrets are not random and not stored anywhere: they are derived with HKDF from the environment's `BLIND_INDEX_KEY` (new purpose `demo-seed`); `pnpm demo:credentials` prints them. Staff/admin accounts are inserted with TOTP already on and no backup codes (C-07). Demo emails plus-address one inbox (`DEMO_EMAIL_BASE`; required outside local/test). On staging the seed fails while any staff/admin account has no verified TOTP.
 Why: a weekly reset must not break the authenticator entries on the developers' phones; nothing secret is written to disk, logs or Git; each environment gets different credentials; the customer signs in by email link, so staging needs a real inbox.
