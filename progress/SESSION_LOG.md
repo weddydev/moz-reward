@@ -188,3 +188,4 @@ Done: 0009 roles (moz_app/moz_auth/moz_worker) + ENABLE/FORCE/policies (DB re-ch
 Evidence: gate:task PASS (unit 462, int 396, sast, E2E P0-20 2/0); full E2E 272 + P0-20 5/5 after a UA fix; rls.test 21/21, jobs.authz 16/16; AC3 rls-bench: page +8–15% p95 (noise ±3%), lookup +0.03 ms fixed (DECISIONS).
 Open: security-reviewer result pending (task not ticked). Found 2 orphaned test workers (tsx CLI grandchild) — test fixed; kill needs the human (H-32 step 5).
 Review: 2 HIGH (system job from tenant row; 0009 definer ownership needs superuser) + 7 should-fix, listed in PROGRESS handoff; fix in 0010 before tick.
+Review fixes: 0010 (moz_rls definer owner, worker refuses system job from tenant row, role-bound staff/admin/outbox writes, narrow identity grants, audit actor bound, flags admin-only); C-33 → P0-15, C-34 → P1-01. P0-20 ticked.

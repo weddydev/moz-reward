@@ -131,6 +131,6 @@ describe("[P0-19] the session-revocation trigger can't be redirected through sea
     const [row] = await db().execute<{ config: string[] | null }>(
       sql`SELECT proconfig AS config FROM pg_proc WHERE proname = 'revoke_sessions_on_privilege_change'`,
     );
-    expect(row?.config).toEqual(["search_path=pg_catalog, public"]);
+    expect(row?.config).toEqual(["search_path=pg_catalog, public, pg_temp"]);
   });
 });

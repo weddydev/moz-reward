@@ -190,8 +190,6 @@ describe("[P0-20] AC1: with the app filter removed, RLS alone blocks cross-shop 
     expect(await visible(custA, "users")).toEqual([w.custA.id]);
     expect(await visible(custA, "sessions", "user_id")).toEqual([w.custA.id]);
     expect(await visible(custA, "passkeys", "user_id")).toEqual([w.custA.id]);
-    const ownAccounts = await visible(custA, "accounts", "user_id");
-    expect(ownAccounts.every((id) => id === w.custA.id)).toBe(true);
     expect(await visible(custA, "shop_staff")).toEqual([]);
     expect(await visible(custA, "admin_members", "user_id")).toEqual([]);
     expect(await visible(custA, "audit_logs")).toEqual([]);
@@ -430,6 +428,93 @@ describe("[P0-20] edge cases: settings are transaction-local and a transaction k
     await expect(
       withScope(custA, (q) => q.select().from(memberships), {} as never),
     ).rejects.toThrow(/not opened by transaction\(\)/);
+  });
+});
+
+describe("[P0-20] review fixes: role-bound writes and narrow identity grants", () => {
+  it("a staff member can't change their shop's team; a non-owner admin can't change the admin team", async () => {
+    const shop = await makeShop({ status: "active" });
+    const staffUser = await makeUser();
+    await makeStaff(shop.id, staffUser.id, "staff");
+    const staff = mintShopScope({ userId: staffUser.id, shopId: shop.id, role: "staff" });
+    const promoted = await withScope(staff, (q) =>
+      q.update(shopStaff).set({ role: "owner" }).returning({ id: shopStaff.id }),
+    );
+    expect(promoted).toEqual([]);
+    const mod = await makeUser();
+    await makeAdmin(mod.id, "moderator");
+    const modScope = mintAdminScope({ userId: mod.id, role: "moderator" });
+    expect(
+      await pgCode(() =>
+        withScope(modScope, (q) =>
+          q.execute(sql`INSERT INTO admin_members (user_id, role) VALUES (${w.custA.id}, 'owner')`),
+        ),
+      ),
+    ).toBe("42501");
+  });
+
+  it("the web role can't read session tokens or account rows, nor change its own email", async () => {
+    const { custA } = scopes();
+    expect(await pgCode(() => visible(custA, "sessions", "token"))).toBe("42501");
+    expect(await pgCode(() => visible(custA, "accounts", "'x'"))).toBe("42501");
+    expect(
+      await pgCode(() =>
+        withScope(custA, (q) => q.execute(sql`UPDATE users SET email = 'x@test.moz.invalid'`)),
+      ),
+    ).toBe("42501");
+  });
+
+  it("audit rows can't name another actor; an outbox row can't claim a higher role", async () => {
+    const { custA } = scopes();
+    expect(
+      await pgCode(() =>
+        withScope(custA, (q) =>
+          q
+            .insert(auditLogs)
+            .values({ actorId: w.custB.id, actorRole: "customer", action: "x", entity: "x" }),
+        ),
+      ),
+    ).toBe("42501");
+    const shop = await makeShop({ status: "active" });
+    const u = await makeUser();
+    await makeStaff(shop.id, u.id, "staff");
+    const staff = mintShopScope({ userId: u.id, shopId: shop.id, role: "staff" });
+    const row = (role: string) => ({
+      id: newId(),
+      queue: "email",
+      jobName: "tenant-probe",
+      payload: { v: 1, data: {} },
+      scopeKind: "shop",
+      scopeUserId: u.id,
+      scopeShopId: shop.id,
+      scopeRole: role,
+    });
+    await withScope(staff, (q) => q.insert(outbox).values(row("staff")));
+    expect(await pgCode(() => withScope(staff, (q) => q.insert(outbox).values(row("owner"))))).toBe(
+      "42501",
+    );
+  });
+
+  it("feature flags: readable publicly, writable only by an active admin", async () => {
+    const { pub, custA } = scopes();
+    expect(
+      await pgCode(() =>
+        withScope(pub, (q) =>
+          q.execute(sql`INSERT INTO feature_flags (key, enabled) VALUES ('rls_probe', true)`),
+        ),
+      ),
+    ).toBe("42501");
+    expect(
+      await pgCode(() =>
+        withScope(custA, (q) =>
+          q.execute(sql`UPDATE feature_flags SET enabled = true RETURNING key`),
+        ),
+      ),
+    ).toBeUndefined();
+    const flags = await db().execute<{ n: number }>(
+      sql`SELECT count(*)::int AS n FROM feature_flags WHERE enabled`,
+    );
+    expect([...flags][0]?.n ?? 0).toBe(0);
   });
 });
 

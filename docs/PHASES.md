@@ -37,7 +37,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 - [x] P0-14 · CI pipeline, gate scripts and production-parity testing
 - [x] P0-19 · Auth hardening and library security conformance
 - [x] P0-18 · Reliability primitives: outbox, Redis split, failure modes, safe migrations
-- [ ] P0-20 · Row-Level Security (mandatory)
+- [x] P0-20 · Row-Level Security (mandatory)
 - [ ] P0-13 · Observability, SLOs and runbook
 - [ ] P0-21 · Compliance foundations (drafts)
 - [ ] P0-15 · VPS provisioning, staging stack, deploy without a registry, backups, restore drill, uptime (needs H-06, H-07, H-08, H-26, H-27)

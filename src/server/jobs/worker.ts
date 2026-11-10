@@ -192,6 +192,17 @@ export function jobProcessor(
     // C-30: a tenant job runs under the scope that wrote its outbox row (read from the database, never from
     // the job data in Redis), so its handler meets the same RLS walls as the request that produced it.
     let scope: TenantScope | null = null;
+    // A system job (BYPASSRLS) runs only from a row the identity layer or the system wrote (review HIGH-1).
+    if (
+      entry.def.runAs === "system" &&
+      facts &&
+      facts.scopeKind !== "auth" &&
+      facts.scopeKind !== "system"
+    ) {
+      throw new UnrecoverableError(
+        `${queue}:${job.name} is a system job written by a ${facts.scopeKind} scope`,
+      );
+    }
     if (entry.def.runAs === "tenant") {
       if (!facts)
         throw new UnrecoverableError(`${queue}:${job.name} is a tenant job without its outbox row`);

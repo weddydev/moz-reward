@@ -145,6 +145,45 @@ describe("[P0-20] C-30 producers and the worker refuse mismatched origins", () =
     }
   });
 
+  it("a system job whose outbox row a tenant scope wrote is refused for good (review HIGH-1)", async () => {
+    const id = newId();
+    const owner = w.principals.owner_own_shop;
+    if (!owner) throw new Error("owner");
+    await db()
+      .insert(outbox)
+      .values({
+        id,
+        queue: "email",
+        jobName: "staff-lockout",
+        scopeKind: "shop",
+        scopeUserId: owner.userId,
+        scopeShopId: w.shopA.id,
+        scopeRole: "owner",
+        payload: { v: 1, data: { userId: owner.userId, reason: "password" } },
+      });
+    const def = jobDef("email", "staff-lockout");
+    let ran = false;
+    const processor = jobProcessor("email", () =>
+      def
+        ? {
+            def,
+            handler: async () => {
+              ran = true;
+            },
+          }
+        : undefined,
+    );
+    const [row] = await db().select().from(outbox).where(eq(outbox.id, id));
+    const job = {
+      name: "staff-lockout",
+      id,
+      data: relayEnvelope({ id, payload: row?.payload }),
+      timestamp: Date.now(),
+    } as unknown as Job;
+    await expect(processor(job)).rejects.toThrow(/system job written by a shop scope/);
+    expect(ran).toBe(false);
+  });
+
   it("a tenant job whose outbox row is gone, or was not written by a tenant scope, is refused for good", async () => {
     const missing = newId();
     await db()

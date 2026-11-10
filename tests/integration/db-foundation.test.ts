@@ -86,10 +86,10 @@ describe("[P0-03] app role moz_app (least privilege)", () => {
    * table makes this fail until its grants are decided. I/S/U/D = INSERT/SELECT/UPDATE/DELETE.
    */
   const MOZ_APP_GRANTS: Record<string, string> = {
-    users: "SU", // own row (profile); created and deleted by the identity layer / erasure job
-    sessions: "SD", // own devices list, sign out
+    users: "S", // own row; UPDATE (name, image) by column grant; created and deleted by the identity layer / erasure job
+    sessions: "D", // own devices (SELECT by column grant, never the token), sign out
     passkeys: "SD",
-    accounts: "S",
+    accounts: "", // password hashes and OAuth tokens: identity layer only
     verifications: "",
     two_factors: "",
     customer_profiles: "ISUD",
@@ -142,20 +142,23 @@ describe("[P0-03] app role moz_app (least privilege)", () => {
     expect(code).toBe("42501");
   });
 
-  it("can still write normal tables and append audit rows", async () => {
+  it("appends audit rows under a scope; global config writes need an admin (P0-20)", async () => {
     await db().transaction(async (tx) => {
       await tx.execute(sql`SET LOCAL ROLE moz_app`);
+      await tx.execute(sql`SELECT set_config('app.scope', 'public', true)`);
       await tx.execute(
         sql`INSERT INTO audit_logs (id, actor_role, action, entity) VALUES (${newId()}, 'system', 'test.role', 'test')`,
       );
-      await tx.execute(
-        sql`INSERT INTO content_settings (key, value) VALUES ('role_probe', '[]'::jsonb)`,
-      );
-      await tx.execute(
-        sql`UPDATE content_settings SET value = '[1]'::jsonb WHERE key = 'role_probe'`,
-      );
-      await tx.execute(sql`DELETE FROM content_settings WHERE key = 'role_probe'`);
     });
+    const code = await pgCode(() =>
+      db().transaction(async (tx) => {
+        await tx.execute(sql`SET LOCAL ROLE moz_app`);
+        await tx.execute(
+          sql`INSERT INTO content_settings (key, value) VALUES ('role_probe', '[]'::jsonb)`,
+        );
+      }),
+    );
+    expect(code).toBe("42501");
   });
 
   it("gets DML on tables created by later migrations automatically (default privileges)", async () => {
