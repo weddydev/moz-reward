@@ -6,6 +6,7 @@
  */
 import "../../scripts/load-env";
 import { bootOrExit, runBootChecks } from "@/server/boot";
+import { setDbProcess } from "@/server/db/client";
 import { closeQueues } from "@/server/jobs/queues";
 import { registerSchedules } from "@/server/jobs/scheduler";
 import { createShutdown } from "@/server/jobs/shutdown";
@@ -22,6 +23,8 @@ const log = (event: string, fields: Record<string, unknown> = {}): void => {
 };
 
 async function main(): Promise<void> {
+  // Worker statement limits (60 s) before any query creates the pool.
+  setDbProcess("worker");
   // Same startup checks as the web server: env, and in staging/production the database role (P0-19).
   await bootOrExit(runBootChecks);
 

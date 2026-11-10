@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { checkMigration } from "./check-migrations";
+import { checkMigration, checkAllMigrations, checkConcurrentMigration } from "./check-migrations";
 
 describe("[P0-03] expand-only migration check", () => {
   it("passes additive migrations", () => {
@@ -60,7 +60,12 @@ describe("[P0-14] locking rules (from migration 0007)", () => {
   it.each([
     ['ALTER TABLE "users" ADD COLUMN "nickname" text;', /without "SET lock_timeout/],
     ['ALTER TABLE "public"."users" ADD COLUMN "x" text;', /without "SET lock_timeout/],
-    ['CREATE INDEX "users_x_idx" ON "users" ("x");', /without "SET lock_timeout/],
+    ['CREATE INDEX "users_x_idx" ON "users" ("x");', /drizzle\/concurrent/],
+    [`${LOCK}CREATE UNIQUE INDEX "users_x_idx" ON "public"."users" ("x");`, /drizzle\/concurrent/],
+    [
+      'CREATE INDEX CONCURRENTLY "users_x_idx" ON "users" ("x");',
+      /cannot run inside a transaction/,
+    ],
     [
       'ALTER TABLE "sessions" ADD CONSTRAINT "s_u_fk" FOREIGN KEY ("user_id") REFERENCES "users"("id");',
       /without NOT VALID/,
@@ -81,7 +86,6 @@ describe("[P0-14] locking rules (from migration 0007)", () => {
       `${LOCK}ALTER TABLE "users" ADD COLUMN "nickname" text;`,
       `${LOCK}ALTER TABLE "sessions" ADD CONSTRAINT "s_u_fk" FOREIGN KEY ("user_id") REFERENCES "users"("id") NOT VALID;`,
       `${LOCK}ALTER TABLE "sessions" VALIDATE CONSTRAINT "s_u_fk";`,
-      'CREATE INDEX CONCURRENTLY "users_x_idx" ON "users" ("x");',
     ]) {
       expect(checkMigration("0007_x.sql", sql), sql).toEqual([]);
     }
@@ -100,5 +104,34 @@ describe("[P0-14] locking rules (from migration 0007)", () => {
 
   it("leaves migrations applied before the rules (0001–0006) to the destructive check only", () => {
     expect(checkMigration("0006_x.sql", 'ALTER TABLE "users" ADD COLUMN "x" text;')).toEqual([]);
+  });
+});
+
+describe("[P0-18] non-transactional migrations (drizzle/concurrent): CREATE INDEX CONCURRENTLY (C-18)", () => {
+  it("accepts one concurrent, idempotent index build per file", () => {
+    for (const sql of [
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS "users_x_idx" ON "users" ("x");',
+      'CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "u_idx" ON "public"."users" ("x");',
+      '-- contract: replaced by u_idx in 0001\nDROP INDEX CONCURRENTLY IF EXISTS "old_idx";',
+    ]) {
+      expect(checkConcurrentMigration("0001_x.sql", sql), sql).toEqual([]);
+    }
+  });
+
+  it.each([
+    ['CREATE INDEX "users_x_idx" ON "users" ("x");', /CONCURRENTLY IF NOT EXISTS/],
+    ['CREATE INDEX CONCURRENTLY "users_x_idx" ON "users" ("x");', /CONCURRENTLY IF NOT EXISTS/],
+    [
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS "a" ON "users" ("x");\nCREATE INDEX CONCURRENTLY IF NOT EXISTS "b" ON "users" ("y");',
+      /exactly one statement/,
+    ],
+    ['ALTER TABLE "users" ADD COLUMN "x" text;', /CONCURRENTLY IF NOT EXISTS/],
+    ['DROP INDEX CONCURRENTLY IF EXISTS "old_idx";', /contract/],
+  ])("rejects %s", (sql, problem) => {
+    expect(checkConcurrentMigration("0001_x.sql", sql).join("\n")).toMatch(problem);
+  });
+
+  it("every committed concurrent migration passes", () => {
+    expect(checkAllMigrations()).toEqual([]);
   });
 });

@@ -1,4 +1,6 @@
 import "../../../scripts/load-env";
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
@@ -29,17 +31,78 @@ export async function assertExtensionsAvailable(
 }
 
 /**
- * Applies pending migrations in one transaction (drizzle's migrator); already-applied ones are skipped, so a
- * re-run is a no-op. Usage: `pnpm db:migrate` (app DB) or `pnpm db:migrate --test` (DATABASE_URL_TEST).
+ * Session settings for every migration connection (ENGINEERING §6, ARCHITECTURE §9): a migration that waits
+ * on a lock fails after 5 s instead of queueing every query behind it, and no statement runs for ever.
+ */
+/** Milliseconds (Postgres shows them as "5s" and "5min"). */
+export const MIGRATION_SESSION = { lock_timeout: 5_000, statement_timeout: 300_000 } as const;
+/** Concurrent index builds can take longer than a normal statement (they never block writes). */
+const CONCURRENT_STATEMENT_TIMEOUT = "30min";
+
+export const migrationClient = (url: string): postgres.Sql =>
+  postgres(url, { max: 1, onnotice: () => {}, connection: { ...MIGRATION_SESSION } });
+
+const CREATE_NAME = /INDEX\s+CONCURRENTLY\s+IF\s+NOT\s+EXISTS\s+"?(\w+)"?/i;
+
+/**
+ * Non-transactional migrations (P0-18, C-18): `drizzle/concurrent/*.sql`, one CREATE/DROP INDEX
+ * CONCURRENTLY each (checked by scripts/check-migrations.ts), applied in name order after the Drizzle
+ * migrations, outside any transaction, once each (`drizzle.moz_concurrent_migrations`). A build that crashed
+ * leaves an INVALID index, which `IF NOT EXISTS` would silently keep: it is dropped first and rebuilt.
+ */
+export async function runConcurrentMigrations(
+  client: postgres.Sql,
+  dir = "./drizzle/concurrent",
+): Promise<string[]> {
+  let files: string[];
+  try {
+    files = readdirSync(dir)
+      .filter((f) => f.endsWith(".sql"))
+      .sort();
+  } catch {
+    return [];
+  }
+  if (files.length === 0) return [];
+  await client`CREATE SCHEMA IF NOT EXISTS drizzle`;
+  await client`CREATE TABLE IF NOT EXISTS drizzle.moz_concurrent_migrations (
+    name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`;
+  const applied: string[] = [];
+  for (const name of files) {
+    const done = await client`SELECT 1 FROM drizzle.moz_concurrent_migrations WHERE name = ${name}`;
+    if (done.length > 0) continue;
+    const sql = readFileSync(path.join(dir, name), "utf8");
+    const index = CREATE_NAME.exec(sql)?.[1];
+    if (index) {
+      const invalid = await client`
+        SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+        WHERE c.relname = ${index} AND NOT i.indisvalid`;
+      if (invalid.length > 0) await client.unsafe(`DROP INDEX CONCURRENTLY IF EXISTS "${index}"`);
+    }
+    await client.unsafe(`SET statement_timeout = '${CONCURRENT_STATEMENT_TIMEOUT}'`);
+    try {
+      await client.unsafe(sql);
+    } finally {
+      await client.unsafe(`SET statement_timeout = ${String(MIGRATION_SESSION.statement_timeout)}`);
+    }
+    await client`INSERT INTO drizzle.moz_concurrent_migrations (name) VALUES (${name})`;
+    applied.push(name);
+  }
+  return applied;
+}
+/**
+ * Applies pending migrations in one transaction (drizzle's migrator), then the non-transactional ones in
+ * drizzle/concurrent/; already-applied ones are skipped, so a re-run is a no-op. Lock and statement timeouts
+ * come from MIGRATION_SESSION. Usage: `pnpm db:migrate` (app DB) or `pnpm db:migrate --test` (DATABASE_URL_TEST).
  */
 export async function runMigrations(url: string): Promise<void> {
-  const client = postgres(url, { max: 1, onnotice: () => {} });
+  const client = migrationClient(url);
   try {
     await assertExtensionsAvailable(async (name) => {
       const rows = await client`SELECT 1 FROM pg_available_extensions WHERE name = ${name}`;
       return rows.length > 0;
     });
     await migrate(drizzle(client), { migrationsFolder: "./drizzle" });
+    await runConcurrentMigrations(client);
   } finally {
     await client.end();
   }

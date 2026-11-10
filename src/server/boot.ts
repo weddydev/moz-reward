@@ -1,5 +1,6 @@
 import "server-only";
 import postgres from "postgres";
+import { DB_POOL_MAX } from "@/server/db/client";
 import { env } from "@/server/env";
 
 /**
@@ -7,7 +8,7 @@ import { env } from "@/server/env";
  * process: a server that cannot run safely must not serve 500s or run with the wrong privileges (QA-6).
  *   - The server environment parses (variable names only in errors, never values).
  *   - Staging/production: the database role is not the schema owner (or a member of it), a superuser or a
- *     BYPASSRLS role (SEC-M2, SECURITY §11).
+ *     BYPASSRLS role (SEC-M2, SECURITY §11); the connection budget fits max_connections (P0-18).
  */
 export async function runBootChecks(): Promise<void> {
   const e = env();
@@ -16,6 +17,12 @@ export async function runBootChecks(): Promise<void> {
   try {
     const problem = await databaseRoleProblem(sql);
     if (problem) throw new Error(`DATABASE_URL: ${problem} (use the app role, not the owner)`);
+    const [setting] = await sql<{ max_connections: string }[]>`SHOW max_connections`;
+    const budget = connectionBudgetProblem(
+      Number(setting?.max_connections ?? 0),
+      CONNECTION_BUDGET[e.APP_ENV],
+    );
+    if (budget) throw new Error(`connection budget: ${budget} (infra/RESOURCES.md)`);
   } finally {
     await sql.end({ timeout: 5 });
   }
@@ -62,4 +69,26 @@ export async function bootOrExit(
     io.error(`[boot] refusing to start: ${e instanceof Error ? e.message : String(e)}`);
     io.exit(1);
   }
+}
+
+/**
+ * Connection budget (ENGINEERING §6, ARCHITECTURE §12, infra/RESOURCES.md): every pool that can be open at
+ * once — web replicas and workers, plus one extra container during a rolling deploy — and the reserved
+ * connections (Umami's pool, admin/psql, migrations) must fit in 80% of Postgres `max_connections`.
+ */
+export const CONNECTION_BUDGET = {
+  production: { web: 2, worker: 1, deployOverlap: 1, reserved: 15 },
+  staging: { web: 2, worker: 1, deployOverlap: 1, reserved: 5 },
+} as const;
+
+export function connectionBudgetProblem(
+  maxConnections: number,
+  plan: { web: number; worker: number; deployOverlap: number; reserved: number },
+  poolMax: number = DB_POOL_MAX,
+): string | null {
+  const needed = (plan.web + plan.worker + plan.deployOverlap) * poolMax + plan.reserved;
+  const allowed = Math.floor(maxConnections * 0.8);
+  return needed > allowed
+    ? `needs ${String(needed)} connections but 80% of max_connections (${String(maxConnections)}) is ${String(allowed)}`
+    : null;
 }

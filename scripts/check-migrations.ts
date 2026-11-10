@@ -46,8 +46,8 @@ export function checkMigration(name: string, sql: string): string[] {
 /**
  * Locking rules (P0-14, TESTING §6, CR-L6) apply from migration 0007. 0001–0006 were applied before the rules
  * existed; Drizzle tracks applied migrations by hash, so they can't be edited (DECISIONS 2026-11-09).
- * Not yet here: "CREATE INDEX on an existing table must be CONCURRENTLY" — it needs P0-18's helper for
- * non-transactional migrations (CARRIED C-18).
+ * From P0-18 (C-18): an index on an existing table is built CONCURRENTLY in drizzle/concurrent/ (see
+ * `checkConcurrentMigration` and src/server/db/migrate.ts), never inside a transactional migration.
  */
 export const LOCK_RULES_FROM = 7;
 
@@ -86,6 +86,16 @@ export function checkLocking(name: string, body: string): string[] {
     const indexed = INDEXED.exec(stmt)?.[1];
     const dropIndex = /^\s*DROP\s+INDEX\b(?!\s+CONCURRENTLY)/i.test(stmt);
     if (existing(altered) || existing(indexed) || dropIndex) locking = true;
+    if (existing(indexed)) {
+      problems.push(
+        `${name}: CREATE INDEX on existing table "${indexed}" blocks writes while it builds; put it in drizzle/concurrent/ as CREATE INDEX CONCURRENTLY IF NOT EXISTS (non-transactional helper, DECISIONS 2026-11-10).`,
+      );
+    }
+    if (/^\s*(?:CREATE\s+(?:UNIQUE\s+)?INDEX|DROP\s+INDEX)\s+CONCURRENTLY\b/i.test(stmt)) {
+      problems.push(
+        `${name}: CONCURRENTLY cannot run inside a transaction (Drizzle applies these files in one); use drizzle/concurrent/.`,
+      );
+    }
     if (
       existing(altered) &&
       /\bADD\s+(?:CONSTRAINT\s+\S+\s+)?(?:FOREIGN\s+KEY|CHECK)\b/i.test(stmt) &&
@@ -104,12 +114,62 @@ export function checkLocking(name: string, body: string): string[] {
   return problems;
 }
 
+/**
+ * Non-transactional migrations (P0-18, C-18): `drizzle/concurrent/NNNN_name.sql`, applied by
+ * src/server/db/migrate.ts after the Drizzle migrations, outside a transaction, once each (tracked in
+ * `moz_concurrent_migrations`). Exactly one statement per file, and it must be safe to re-run after a crash:
+ * `CREATE [UNIQUE] INDEX CONCURRENTLY IF NOT EXISTS …`, or `DROP INDEX CONCURRENTLY IF EXISTS …` with a
+ * `-- contract:` line.
+ */
+export const CONCURRENT_DIR = path.join("drizzle", "concurrent");
+const CONCURRENT_CREATE = /^CREATE\s+(?:UNIQUE\s+)?INDEX\s+CONCURRENTLY\s+IF\s+NOT\s+EXISTS\b/i;
+const CONCURRENT_DROP = /^DROP\s+INDEX\s+CONCURRENTLY\s+IF\s+EXISTS\b/i;
+
+export function checkConcurrentMigration(name: string, sql: string): string[] {
+  const stmts = statements(stripComments(sql));
+  if (stmts.length !== 1) {
+    return [
+      `${name}: a concurrent migration holds exactly one statement (found ${String(stmts.length)}).`,
+    ];
+  }
+  const stmt = stmts[0] ?? "";
+  if (CONCURRENT_DROP.test(stmt)) {
+    return CONTRACT.test(sql)
+      ? []
+      : [`${name}: DROP INDEX without a "-- contract: <why it is safe>" line.`];
+  }
+  if (!CONCURRENT_CREATE.test(stmt)) {
+    return [
+      `${name}: only "CREATE [UNIQUE] INDEX CONCURRENTLY IF NOT EXISTS" (or "DROP INDEX CONCURRENTLY IF EXISTS") belongs here.`,
+    ];
+  }
+  return [];
+}
+
+/** Every committed migration, both kinds. Empty when all pass. */
+export function checkAllMigrations(dir = "drizzle"): string[] {
+  const sqlFiles = (d: string): string[] => {
+    try {
+      return readdirSync(d)
+        .filter((f) => f.endsWith(".sql"))
+        .sort();
+    } catch {
+      return [];
+    }
+  };
+  const concurrentDir = path.join(dir, "concurrent");
+  return [
+    ...sqlFiles(dir).flatMap((f) => checkMigration(f, readFileSync(path.join(dir, f), "utf8"))),
+    ...sqlFiles(concurrentDir).flatMap((f) =>
+      checkConcurrentMigration(
+        `concurrent/${f}`,
+        readFileSync(path.join(concurrentDir, f), "utf8"),
+      ),
+    ),
+  ];
+}
 function main(): void {
-  const dir = "drizzle";
-  const files = readdirSync(dir)
-    .filter((f) => f.endsWith(".sql"))
-    .sort();
-  const problems = files.flatMap((f) => checkMigration(f, readFileSync(path.join(dir, f), "utf8")));
+  const problems = checkAllMigrations();
   if (problems.length > 0) {
     console.error(`[migrations] not expand-only:\n${problems.map((p) => `  - ${p}`).join("\n")}`);
     process.exit(1);

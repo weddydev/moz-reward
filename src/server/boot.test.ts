@@ -27,3 +27,14 @@ describe("[P0-19] boot fails closed (QA-6: invalid env exits instead of serving 
     expect(exit).not.toHaveBeenCalled();
   });
 });
+
+describe("[P0-18] connection budget fits 80% of max_connections (infra/RESOURCES.md)", () => {
+  it("production (max 100) and staging (max 60) fit; staging at the old 50 does not", async () => {
+    const { CONNECTION_BUDGET, connectionBudgetProblem } = await import("./boot");
+    expect(connectionBudgetProblem(100, CONNECTION_BUDGET.production)).toBeNull();
+    expect(connectionBudgetProblem(60, CONNECTION_BUDGET.staging)).toBeNull();
+    expect(connectionBudgetProblem(50, CONNECTION_BUDGET.staging)).toMatch(
+      /needs 45 connections but 80% of max_connections \(50\) is 40/,
+    );
+  });
+});
