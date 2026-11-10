@@ -13,7 +13,8 @@ export const COMPOSE_FILE = "infra/docker-compose.dev.yml";
 /** Host ports published by the compose file (127.0.0.1 only). Keep in sync with infra/docker-compose.dev.yml. */
 export const SERVICE_PORTS: readonly { service: string; port: number; what: string }[] = [
   { service: "postgres", port: 5432, what: "Postgres" },
-  { service: "redis", port: 6379, what: "Redis" },
+  { service: "redis", port: 6379, what: "Redis (queue)" },
+  { service: "redis-cache", port: 6380, what: "Redis (cache)" },
   { service: "mailpit", port: 1025, what: "Mailpit SMTP" },
   { service: "mailpit", port: 8025, what: "Mailpit web/API" },
   { service: "minio", port: 9000, what: "MinIO S3 API" },

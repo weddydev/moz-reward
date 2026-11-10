@@ -7,6 +7,7 @@ import type { Principal } from "./authz/policies";
 import type * as RateLimit from "./security/rate-limit";
 
 const calls: string[] = [];
+const limitModes: (string | undefined)[] = [];
 const fakeTx = { fake: "tx" };
 const logged: Array<{ fields: unknown; msg: string; ctx: unknown }> = [];
 
@@ -39,8 +40,9 @@ vi.mock("./repos/_base", () => ({
 // Real key/policy helpers (pure); only the Redis call is replaced.
 vi.mock("./security/rate-limit", async (actual) => ({
   ...(await actual<typeof RateLimit>()),
-  limitOrThrow: (opts: { key: string }) => {
+  limitOrThrow: (opts: { key: string; onError?: string }) => {
     calls.push(`rateLimit:${opts.key}`);
+    limitModes.push(opts.onError);
     if (state.rateLimited)
       throw new AppError("RATE_LIMITED", undefined, undefined, { retryAfterSec: 42 });
     return Promise.resolve({ ok: true });
@@ -60,7 +62,7 @@ vi.mock("./log", () => ({
   }),
 }));
 
-const { defineAction, defineRoute } = await import("./actionTemplate");
+const { AFTER_COMMIT_TIMEOUT_MS, defineAction, defineRoute } = await import("./actionTemplate");
 
 const SHOP = "0192f0c1-0000-7000-8000-000000000001";
 const signedIn: Principal = {
@@ -82,7 +84,7 @@ function sample(over: Record<string, unknown> = {}) {
       calls.push(`authorize:${shopId}:${p ? p.userId : "anon"}`);
       return Promise.resolve(scope);
     },
-    rateLimit: { max: 5, windowSec: 60 },
+    rateLimit: { max: 5, windowSec: 60, failMode: "closed" },
     audit: ({ shopId }: { shopId: string }) => ({
       action: "shop.rename",
       entity: "shop",
@@ -200,7 +202,42 @@ describe("[P0-07] defineAction runs the ENGINEERING §4 steps in order", () => {
       },
     })({ shopId: SHOP, name: "Brew" });
     expect(res).toEqual({ ok: true, data: "ok" });
-    expect(logged.map((l) => l.msg)).toEqual(["after-commit side effect failed"]);
+    expect(logged.map((l) => l.msg)).toEqual(["after-commit follow-up failed or timed out"]);
+  });
+
+  it("[P0-18] after-commit follow-ups never hold the response past one overall timeout (B-CR-9)", async () => {
+    vi.useFakeTimers();
+    try {
+      const pending = sample({
+        handler: (_i: unknown, _c: unknown, { afterCommit }: HandlerTools) => {
+          // Three slow follow-ups: together they may hold the response for one timeout, not three.
+          for (let i = 0; i < 3; i++) afterCommit(() => new Promise((r) => setTimeout(r, 1_500)));
+          return Promise.resolve("ok");
+        },
+      })({ shopId: SHOP, name: "Brew" });
+      let settled = false;
+      void pending.then(() => (settled = true));
+      await vi.advanceTimersByTimeAsync(AFTER_COMMIT_TIMEOUT_MS - 1);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(await pending).toEqual({ ok: true, data: "ok" });
+      expect(logged.map((l) => l.msg)).toEqual(["after-commit follow-up failed or timed out"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("[P0-18] passes the declared fail mode to the limiter", async () => {
+    limitModes.length = 0;
+    await sample({ rateLimit: { max: 5, windowSec: 60, failMode: "open" } })({
+      shopId: SHOP,
+      name: "Brew",
+    });
+    await sample({ rateLimit: { max: 5, windowSec: 60, failMode: "closed" } })({
+      shopId: SHOP,
+      name: "Brew",
+    });
+    expect(limitModes).toEqual(["open", "closed"]);
   });
 
   it("without audit or transaction the handler runs without a transaction", async () => {
@@ -224,6 +261,7 @@ describe("[P0-07] defineAction runs the ENGINEERING §4 steps in order", () => {
       rateLimit: {
         max: 1,
         windowSec: 60,
+        failMode: "closed",
         key: ({ shopId }: { shopId: string }) => `shop:${shopId}`,
       },
     })({ shopId: SHOP, name: "Brew" });
@@ -276,7 +314,7 @@ describe("[P0-07] defineRoute: same steps for route handlers, plus Origin checks
       name: "shop.rename.route",
       input,
       authorize: () => Promise.resolve(scope),
-      rateLimit: { max: 1, windowSec: 60 },
+      rateLimit: { max: 1, windowSec: 60, failMode: "closed" },
       handler: () => Promise.resolve("ok"),
     });
     const res = await limited(req());

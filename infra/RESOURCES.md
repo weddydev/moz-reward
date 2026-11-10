@@ -6,7 +6,7 @@ One Hostinger KVM 4: **4 vCPU, 16 GB RAM, 200 GB NVMe**. Production and staging 
 
 | Stack | Container | Limit | Notes |
 |---|---|---|---|
-| Production | postgres (17 + PostGIS; app + Umami databases) | 4.5 GB | `shared_buffers` 2 GB, `effective_cache_size` 6 GB, `work_mem` 16 MB, `max_connections` 100 |
+| Production | postgres (17 + PostGIS; app + Umami databases) | 4.5 GB | `shared_buffers` 2 GB, `effective_cache_size` 6 GB, `work_mem` 16 MB, `max_connections` 100 (budget: (2 web + 1 worker + 1 deploy overlap) × 10 + 15 reserved = 55 ≤ 80, checked at boot) |
 | Production | web ×2 | 1 GB each (2 GB) | Node `--max-old-space-size=768`; pool 10 each |
 | Production | worker (+ outbox relay) | 1.5 GB | image (sharp) and PDF jobs; pool 10 |
 | Production | redis-queue | 512 MB | `maxmemory 384mb`, `noeviction`, AOF everysec |
@@ -15,7 +15,7 @@ One Hostinger KVM 4: **4 vCPU, 16 GB RAM, 200 GB NVMe**. Production and staging 
 | Production | cloudflared | 128 MB | Tunnel for production hostnames |
 | Production | umami | 384 MB | uses the production Postgres (own database) |
 | **Production total** | | **≈ 9.5 GB** | |
-| Staging | postgres | 1 GB | `shared_buffers` 256 MB, `max_connections` 50 |
+| Staging | postgres | 1 GB | `shared_buffers` 256 MB, `max_connections` 60 (connection budget: (2 web + 1 worker + 1 deploy overlap) × pool 10 + 5 reserved = 45 ≤ 80% — checked at boot, P0-18) |
 | Staging | web ×2 | 512 MB each (1 GB) | two replicas so rolling deploys are rehearsed on staging |
 | Staging | worker | 768 MB | |
 | Staging | redis-queue | 256 MB | `maxmemory 192mb`, `noeviction`, AOF |

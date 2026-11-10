@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "worker": "tsx --conditions=react-server src/worker/index.ts",
+    "worker": "tsx --import ./scripts/server-only-hook.mjs src/worker/index.ts",
+    "relay": "tsx --import ./scripts/server-only-hook.mjs scripts/relay.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint --max-warnings=0 && tsx scripts/check-css-hex.ts && tsx scripts/check-migrations.ts && tsx scripts/check-authz-coverage.ts",
     "format": "prettier --write .",
@@ -37,6 +38,7 @@
     "test:titles": "tsx scripts/check-test-titles.ts",
     "check:full": "pnpm typecheck && pnpm lint && pnpm test",
     "check:bundle": "tsx scripts/check-client-bundle.ts",
+    "sast": "tsx scripts/sast.ts",
     "osv:gate": "tsx scripts/osv-gate.ts",
     "prepare": "lefthook install"
   },

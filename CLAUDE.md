@@ -92,6 +92,7 @@ Signature moments in DESIGN §8 keep their specified durations (exceptions to "U
 ```
 pnpm dev               # local app (next dev)
 pnpm worker            # background jobs (validates env at start)
+pnpm relay --replay-since <ISO time with zone>   # after a restore: re-dispatch outbox rows (RUNBOOK)
 pnpm build / start     # production build / serve
 pnpm check             # typecheck + lint (incl. authz coverage, migrations, css-hex) + format:check + unit — no Docker
 pnpm gate:task         # task gate: check + test:int + build + task E2E on the production build (TESTING §4)  [built in P0-14]
@@ -109,6 +110,7 @@ pnpm format | format:check
 pnpm services:up | services:down   # Docker: Postgres+PostGIS, Redis, Mailpit, MinIO
 pnpm setup:env         # create .env.local with generated local secrets (never overwrites)
 pnpm check:bundle      # after build: fail if server-only env names appear in .next/static
+pnpm sast              # Semgrep SAST in Docker (same command as CI; part of gate:task)
 ```
 Until P0-14 lands `gate:task`/`gate:phase` and the production-build `pnpm e2e`, run their steps by hand (TESTING §4). Update this list when scripts change.
 

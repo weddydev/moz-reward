@@ -41,6 +41,13 @@ async function axeProblems(page: Page, baseURL: string | undefined): Promise<Gua
   await page
     .waitForFunction(() => document.title !== "", undefined, { timeout: 2000 })
     .catch(() => undefined);
+  // Hydration enables controls (disabled until hydrated) and they fade in: wait for it first, else the scan can
+  // land mid-fade on a slow runner (CI 42772627338). <html data-hydrated> is set by ApplyPreferences (2 s cap).
+  await page
+    .waitForFunction(() => document.documentElement.dataset.hydrated === "true", undefined, {
+      timeout: 2000,
+    })
+    .catch(() => undefined);
   // Measure the settled page: a scan during a transition (e.g. a button fading from its pre-hydration
   // disabled opacity to 1) reads blended colours and reports false contrast failures. Finite animations only
   // (spinners loop forever), capped at 1 s.

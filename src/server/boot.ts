@@ -1,13 +1,17 @@
 import "server-only";
 import postgres from "postgres";
+import { DB_POOL_MAX } from "@/server/db/client";
 import { env } from "@/server/env";
+import { cacheUrl } from "@/server/jobs/connection";
+import type { Redis } from "ioredis";
 
 /**
  * Startup checks for the web server (src/instrumentation.ts) and the worker (P0-19). A failure stops the
  * process: a server that cannot run safely must not serve 500s or run with the wrong privileges (QA-6).
  *   - The server environment parses (variable names only in errors, never values).
  *   - Staging/production: the database role is not the schema owner (or a member of it), a superuser or a
- *     BYPASSRLS role (SEC-M2, SECURITY §11).
+ *     BYPASSRLS role (SEC-M2, SECURITY §11); the connection budget fits max_connections (P0-18); redis-queue
+ *     and redis-cache are two different servers with the right eviction policies (P0-18, AC3).
  */
 export async function runBootChecks(): Promise<void> {
   const e = env();
@@ -16,9 +20,56 @@ export async function runBootChecks(): Promise<void> {
   try {
     const problem = await databaseRoleProblem(sql);
     if (problem) throw new Error(`DATABASE_URL: ${problem} (use the app role, not the owner)`);
+    const [setting] = await sql<{ max_connections: string }[]>`SHOW max_connections`;
+    const budget = connectionBudgetProblem(
+      Number(setting?.max_connections ?? 0),
+      CONNECTION_BUDGET[e.APP_ENV],
+    );
+    if (budget) throw new Error(`connection budget: ${budget} (infra/RESOURCES.md)`);
   } finally {
     await sql.end({ timeout: 5 });
   }
+  const { Redis: RedisClient } = await import("ioredis");
+  const connect = (url: string): Redis =>
+    new RedisClient(url, { lazyConnect: true, maxRetriesPerRequest: 1, connectTimeout: 5_000 });
+  const queue = connect(e.REDIS_URL);
+  const cache = connect(cacheUrl());
+  try {
+    const problem = redisPairProblem(await redisFacts(queue), await redisFacts(cache));
+    if (problem) throw new Error(`REDIS_URL / REDIS_CACHE_URL: ${problem}`);
+  } finally {
+    queue.disconnect();
+    cache.disconnect();
+  }
+}
+
+export type RedisFacts = { runId: string; policy: string };
+
+/** The server's identity and eviction policy, from INFO (works where CONFIG is disabled). */
+export async function redisFacts(redis: Redis): Promise<RedisFacts> {
+  const info = `${await redis.info("server")}\n${await redis.info("memory")}`;
+  // `key:value` lines; plain parsing, no regex built from a name.
+  const fields = new Map<string, string>();
+  for (const line of info.split(/\r?\n/)) {
+    const at = line.indexOf(":");
+    if (at > 0) fields.set(line.slice(0, at), line.slice(at + 1).trim());
+  }
+  const field = (name: string): string => fields.get(name) ?? "";
+  return { runId: field("run_id"), policy: field("maxmemory_policy") };
+}
+
+/**
+ * Two URL strings can still name one server (another db number, a host alias). One shared allkeys-lru server
+ * would let a full cache evict limiter and queue keys (a rate-limit bypass), so compare server identities.
+ */
+export function redisPairProblem(queue: RedisFacts, cache: RedisFacts): string | null {
+  if (!queue.runId || !cache.runId) return "could not read the Redis server identity (INFO server)";
+  if (queue.runId === cache.runId) return "queue and cache point at the same Redis server";
+  if (queue.policy !== "noeviction")
+    return `the queue server evicts keys (maxmemory-policy ${queue.policy || "unknown"}, needs noeviction)`;
+  if (cache.policy === "noeviction")
+    return "the cache server never evicts (maxmemory-policy noeviction): a full cache would fail writes";
+  return null;
 }
 
 /** Why this connection's role must not run the app, or null when it is a plain data role. */
@@ -62,4 +113,26 @@ export async function bootOrExit(
     io.error(`[boot] refusing to start: ${e instanceof Error ? e.message : String(e)}`);
     io.exit(1);
   }
+}
+
+/**
+ * Connection budget (ENGINEERING §6, ARCHITECTURE §12, infra/RESOURCES.md): every pool that can be open at
+ * once — web replicas and workers, plus one extra container during a rolling deploy — and the reserved
+ * connections (Umami's pool, admin/psql, migrations) must fit in 80% of Postgres `max_connections`.
+ */
+export const CONNECTION_BUDGET = {
+  production: { web: 2, worker: 1, deployOverlap: 1, reserved: 15 },
+  staging: { web: 2, worker: 1, deployOverlap: 1, reserved: 5 },
+} as const;
+
+export function connectionBudgetProblem(
+  maxConnections: number,
+  plan: { web: number; worker: number; deployOverlap: number; reserved: number },
+  poolMax: number = DB_POOL_MAX,
+): string | null {
+  const needed = (plan.web + plan.worker + plan.deployOverlap) * poolMax + plan.reserved;
+  const allowed = Math.floor(maxConnections * 0.8);
+  return needed > allowed
+    ? `needs ${String(needed)} connections but 80% of max_connections (${String(maxConnections)}) is ${String(allowed)}`
+    : null;
 }

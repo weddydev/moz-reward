@@ -76,11 +76,8 @@ jobs:
       - name: pnpm audit (production dependencies, high/critical — SECURITY §10)
         run: pnpm audit --prod --audit-level high
       - name: Semgrep (SAST — default + OWASP Top 10 + secrets rules, SECURITY §10)
-        run: >
-          docker run --rm -v "$PWD:/src" -w /src
-          semgrep/semgrep:1.183.0@sha256:2e45517a85e13a9cca14a2a00df6bb48affd66b8ebfae1b0991cd57578362fb0
-          semgrep scan --config p/default --config p/owasp-top-ten --config p/secrets --metrics=off --error --quiet
-          --exclude node_modules --exclude .next --exclude .next-e2e
+        # Same command as the local twin in gate:task (scripts/sast.ts holds the pinned image and rules).
+        run: pnpm sast
       - name: services (Postgres+PostGIS, Redis, Mailpit, MinIO; health waits)
         run: pnpm services:up
       - name: migration test (all migrations on an empty database)

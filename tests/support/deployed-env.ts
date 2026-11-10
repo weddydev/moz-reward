@@ -18,5 +18,6 @@ export function stubDeployedEnv(appEnv: "staging" | "production"): void {
   vi.stubEnv("TURNSTILE_SECRET_KEY", "0x4AAAAAAA-test-only-secret");
   vi.stubEnv("TRUSTED_PROXY", appEnv === "production" ? "cloudflare" : "caddy");
   vi.stubEnv("REDIS_URL", "rediss://:test-only@redis.invalid:6380");
+  vi.stubEnv("REDIS_CACHE_URL", "rediss://:test-only@redis-cache.invalid:6380");
   vi.stubEnv("REDIS_KEY_PREFIX", `${appEnv}:`);
 }

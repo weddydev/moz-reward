@@ -2,11 +2,12 @@ import "server-only";
 import { Queue } from "bullmq";
 import { isInsideTransaction } from "@/server/repos/_base";
 import { bullPrefix, createRedis } from "./connection";
+import { sealEnvelope } from "./envelope";
 import {
   DEFAULT_JOB_OPTIONS,
   type JobName,
   type JobPayload,
-  payloadSchema,
+  jobDef,
   type QueueName,
 } from "./registry";
 import type { Redis } from "ioredis";
@@ -46,9 +47,10 @@ export class EnqueueInTransactionError extends Error {
 }
 
 /**
- * Typed enqueue (P0-04). Validates the payload against the registry schema and refuses to run inside a
- * repository transaction: call it after the transaction resolves. Pass `jobId` to make the enqueue
- * idempotent (BullMQ ignores a second job with the same id). Returns the job id.
+ * Typed enqueue (P0-04). Validates the payload against the registry schema, wraps it in the versioned envelope
+ * (envelope.ts) and refuses to run inside a repository transaction. Request code never calls this: side
+ * effects go through the outbox (`writeOutbox`), which survives a crash between commit and enqueue. It stays
+ * for scripts and tests. Pass `jobId` to make the enqueue idempotent. Returns the job id.
  */
 export async function enqueue<Q extends QueueName, N extends JobName<Q>>(
   queue: Q,
@@ -57,10 +59,22 @@ export async function enqueue<Q extends QueueName, N extends JobName<Q>>(
   opts: { jobId?: string; delay?: number } = {},
 ): Promise<string> {
   if (isInsideTransaction()) throw new EnqueueInTransactionError();
-  const schema = payloadSchema(queue, name);
-  if (!schema) throw new Error(`Unknown job ${queue}:${name}`);
-  const data: unknown = schema.parse(payload);
-  const job = await getQueue(queue).add(name, data, opts);
+  const def = jobDef(queue, name);
+  if (!def) throw new Error(`Unknown job ${queue}:${name}`);
+  const job = await getQueue(queue).add(name, sealEnvelope(def, payload), opts);
   if (!job.id) throw new Error(`BullMQ returned no id for ${queue}:${name}`);
   return job.id;
+}
+
+/**
+ * The relay's enqueue (relay.ts only): the data was validated and sealed when the outbox row was written, and
+ * `jobId = outbox.id` makes a second dispatch of the same row a no-op in BullMQ. Runs outside any transaction.
+ */
+export async function dispatchJob(
+  queue: string,
+  name: string,
+  data: unknown,
+  jobId: string,
+): Promise<void> {
+  await getQueue(queue).add(name, data, { jobId });
 }

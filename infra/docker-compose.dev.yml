@@ -26,13 +26,50 @@ services:
       timeout: 3s
       retries: 30
 
+  # redis-queue in staging/production (ARCHITECTURE §6, §9): BullMQ, rate limits, the email counter.
+  # Nothing here may be evicted: AOF every second, noeviction (a full instance refuses writes instead).
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--requirepass", "moz", "--appendonly", "yes"]
+    command:
+      - redis-server
+      - --requirepass
+      - moz
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - noeviction
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
       - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "moz", "--no-auth-warning", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # redis-cache (P0-18): data cache + pub/sub only. Evicts least-recently-used keys when full and keeps no
+  # data on disk, so filling it can never touch queue or limiter keys (they live in the instance above).
+  redis-cache:
+    image: redis:7-alpine
+    command:
+      - redis-server
+      - --requirepass
+      - moz
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - 64mb
+      - --maxmemory-policy
+      - allkeys-lru
+    ports:
+      - "127.0.0.1:6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "moz", "--no-auth-warning", "ping"]
       interval: 2s

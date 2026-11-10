@@ -52,6 +52,8 @@ export const serverEnvSchema = z
     DATABASE_URL_TEST: optionalConnectionUrl(POSTGRES),
     REDIS_URL: connectionUrl(REDIS),
     REDIS_URL_TEST: optionalConnectionUrl(REDIS),
+    /** redis-cache (P0-18): data cache + pub/sub, `allkeys-lru`. Locally defaults to the dev instance on 6380. */
+    REDIS_CACHE_URL: optionalConnectionUrl(REDIS),
     /** Key prefix: per worker in tests; empty locally; required in staging/production (e.g. `prod:`). */
     REDIS_KEY_PREFIX: z.string().default(""),
 
@@ -164,21 +166,40 @@ export const serverEnvSchema = z
         message: "must be caddy or cloudflare outside local/test (client IPs for rate limits)",
       });
     }
-    // SEC-M3: outside local/test, Redis is reached over TLS with a password, and keys carry an env prefix.
-    const redisUrl = URL.canParse(e.REDIS_URL) ? new URL(e.REDIS_URL) : undefined;
-    if (redisUrl && !isLocalEnv && redisUrl.protocol !== "rediss:") {
+    // SEC-M3: outside local/test, both Redis instances are reached over TLS with a password, and keys carry an
+    // env prefix. The cache instance is its own server (P0-18): never the queue one.
+    if (!isLocalEnv && !e.REDIS_CACHE_URL) {
       ctx.addIssue({
         code: "custom",
-        path: ["REDIS_URL"],
-        message: "must use rediss:// (TLS) outside local/test",
+        path: ["REDIS_CACHE_URL"],
+        message: "required outside local/test",
       });
     }
-    if (redisUrl && !isLocalEnv && redisUrl.password === "") {
+    if (e.REDIS_CACHE_URL && e.REDIS_CACHE_URL === e.REDIS_URL) {
       ctx.addIssue({
         code: "custom",
-        path: ["REDIS_URL"],
-        message: "must include a password outside local/test",
+        path: ["REDIS_CACHE_URL"],
+        message:
+          "must be a different Redis instance from REDIS_URL (cache evicts; the queue must not)",
       });
+    }
+    for (const name of ["REDIS_URL", "REDIS_CACHE_URL"] as const) {
+      const value = e[name];
+      const url = value && URL.canParse(value) ? new URL(value) : undefined;
+      if (url && !isLocalEnv && url.protocol !== "rediss:") {
+        ctx.addIssue({
+          code: "custom",
+          path: [name],
+          message: "must use rediss:// (TLS) outside local/test",
+        });
+      }
+      if (url && !isLocalEnv && url.password === "") {
+        ctx.addIssue({
+          code: "custom",
+          path: [name],
+          message: "must include a password outside local/test",
+        });
+      }
     }
     if (!isLocalEnv && e.REDIS_KEY_PREFIX === "") {
       ctx.addIssue({

@@ -176,3 +176,9 @@ Done on `wip/P0-18` (`dd2314a`): A non-transactional `drizzle/concurrent/` index
 Evidence: gate:task PASS (unit 430, int 331); new integration tests concurrent-migrations 3/3, db-session 2/2, redis-split 4/4; CI step A 42765978050 green. A gate failure mid-session was a Windows clock step (same files green alone, re-run green).
 Also: remote `wip/P0-14` and `wip/P0-19` deleted (human approved).
 Next: P0-18 step C (outbox) → D (fail modes, timeouts) → reviewer → squash.
+
+## 2026-11-10 — P0 — P0-18 steps C–D, security review, done (talha.syed, macOS)
+Done: C outbox (0008) + relay + replay CLI + sweep + versioned payloads + lockout email via outbox · D required `failMode` (closed → 503), after-commit deadline, `RETIRED_SCHEDULES`, 60 s drain · security-reviewer (0 BLOCK/HIGH, 9 should-fix: 6 fixed, 3 carried C-29/C-30/C-12 → P0-20; nits → C-31 → P0-13) · worker runs via `server-only-hook.mjs` (react-server broke email rendering, found by a real-worker smoke) · `pnpm sast` local twin · axe guard waits for `<html data-hydrated>`.
+Evidence: CI green 42775110214 (cffc65b); gate:task PASS (unit 448, int 357, sast); AC1/4/6/7 + edge cases in outbox.test 22/22, AC2 fail-modes 4/4, AC3/AC5/C-18 from A–B; worker-process test fails under the old flag, passes now; full E2E local 268/0.
+Mistake: pushed 758acc2 before reading step D's red CI (axe flake); both reds fixed at root cause before the squash.
+Rule (human): one target, everything by 10 Dec 2026; per-phase dates no longer tracked (CLAUDE.md "Pace", 9face36).

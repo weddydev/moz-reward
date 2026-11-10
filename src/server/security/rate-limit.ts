@@ -13,8 +13,8 @@ import type { Redis } from "ioredis";
  * can't overshoot. Blocked attempts are not recorded (hammering doesn't extend a lockout). Keys expire with
  * the window.
  *
- * Redis down: fails **open** by default (logged at error level) so an outage doesn't lock every user out;
- * pass `onError: "closed"` where abuse is costlier than availability.
+ * Redis down: every caller states `onError` (logged at error level either way): "open" where an outage must
+ * not lock users out, "closed" where abuse is costlier than availability (auth, money).
  */
 export type LimitResult = { ok: boolean; remaining: number; resetAt: Date; degraded?: true };
 export type LimitOptions = {
@@ -23,7 +23,8 @@ export type LimitOptions = {
   windowSec: number;
   /** Injectable clock (ms) for deterministic tests. */
   now?: number;
-  onError?: "open" | "closed";
+  /** Redis down: always stated (SECURITY §14: never a default). "closed" for auth and money. */
+  onError: "open" | "closed";
 };
 
 // KEYS[1] zset; ARGV: now, windowMs, max, member. Returns {ok(0|1), count after, oldest score}.
@@ -45,10 +46,10 @@ local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')[2] or now
 return {ok, count, tonumber(oldest)}
 `;
 
-type Limiter = (opts: LimitOptions) => Promise<LimitResult>;
+export type Limiter = (opts: LimitOptions) => Promise<LimitResult>;
 
 export function createLimiter(redis: Redis): Limiter {
-  return async ({ key, max, windowSec, now = Date.now(), onError = "open" }) => {
+  return async ({ key, max, windowSec, now = Date.now(), onError }) => {
     const windowMs = windowSec * 1000;
     try {
       const [ok, count, oldest] = (await redis.eval(
@@ -141,9 +142,24 @@ export function ipLimit(
 export const retryAfterSec = (r: LimitResult): number =>
   Math.max(1, Math.ceil((r.resetAt.getTime() - Date.now()) / 1000));
 
-/** For server actions: throws RATE_LIMITED (mapped to a 429 / form error by the action template). */
-export async function limitOrThrow(opts: LimitOptions): Promise<LimitResult> {
-  const result = await limit(opts);
+/** How long a client is asked to wait when a fail-closed limit can't reach Redis. */
+export const UNAVAILABLE_RETRY_SEC = 60;
+
+/**
+ * For server actions: throws RATE_LIMITED (429) over the limit, and UNAVAILABLE (friendly 503 + Retry-After)
+ * when Redis is down and the limit fails closed (`onError: "closed"`: auth and money, ENGINEERING §5).
+ * `limiter` is injectable so tests can point it at a dead Redis.
+ */
+export async function limitOrThrow(
+  opts: LimitOptions,
+  limiter: Limiter = limit,
+): Promise<LimitResult> {
+  const result = await limiter(opts);
+  if (!result.ok && result.degraded) {
+    throw new AppError("UNAVAILABLE", undefined, undefined, {
+      retryAfterSec: UNAVAILABLE_RETRY_SEC,
+    });
+  }
   if (!result.ok) {
     const wait = retryAfterSec(result);
     throw new AppError(

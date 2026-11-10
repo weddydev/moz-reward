@@ -62,7 +62,7 @@ This section is the **single source** for gates. CLAUDE.md, commands and agents 
 **Task done — `pnpm gate:task` (fast):**
 1. `pnpm check` (typecheck + lint incl. coverage/migration/css checks + `format:check` + unit).
 2. `pnpm test:int`.
-3. `pnpm build`.
+3. `pnpm build` (+ `check:bundle`) and `pnpm sast` (Semgrep, the same command CI runs; Docker).
 4. E2E for specs tagged with the task ID, against the production build, on Chromium + WebKit.
 5. Every acceptance criterion has evidence; tests named with the task ID exist and pass; new/changed UI screenshotted **and inspected** (§8).
 6. `security-reviewer` on the task diff when the task touches auth, authz, sessions, rate limits, payments, uploads, crypto or PII (background; no BLOCK/HIGH open).

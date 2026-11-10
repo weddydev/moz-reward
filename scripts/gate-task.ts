@@ -3,7 +3,7 @@
  *   1. every part of `pnpm check` (read from package.json, so the two never drift), unit tests counted;
  *   2. `pnpm test:int` (integration + authz matrix);
  *   3. the production build — the same `.next-e2e` build `pnpm e2e` serves (one build, not two) — and
- *      `check:bundle` on it;
+ *      `check:bundle` on it; then `pnpm sast` (Semgrep, scripts/sast.ts: the same command CI runs);
  *   4. E2E specs tagged with the task ID(s), on that build, Chromium + WebKit (flaky = failure);
  *   5. the working tree is exactly as before.
  * Task IDs: arguments, else the IDs in the commits not yet pushed, else the next unticked task in PHASES.md.
@@ -139,6 +139,8 @@ function main(): void {
       name: "check:bundle",
       run: () => commandStep("check:bundle", "pnpm", ["check:bundle", E2E_DIST_DIR]),
     },
+    // Semgrep, as in CI (P0-18: a CI-only check let a finding through).
+    { name: "sast", run: () => commandStep("sast", "pnpm", ["sast"]) },
   );
   if (ids.length > 0) {
     steps.push({
