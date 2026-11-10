@@ -1,6 +1,7 @@
 import "server-only";
 import { sendStaffLockoutEmail } from "@/server/auth/lockout-email";
 import { systemScope, type TenantScope } from "@/server/authz/scope";
+import { deliverAlertEmail } from "@/server/ops/alerts";
 import { touchHeartbeat } from "@/server/repos/jobs";
 import { sweepOutbox } from "./relay";
 import type { JobDef, JOBS, JobRunAs, QueueName } from "./registry";
@@ -34,6 +35,7 @@ export const HANDLERS: Handlers = {
   notifications: {},
   email: {
     "staff-lockout": ({ userId, reason }) => sendStaffLockoutEmail(userId, reason),
+    "ops-alert": ({ at, ...alert }) => deliverAlertEmail({ ...alert, at: new Date(at) }),
   },
   images: {},
   pdf: {},

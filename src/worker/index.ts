@@ -14,6 +14,7 @@ import { registerSchedules } from "@/server/jobs/scheduler";
 import { createShutdown, WORKER_DRAIN_MS } from "@/server/jobs/shutdown";
 import { type RunningWorkers, startWorkers } from "@/server/jobs/worker";
 import { log as appLog } from "@/server/log";
+import { enableDirectAlertDelivery } from "@/server/ops/alerts";
 
 const log = (event: string, fields: Record<string, unknown> = {}): void => {
   appLog()
@@ -24,6 +25,8 @@ const log = (event: string, fields: Record<string, unknown> = {}): void => {
 async function main(): Promise<void> {
   // Worker statement limits (60 s) before any query creates the pool.
   setDbProcess("worker");
+  // P0-13: this process emails alerts itself (critical mail; still works while redis-queue is down).
+  enableDirectAlertDelivery();
   // Same startup checks as the web server: env, and in staging/production the database role (P0-19).
   await bootOrExit(runBootChecks);
 

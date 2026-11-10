@@ -93,7 +93,21 @@ describe("[P0-02] server env", () => {
     REDIS_URL: "rediss://:strong-password@redis.internal:6380",
     REDIS_CACHE_URL: "rediss://:other-password@redis-cache.internal:6380",
     REDIS_KEY_PREFIX: "prod:",
+    ALERT_EMAILS: "dev-a@mozrewards.co.uk, dev-b@mozrewards.co.uk",
   };
+
+  it("[P0-13] ALERT_EMAILS: a list of addresses, required on staging/production", () => {
+    expect(parseServerEnv(prod).ALERT_EMAILS).toEqual([
+      "dev-a@mozrewards.co.uk",
+      "dev-b@mozrewards.co.uk",
+    ]);
+    const { ALERT_EMAILS: _a, ...noAlerts } = prod;
+    expect(() => parseServerEnv(noAlerts)).toThrow(/ALERT_EMAILS: required outside local\/test/);
+    expect(() => parseServerEnv({ ...prod, ALERT_EMAILS: "dev-a@x.co.uk, not-an-email" })).toThrow(
+      /ALERT_EMAILS: every entry must be an email address/,
+    );
+    expect(parseServerEnv(base).ALERT_EMAILS).toEqual([]);
+  });
 
   it("[P0-05] refuses TRUSTED_PROXY=none on staging/production (client IPs would all share one bucket)", () => {
     expect(() => parseServerEnv({ ...prod, TRUSTED_PROXY: "none" })).toThrow(/TRUSTED_PROXY/);

@@ -101,6 +101,28 @@ export const serverEnvSchema = z
     TURNSTILE_SECRET_KEY: optional,
     SENTRY_DSN: optional,
     LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
+    /**
+     * P0-13 (C-22): both developers' addresses for security/ops alerts and health mail, comma-separated.
+     * Required outside local/test; locally the default lands in Mailpit.
+     */
+    ALERT_EMAILS: z
+      .string()
+      .optional()
+      .transform((v, ctx) => {
+        const list = (v ?? "")
+          .split(",")
+          .map((a) => a.trim())
+          .filter(Boolean);
+        for (const address of list) {
+          if (!z.email().safeParse(address).success) {
+            ctx.addIssue({ code: "custom", message: "every entry must be an email address" });
+            return z.NEVER;
+          }
+        }
+        return list;
+      }),
+    /** Combined daily send cap of the email providers (ARCHITECTURE §10: Resend 100 + Brevo 300). */
+    EMAIL_DAILY_CAP: z.coerce.number().int().positive().default(400),
   })
   .superRefine((e, ctx) => {
     // Zod 4 still runs object refinements after a field failed; `z.url()` has already reported a bad
@@ -122,6 +144,13 @@ export const serverEnvSchema = z
           ctx.addIssue({ code: "custom", path: [b], message: `must differ from ${a}` });
         }
       }
+    }
+    if (!isLocalEnv && e.ALERT_EMAILS.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ALERT_EMAILS"],
+        message: "required outside local/test (alerts and health mail to both developers)",
+      });
     }
     if (!isLocalEnv && !e.TURNSTILE_SECRET_KEY) {
       ctx.addIssue({

@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-10 — Alerts to both developers: Redis-deduplicated, worker sends (P0-13, C-22)
+Decision: `securityAlert`/`opsAlert` log, then dedupe per kind in redis-queue (first event per 5 min delivered, later ones counted; the health monitor's minute tick emails the count once the window closes); if Redis is down, the process's memory dedupes. The worker emails directly to `ALERT_EMAILS` (critical mail, no budget/drop order); a web process enqueues `email:ops-alert` straight to BullMQ, not via the outbox (an alert belongs to no transaction and must not need the database). Staff-lockout emails: ≤ 3 per account per UK day (C-31; the developers' alert is not capped).
+Why: one email per spray, not thousands (inboxes, the ≈ 400/day email quota); "Redis down" must still reach the developers.
+Consequence: a web alert raised while Redis is down is only in the log (the health monitor then alerts on Redis itself). Two worker processes with Redis down could each send once (≤ 2×).
+
 ## 2026-11-10 — RLS admin writes bound to the admin role (P0-20 re-review, 0011)
 Decision: writes to `shops`/`shop_staff` need admin owner or support; `feature_flags` admin owner only; `content_settings` owner or moderator (PRODUCT §2); every admin role keeps SELECT. The four role helpers are EXECUTE-able only by moz_app/moz_auth (not PUBLIC). A shop/admin outbox row must carry a non-NULL role; the worker refuses a system job whose outbox row is missing. Finance gets shop writes only if P2 plan columns land on `shops` (then a DECISIONS entry).
 Why: the re-review of 0010 found any admin role could make itself owner of any shop (HIGH). `moz_auth` may name any actor in `audit_logs` (`WITH CHECK (true)`): accepted, identity events have no scope; its identity tables stay full-CRUD by design. Stale `rls: global` markers for feature_flags/content_settings were removed from 0009's comments (no deployed DB yet), so the checker verifies them.
