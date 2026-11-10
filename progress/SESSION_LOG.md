@@ -231,3 +231,8 @@ Left off: checkpoint 22:05 IST, baton kept. Next: P0-08 (P0-C) while P0-15 waits
 Done: standing rule "every stop says whether to /clear" in CLAUDE.md §1 (`d86eb08`); P0-08 brief tightened (8 ACs, edge cases, tests); step A tokens + global styles on `wip/P0-08`.
 Evidence: gate:task PASS (unit 562, int 457, build, bundle, sast); full 5-project E2E 313 passed / 0 failed; gallery screenshots (1440, iPhone 14) inspected.
 Left off: checkpoint, baton kept. Next: step B on `wip/P0-08` (preference hooks, pre-paint script, profile sync, toggles), then step C (token page, contrast table, E2E, snapshots).
+
+## 2026-11-10 (23:00–23:25 IST) — P0 — P0-08 step B (talha.syed, macOS)
+Done: display preferences on `wip/P0-08` (`592d77c`): hooks, inline pre-paint script with the CSP nonce, profile sync (`savePreferences`, migration 0013), toggles on `/dev/ui`.
+Evidence: gate:task PASS (unit 594, int 475, build, bundle, sast, E2E P0-08 6/0); full 5-project E2E 313 passed / 0 failed; `preferences.spec.ts` 15/0 across the five projects.
+Left off: checkpoint, baton kept. Next: step C on `wip/P0-08` (token page, contrast table, remaining E2E, snapshots, screenshots), then squash to main and tick. Branch is merged with main: do not rebase.
