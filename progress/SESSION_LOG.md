@@ -211,3 +211,9 @@ Done: read-only audit of the plan, progress logs, agents and gate scripts (no co
 Evidence: one local session record (10 Nov): 134 M tokens re-read vs 0.34 M written; 60 min model, 80 min tools in 3.8 h.
 Open (audit findings not yet in the phase files; human to decide): push-endpoint allowlist (P3-07), private-file rule (P1-12/P2-09/P2-13), staff password reset (P2-04), device-signal capture, passkey task (C-16), age-restricted offers + birth year, leaderboard privacy (P4-07), customer Scan screen, reference-image names, stale lines in ENGINEERING §11/§13, DESIGN §12, README.
 Left off: P0-21 not started. Next: `/clear`, `/resume`, then P0-21.
+
+## 2026-11-10 (21:10–21:50 IST) — P0 — P0-21 done, handoff (Syedbadeshah76, Windows)
+Done: `docs/compliance/` — README (10 questions for the solicitor), ROPA (41 activities, basis + controller + retention each), CONTROLLER_ROLES, PROCESSOR_REGISTER (every ARCHITECTURE §10 provider + push services, HIBP), DPIA (30 risks mapped to tasks, LIA, PECR, Children's code), RETENTION_SCHEDULE (11 proposed periods), DSAR_AND_ERASURE, COMPLAINTS_PROCESS. H-23 steps updated. P0-21 ticked.
+Evidence: AC1 every ⚠ ROPA row maps to a proposed period G1–G11; AC2 register rows checked against ARCHITECTURE §1/§10; AC3 DPIA §5 "Built in" column; AC4 H-23 open. Documents only: no tests; docs-only push skips the gate and CI.
+Not verified: nothing run on this laptop this session (no services:up, migrate or `pnpm check`); H-32 still open on Windows.
+Left off: next P0-16 demo seeds (P0-15 waits on H-06/07/08/26/27).

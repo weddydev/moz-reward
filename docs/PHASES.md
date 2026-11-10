@@ -39,7 +39,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 - [x] P0-18 · Reliability primitives: outbox, Redis split, failure modes, safe migrations
 - [x] P0-20 · Row-Level Security (mandatory)
 - [x] P0-13 · Observability, SLOs and runbook
-- [ ] P0-21 · Compliance foundations (drafts)
+- [x] P0-21 · Compliance foundations (drafts)
 - [ ] P0-15 · VPS provisioning, staging stack, deploy without a registry, backups, restore drill, uptime (needs H-06, H-07, H-08, H-26, H-27)
 - [ ] P0-16 · Demo seeds
 - [ ] P0-E closed with `/subphase-complete`

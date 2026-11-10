@@ -13,24 +13,25 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Not yet tested:** real Sentry account and alert rule (H-34); real Umami behind Caddy (C-36, P0-15); RUNBOOK VPS procedures (C-37); real Resend/Brevo (H-04); CI on the squashed commit (check before the next push).
 - **Also done:** speed/token rules (CLAUDE.md §4, `3b7b8a8`): gate pass stamps (verified: push skipped the duplicate gate), quiet hooks, `pnpm fix`, QA agent pinned to Opus high. CI green on P0-13 (`7997853`, run 42823223240); check CI on `3b7b8a8` first.
 - **Token rules, round 2 (Syedbadeshah76, 10 Nov 21:00, CLAUDE.md §4):** `/checkpoint` + human `/clear` + `/resume` after every task; task-level security review only for the 23 listed tasks; no task-level full E2E, 20-minute flake limit; findings policy. Audit findings not yet in the phase files are listed in SESSION_LOG (last entry).
-- **Next:** P0-21 compliance drafts (no human dependency; start with the brief security/design check rule only if it touches data flows), then P0-15 when H-06/07/08/26/27 land (C-19/21/23/27/32/33/35/36/37).
+- **Checkpoint by Syedbadeshah76, 10 Nov 21:45 IST: P0-21 done** (`docs/compliance/`: README with 10 questions for the solicitor, ROPA 41 rows, controller roles, processor register, DPIA, retention schedule with 11 proposed periods, DSAR and erasure, complaints). Documents only; nothing to test. H-23 steps updated.
+- **Next:** P0-16 demo seeds (needs H-32 on the Windows laptop: `.env.local` DB roles), then P0-15 when H-06/07/08/26/27 land (C-19/21/23/27/32/33/35/36/37).
 - **Watch out:** E2E pages get a default `moz_consent=denied` cookie (fixture option `analyticsConsent`; `null` shows the notice). The web process has no worker pool, so System-page E2E data comes from the `ops-snapshot` test action. Server env names must not collide with strings in client bundles (`SENTRY_RELEASE` did → renamed `APP_RELEASE`).
 
 ## Status
-- **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20, P0-13. Next: P0-21.
-- **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → P0-21 → P0-15 → P0-16; then P0-C (P0-08…11), then P0-D (P0-12).
+- **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20, P0-13, P0-21. Next: P0-16 (P0-15 waits on human tasks).
+- **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → P0-16; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-10, talha.syed (P0-13 done)
+- **Last updated:** 2026-11-10, Syedbadeshah76 (P0-21 done)
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- P0-13 done 10 Nov (observability, alerts, health, Sentry, System page, consent, RUNBOOK; 2 security reviews closed). Next: P0-21.
+- P0-21 done 10 Nov (compliance drafts in `docs/compliance/`, with the solicitor via H-23). Next: P0-16 demo seeds; P0-15 when the human tasks land.
 
 ## Next (top 3)
-1. **P0-21**: compliance drafts (ROPA, DPIA, processor register, retention).
+1. **P0-16**: demo seeds (three demo shops, one account per role; staff accounts pre-enrolled with TOTP, C-07). Needs H-32 on the Windows laptop.
 2. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37); waits on H-06/07/08/26/27 (+ H-34 Sentry).
-3. **P0-16** demo seeds, then sub-phase close `/subphase-complete` for P0-E.
+3. Sub-phase close `/subphase-complete` for P0-E, then P0-C (P0-08 tokens).
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |

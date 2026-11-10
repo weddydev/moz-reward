@@ -116,7 +116,8 @@ Suggested extra deny entries you may add yourself: `Read(./.env.*)`, `Bash(docke
 2. Tell Claude the changes before P1 starts.
 
 ### H-23 — Solicitor review of compliance drafts
-1. After P0-21, send the solicitor `docs/compliance/` (ROPA, DPIA, processor register, retention schedule) and COMPLIANCE §2–§4, §7.
+1. Send the solicitor the whole `docs/compliance/` folder (start with its README: ten questions that need a decision) and COMPLIANCE §2–§4, §7.
+1a. Client side, before launch: pay the ICO data protection fee, name the data protection contact, and sign a processing agreement with each provider in `PROCESSOR_REGISTER.md`.
 2. Return the changes to Claude before real customer data (launch).
 
 ### H-09 — Gemini (paid tier)

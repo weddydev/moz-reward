@@ -13,6 +13,10 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-10 — P0-21 compliance drafts: defaults chosen where the rules were silent
+Decision: `docs/compliance/` proposes 11 retention periods the product rules lack (RETENTION_SCHEDULE §2, e.g. offer claims 24 months, export files 7 days, request and complaint records 3 years), shop-to-platform timings in the Shop Terms table (2 working days, 24 h breach notice), and records analytics as consent-based because P0-13 built it that way (COMPLIANCE §2.2 says legitimate interests with opt-out).
+Why: a ROPA row needs a retention period, and the retention job (P2-13) needs numbers. Consequence: all are marked for the solicitor (H-23, README questions 2 and 6); COMPLIANCE §2.6 is updated when they answer.
+
 ## 2026-11-10 — Token rules, round 2 (human, after the plan audit)
 Decision: four rules in CLAUDE.md §4: fresh context per task (`/checkpoint` → human runs `/clear` + `/resume`, which has a light path); "security-relevant task" is now a named list of 23 tasks (others are reviewed at the sub-phase close; a re-review checks the fix only); no full E2E at task level and a 20-minute flake limit; findings policy (HIGH now, MEDIUM in one batch per sub-phase, nits logged).
 Why: one measured session (10 Nov, P0-19 + half of P0-18) spent about four-fifths of its usage re-reading the conversation, and every P0-E task went through 2–3 reviewer rounds. The foundation now enforces authz, RLS and library values mechanically, so feature tasks need less per-task review.
