@@ -204,3 +204,4 @@ Done: C Sentry web/worker/browser tunnel + scrubbing (C-03, C-26) · D `/admin/s
 Evidence: gate:task PASS (unit 491, int 444, E2E 16/0); full 5-project E2E 313/0; AC2 by hand (ready 503, `health.redis` mail); worker-down 503 after 3 min; restore drill + replay dry run; screens system-page 320/390/1440, cookie-notice, preparing hint.
 Carried: C-36 (Umami proxy scope), C-37 (VPS RUNBOOK walks) → P0-15. H-33 done; H-35 close issue #1. Next: P0-21.
 Speed/token rules (human, 10 Nov): gate pass stamps + pre-push skip, quiet lefthook, `pnpm fix`, design-first security check, E2E/screenshot scope, QA agent Opus high (CLAUDE.md §4). Task splitting and a cheaper QA model rejected.
+Handoff 2026-11-10 19:05 IST by talha.syed: P0-13 done + CI green; speed rules in place; next P0-21; human: H-34 (Sentry), H-35 (close issue #1), H-32 (Windows .env.local).

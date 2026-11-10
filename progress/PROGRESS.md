@@ -3,15 +3,16 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-10 16:21 IST
+Baton: free — last held by talha.syed, 2026-11-10 19:05 IST
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P0-13 done 10 Nov (talha.syed, macOS; baton still held at writing).** One squashed commit on main. Remote `wip/P0-13` and `wip/P0-18` are stale (delete only with the human's OK).
+- **Handed over by talha.syed, 2026-11-10 19:05 IST (macOS). P0-13 done 10 Nov.** One squashed commit on main. Remote `wip/P0-13` and `wip/P0-18` are stale (delete only with the human's OK).
 - **What P0-13 is:** alerts (`src/server/ops/alerts.ts`: Redis dedup per kind, windows 5→30→60 min, ≤ 4/kind and ≤ 12/pool per day + one `alert.ceiling` notice, memory fallback; worker sends directly, web enqueues `email:ops-alert`; `ALERT_EMAILS`); health (`/api/health/{live,ready,worker}`, detail with `Authorization: Bearer $HEALTH_TOKEN`); health monitor in the worker (1-min timer, not BullMQ; `ops_snapshot` table 0012; scheduler grace 3 min after start); Sentry (`@sentry/node` web+worker, `@sentry/browser` lazy via `/api/monitoring` tunnel with placeholder DSN and its own budget; `src/lib/sentry-scrub.ts`; explicit `dataCollection`); Better Auth logger via pino; `/admin/system` (admin owner); consent-gated Umami (`NEXT_PUBLIC_UMAMI_PATH`/`_WEBSITE_ID`) + cookie notice; C-06 hint; `docs/RUNBOOK.md`; `infra/docker/daemon.json` (log rotation). DECISIONS has 8 P0-13 entries incl. the Sentry inventory and both security reviews.
 - **Tested:** gate:task PASS (unit 491, int 444, build, bundle, sast, E2E P0-13 16/0); full 5-project E2E 313/0/0 flaky (on 07c8463, before the review fixes; the fixes' E2E specs passed in gate:task); hands-on: Redis stop → ready 503 + `health.redis` email in Mailpit; worker stop → `/api/health/worker` 503 after 3 min; local restore drill + replay dry run; start-up grace and log throttle re-checked on the real worker. security-reviewer: 2 HIGH + 5 should-fix fixed, re-review 0 BLOCK/HIGH, its 2 new should-fix fixed.
 - **Not yet tested:** real Sentry account and alert rule (H-34); real Umami behind Caddy (C-36, P0-15); RUNBOOK VPS procedures (C-37); real Resend/Brevo (H-04); CI on the squashed commit (check before the next push).
-- **Next:** P0-21 compliance drafts (no human dependency), then P0-15 when H-06/07/08/26/27 land (C-19/21/23/27/32/33/35/36/37).
+- **Also done:** speed/token rules (CLAUDE.md §4, `3b7b8a8`): gate pass stamps (verified: push skipped the duplicate gate), quiet hooks, `pnpm fix`, QA agent pinned to Opus high. CI green on P0-13 (`7997853`, run 42823223240); check CI on `3b7b8a8` first.
+- **Next:** P0-21 compliance drafts (no human dependency; start with the brief security/design check rule only if it touches data flows), then P0-15 when H-06/07/08/26/27 land (C-19/21/23/27/32/33/35/36/37).
 - **Watch out:** E2E pages get a default `moz_consent=denied` cookie (fixture option `analyticsConsent`; `null` shows the notice). The web process has no worker pool, so System-page E2E data comes from the `ops-snapshot` test action. Server env names must not collide with strings in client bundles (`SENTRY_RELEASE` did → renamed `APP_RELEASE`).
 
 ## Status
