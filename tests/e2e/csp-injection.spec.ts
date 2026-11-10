@@ -5,12 +5,20 @@ import { expect, test } from "./support/test";
  *
  * Chromium treats a route.fulfill()ed document as non-local, and its Local Network Access checks then block
  * the dev server's HMR websocket to localhost, so the page never hydrates under `next dev`. That is an
- * artefact of the interception, not of the CSP under test, so the check is switched off for this file only
- * (Chromium-only flag; WebKit ignores it). The CSP itself is enforced as normal.
+ * artefact of the interception, not of the CSP under test, so the check is switched off for this file only,
+ * on Chromium only: Linux WebKit refuses to start with an unknown option (scheduled CI run 42805921144; macOS
+ * WebKit ignores it, so local runs passed). The CSP itself is enforced as normal.
  */
 test.use({
   guardAllow: [/^console: .*(Content Security Policy|script-src)/],
-  launchOptions: { args: ["--disable-features=LocalNetworkAccessChecks"] },
+  launchOptions: [
+    async ({ browserName }, use) => {
+      await use(
+        browserName === "chromium" ? { args: ["--disable-features=LocalNetworkAccessChecks"] } : {},
+      );
+    },
+    { scope: "worker" },
+  ],
 });
 
 test("[P0-05] an inline script without the nonce is blocked (XSS simulation), the page keeps working", async ({
