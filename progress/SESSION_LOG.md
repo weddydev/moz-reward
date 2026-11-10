@@ -170,3 +170,9 @@ Done: G atomic lockout guard (per-account Turnstile challenge, account+IP backof
 Evidence: gate:task PASS on every push (last: unit 419, int 322, E2E P0-19 30/0); full E2E Chromium+WebKit 116/0; CI green 42747422177 (G), 42748449980 (H), 42751913848 (I+J), 42755271081 (review fixes); AC4/AC5 over HTTP (15 parallel wrong passwords → exactly 5 × 401); AC1 conformance 14/14 on two browsers.
 Decision (human): keep HKDF subkeys of BLIND_INDEX_KEY; SECURITY §7 reworded. Mistake fixed: human's `src/features/moz-plan-v5-prompt.md` was committed in 61c8376, removed in 52b734d (now in `.git/info/exclude` locally).
 Next: P0-18 (outbox, Redis split, failure modes, safe migrations; C-11, C-18).
+
+## 2026-11-10 (10:00–11:48 IST) — P0 — P0-18 steps A–B, handoff (Syedbadeshah76, Windows)
+Done on `wip/P0-18` (`dd2314a`): A non-transactional `drizzle/concurrent/` index helper + linter (C-18), migration lock/statement timeouts, web 5 s / worker 60 s statement limits, connection budget at boot · B Redis split (queue instance noeviction + redis-cache allkeys-lru on :6380), `REDIS_CACHE_URL`, fail-open `cached()`, producer 2 s command timeout (CR-M3).
+Evidence: gate:task PASS (unit 430, int 331); new integration tests concurrent-migrations 3/3, db-session 2/2, redis-split 4/4; CI step A 42765978050 green. A gate failure mid-session was a Windows clock step (same files green alone, re-run green).
+Also: remote `wip/P0-14` and `wip/P0-19` deleted (human approved).
+Next: P0-18 step C (outbox) → D (fail modes, timeouts) → reviewer → squash.
