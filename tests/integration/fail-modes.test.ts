@@ -6,11 +6,12 @@ import { defineAction, defineRoute } from "@/server/actionTemplate";
 import { requireAdminRole } from "@/server/authz";
 import { loadPrincipal, runAsPrincipal } from "@/server/authz/principal";
 import { systemScope } from "@/server/authz/scope";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { featureFlags, outbox } from "@/server/db/schema";
 import { upsertFlag } from "@/server/repos/flags";
 import type * as RateLimitModule from "@/server/security/rate-limit";
 import { makeActor } from "@/server/testing/factories";
+import { tenantProbe } from "../support/tenant-job";
 
 /**
  * Redis down (P0-18 AC2, ENGINEERING §5): fail-closed actions (auth, money) answer a friendly 503 with
@@ -29,6 +30,11 @@ vi.mock("@/server/security/rate-limit", async (importOriginal) => {
       ),
   };
 });
+
+// A tenant job: requests may only write tenant jobs to the outbox (P0-20, C-30).
+vi.mock("@/server/jobs/registry", async (importOriginal) =>
+  (await import("../support/tenant-job")).withTenantProbe(await importOriginal()),
+);
 
 const down = new Redis("redis://127.0.0.1:1", {
   lazyConnect: true,
@@ -59,7 +65,9 @@ function moneyLike(failMode: "open" | "closed") {
     transaction: true,
     handler: async ({ key }, scope, { tx, outbox: writeToOutbox }) => {
       await upsertFlag(scope, { key, enabled: true, description: "fail-mode probe" }, tx);
-      await writeToOutbox("scheduled", "heartbeat", {});
+      await writeToOutbox(tenantProbe.queue, tenantProbe.name, {
+        note: "fail-mode probe",
+      });
       return key;
     },
   });

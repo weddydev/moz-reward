@@ -10,7 +10,7 @@ import { newId } from "@/lib/id";
 import { confirmPageUrl } from "@/lib/sign-in-link";
 import { TURNSTILE_HEADER } from "@/lib/turnstile";
 import { ADMIN_SESSION_MAX_MS, STAFF_SESSION_MAX_MS } from "@/server/authz/policies";
-import { db } from "@/server/db/client";
+import { dbAs } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { env } from "@/server/env";
 import { checkBreachedPassword } from "@/server/integrations/breach";
@@ -136,7 +136,7 @@ function createAuth() {
     onAPIError: { errorURL: `${e.APP_URL}/sign-in` },
     // Second layer behind the route allowlist (src/server/auth/routes.ts): unused endpoints answer 404.
     disabledPaths: [...DISABLED_PATHS],
-    database: drizzleAdapter(db(), { provider: "pg", schema, usePlural: true }),
+    database: drizzleAdapter(dbAs("auth"), { provider: "pg", schema, usePlural: true }),
     advanced: {
       database: { generateId: () => newId() },
       ...authCookieOptions(e.APP_URL),
@@ -201,7 +201,7 @@ function createAuth() {
             if (session.mfaVerified !== true) return;
             const kind = await privilegedKind(session.userId);
             if (!kind) return;
-            await recordAudit(db(), {
+            await recordAudit(dbAs("auth"), {
               actorId: session.userId,
               actorRole: kind,
               action: "auth.sign_in",

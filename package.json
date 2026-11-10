@@ -20,6 +20,7 @@
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:unit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/server/db/migrate.ts",
+    "db:rls-bench": "tsx scripts/rls-bench.ts",
     "db:migrate:test": "tsx src/server/db/migrate.ts --test",
     "db:seed": "tsx --conditions=react-server src/server/db/seed.ts",
     "db:reset": "tsx src/server/db/reset.ts && pnpm db:seed",

@@ -1,8 +1,8 @@
 import "server-only";
 import { after } from "next/server";
 import { TURNSTILE_REQUIRED_CODE } from "@/lib/turnstile";
-import { systemScope } from "@/server/authz/scope";
-import { db } from "@/server/db/client";
+import { authScope } from "@/server/authz/scope";
+import { dbAs } from "@/server/db/client";
 import type { LockoutReason } from "@/server/emails/StaffLockoutEmail";
 import { writeOutbox } from "@/server/jobs/outbox";
 import { log } from "@/server/log";
@@ -240,7 +240,7 @@ export async function finishSecondFactor(input: {
 /** The address is read when the email job runs (lockout-email.ts), so it never sits in a job payload. */
 type Owner = { id: string; kind: "admin" | "staff" };
 
-const LOCKOUT_SCOPE = systemScope(
+const LOCKOUT_SCOPE = authScope(
   "lockout follow-up: audit row and owner email for a staff/admin account",
 );
 
@@ -309,7 +309,7 @@ function auditFailure(
     try {
       const user = await lookup();
       if (!user) return;
-      await recordAudit(db(), {
+      await recordAudit(dbAs("auth"), {
         actorId: null,
         actorRole: "system",
         action: "auth.sign_in_failed",

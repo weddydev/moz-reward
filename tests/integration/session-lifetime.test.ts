@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getAuth } from "@/server/auth/auth";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { sessions, users } from "@/server/db/schema";
 import { makeActor } from "@/server/testing/factories";
 

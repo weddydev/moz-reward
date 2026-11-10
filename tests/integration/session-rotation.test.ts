@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { newId } from "@/lib/id";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { adminMembers, sessions, shopStaff, users } from "@/server/db/schema";
 import { makeAdmin, makeShop, makeStaff, makeUser } from "@/server/testing/factories";
 

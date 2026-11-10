@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as authRoute from "@/app/api/auth/[...all]/route";
 import { TURNSTILE_BYPASS_TOKEN } from "@/lib/turnstile";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { verifications } from "@/server/db/schema";
 import type * as AuthLimit from "@/server/security/auth-limit";
 import { confirmSignInLink, testEmail } from "../fixtures/auth";

@@ -6,7 +6,7 @@ One Hostinger KVM 4: **4 vCPU, 16 GB RAM, 200 GB NVMe**. Production and staging 
 
 | Stack | Container | Limit | Notes |
 |---|---|---|---|
-| Production | postgres (17 + PostGIS; app + Umami databases) | 4.5 GB | `shared_buffers` 2 GB, `effective_cache_size` 6 GB, `work_mem` 16 MB, `max_connections` 100 (budget: (2 web + 1 worker + 1 deploy overlap) × 10 + 15 reserved = 55 ≤ 80, checked at boot) |
+| Production | postgres (17 + PostGIS; app + Umami databases) | 4.5 GB | `shared_buffers` 2 GB, `effective_cache_size` 6 GB, `work_mem` 16 MB, `max_connections` 100 (budget, P0-20 per-role pools: (2 web + 1 deploy overlap) × 14 (app 10 + auth 4) + 1 worker × 12 (app 4 + system 8) + 15 reserved = 69 ≤ 80, checked at boot) |
 | Production | web ×2 | 1 GB each (2 GB) | Node `--max-old-space-size=768`; pool 10 each |
 | Production | worker (+ outbox relay) | 1.5 GB | image (sharp) and PDF jobs; pool 10 |
 | Production | redis-queue | 512 MB | `maxmemory 384mb`, `noeviction`, AOF everysec |
@@ -15,7 +15,7 @@ One Hostinger KVM 4: **4 vCPU, 16 GB RAM, 200 GB NVMe**. Production and staging 
 | Production | cloudflared | 128 MB | Tunnel for production hostnames |
 | Production | umami | 384 MB | uses the production Postgres (own database) |
 | **Production total** | | **≈ 9.5 GB** | |
-| Staging | postgres | 1 GB | `shared_buffers` 256 MB, `max_connections` 60 (connection budget: (2 web + 1 worker + 1 deploy overlap) × pool 10 + 5 reserved = 45 ≤ 80% — checked at boot, P0-18) |
+| Staging | postgres | 1 GB | `shared_buffers` 256 MB, `max_connections` 80 (connection budget, P0-20: (2 web + 1 deploy overlap) × 14 + 1 worker × 12 + 5 reserved = 59 ≤ 64 = 80% — checked at boot; idle connections cost a few MB each) |
 | Staging | web ×2 | 512 MB each (1 GB) | two replicas so rolling deploys are rehearsed on staging |
 | Staging | worker | 768 MB | |
 | Staging | redis-queue | 256 MB | `maxmemory 192mb`, `noeviction`, AOF |
@@ -26,7 +26,7 @@ One Hostinger KVM 4: **4 vCPU, 16 GB RAM, 200 GB NVMe**. Production and staging 
 | Host | OS, Docker, page cache, backup jobs (pg_dump, wal-g, age) | ≈ 3.2 GB headroom | 4 GB swap configured; alert if swap use > 1 GB sustained |
 | **Total limits** | | **≈ 12.8 GB of 16 GB** | |
 
-Connection budget (checked at boot, ENGINEERING §6): production pools 10 + 10 + 10 (+ Umami 5) = 35 ≤ 80% of 100.
+Connection budget (checked at boot, ENGINEERING §6; per-role pools since P0-20): production web 14 × 2 + worker 12 (+ deploy overlap 14, Umami and admin 15 reserved) = 69 ≤ 80% of 100.
 
 ## CPU
 

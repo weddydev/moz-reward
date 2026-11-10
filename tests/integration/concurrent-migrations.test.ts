@@ -6,7 +6,7 @@ import { migrationClient, runConcurrentMigrations } from "@/server/db/migrate";
 
 /** C-18 / P0-18: indexes on existing tables are built CONCURRENTLY, outside a transaction, once. */
 describe("[P0-18] non-transactional migrations (drizzle/concurrent)", () => {
-  const client = migrationClient(process.env.DATABASE_URL ?? "");
+  const client = migrationClient(process.env.DATABASE_URL_MIGRATIONS ?? "");
   const dir = mkdtempSync(path.join(tmpdir(), "moz-concurrent-"));
   const index = `moz_probe_${String(process.pid)}_idx`;
   const file = `9000_probe_${String(process.pid)}.sql`;

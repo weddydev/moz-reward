@@ -19,7 +19,7 @@ const hexRules = [
  * Scoped data access (P0-03, SECURITY §3). Only repositories (and DB/auth infrastructure) may import the DB
  * client; only src/server/authz may mint scopes; nobody may forge one with a cast.
  */
-const SCOPE_TYPE = "/^(Customer|Shop|Admin|System)?Scope$/";
+const SCOPE_TYPE = "/^(Customer|Shop|Admin|System|Public|Auth|Tenant)?Scope$/";
 const scopeCastRules = ["TSAsExpression", "TSTypeAssertion"].map((node) => ({
   selector: `${node}[typeAnnotation.typeName.name=${SCOPE_TYPE}]`,
   message:
@@ -37,15 +37,37 @@ const authApiRules = [
 ];
 const dbClientRule = {
   name: "@/server/db/client",
-  importNames: ["db"],
+  importNames: ["dbAs"],
   message:
-    "Data access goes through src/server/repos (dbFor(scope) in repos/_base.ts), so every query carries a scope.",
+    "Data access goes through src/server/repos (withScope/transaction in repos/_base.ts), so every query carries a scope and its RLS settings.",
+};
+const testOwnerRule = {
+  name: "@/server/db/client",
+  importNames: ["testOwnerDb"],
+  message: "testOwnerDb() bypasses RLS: test fixtures (src/server/testing) and tests only.",
 };
 const mintRule = {
   name: "@/server/authz/scope",
   importNames: ["mintCustomerScope", "mintShopScope", "mintAdminScope"],
   message:
     "Only src/server/authz mints scopes (via require*). Use requireCustomer/requireShopRole/requireAdminRole.",
+};
+/**
+ * C-12 (SEC-M4): systemScope runs as moz_worker (BYPASSRLS). Allowed only where cross-tenant work belongs:
+ * src/server/jobs/** and src/worker/** (relay, sweeps, DLQ), scripts/** (CLI), and these files, each with why:
+ *   - src/server/auth/lockout-email.ts: job handler; reads the locked account's address at send time.
+ */
+const systemScopeRule = {
+  name: "@/server/authz/scope",
+  importNames: ["systemScope"],
+  message:
+    "systemScope (BYPASSRLS, worker only) is allowed in src/server/jobs, src/worker, scripts and the eslint.config.mjs allowlist. Requests use require*(); public reads use publicScope().",
+};
+/** The identity layer's scope (moz_auth). Allowed in src/server/auth, principal.ts and the test-only API. */
+const authScopeRule = {
+  name: "@/server/authz/scope",
+  importNames: ["authScope"],
+  message: "authScope belongs to the identity layer (src/server/auth).",
 };
 const restrictImports = (...paths) => ({
   "no-restricted-imports": paths.length ? ["error", { paths }] : "off",
@@ -112,25 +134,45 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/explicit-module-boundary-types": "off",
     },
   },
-  // Scoped data access (later blocks override earlier ones for the same files).
+  // Scoped data access (later blocks override earlier ones for the same files; see the rules above).
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["**/*.test.{ts,tsx}"],
     rules: {
-      ...restrictImports(dbClientRule, mintRule),
+      ...restrictImports(dbClientRule, testOwnerRule, mintRule, systemScopeRule, authScopeRule),
       "no-restricted-syntax": ["error", ...scopeCastRules, ...authApiRules],
     },
   },
   {
-    files: ["src/server/repos/**/*.ts", "src/server/db/**/*.ts", "src/server/auth/**/*.ts"],
-    rules: restrictImports(mintRule),
+    files: ["src/server/repos/**/*.ts", "src/server/db/**/*.ts"],
+    rules: restrictImports(testOwnerRule, mintRule, systemScopeRule, authScopeRule),
   },
-  { files: ["src/server/authz/**/*.ts"], rules: restrictImports(dbClientRule) },
-  // principal.ts loads the caller's roles to decide (no scope exists yet); testing builds fixtures.
+  // Better Auth's adapter and audit writes use the moz_auth pool directly.
   {
-    files: ["src/server/authz/principal.ts", "src/server/testing/**/*.ts"],
-    rules: restrictImports(),
+    files: ["src/server/auth/**/*.ts"],
+    rules: restrictImports(testOwnerRule, mintRule, systemScopeRule),
   },
+  { files: ["src/server/auth/lockout-email.ts"], rules: restrictImports(testOwnerRule, mintRule) },
+  {
+    files: ["src/server/authz/**/*.ts"],
+    rules: restrictImports(dbClientRule, testOwnerRule, systemScopeRule, authScopeRule),
+  },
+  // principal.ts loads the caller's roles to decide (no scope exists yet): identity layer.
+  {
+    files: ["src/server/authz/principal.ts"],
+    rules: restrictImports(dbClientRule, testOwnerRule, systemScopeRule),
+  },
+  {
+    files: ["src/server/jobs/**/*.ts", "src/worker/**/*.ts"],
+    rules: restrictImports(dbClientRule, testOwnerRule, mintRule, authScopeRule),
+  },
+  // Test-only seeding API (404 unless APP_ENV=test): ends a test user's setup sessions.
+  {
+    files: ["src/app/api/test/**/*.ts"],
+    rules: restrictImports(dbClientRule, testOwnerRule, mintRule, systemScopeRule),
+  },
+  // testing builds fixtures as the owner.
+  { files: ["src/server/testing/**/*.ts"], rules: restrictImports() },
   { files: ["src/server/authz/scope.ts"], rules: { "no-restricted-syntax": "off" } },
   // Colours come from tokens only (DESIGN §3); tokens.css is CSS and checked separately.
   {

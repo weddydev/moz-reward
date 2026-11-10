@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuth } from "@/server/auth/auth";
 import { beginStaffLogin } from "@/server/auth/staff-login";
-import { systemScope } from "@/server/authz/scope";
+import { authScope } from "@/server/authz/scope";
 import { fakeAi } from "@/server/integrations/ai";
 import { fakePushSink } from "@/server/integrations/push";
 import { deleteUserSessions } from "@/server/repos/sessions";
@@ -78,7 +78,7 @@ async function enrolTotp(userId: string): Promise<string> {
   const totp = URI.parse(enabled.totpURI);
   if (!(totp instanceof TOTP)) throw new Error("unexpected OTP type");
   await getAuth().api.verifyTOTP({ body: { code: totp.generate() }, headers });
-  await deleteUserSessions(systemScope("test API: drop TOTP setup sessions"), userId);
+  await deleteUserSessions(authScope("test API: drop TOTP setup sessions"), userId);
   return totp.secret.base32;
 }
 

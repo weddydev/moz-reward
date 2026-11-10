@@ -3,7 +3,7 @@ import { expect, it } from "vitest";
 import { signOutAllDevices, signOutOtherDevice } from "@/features/auth/session-actions";
 import { newId } from "@/lib/id";
 import { runAsPrincipal } from "@/server/authz/principal";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { sessions } from "@/server/db/schema";
 import { authzMatrix, type Role, world } from "./harness";
 

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mintAdminScope } from "@/server/authz/scope";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { featureFlags } from "@/server/db/schema";
 import { FLAGS, isEnabled, setFlag } from "@/server/services/flags";
 import { makeAdmin, makeUser } from "../fixtures/factories";

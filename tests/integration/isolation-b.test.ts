@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { featureFlags, shops } from "@/server/db/schema";
 import { makeShop } from "../fixtures/factories";
 

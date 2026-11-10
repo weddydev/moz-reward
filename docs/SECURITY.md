@@ -47,7 +47,7 @@ Top risks, in order:
 - [ ] RLS is **forced**: every scoped table has `ENABLE ROW LEVEL SECURITY` **and** `FORCE ROW LEVEL SECURITY`, so a connection that happens to be the table owner is still filtered (only superusers and `BYPASSRLS` roles skip RLS). Seeds and backfills that must cross shops run as `moz_worker` or under an explicit scope, never by relying on owner privilege.
 - [ ] The migration checker fails a scoped table without RLS, without `FORCE ROW LEVEL SECURITY` or without a policy; a test with negative fixtures proves each case fails.
 - [ ] The web app refuses to boot when connected as the owner role or a superuser (§11).
-- [ ] The web DB role `moz_app` has no `BYPASSRLS`. System jobs that sweep across shops use the worker role `moz_worker` (`BYPASSRLS`, created by us as superuser on the self-hosted Postgres) under `SystemScope`, and each run is audit-logged.
+- [ ] The web DB role `moz_app` has no `BYPASSRLS`. The identity layer (Better Auth, role lookups before a scope exists) uses `moz_auth`: no `BYPASSRLS`, granted only the identity tables, a read of `shop_staff`/`admin_members` and append-only audit/outbox (P0-20). System jobs that sweep across shops use the worker role `moz_worker` (`BYPASSRLS`, created by us as superuser on the self-hosted Postgres) under `SystemScope`, and each run is audit-logged.
 - [ ] Cross-shop admin reads use `AdminScope` and write an audit row per read.
 - [ ] The authz matrix includes a "bypass the app filter" test per shop-scoped table: a query without the app-level scope filter, run as `moz_app`, returns no rows from another shop (RLS alone blocks it). A new shop- or user-scoped table without a policy fails CI. P5-07 only verifies.
 
@@ -116,7 +116,7 @@ Redis sliding-window limits (per IP + per user where signed in). Defaults:
   | `DATA_ENCRYPTION_KEY` (+ `DATA_ENCRYPTION_KEY_ID`) | `openssl rand -base64 32` | same | Never rotated in place: new key + new ID + re-encryption job (P1-04) |
   | `BLIND_INDEX_KEY` | `openssl rand -base64 32` | same | Also derives the email-key and IP-hash keys (src/server/security/keys.ts); rotation rebuilds lookup indexes |
   | `MEMBER_QR_SIGNING_KEY` | `openssl rand -base64 32` | same | Rotation invalidates printed/saved member QR codes |
-  | `DATABASE_URL` (`moz_app`) / `DATABASE_URL_MIGRATIONS` (owner) | deploy job (passwords: `openssl rand`) | host env files only; the owner URL only in the one-off migration container | App refuses to boot as the owner role |
+  | `DATABASE_URL` (`moz_app`) / `DATABASE_URL_AUTH` (`moz_auth`) / `DATABASE_URL_WORKER` (`moz_worker`) / `DATABASE_URL_MIGRATIONS` (owner) | deploy job (passwords: `openssl rand`) | host env files only; the worker URL only in the worker/CLI containers; the owner URL only in the one-off migration container | Each process refuses to boot if a pool's role is the owner, a superuser, or bypasses RLS where it must not (P0-20) |
   | `REDIS_URL` (password, `rediss://`) | deploy job | host env file | Boot refuses no password / no TLS / no key prefix |
   | `EMAIL_API_KEY`, `EMAIL_FALLBACK_API_KEY` | human, in Resend / Brevo (H-04) | GitHub secret → host env file · password manager | Sending-only scope |
   | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | human, in R2 (H-08), bucket-scoped | same | One token per bucket |
@@ -174,7 +174,7 @@ One Hostinger VPS runs production and staging (ARCHITECTURE §9). The host is pr
 - [ ] **Staging isolation on the same host**: a separate Compose project with its own networks, volumes, Postgres, Redis, secrets, R2 bucket or prefix, Google OAuth client and tunnel; no network, volume or secret shared with production; CPU and memory limits so it can never starve production; basic auth + `noindex`.
 - [ ] Redis: on the internal Docker network only; password, TLS and a per-environment key prefix are required in staging and production (boot fails without them).
 - [ ] Postgres on the internal Docker network only, never published to a host port; reachable only by that environment's app, worker, Umami and backup jobs. Umami has its own database and role with no access to the app database.
-- [ ] Separate DB roles: owner/migrations, `moz_app` (web, no `BYPASSRLS`), `moz_worker` (cross-shop sweeps). Enforced at boot: the app refuses to start if connected as the owner role or a superuser, or if `moz_app` has `BYPASSRLS`. The owner connection string is used only by the deploy job's migration step (ARCHITECTURE §9).
+- [ ] Separate DB roles: owner/migrations, `moz_app` (web, no `BYPASSRLS`), `moz_auth` (identity layer, no `BYPASSRLS`), `moz_worker` (cross-shop sweeps; its URL only in the worker/CLI containers). Enforced at boot: the app refuses to start if connected as the owner role or a superuser, or if `moz_app` has `BYPASSRLS`. The owner connection string is used only by the deploy job's migration step (ARCHITECTURE §9).
 - [ ] TLS terminates at Cloudflare (Always Use HTTPS, HSTS); `cloudflared` → Caddy over the internal network.
 - [ ] Backup bucket: its own R2 token scoped to that bucket only (separate from the uploads token); the host holds only the public encryption key.
 - [ ] Cloudflare free WAF managed rules, Bot Fight Mode and the free rate-limit rule on, as a backstop; our Redis limits are the real control (§6).

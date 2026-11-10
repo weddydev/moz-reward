@@ -4,6 +4,7 @@ import { auditActor, type Scope } from "@/server/authz/scope";
 import type { Database, Transaction } from "@/server/db/client";
 import { auditLogs } from "@/server/db/schema";
 import { REDACTED, redactText } from "@/server/jobs/redact";
+import { withScope } from "@/server/repos/_base";
 import { purposeKey } from "@/server/security/keys";
 
 export type AuditEntry = {
@@ -71,4 +72,15 @@ export function audit(
 ): Promise<void> {
   const { actor, ...rest } = entry;
   return recordAudit(dbOrTx, { ...auditActor(actor), ...rest });
+}
+
+/**
+ * One audit row written under `scope`'s own database role, outside any caller transaction (P0-20): system
+ * sweeps record their runs as `moz_worker`, identity events as `moz_auth`.
+ */
+export function auditAs(
+  scope: Scope,
+  entry: Omit<AuditEntry, "actorId" | "actorRole">,
+): Promise<void> {
+  return withScope(scope, (q) => audit(q, { actor: scope, ...entry }));
 }

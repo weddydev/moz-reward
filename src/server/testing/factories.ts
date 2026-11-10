@@ -8,7 +8,7 @@ import { eq } from "drizzle-orm";
 import { withUniqueCode } from "@/lib/codes";
 import { newId } from "@/lib/id";
 import { hashPassword } from "@/server/auth/password";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import {
   accounts,
   adminMembers,

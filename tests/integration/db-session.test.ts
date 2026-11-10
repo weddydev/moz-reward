@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 
 describe("[P0-18] web database sessions carry the statement limits (ENGINEERING §6)", () => {
   it("statement_timeout 5 s and idle-in-transaction 15 s on every pooled connection", async () => {

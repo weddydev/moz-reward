@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { getAuth } from "@/server/auth/auth";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { sessions } from "@/server/db/schema";
 import { createPasswordUser } from "../fixtures/auth";
 import { makeActor, makeAdmin, makeShop, makeStaff } from "../fixtures/factories";

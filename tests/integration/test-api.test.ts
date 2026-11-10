@@ -52,7 +52,7 @@ describe("[P0-17] test-only seeding API", () => {
     const expires = /expires=([^;]+)/i.exec(sessionCookie!)?.[1];
     expect(expires && new Date(expires).getTime()).toBeGreaterThan(Date.now() + 60 * 60 * 1000);
 
-    const { db } = await import("@/server/db/client");
+    const { testOwnerDb: db } = await import("@/server/db/client");
     const { sessions } = await import("@/server/db/schema");
     const rows = await db().select().from(sessions).where(eq(sessions.userId, body.userId));
     expect(rows.map((r) => r.mfaVerified)).toEqual([true]);
@@ -114,7 +114,7 @@ describe("[P0-17] test-only seeding API", () => {
     expect(body.email).toMatch(/^e2e-staff.*@/);
     expect(body.password.length).toBeGreaterThanOrEqual(12);
 
-    const { db } = await import("@/server/db/client");
+    const { testOwnerDb: db } = await import("@/server/db/client");
     const { sessions } = await import("@/server/db/schema");
     expect(await db().select().from(sessions).where(eq(sessions.userId, body.userId))).toEqual([]);
     expect((await call(route, { label: "x".repeat(100) }, "user")).status).toBe(400);

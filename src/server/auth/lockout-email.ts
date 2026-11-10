@@ -18,7 +18,7 @@ const SCOPE = systemScope(
  */
 export async function sendStaffLockoutEmail(userId: string, reason: LockoutReason): Promise<void> {
   const email = await userEmailById(SCOPE, userId);
-  const kind = email ? await privilegedKind(userId) : null;
+  const kind = email ? await privilegedKind(userId, SCOPE) : null;
   if (!email || !kind) {
     log().warn(
       { job: "email:staff-lockout", userId, found: email !== null },

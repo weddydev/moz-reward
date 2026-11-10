@@ -1,15 +1,25 @@
 import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import { ADMIN_SESSION_MAX_MS, STAFF_SESSION_MAX_MS } from "@/server/authz/policies";
-import { db } from "@/server/db/client";
+import { type AuthScope, authScope, type SystemScope } from "@/server/authz/scope";
 import { accounts, adminMembers, shopStaff, users } from "@/server/db/schema";
+import { poolFor } from "@/server/repos/_base";
+
+/** Identity lookups run before any user scope exists, as `moz_auth` (P0-20). */
+const IDENTITY = authScope(
+  "identity: which roles a user or email has, before any session scope exists",
+);
 
 /**
  * Admin, staff (incl. anyone with a password credential: only staff/admins have one, public sign-up is off),
  * or neither. Admin wins (shorter session limit).
  * Inactive staff rows count too, so a suspended member can't fall back to a customer-style sign-in.
  */
-export async function privilegedKind(userId: string): Promise<"admin" | "staff" | null> {
+export async function privilegedKind(
+  userId: string,
+  scope: AuthScope | SystemScope = IDENTITY,
+): Promise<"admin" | "staff" | null> {
+  const db = (): ReturnType<typeof poolFor> => poolFor(scope);
   const [staff, admin, credential] = await Promise.all([
     db().select({ id: shopStaff.id }).from(shopStaff).where(eq(shopStaff.userId, userId)).limit(1),
     db()
@@ -37,7 +47,7 @@ export async function privilegedUserByEmail(
 ): Promise<{ id: string; email: string; kind: "admin" | "staff" } | null> {
   // lower(email) matches users_email_lower_uq: raw inserts may keep mixed case, and this check must not fail open.
   const normalized = email.trim().toLowerCase();
-  const [user] = await db()
+  const [user] = await poolFor(IDENTITY)
     .select({ id: users.id, email: users.email })
     .from(users)
     .where(sql`lower(${users.email}) = ${normalized}`)

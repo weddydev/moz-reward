@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { newId } from "@/lib/id";
 import { mintCustomerScope } from "@/server/authz/scope";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { sessions } from "@/server/db/schema";
 import { listSignedInDevices, signOutDevice, signOutEverywhere } from "@/server/services/sessions";
 import { makeUser } from "@/server/testing/factories";

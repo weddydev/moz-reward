@@ -108,6 +108,38 @@ export async function runMigrations(url: string): Promise<void> {
   }
 }
 
+/** The RLS roles of drizzle/0009_rls.sql (group roles; each environment gives them LOGIN + a password). */
+export const RLS_ROLES = ["moz_app", "moz_auth", "moz_worker"] as const;
+
+/**
+ * Local, test and CI only (P0-20): the roles the connection URLs name get LOGIN with that URL's password, so a
+ * fresh Docker volume works with `.env.example`. Staging/production roles and passwords come from the VPS
+ * bootstrap (P0-15, C-32), never from here. Needs a superuser (the local migration role is one).
+ */
+export async function ensureLocalLoginRoles(
+  client: postgres.Sql,
+  urls: ReadonlyArray<string | undefined>,
+): Promise<string[]> {
+  const done: string[] = [];
+  for (const raw of urls) {
+    if (!raw) continue;
+    const u = new URL(raw);
+    const role = decodeURIComponent(u.username);
+    if (!(RLS_ROLES as readonly string[]).includes(role) || done.includes(role)) continue;
+    const literal = `'${decodeURIComponent(u.password).replaceAll("'", "''")}'`;
+    // The role name is one of RLS_ROLES (checked above); ALTER ROLE takes no bind parameters.
+    await client.unsafe(`ALTER ROLE ${role} LOGIN PASSWORD ${literal}`);
+    done.push(role);
+  }
+  return done;
+}
+
+export const localRoleUrls = (): (string | undefined)[] => [
+  process.env.DATABASE_URL,
+  process.env.DATABASE_URL_AUTH,
+  process.env.DATABASE_URL_WORKER,
+];
+
 async function main(): Promise<void> {
   const useTest = process.argv.includes("--test");
   const url = useTest
@@ -116,6 +148,15 @@ async function main(): Promise<void> {
   if (!url) throw new Error(useTest ? "DATABASE_URL_TEST is not set" : "DATABASE_URL is not set");
   const started = Date.now();
   await runMigrations(url);
+  const appEnv = process.env.APP_ENV;
+  if (appEnv === "local" || appEnv === "test") {
+    const client = migrationClient(url);
+    try {
+      await ensureLocalLoginRoles(client, localRoleUrls());
+    } finally {
+      await client.end();
+    }
+  }
   console.warn(
     `[db] migrations applied to ${useTest ? "test" : "app"} database in ${String(Date.now() - started)}ms`,
   );

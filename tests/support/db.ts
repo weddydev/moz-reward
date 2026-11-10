@@ -5,7 +5,7 @@
  *  - every test file starts with all app tables truncated.
  */
 import postgres from "postgres";
-import { runMigrations } from "../../src/server/db/migrate";
+import { ensureLocalLoginRoles, RLS_ROLES, runMigrations } from "../../src/server/db/migrate";
 
 export const INTEGRATION_WORKERS = 4;
 
@@ -26,6 +26,43 @@ export const templateName = (): string => `${baseName()}_template`;
 export const workerDbName = (poolId: string | number): string => `${baseName()}_w${poolId}`;
 export const workerDbUrl = (poolId: string | number): string =>
   withDatabase(baseTestUrl(), workerDbName(poolId));
+
+type RlsRole = (typeof RLS_ROLES)[number];
+
+/**
+ * The test databases' URL for one of the RLS roles (P0-20): same host as DATABASE_URL_TEST, role and password
+ * as in the developer's DATABASE_URL* (`.env.example` defaults), or role:role.
+ */
+export function roleUrl(db: string, role: RlsRole): string {
+  const u = new URL(withDatabase(baseTestUrl(), db));
+  u.username = role;
+  u.password = rolePassword(role);
+  return u.toString();
+}
+
+const ROLE_ENV: Record<RlsRole, string> = {
+  moz_app: "DATABASE_URL",
+  moz_auth: "DATABASE_URL_AUTH",
+  moz_worker: "DATABASE_URL_WORKER",
+};
+
+function rolePassword(role: RlsRole): string {
+  const configured = process.env[ROLE_ENV[role]];
+  if (configured) {
+    const u = new URL(configured);
+    if (decodeURIComponent(u.username) === role) return decodeURIComponent(u.password);
+  }
+  return role;
+}
+
+export const workerRoleUrl = (poolId: string | number, role: RlsRole): string =>
+  roleUrl(workerDbName(poolId), role);
+
+/** Cluster-wide: the RLS roles can log in with the passwords the test URLs use. */
+export async function ensureTestRoles(): Promise<void> {
+  const urls = RLS_ROLES.map((r) => roleUrl(templateName(), r));
+  await admin((sql) => ensureLocalLoginRoles(sql, urls));
+}
 
 async function admin<T>(fn: (sql: postgres.Sql) => Promise<T>): Promise<T> {
   const sql = postgres(withDatabase(baseTestUrl(), "postgres"), { max: 1, onnotice: () => {} });
@@ -57,6 +94,7 @@ export async function prepareWorkerDatabases(workers = INTEGRATION_WORKERS): Pro
     await sql.unsafe(`CREATE DATABASE "${template}"`);
   });
   await runMigrations(withDatabase(baseTestUrl(), template));
+  await ensureTestRoles();
   await admin(async (sql) => {
     for (let i = 1; i <= workers; i++)
       await sql.unsafe(`CREATE DATABASE "${workerDbName(i)}" TEMPLATE "${template}"`);
@@ -75,6 +113,7 @@ export async function prepareE2eDatabase(): Promise<void> {
     await sql.unsafe(`CREATE DATABASE "${name}"`);
   });
   await runMigrations(e2eDbUrl());
+  await ensureTestRoles();
 }
 
 /** Empties every app table (triggers disabled for the session so append-only tables can be reset). */

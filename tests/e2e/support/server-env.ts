@@ -13,13 +13,33 @@ export function e2eDbUrl(): string {
   return u.toString();
 }
 
+/**
+ * The E2E database as one of the RLS roles (P0-20), with the password from the developer's matching
+ * DATABASE_URL* when it names that role (`.env.example` defaults), else role:role. Same rule as
+ * tests/support/db.ts roleUrl (kept separate: this file can't import server code).
+ */
+function e2eRoleUrl(role: "moz_app" | "moz_auth" | "moz_worker", envName: string): string {
+  const u = new URL(e2eDbUrl());
+  const configured = process.env[envName];
+  const fromEnv = configured ? new URL(configured) : null;
+  u.username = role;
+  u.password =
+    fromEnv && decodeURIComponent(fromEnv.username) === role
+      ? decodeURIComponent(fromEnv.password)
+      : role;
+  return u.toString();
+}
+
 /** Environment for the E2E server *and* the Playwright process (specs use factories against the same DB). */
 export function e2eServerEnv(): Record<string, string> {
   const db = e2eDbUrl();
   return {
     APP_ENV: "test",
     APP_URL: `http://localhost:${E2E_PORT}`,
-    DATABASE_URL: db,
+    // The server runs as the RLS roles, like staging; factories (test API, specs) use the owner URL.
+    DATABASE_URL: e2eRoleUrl("moz_app", "DATABASE_URL"),
+    DATABASE_URL_AUTH: e2eRoleUrl("moz_auth", "DATABASE_URL_AUTH"),
+    DATABASE_URL_WORKER: e2eRoleUrl("moz_worker", "DATABASE_URL_WORKER"),
     DATABASE_URL_MIGRATIONS: db,
     EMAIL_PROVIDER: "smtp",
     SMTP_HOST: process.env.SMTP_HOST ?? "localhost",

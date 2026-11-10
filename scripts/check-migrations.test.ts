@@ -1,6 +1,12 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { checkMigration, checkAllMigrations, checkConcurrentMigration } from "./check-migrations";
+import {
+  checkAllMigrations,
+  checkConcurrentMigration,
+  checkMigration,
+  checkRls,
+  rlsState,
+} from "./check-migrations";
 
 describe("[P0-03] expand-only migration check", () => {
   it("passes additive migrations", () => {
@@ -133,5 +139,76 @@ describe("[P0-18] non-transactional migrations (drizzle/concurrent): CREATE INDE
 
   it("every committed concurrent migration passes", () => {
     expect(checkAllMigrations()).toEqual([]);
+  });
+});
+
+describe("[P0-20] every table has RLS enabled, forced and a policy unless declared global", () => {
+  const create = 'CREATE TABLE "rewards" ("id" uuid PRIMARY KEY, "membership_id" uuid NOT NULL);';
+  const enable = "ALTER TABLE rewards ENABLE ROW LEVEL SECURITY;";
+  const force = 'ALTER TABLE "public"."rewards" FORCE ROW LEVEL SECURITY;';
+  const policy = "CREATE POLICY rewards_own ON rewards FOR SELECT TO moz_app USING (true);";
+  const files = (...sql: string[]) =>
+    sql.map((s, i) => ({ name: `00${String(10 + i)}_x.sql`, sql: s }));
+
+  it("passes a table with ENABLE, FORCE and a policy (also split across migrations)", () => {
+    expect(checkRls(files([create, enable, force, policy].join("\n")))).toEqual([]);
+    expect(checkRls(files(create, `${enable}\n${force}`, policy))).toEqual([]);
+  });
+
+  it("fails a new table without a policy (negative fixture)", () => {
+    expect(checkRls(files([create, enable, force].join("\n")))).toEqual([
+      expect.stringMatching(/"rewards".*no policy/),
+    ]);
+  });
+
+  it("fails a new table without FORCE ROW LEVEL SECURITY (negative fixture)", () => {
+    expect(checkRls(files([create, enable, policy].join("\n")))).toEqual([
+      expect.stringMatching(/"rewards".*FORCE ROW LEVEL SECURITY/),
+    ]);
+  });
+
+  it("fails a new table without RLS at all, naming every missing piece", () => {
+    const [problem] = checkRls(files(create));
+    expect(problem).toMatch(/ENABLE ROW LEVEL SECURITY/);
+    expect(problem).toMatch(/FORCE ROW LEVEL SECURITY/);
+    expect(problem).toMatch(/no policy/);
+  });
+
+  it("fails when a later migration disables RLS, removes FORCE or drops the last policy", () => {
+    const ok = [create, enable, force, policy].join("\n");
+    expect(checkRls(files(ok, "ALTER TABLE rewards DISABLE ROW LEVEL SECURITY;"))).toHaveLength(1);
+    expect(checkRls(files(ok, "ALTER TABLE rewards NO FORCE ROW LEVEL SECURITY;"))).toHaveLength(1);
+    expect(checkRls(files(ok, "DROP POLICY IF EXISTS rewards_own ON rewards;"))).toHaveLength(1);
+  });
+
+  it("ignores commented-out statements", () => {
+    expect(checkRls(files([create, enable, force, `-- ${policy}`].join("\n")))).toHaveLength(1);
+  });
+
+  it("accepts a table declared global with a reason, and not one without a reason", () => {
+    expect(
+      checkRls(files(`${create}\n-- rls: global rewards — test fixture with a long enough reason`)),
+    ).toEqual([]);
+    expect(checkRls(files(`${create}\n-- rls: global rewards`))).toHaveLength(1);
+  });
+
+  it("forgets a dropped table", () => {
+    expect(checkRls(files(create, 'DROP TABLE "rewards";'))).toEqual([]);
+  });
+
+  it("the committed migrations pass and every app table is covered (the catalog test checks the live DB)", () => {
+    const committed = readdirSync("drizzle")
+      .filter((f) => f.endsWith(".sql"))
+      .sort()
+      .map((name) => ({ name, sql: readFileSync(`drizzle/${name}`, "utf8") }));
+    expect(checkRls(committed)).toEqual([]);
+    const state = rlsState(committed);
+    expect([...state.global.keys()].sort()).toEqual([
+      "content_settings",
+      "failed_jobs",
+      "feature_flags",
+      "job_heartbeats",
+    ]);
+    expect(state.tables.get("memberships")).toMatchObject({ enabled: true, forced: true });
   });
 });

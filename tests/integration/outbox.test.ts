@@ -6,7 +6,7 @@ import { defineAction } from "@/server/actionTemplate";
 import { requireAdminRole } from "@/server/authz";
 import { loadPrincipal, runAsPrincipal } from "@/server/authz/principal";
 import { systemScope } from "@/server/authz/scope";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { failedJobs, outbox } from "@/server/db/schema";
 import { writeOutbox } from "@/server/jobs/outbox";
 import { closeQueues, dispatchJob, getQueue } from "@/server/jobs/queues";
@@ -30,8 +30,13 @@ import { transaction } from "@/server/repos/_base";
 import { claimOutbox } from "@/server/repos/outbox";
 import { opsAlert } from "@/server/security/alert";
 import { makeActor } from "@/server/testing/factories";
+import { tenantProbe } from "../support/tenant-job";
 
 vi.mock("@/server/security/alert", () => ({ securityAlert: vi.fn(), opsAlert: vi.fn() }));
+// A tenant job: requests may only write tenant jobs to the outbox (P0-20, C-30).
+vi.mock("@/server/jobs/registry", async (importOriginal) =>
+  (await import("../support/tenant-job")).withTenantProbe(await importOriginal()),
+);
 
 const SCOPE = systemScope("test: outbox");
 const QUEUE = "email";
@@ -103,14 +108,13 @@ afterAll(async () => {
 });
 
 describe("[P0-18] outbox writer and the action template", () => {
-  const userId = "0190a0b0-0000-7000-8000-0000000000aa";
   const sendFromAction = defineAction({
     name: "test.outbox_send",
     input: z.object({ fail: z.boolean() }).strict(),
     authorize: (_i, p) => requireAdminRole(["owner"], p),
     transaction: true,
     handler: async ({ fail }, _scope, tools) => {
-      const id = await tools.outbox(QUEUE, JOB, { userId, reason: "second-factor" });
+      const id = await tools.outbox(QUEUE, tenantProbe.name, { note: "from an action" });
       if (fail) throw new Error("boom after the outbox write");
       return id;
     },
@@ -119,7 +123,7 @@ describe("[P0-18] outbox writer and the action template", () => {
     name: "test.outbox_no_tx",
     input: z.object({}).strict(),
     authorize: (_i, p) => requireAdminRole(["owner"], p),
-    handler: (_i, _s, tools) => tools.outbox(QUEUE, JOB, { userId, reason: "password" }),
+    handler: (_i, _s, tools) => tools.outbox(QUEUE, tenantProbe.name, { note: "no tx" }),
   });
   const owner = async () => {
     const { user } = await makeActor("admin_owner");
@@ -132,10 +136,15 @@ describe("[P0-18] outbox writer and the action template", () => {
     if (!ok.ok) throw new Error("action failed");
     expect(await row(ok.data)).toMatchObject({
       queue: QUEUE,
-      jobName: JOB,
-      payload: { v: 1, data: { userId, reason: "second-factor" } },
+      jobName: "tenant-probe",
+      payload: { v: 1, data: { note: "from an action" } },
       dispatchedAt: null,
       completedAt: null,
+      // C-30: the row records the scope that wrote it.
+      scopeKind: "admin",
+      scopeUserId: admin.userId,
+      scopeShopId: null,
+      scopeRole: "owner",
     });
     const failed = await runAsPrincipal(admin, () => sendFromAction({ fail: true }));
     expect(failed).toMatchObject({ ok: false, error: { code: "INTERNAL" } });

@@ -14,6 +14,7 @@ import {
   staleOutbox,
 } from "@/server/repos/outbox";
 import { opsAlert } from "@/server/security/alert";
+import { auditAs } from "@/server/services/audit";
 import { type Envelope, isEnvelope } from "./envelope";
 import { dispatchJob } from "./queues";
 import { redactText } from "./redact";
@@ -158,6 +159,12 @@ export async function replayOutbox(
     since: since.toISOString(),
     replayed,
   });
+  // A manual cross-tenant operation: every run is audited, dry runs too.
+  await auditAs(RELAY_SCOPE, {
+    action: "system.replay",
+    entity: "outbox",
+    meta: { since: since.toISOString(), replayed, dryRun: opts.dryRun === true },
+  });
   return { replayed };
 }
 
@@ -203,6 +210,15 @@ export async function sweepOutbox(opts: { dispatch?: Dispatch } = {}): Promise<{
     });
   }
   const pruned = await pruneFinishedOutbox(RELAY_SCOPE, OUTBOX_RETENTION_DAYS, 1_000);
+  // P0-20 (SECURITY §3): a cross-tenant sweep that found or changed rows is on record (moz_worker, BYPASSRLS).
+  // Empty runs (most minutes) are not: one row a minute would bury the audit log (DECISIONS P0-20).
+  if (stale.count > 0 || redispatched > 0 || pruned > 0) {
+    await auditAs(RELAY_SCOPE, {
+      action: "system.sweep",
+      entity: "outbox",
+      meta: { job: "outbox-sweep", stale: stale.count, redispatched, pruned },
+    });
+  }
   return { stale, redispatched, pruned };
 }
 

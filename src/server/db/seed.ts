@@ -2,7 +2,7 @@ import "../../../scripts/load-env";
 import "server-only";
 import { isDirectRun } from "@/lib/is-direct-run";
 import { FLAGS } from "@/server/services/flags";
-import { type Database, db } from "./client";
+import { type Database, dbAs, setDbProcess } from "./client";
 import { contentSettings, featureFlags } from "./schema";
 
 /**
@@ -71,7 +71,9 @@ export async function runSeed(database: Database): Promise<{ flags: number; cont
 
 async function main(): Promise<void> {
   assertSeedAllowed(process.env.APP_ENV);
-  const inserted = await runSeed(db());
+  // SECURITY §3: seeds that cross shops run as moz_worker (DATABASE_URL_WORKER), never as the owner.
+  setDbProcess("worker");
+  const inserted = await runSeed(dbAs("system"));
   console.warn(
     `[db] seed done: ${String(inserted.flags)} feature flags and ${String(inserted.content)} content settings inserted (existing rows kept)`,
   );

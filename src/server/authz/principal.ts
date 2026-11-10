@@ -3,10 +3,15 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { and, eq } from "drizzle-orm";
 
 import { getSession } from "@/server/auth/session";
-import { db } from "@/server/db/client";
 import { adminMembers, shopStaff } from "@/server/db/schema";
 import { env } from "@/server/env";
+import { poolFor } from "@/server/repos/_base";
+import { authScope } from "./scope";
 import type { Principal } from "./policies";
+
+/** Roles are read as `moz_auth` (P0-20): this runs before the principal, and so any scope, exists. */
+const PRINCIPAL = authScope("principal: the signed-in user's shop and admin roles");
+const db = (): ReturnType<typeof poolFor> => poolFor(PRINCIPAL);
 
 /** Loads the principal for a user id + session facts (used by request code and tests). */
 export async function loadPrincipal(input: {

@@ -1,7 +1,7 @@
 import { eq, type SQL, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { newId } from "@/lib/id";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { runMigrations } from "@/server/db/migrate";
 import { auditLogs, contentSettings, shops, users } from "@/server/db/schema";
 import { runSeed } from "@/server/db/seed";
@@ -26,7 +26,7 @@ describe("[P0-03] migrations", () => {
   it("re-running the migrations on a migrated database is a no-op", async () => {
     const count = sql`SELECT count(*)::int AS n FROM drizzle.__drizzle_migrations`;
     const [before] = await rows<{ n: number }>(count);
-    await runMigrations(process.env.DATABASE_URL ?? "");
+    await runMigrations(process.env.DATABASE_URL_MIGRATIONS ?? "");
     const [after] = await rows<{ n: number }>(count);
     expect(after?.n).toBe(before?.n);
     expect(after?.n).toBeGreaterThanOrEqual(4);
@@ -81,7 +81,31 @@ describe("[P0-03] append-only tables", () => {
 });
 
 describe("[P0-03] app role moz_app (least privilege)", () => {
-  it("has DML on every table except UPDATE/DELETE/TRUNCATE on append-only tables", async () => {
+  /**
+   * P0-20: moz_app's exact grants per table (RLS policies then filter rows). Every table is listed, so a new
+   * table makes this fail until its grants are decided. I/S/U/D = INSERT/SELECT/UPDATE/DELETE.
+   */
+  const MOZ_APP_GRANTS: Record<string, string> = {
+    users: "SU", // own row (profile); created and deleted by the identity layer / erasure job
+    sessions: "SD", // own devices list, sign out
+    passkeys: "SD",
+    accounts: "S",
+    verifications: "",
+    two_factors: "",
+    customer_profiles: "ISUD",
+    shops: "ISU", // no DELETE: shops close by status
+    shop_staff: "ISUD",
+    admin_members: "ISUD",
+    memberships: "ISU", // no DELETE: a member leaves (left_at)
+    audit_logs: "IS", // append-only
+    feature_flags: "ISUD",
+    content_settings: "ISUD",
+    outbox: "I", // C-29: INSERT only
+    failed_jobs: "",
+    job_heartbeats: "",
+  };
+
+  it("has exactly the reviewed grants per table, never TRUNCATE", async () => {
     type Priv = {
       rel: string;
       ins: boolean;
@@ -99,25 +123,13 @@ describe("[P0-03] app role moz_app (least privilege)", () => {
         has_table_privilege('moz_app', c.oid, 'TRUNCATE') AS trunc
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname <> 'spatial_ref_sys'`);
-    const appendOnly = new Set(
-      (
-        await rows<{ rel: string }>(sql`
-          SELECT DISTINCT tg.tgrelid::regclass::text AS rel FROM pg_trigger tg
-          JOIN pg_proc p ON p.oid = tg.tgfoid WHERE p.proname = 'reject_mutation'`)
-      ).map((r) => r.rel),
+    const actual = Object.fromEntries(
+      privs.map((p) => [
+        p.rel,
+        `${p.ins ? "I" : ""}${p.sel ? "S" : ""}${p.upd ? "U" : ""}${p.del ? "D" : ""}${p.trunc ? "T" : ""}`,
+      ]),
     );
-    expect(privs.length).toBeGreaterThan(10);
-    for (const p of privs) {
-      const mutable = !appendOnly.has(p.rel);
-      expect(p).toEqual({
-        rel: p.rel,
-        ins: true,
-        sel: true,
-        upd: mutable,
-        del: mutable,
-        trunc: false,
-      });
-    }
+    expect(actual).toEqual(MOZ_APP_GRANTS);
   });
 
   it("cannot rewrite audit history even before the trigger fires (permission denied)", async () => {

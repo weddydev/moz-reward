@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { newId } from "@/lib/id";
 import { systemScope } from "@/server/authz/scope";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { failedJobs, jobHeartbeats } from "@/server/db/schema";
 import { closeQueues, EnqueueInTransactionError, enqueue, getQueue } from "@/server/jobs/queues";
 import { REDACTED } from "@/server/jobs/redact";

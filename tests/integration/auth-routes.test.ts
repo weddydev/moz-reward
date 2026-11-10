@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import * as route from "@/app/api/auth/[...all]/route";
 import { getAuth } from "@/server/auth/auth";
 import { ALLOWED_AUTH_ROUTES, BLOCKED_AUTH_ROUTES, reviewGaps } from "@/server/auth/routes";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { sessions, users } from "@/server/db/schema";
 import { markSessionMfaVerified } from "@/server/testing/factories";
 import { TEST_PASSWORD, cookieHeaderFrom, createPasswordUser } from "../fixtures/auth";

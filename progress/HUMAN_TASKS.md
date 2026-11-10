@@ -15,6 +15,7 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 
 | ID | Priority | Task | Needed by | Why | Est. time |
 |---|---|---|---|---|---|
+| H-32 | 🔴 | On **each laptop**: update the database lines in `.env.local` to the P0-20 roles, then `pnpm db:reset` (see steps) | Before your next `pnpm dev` / `pnpm worker` on that laptop | The app now refuses to start as the `moz` superuser (RLS would be skipped); Claude never reads or edits `.env.local` | 3 min / laptop |
 | H-07 | 🟠 | Buy domain; Cloudflare account (free); move DNS to Cloudflare | Sun 15 Nov 2026 (P0-15) | Tunnel hostnames, email domain, Turnstile | 30 min (+ up to 24 h DNS) |
 | H-06 | 🟠 | Buy Hostinger KVM 4 (UK location), add both developers' SSH keys, give Claude the IP | Sun 15 Nov 2026 (P0-15) | Hosts production **and** staging (plan v5) | 30 min |
 | H-08 | 🟠 | Cloudflare R2: two buckets (uploads, backups) with separate bucket-scoped tokens | Sun 15 Nov 2026 (P0-15) | Uploads (P2) and encrypted backups (P0-15) | 15 min |
@@ -127,6 +128,18 @@ Suggested extra deny entries you may add yourself: `Read(./.env.*)`, `Bash(docke
 1. **Pen test:** optional and paid by the client. Without it, P5 relies on authenticated ZAP, the SECURITY checklist and our reviewers — we don't promise a pen test.
 2. **Support after launch:** best-effort business hours by the two developers, uptime alerts to both phones, no 24/7 rota. Ongoing support is outside the build scope and needs a separate agreement.
 3. Admin SSO is dropped (super admins use passkeys).
+
+### H-32 — `.env.local` database roles (P0-20), each laptop
+1. Open `.env.local` in your editor (not in a chat).
+2. Replace the `DATABASE_URL=` line and add two lines, exactly as in `.env.example`:
+   `DATABASE_URL=postgres://moz_app:moz_app@localhost:5432/moz`
+   `DATABASE_URL_AUTH=postgres://moz_auth:moz_auth@localhost:5432/moz`
+   `DATABASE_URL_WORKER=postgres://moz_worker:moz_worker@localhost:5432/moz`
+   Keep `DATABASE_URL_MIGRATIONS` and `DATABASE_URL_TEST` on `moz:moz` (the owner). These are local Docker passwords only.
+3. `pnpm services:up`, then `pnpm db:reset` (a local 0009 applied before the final version must be replaced) — or `pnpm db:migrate` on a database that never had 0009.
+4. `pnpm dev` starts; if it prints `[boot] refusing to start: DATABASE_URL…`, a line is still on the old value.
+5. Mac only (found 10 Nov): two leftover test workers may still be running — `ps aux | grep src/worker/index` — stop them with `kill <pid>` (they were started by the integration tests, not by you).
+6. Tell Claude "H-32 done" (per laptop).
 
 ### H-31 — Renovate GitHub App
 1. Open https://github.com/apps/renovate → **Install** (or **Configure** if it is already on the account).

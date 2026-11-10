@@ -1,9 +1,10 @@
 import "server-only";
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { newId } from "@/lib/id";
 import type { Scope, SystemScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import { outbox } from "@/server/db/schema";
-import { dbFor } from "./_base";
+import { poolFor, withScope } from "./_base";
 
 /**
  * Outbox rows (P0-18, ARCHITECTURE §6). Writers append inside the caller's transaction; everything else is the
@@ -20,15 +21,57 @@ export type OutboxRow = {
 /** How long a claimed row stays invisible to other relays before it can be claimed again. */
 export const CLAIM_LEASE_SEC = 30;
 
-/** Appends one row in the caller's transaction (the side effect commits or rolls back with the change). */
+/** The originating scope stored with a row (C-30). RLS checks it against the writer's own settings. */
+export type OutboxScope = {
+  scopeKind: "customer" | "shop" | "admin" | "auth" | "system";
+  scopeUserId: string | null;
+  scopeShopId: string | null;
+  scopeRole: string | null;
+};
+
+export function outboxScope(scope: Scope): OutboxScope {
+  switch (scope.kind) {
+    case "customer":
+      return {
+        scopeKind: "customer",
+        scopeUserId: scope.userId,
+        scopeShopId: null,
+        scopeRole: null,
+      };
+    case "shop":
+      return {
+        scopeKind: "shop",
+        scopeUserId: scope.userId,
+        scopeShopId: scope.shopId,
+        scopeRole: scope.role,
+      };
+    case "admin":
+      return {
+        scopeKind: "admin",
+        scopeUserId: scope.userId,
+        scopeShopId: null,
+        scopeRole: scope.role,
+      };
+    case "auth":
+    case "system":
+      return { scopeKind: scope.kind, scopeUserId: null, scopeShopId: null, scopeRole: null };
+    case "public":
+      throw new Error("a public scope cannot write to the outbox");
+  }
+}
+
+/**
+ * Appends one row in the caller's transaction (the side effect commits or rolls back with the change). The id
+ * is generated here: the web role may only INSERT (C-29), so there is no RETURNING.
+ */
 export async function insertOutbox(
   scope: Scope,
   tx: Transaction,
   row: { queue: string; jobName: string; payload: unknown },
 ): Promise<string> {
-  const [inserted] = await dbFor(scope, tx).insert(outbox).values(row).returning({ id: outbox.id });
-  if (!inserted) throw new Error("outbox insert returned no row");
-  return inserted.id;
+  const id = newId();
+  await withScope(scope, (q) => q.insert(outbox).values({ id, ...outboxScope(scope), ...row }), tx);
+  return id;
 }
 
 /**
@@ -40,7 +83,7 @@ export async function claimOutbox(
   limit: number,
   leaseSec: number = CLAIM_LEASE_SEC,
 ): Promise<OutboxRow[]> {
-  const rows = await dbFor(scope).execute<{
+  const rows = await poolFor(scope).execute<{
     id: string;
     queue: string;
     job_name: string;
@@ -73,7 +116,7 @@ export async function claimOutbox(
 /** The job is in redis-queue. `coalesce`: a fast worker may already have completed (and so dispatched) it. */
 export async function markDispatched(scope: SystemScope, ids: readonly string[]): Promise<void> {
   if (ids.length === 0) return;
-  await dbFor(scope)
+  await poolFor(scope)
     .update(outbox)
     .set({ dispatchedAt: sql`coalesce(${outbox.dispatchedAt}, now())`, lastError: null })
     .where(inArray(outbox.id, [...ids]));
@@ -86,7 +129,7 @@ export async function markDispatchFailed(
   error: string,
   retryInSec: number,
 ): Promise<void> {
-  await dbFor(scope)
+  await poolFor(scope)
     .update(outbox)
     .set({
       lastError: error.slice(0, 500),
@@ -95,18 +138,36 @@ export async function markDispatchFailed(
     .where(and(eq(outbox.id, id), isNull(outbox.dispatchedAt)));
 }
 
-/** True when the row's side effect already happened (the worker skips a replayed job). */
-export async function isOutboxCompleted(scope: SystemScope, id: string): Promise<boolean> {
-  const [row] = await dbFor(scope)
-    .select({ completedAt: outbox.completedAt })
+/**
+ * What the worker needs about a row before running its job: whether the side effect already happened (a
+ * replayed job is skipped) and the scope that wrote it (tenant jobs run under it, C-30). Null: no such row.
+ */
+export async function outboxJobFacts(
+  scope: SystemScope,
+  id: string,
+): Promise<({ completed: boolean } & OutboxScope) | null> {
+  const [row] = await poolFor(scope)
+    .select({
+      completedAt: outbox.completedAt,
+      scopeKind: outbox.scopeKind,
+      scopeUserId: outbox.scopeUserId,
+      scopeShopId: outbox.scopeShopId,
+      scopeRole: outbox.scopeRole,
+    })
     .from(outbox)
     .where(eq(outbox.id, id))
     .limit(1);
-  return row?.completedAt != null;
+  if (!row) return null;
+  const { completedAt, scopeKind, ...rest } = row;
+  return {
+    completed: completedAt != null,
+    scopeKind: scopeKind as OutboxScope["scopeKind"],
+    ...rest,
+  };
 }
 
 export async function markOutboxCompleted(scope: SystemScope, id: string): Promise<void> {
-  await dbFor(scope)
+  await poolFor(scope)
     .update(outbox)
     .set({
       completedAt: sql`coalesce(${outbox.completedAt}, now())`,
@@ -117,7 +178,7 @@ export async function markOutboxCompleted(scope: SystemScope, id: string): Promi
 
 /** The job exhausted its retries (dead-lettered in failed_jobs): the row leaves replay and the sweeps. */
 export async function markOutboxFailed(scope: SystemScope, id: string): Promise<void> {
-  await dbFor(scope)
+  await poolFor(scope)
     .update(outbox)
     .set({
       failedAt: sql`coalesce(${outbox.failedAt}, now())`,
@@ -135,7 +196,7 @@ export async function lostOutbox(
   olderThanSec: number,
   limit: number,
 ): Promise<OutboxRow[]> {
-  return dbFor(scope)
+  return poolFor(scope)
     .select({
       id: outbox.id,
       queue: outbox.queue,
@@ -167,14 +228,14 @@ export async function staleOutbox(
 }> {
   const cutoff = sql`now() - make_interval(secs => ${olderThanSec})`;
   const where = and(isNull(outbox.dispatchedAt), lt(outbox.createdAt, cutoff));
-  const [summary] = await dbFor(scope)
+  const [summary] = await poolFor(scope)
     .select({
       count: sql<number>`count(*)::int`,
       oldestAgeSec: sql<number>`coalesce(extract(epoch from now() - min(${outbox.createdAt})), 0)::int`,
     })
     .from(outbox)
     .where(where);
-  const sample = await dbFor(scope)
+  const sample = await poolFor(scope)
     .select({ id: outbox.id, queue: outbox.queue, jobName: outbox.jobName })
     .from(outbox)
     .where(where)
@@ -196,7 +257,7 @@ export async function replayCandidates(
   after: ReplayCursor | null,
   limit: number,
 ): Promise<(OutboxRow & { cursor: ReplayCursor })[]> {
-  const rows = await dbFor(scope)
+  const rows = await poolFor(scope)
     .select({
       id: outbox.id,
       queue: outbox.queue,
@@ -228,7 +289,7 @@ export async function pruneFinishedOutbox(
   olderThanDays: number,
   limit: number,
 ): Promise<number> {
-  const rows = await dbFor(scope).execute<{ id: string }>(sql`
+  const rows = await poolFor(scope).execute<{ id: string }>(sql`
     DELETE FROM ${outbox} WHERE ${outbox.id} IN (
       SELECT ${outbox.id} FROM ${outbox}
       WHERE (${outbox.completedAt} IS NOT NULL OR ${outbox.failedAt} IS NOT NULL)

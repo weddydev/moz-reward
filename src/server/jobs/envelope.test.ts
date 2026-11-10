@@ -46,7 +46,12 @@ describe("[P0-18] job payload envelope (versioning, AC4)", () => {
   it("refuses a payload that is invalid after upgrading, or has no upgrade step", () => {
     expect(openEnvelope(v3, { v: 1, data: { userId: "x" } })).toMatchObject({ kind: "invalid" });
     // Built by hand: defineJob itself refuses a gap (last test).
-    const gap = { v: 3, schema: z.object({}).strict(), upgrades: { 2: (d: unknown) => d } };
+    const gap = {
+      v: 3,
+      schema: z.object({}).strict(),
+      runAs: "system" as const,
+      upgrades: { 2: (d: unknown) => d },
+    };
     expect(openEnvelope(gap, { v: 1, data: {} })).toEqual({
       kind: "invalid",
       reason: "no upgrade from version 1",

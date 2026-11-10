@@ -6,7 +6,7 @@ import { TURNSTILE_BYPASS_TOKEN, TURNSTILE_REQUIRED_CODE } from "@/lib/turnstile
 import type * as AttemptGuardModule from "@/server/auth/attempt-guard";
 import { getAuth } from "@/server/auth/auth";
 import { beginSecondFactor, beginStaffLogin, STAFF_LOGIN } from "@/server/auth/staff-login";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { auditLogs, outbox } from "@/server/db/schema";
 import { closeQueues } from "@/server/jobs/queues";
 import { startRelay } from "@/server/jobs/relay";

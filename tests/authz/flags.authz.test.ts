@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { expect, it } from "vitest";
 import { setFeatureFlag } from "@/features/flags/actions";
 import { runAsPrincipal } from "@/server/authz/principal";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { auditLogs } from "@/server/db/schema";
 import { authzMatrix, world } from "./harness";
 

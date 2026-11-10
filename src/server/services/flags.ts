@@ -1,5 +1,5 @@
 import "server-only";
-import { type AdminScope, systemScope } from "@/server/authz/scope";
+import { type AdminScope, publicScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import { findFlagEnabled, upsertFlag } from "@/server/repos/flags";
 
@@ -22,7 +22,7 @@ export function envOverride(
   return undefined;
 }
 
-const FLAG_READ = systemScope("feature flags are global configuration, readable by every request");
+const FLAG_READ = publicScope("feature flags are global configuration, readable by every request");
 
 export async function isEnabled(key: FlagKey): Promise<boolean> {
   const forced = envOverride(key);

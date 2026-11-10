@@ -3,7 +3,7 @@ import type { Scope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import { insertOutbox } from "@/server/repos/outbox";
 import { sealEnvelope } from "./envelope";
-import { type JobName, type JobPayload, jobDef, type QueueName } from "./registry";
+import { type JobName, type JobPayload, type JobRunAs, jobDef, type QueueName } from "./registry";
 
 /**
  * Outbox writer (P0-18, ENGINEERING §4 step 7). The only way request code produces a job: the row is written
@@ -23,6 +23,21 @@ export class OutboxPayloadTooLargeError extends Error {
   }
 }
 
+/**
+ * C-30: a tenant scope may only produce tenant jobs (they run under its scope), and only the identity layer or
+ * the system may produce system jobs (they run with BYPASSRLS). Otherwise a request could hand the worker a
+ * payload naming another shop's rows and have it acted on without RLS.
+ */
+export function assertProducer(runAs: JobRunAs, scope: Scope, job: string): void {
+  const tenant = scope.kind === "customer" || scope.kind === "shop" || scope.kind === "admin";
+  const system = scope.kind === "auth" || scope.kind === "system";
+  if (runAs === "tenant" ? !tenant : !system) {
+    throw new Error(
+      `${job} runs as ${runAs}; a ${scope.kind} scope may not write it to the outbox`,
+    );
+  }
+}
+
 export async function writeOutbox<Q extends QueueName, N extends JobName<Q>>(
   scope: Scope,
   tx: Transaction,
@@ -32,6 +47,7 @@ export async function writeOutbox<Q extends QueueName, N extends JobName<Q>>(
 ): Promise<string> {
   const def = jobDef(queue, name);
   if (!def) throw new Error(`Unknown job ${queue}:${name}`);
+  assertProducer(def.runAs, scope, `${queue}:${name}`);
   const envelope = sealEnvelope(def, payload);
   const bytes = Buffer.byteLength(JSON.stringify(envelope), "utf8");
   if (bytes > OUTBOX_MAX_PAYLOAD_BYTES) throw new OutboxPayloadTooLargeError(queue, name, bytes);

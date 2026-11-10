@@ -1,9 +1,9 @@
 import "server-only";
 import { DelayedError, type Job, UnrecoverableError, Worker } from "bullmq";
-import { systemScope } from "@/server/authz/scope";
+import { systemScope, type TenantScope, tenantScopeFromOutbox } from "@/server/authz/scope";
 import { log as appLog } from "@/server/log";
 import { recordFailedJob } from "@/server/repos/jobs";
-import { isOutboxCompleted, markOutboxCompleted, markOutboxFailed } from "@/server/repos/outbox";
+import { markOutboxCompleted, markOutboxFailed, outboxJobFacts } from "@/server/repos/outbox";
 import { bullPrefix, createRedis } from "./connection";
 import { isEnvelope, openEnvelope } from "./envelope";
 import { HANDLERS } from "./handlers";
@@ -137,16 +137,20 @@ export const UNKNOWN_JOB_GRACE_MS = 60 * 60_000;
 const OUTBOX_SCOPE = systemScope("worker: outbox completion bookkeeping for every tenant");
 
 export type OutboxBookkeeping = {
-  isCompleted: (id: string) => Promise<boolean>;
+  /** Completion and originating scope of the row, or null when the row no longer exists. */
+  facts: (id: string) => ReturnType<typeof outboxJobFacts>;
   markCompleted: (id: string) => Promise<void>;
 };
 
 const outboxBookkeeping: OutboxBookkeeping = {
-  isCompleted: (id) => isOutboxCompleted(OUTBOX_SCOPE, id),
+  facts: (id) => outboxJobFacts(OUTBOX_SCOPE, id),
   markCompleted: (id) => markOutboxCompleted(OUTBOX_SCOPE, id),
 };
 
-type Entry = { def: JobDef; handler: (payload: unknown, job: Job) => Promise<unknown> };
+type Entry = {
+  def: JobDef;
+  handler: (payload: unknown, job: Job, ctx: { scope: TenantScope | null }) => Promise<unknown>;
+};
 
 /**
  * Opens the versioned envelope (upgrading old payloads), defers payloads from a newer version, skips an
@@ -180,11 +184,25 @@ export function jobProcessor(
       throw new UnrecoverableError(`Invalid payload for ${queue}:${job.name} (${opened.reason})`);
     }
     const { outboxId } = opened;
-    if (outboxId && (await outboxRows.isCompleted(outboxId))) {
+    const facts = outboxId ? await outboxRows.facts(outboxId) : null;
+    if (facts?.completed) {
       log("job.already_completed", { queue, job: job.name, id: job.id });
       return { skipped: "completed" };
     }
-    const result = await entry.handler(opened.data, job);
+    // C-30: a tenant job runs under the scope that wrote its outbox row (read from the database, never from
+    // the job data in Redis), so its handler meets the same RLS walls as the request that produced it.
+    let scope: TenantScope | null = null;
+    if (entry.def.runAs === "tenant") {
+      if (!facts)
+        throw new UnrecoverableError(`${queue}:${job.name} is a tenant job without its outbox row`);
+      scope = tenantScopeFromOutbox(facts);
+      if (!scope) {
+        throw new UnrecoverableError(
+          `${queue}:${job.name}: outbox row was not written by a tenant scope`,
+        );
+      }
+    }
+    const result = await entry.handler(opened.data, job, { scope });
     if (outboxId) {
       try {
         await outboxRows.markCompleted(outboxId);

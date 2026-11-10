@@ -12,7 +12,7 @@
  *   no-op (`relay --replay-since`, RUNBOOK restore). `failed_at` marks a dead-lettered job (failed_jobs).
  */
 import { sql } from "drizzle-orm";
-import { check, index, integer, jsonb, pgTable, text } from "drizzle-orm/pg-core";
+import { check, index, integer, jsonb, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { id, tz } from "./_columns";
 
 export const outbox = pgTable(
@@ -30,6 +30,14 @@ export const outbox = pgTable(
     completedAt: tz(),
     /** Set when the job exhausted its retries (dead-lettered): out of replay and the stale checks, pruned. */
     failedAt: tz(),
+    /**
+     * The scope that wrote the row (P0-20, C-30): RLS checks on INSERT that it matches the writer's settings,
+     * and the worker rebuilds it for tenant jobs, so a handler runs under the same tenant walls as the request.
+     */
+    scopeKind: text().notNull().default("system"),
+    scopeUserId: uuid(),
+    scopeShopId: uuid(),
+    scopeRole: text(),
   },
   (t) => [
     // The relay's poll: undispatched rows, oldest first (keyset on created_at, id).
@@ -48,6 +56,10 @@ export const outbox = pgTable(
       .where(sql`${t.completedAt} IS NOT NULL OR ${t.failedAt} IS NOT NULL`),
     check("outbox_attempts_non_negative", sql`${t.attempts} >= 0`),
     check("outbox_payload_small", sql`octet_length(${t.payload}::text) <= 16384`),
+    check(
+      "outbox_scope_kind",
+      sql`${t.scopeKind} IN ('customer', 'shop', 'admin', 'auth', 'system')`,
+    ),
     check(
       "outbox_completed_after_dispatch",
       sql`${t.completedAt} IS NULL OR ${t.dispatchedAt} IS NOT NULL`,

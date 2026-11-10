@@ -5,7 +5,7 @@ import { setFeatureFlag } from "@/features/flags/actions";
 import { defineAction } from "@/server/actionTemplate";
 import { requireAdminRole } from "@/server/authz";
 import { loadPrincipal, runAsPrincipal } from "@/server/authz/principal";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { auditLogs, featureFlags } from "@/server/db/schema";
 import { upsertFlag } from "@/server/repos/flags";
 import { makeActor } from "@/server/testing/factories";

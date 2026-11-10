@@ -1,10 +1,12 @@
 import postgres from "postgres";
 import { afterAll, describe, expect, it } from "vitest";
-import { databaseRoleProblem } from "@/server/boot";
+import { databaseRoleFacts, databaseRoleProblem } from "@/server/boot";
 
 /** SEC-M2: staging/production must never run as the role that owns the schema. */
 describe("[P0-19] boot refuses the database owner role, its members and BYPASSRLS roles", () => {
-  const url = new URL(process.env.DATABASE_URL ?? "");
+  const url = new URL(process.env.DATABASE_URL_MIGRATIONS ?? "");
+  const problem = async (sql: postgres.Sql, bypassRls = false): Promise<string | null> =>
+    databaseRoleProblem(await databaseRoleFacts(sql), bypassRls);
   const owner = postgres(url.toString(), { max: 1, onnotice: () => {} });
   const role = `moz_boot_probe_${String(process.pid)}`;
   const password = "probe-only-not-a-secret";
@@ -16,7 +18,7 @@ describe("[P0-19] boot refuses the database owner role, its members and BYPASSRL
   });
 
   it("names the problem for the owner/superuser role (the local `moz` role is both)", async () => {
-    expect(await databaseRoleProblem(owner)).toMatch(/superuser|owns tables|can create/);
+    expect(await problem(owner)).toMatch(/superuser|owns tables|can create/);
   });
 
   it("accepts a plain application role with data rights only", async () => {
@@ -33,7 +35,7 @@ describe("[P0-19] boot refuses the database owner role, its members and BYPASSRL
     app.password = password;
     const client = postgres(app.toString(), { max: 1, onnotice: () => {} });
     try {
-      expect(await databaseRoleProblem(client)).toBeNull();
+      expect(await problem(client)).toBeNull();
     } finally {
       await client.end();
     }
@@ -46,7 +48,7 @@ describe("[P0-19] boot refuses the database owner role, its members and BYPASSRL
     const asProbe = async (): Promise<string | null> => {
       const client = postgres(app.toString(), { max: 1, onnotice: () => {} });
       try {
-        return await databaseRoleProblem(client);
+        return await problem(client);
       } finally {
         await client.end();
       }
@@ -63,5 +65,29 @@ describe("[P0-19] boot refuses the database owner role, its members and BYPASSRL
     } finally {
       await owner.unsafe(`REVOKE ${tableOwner?.name ?? "moz"} FROM ${role}`);
     }
+  });
+});
+
+describe("[P0-20] each pool's role: moz_app and moz_auth never bypass RLS; the worker's system pool must", () => {
+  const check = async (envName: string, bypassRls: boolean): Promise<string | null> => {
+    const client = postgres(process.env[envName] ?? "", { max: 1, onnotice: () => {} });
+    try {
+      return databaseRoleProblem(await databaseRoleFacts(client), bypassRls);
+    } finally {
+      await client.end();
+    }
+  };
+
+  it("accepts the three roles for their own pools", async () => {
+    expect(await check("DATABASE_URL", false)).toBeNull();
+    expect(await check("DATABASE_URL_AUTH", false)).toBeNull();
+    expect(await check("DATABASE_URL_WORKER", true)).toBeNull();
+  });
+
+  it("refuses the worker role where RLS must apply, and the app role as the system pool", async () => {
+    expect(await check("DATABASE_URL_WORKER", false)).toMatch(
+      /moz_worker bypasses row-level security/,
+    );
+    expect(await check("DATABASE_URL", true)).toMatch(/does not bypass row-level security/);
   });
 });

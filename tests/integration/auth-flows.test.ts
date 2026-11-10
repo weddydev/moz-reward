@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { URI } from "otpauth";
 import { describe, expect, it } from "vitest";
 import { getAuth } from "@/server/auth/auth";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { auditLogs, sessions, users } from "@/server/db/schema";
 import {
   TEST_PASSWORD,

@@ -47,7 +47,12 @@ export const serverEnvSchema = z
     APP_URL: z.url(),
     CDN_URL: z.url().optional(),
 
+    /** Web/tenant role `moz_app` (no BYPASSRLS, P0-20): every request query runs under RLS. */
     DATABASE_URL: connectionUrl(POSTGRES),
+    /** Identity role `moz_auth` (P0-20): Better Auth and role lookups, before any scope exists. */
+    DATABASE_URL_AUTH: connectionUrl(POSTGRES),
+    /** System role `moz_worker` (BYPASSRLS): worker and CLI only; the web never holds it (boot check). */
+    DATABASE_URL_WORKER: optionalConnectionUrl(POSTGRES),
     DATABASE_URL_MIGRATIONS: optionalConnectionUrl(POSTGRES),
     DATABASE_URL_TEST: optionalConnectionUrl(POSTGRES),
     REDIS_URL: connectionUrl(REDIS),

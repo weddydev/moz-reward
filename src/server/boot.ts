@@ -1,6 +1,6 @@
 import "server-only";
 import postgres from "postgres";
-import { DB_POOL_MAX } from "@/server/db/client";
+import { type DbProcess, dbProcess, processPoolMax } from "@/server/db/client";
 import { env } from "@/server/env";
 import { cacheUrl } from "@/server/jobs/connection";
 import type { Redis } from "ioredis";
@@ -9,17 +9,36 @@ import type { Redis } from "ioredis";
  * Startup checks for the web server (src/instrumentation.ts) and the worker (P0-19). A failure stops the
  * process: a server that cannot run safely must not serve 500s or run with the wrong privileges (QA-6).
  *   - The server environment parses (variable names only in errors, never values).
- *   - Staging/production: the database role is not the schema owner (or a member of it), a superuser or a
- *     BYPASSRLS role (SEC-M2, SECURITY §11); the connection budget fits max_connections (P0-18); redis-queue
- *     and redis-cache are two different servers with the right eviction policies (P0-18, AC3).
+ *   - Every environment: each database pool's role is not the schema owner (or a member of it) or a superuser;
+ *     only the worker's system pool bypasses RLS (SEC-M2, SECURITY §11, P0-20).
+ *   - Staging/production: the web process holds no worker credentials; the connection budget fits
+ *     max_connections (P0-18); redis-queue and redis-cache are two different servers with the right eviction
+ *     policies (P0-18, AC3).
  */
 export async function runBootChecks(): Promise<void> {
   const e = env();
+  const kind = dbProcess();
+  // Every environment (P0-20): a laptop still on the owner/superuser URL would silently skip RLS.
+  for (const pool of bootPools(kind)) {
+    const url = e[pool.env];
+    if (!url) throw new Error(`${pool.env} is not set (the ${kind} process needs it, P0-20)`);
+    const sql = postgres(url, { max: 1, prepare: false, onnotice: () => {} });
+    try {
+      const problem = databaseRoleProblem(await databaseRoleFacts(sql), pool.bypassRls);
+      if (problem)
+        throw new Error(`${pool.env}: ${problem} (see .env.example and DECISIONS P0-20)`);
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
+  }
   if (e.APP_ENV === "local" || e.APP_ENV === "test") return;
+  if (kind === "web" && e.DATABASE_URL_WORKER) {
+    throw new Error(
+      "DATABASE_URL_WORKER is set: the web process must not hold the BYPASSRLS worker role",
+    );
+  }
   const sql = postgres(e.DATABASE_URL, { max: 1, prepare: false, onnotice: () => {} });
   try {
-    const problem = await databaseRoleProblem(sql);
-    if (problem) throw new Error(`DATABASE_URL: ${problem} (use the app role, not the owner)`);
     const [setting] = await sql<{ max_connections: string }[]>`SHOW max_connections`;
     const budget = connectionBudgetProblem(
       Number(setting?.max_connections ?? 0),
@@ -72,27 +91,61 @@ export function redisPairProblem(queue: RedisFacts, cache: RedisFacts): string |
   return null;
 }
 
-/** Why this connection's role must not run the app, or null when it is a plain data role. */
-export async function databaseRoleProblem(sql: postgres.Sql): Promise<string | null> {
+/** Each pool a process opens, the variable it comes from, and whether that role must bypass RLS. */
+export function bootPools(
+  kind: DbProcess,
+): { env: "DATABASE_URL" | "DATABASE_URL_AUTH" | "DATABASE_URL_WORKER"; bypassRls: boolean }[] {
+  if (kind === "test") return bootPools("web").concat(bootPools("worker").slice(1));
+  return kind === "web"
+    ? [
+        { env: "DATABASE_URL", bypassRls: false },
+        { env: "DATABASE_URL_AUTH", bypassRls: false },
+      ]
+    : [
+        { env: "DATABASE_URL", bypassRls: false },
+        { env: "DATABASE_URL_WORKER", bypassRls: true },
+      ];
+}
+
+export type RoleFacts = {
+  name: string;
+  superuser: boolean;
+  bypassRls: boolean;
+  ownsTables: boolean;
+  canCreate: boolean;
+};
+
+export async function databaseRoleFacts(sql: postgres.Sql): Promise<RoleFacts | null> {
   // "Owns" includes membership of the owning role (pg_has_role USAGE): a member inherits the owner's rights.
-  const [row] = await sql<
-    { superuser: boolean; bypassRls: boolean; ownsTables: boolean; canCreate: boolean }[]
-  >`
-    SELECT r.rolsuper AS superuser,
+  const [row] = await sql<RoleFacts[]>`
+    SELECT r.rolname AS name,
+           r.rolsuper AS superuser,
            r.rolbypassrls AS "bypassRls",
            EXISTS (SELECT 1 FROM pg_tables t
                    WHERE t.schemaname = 'public' AND pg_has_role(current_user, t.tableowner, 'USAGE'))
              AS "ownsTables",
            has_schema_privilege(current_user, 'public', 'CREATE') AS "canCreate"
     FROM pg_roles r WHERE r.rolname = current_user`;
+  return row ?? null;
+}
+
+/**
+ * Why this connection's role must not be used, or null when it is a plain data role (SEC-M2, SECURITY §11,
+ * P0-20). Never the owner, a member of it, a superuser or a role that can create in public. `bypassRls`: the
+ * worker's system pool must be a BYPASSRLS role (moz_worker); every other pool must not be.
+ */
+export function databaseRoleProblem(row: RoleFacts | null, bypassRls = false): string | null {
   if (!row) return "role not found";
   const reasons = [
     row.superuser ? "is a superuser" : null,
-    row.bypassRls ? "bypasses row-level security" : null,
+    row.bypassRls && !bypassRls ? "bypasses row-level security" : null,
+    !row.bypassRls && bypassRls
+      ? "does not bypass row-level security (needs the moz_worker role)"
+      : null,
     row.ownsTables ? "owns (or is a member of the owner of) tables in public" : null,
     row.canCreate ? "can create in schema public" : null,
   ].filter((r): r is string => r !== null);
-  return reasons.length > 0 ? `the role ${reasons.join(", ")}` : null;
+  return reasons.length > 0 ? `the role ${row.name} ${reasons.join(", ")}` : null;
 }
 
 type Exit = { exit: (code: number) => void; error: (message: string) => void };
@@ -128,9 +181,14 @@ export const CONNECTION_BUDGET = {
 export function connectionBudgetProblem(
   maxConnections: number,
   plan: { web: number; worker: number; deployOverlap: number; reserved: number },
-  poolMax: number = DB_POOL_MAX,
+  pools: { web: number; worker: number } = {
+    web: processPoolMax("web"),
+    worker: processPoolMax("worker"),
+  },
 ): string | null {
-  const needed = (plan.web + plan.worker + plan.deployOverlap) * poolMax + plan.reserved;
+  // The deploy overlap is counted as a web container (the larger of the two).
+  const needed =
+    (plan.web + plan.deployOverlap) * pools.web + plan.worker * pools.worker + plan.reserved;
   const allowed = Math.floor(maxConnections * 0.8);
   return needed > allowed
     ? `needs ${String(needed)} connections but 80% of max_connections (${String(maxConnections)}) is ${String(allowed)}`

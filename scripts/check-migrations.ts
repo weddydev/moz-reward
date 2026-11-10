@@ -146,6 +146,95 @@ export function checkConcurrentMigration(name: string, sql: string): string[] {
   return [];
 }
 
+/**
+ * Row-Level Security rule (P0-20, SECURITY §3). Deny by default: at the end of the migration history every
+ * table must have `ENABLE ROW LEVEL SECURITY`, `FORCE ROW LEVEL SECURITY` and at least one policy, unless a
+ * migration declares it global with a reason (`-- rls: global <table> — <why no tenant rows>`). Statements are
+ * read in order across files, so a later DISABLE / NO FORCE / DROP POLICY counts. Written-out statements only:
+ * dynamic SQL (EXECUTE format(...)) is invisible here, which is why 0009 spells every table out.
+ * tests/integration/rls-catalog.test.ts checks the same thing on the live database.
+ */
+type RlsTable = { enabled: boolean; forced: boolean; policies: Set<string> };
+export type RlsState = { tables: Map<string, RlsTable>; global: Map<string, string> };
+
+const NAME = String.raw`(?:"?\w+"?\.)?"?(\w+)"?`;
+const RLS_PATTERNS = {
+  create: new RegExp(String.raw`^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?${NAME}`, "i"),
+  drop: new RegExp(String.raw`^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?${NAME}`, "i"),
+  alter: new RegExp(
+    String.raw`^ALTER\s+TABLE\s+(?:ONLY\s+)?(?:IF\s+EXISTS\s+)?${NAME}\s+(ENABLE|DISABLE|FORCE|NO\s+FORCE)\s+ROW\s+LEVEL\s+SECURITY\b`,
+    "i",
+  ),
+  createPolicy: new RegExp(String.raw`^CREATE\s+POLICY\s+"?(\w+)"?\s+ON\s+${NAME}`, "i"),
+  dropPolicy: new RegExp(
+    String.raw`^DROP\s+POLICY\s+(?:IF\s+EXISTS\s+)?"?(\w+)"?\s+ON\s+${NAME}`,
+    "i",
+  ),
+};
+const GLOBAL_MARKER = /^--\s*rls:\s*global\s+(\w+)(?:\s+[—–-]+\s*(.*))?$/gim;
+
+export function rlsState(files: readonly { name: string; sql: string }[]): RlsState {
+  const tables = new Map<string, RlsTable>();
+  const global = new Map<string, string>();
+  for (const { sql } of files) {
+    for (const m of sql.matchAll(GLOBAL_MARKER)) {
+      const reason = (m[2] ?? "").trim();
+      if (m[1] && reason.length >= 10) global.set(m[1].toLowerCase(), reason);
+    }
+    for (const stmt of statements(stripComments(sql))) {
+      const created = RLS_PATTERNS.create.exec(stmt)?.[1]?.toLowerCase();
+      if (created) {
+        tables.set(created, { enabled: false, forced: false, policies: new Set() });
+        continue;
+      }
+      const dropped = RLS_PATTERNS.drop.exec(stmt)?.[1]?.toLowerCase();
+      if (dropped) {
+        tables.delete(dropped);
+        continue;
+      }
+      const alter = RLS_PATTERNS.alter.exec(stmt);
+      const altered = alter?.[1] ? tables.get(alter[1].toLowerCase()) : undefined;
+      if (alter && altered) {
+        const action = (alter[2] ?? "").toUpperCase().replace(/\s+/g, " ");
+        if (action === "ENABLE") altered.enabled = true;
+        if (action === "DISABLE") altered.enabled = false;
+        if (action === "FORCE") altered.forced = true;
+        if (action === "NO FORCE") altered.forced = false;
+        continue;
+      }
+      const created2 = RLS_PATTERNS.createPolicy.exec(stmt);
+      if (created2?.[1] && created2[2]) {
+        tables.get(created2[2].toLowerCase())?.policies.add(created2[1].toLowerCase());
+        continue;
+      }
+      const dropped2 = RLS_PATTERNS.dropPolicy.exec(stmt);
+      if (dropped2?.[1] && dropped2[2]) {
+        tables.get(dropped2[2].toLowerCase())?.policies.delete(dropped2[1].toLowerCase());
+      }
+    }
+  }
+  return { tables, global };
+}
+
+export function checkRls(files: readonly { name: string; sql: string }[]): string[] {
+  const { tables, global } = rlsState(files);
+  const problems: string[] = [];
+  for (const [table, t] of tables) {
+    if (global.has(table)) continue;
+    const missing = [
+      t.enabled ? null : "ENABLE ROW LEVEL SECURITY",
+      t.forced ? null : "FORCE ROW LEVEL SECURITY",
+      t.policies.size > 0 ? null : "no policy",
+    ].filter((m): m is string => m !== null);
+    if (missing.length > 0) {
+      problems.push(
+        `table "${table}": ${missing.join(", ")} (SECURITY §3: every table gets RLS, FORCE and policies, or "-- rls: global ${table} — <reason>")`,
+      );
+    }
+  }
+  return problems;
+}
+
 /** Every committed migration, both kinds. Empty when all pass. */
 export function checkAllMigrations(dir = "drizzle"): string[] {
   const sqlFiles = (d: string): string[] => {
@@ -158,8 +247,13 @@ export function checkAllMigrations(dir = "drizzle"): string[] {
     }
   };
   const concurrentDir = path.join(dir, "concurrent");
+  const migrations = sqlFiles(dir).map((f) => ({
+    name: f,
+    sql: readFileSync(path.join(dir, f), "utf8"),
+  }));
   return [
-    ...sqlFiles(dir).flatMap((f) => checkMigration(f, readFileSync(path.join(dir, f), "utf8"))),
+    ...migrations.flatMap((m) => checkMigration(m.name, m.sql)),
+    ...checkRls(migrations),
     ...sqlFiles(concurrentDir).flatMap((f) =>
       checkConcurrentMigration(
         `concurrent/${f}`,

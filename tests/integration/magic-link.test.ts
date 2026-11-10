@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { TURNSTILE_BYPASS_TOKEN } from "@/lib/turnstile";
 import { getAuth } from "@/server/auth/auth";
 import { MAGIC_LINK_LIMITS, checkMagicLinkRequest } from "@/server/auth/magic-link";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { verifications } from "@/server/db/schema";
 import { createRedis } from "@/server/jobs/connection";
 import { ipKey, limiterKey, limiterRedis } from "@/server/security/rate-limit";

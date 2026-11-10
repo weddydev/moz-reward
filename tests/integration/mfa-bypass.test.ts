@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { getAuth } from "@/server/auth/auth";
 import { isPrivilegedEmail } from "@/server/auth/privileged";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { sessions, twoFactors, users } from "@/server/db/schema";
 import {
   TEST_PASSWORD,

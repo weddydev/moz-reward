@@ -23,12 +23,9 @@ function startWorker(): { proc: ChildProcess; output: () => string; started: Pro
   let out = "";
   const proc = spawn(
     process.execPath,
-    [
-      "node_modules/tsx/dist/cli.mjs",
-      "--import",
-      "./scripts/server-only-hook.mjs",
-      "src/worker/index.ts",
-    ],
+    // One process (tsx as a loader, not its CLI): the CLI starts the worker as a grandchild, which a failed
+    // test's SIGKILL left running, consuming later runs' jobs (P0-20). Same hook as `pnpm worker`.
+    ["--import", "tsx", "--import", "./scripts/server-only-hook.mjs", "src/worker/index.ts"],
     // Same database and Redis prefix as this test worker (set by tests/setup.integration.ts).
     { env: { ...process.env }, stdio: ["ignore", "pipe", "pipe"] },
   );

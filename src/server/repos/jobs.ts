@@ -2,7 +2,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import type { SystemScope } from "@/server/authz/scope";
 import { failedJobs, jobHeartbeats } from "@/server/db/schema";
-import { dbFor } from "./_base";
+import { poolFor } from "./_base";
 
 /** Dead-letter entry for a job that exhausted its retries. Re-failing the same job updates its row. */
 export async function recordFailedJob(
@@ -16,7 +16,7 @@ export async function recordFailedJob(
     attempts: number;
   },
 ): Promise<void> {
-  await dbFor(scope)
+  await poolFor(scope)
     .insert(failedJobs)
     .values(row)
     .onConflictDoUpdate({
@@ -33,7 +33,7 @@ export async function recordFailedJob(
 
 /** Records that a scheduled job ran now (health check / admin System page). */
 export async function touchHeartbeat(scope: SystemScope, name: string): Promise<void> {
-  await dbFor(scope)
+  await poolFor(scope)
     .insert(jobHeartbeats)
     .values({ name, lastRunAt: sql`now()` })
     .onConflictDoUpdate({ target: jobHeartbeats.name, set: { lastRunAt: sql`now()` } });

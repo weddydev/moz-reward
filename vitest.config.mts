@@ -41,7 +41,11 @@ export default defineConfig({
           setupFiles: ["./tests/setup.ts"],
           restoreMocks: true,
           // Unit tests never touch a database; a placeholder URL keeps env validation honest.
-          env: { ...testEnv, DATABASE_URL: "postgres://unit:unit@127.0.0.1:1/none" },
+          env: {
+            ...testEnv,
+            DATABASE_URL: "postgres://unit:unit@127.0.0.1:1/none",
+            DATABASE_URL_AUTH: "postgres://unit:unit@127.0.0.1:1/none",
+          },
         },
       },
       {

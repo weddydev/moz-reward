@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import type { ActionResult } from "@/server/actionTemplate";
 import type { AdminRole, Principal } from "@/server/authz/policies";
 import { loadPrincipal, runAsPrincipal } from "@/server/authz/principal";
-import { db } from "@/server/db/client";
+import { testOwnerDb as db } from "@/server/db/client";
 import { shops } from "@/server/db/schema";
 import type { AppErrorCode } from "@/server/errors";
 import { makeAdmin, makeShop, makeStaff, makeUser } from "../fixtures/factories";

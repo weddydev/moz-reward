@@ -182,3 +182,8 @@ Done: C outbox (0008) + relay + replay CLI + sweep + versioned payloads + lockou
 Evidence: CI green 42775110214 (cffc65b); gate:task PASS (unit 448, int 357, sast); AC1/4/6/7 + edge cases in outbox.test 22/22, AC2 fail-modes 4/4, AC3/AC5/C-18 from A–B; worker-process test fails under the old flag, passes now; full E2E local 268/0.
 Mistake: pushed 758acc2 before reading step D's red CI (axe flake); both reds fixed at root cause before the squash.
 Rule (human): one target, everything by 10 Dec 2026; per-phase dates no longer tracked (CLAUDE.md "Pace", 9face36).
+
+## 2026-11-10 — P0 — P0-20 RLS built (talha.syed, macOS)
+Done: 0009 roles (moz_app/moz_auth/moz_worker) + ENABLE/FORCE/policies (DB re-checks shop/admin roles) · per-role pools, withScope/transaction SET LOCAL, dbFor removed (CR-L4) · Public/Auth scopes + ESLint allowlists (C-12) · outbox INSERT-only + scope columns + runAs tenant jobs (C-29, C-30) · checker RLS rule + negative fixtures · audited sweeps/replay, adminRead · boot role check every env.
+Evidence: gate:task PASS (unit 462, int 396, sast, E2E P0-20 2/0); full E2E 272 + P0-20 5/5 after a UA fix; rls.test 21/21, jobs.authz 16/16; AC3 rls-bench: page +8–15% p95 (noise ±3%), lookup +0.03 ms fixed (DECISIONS).
+Open: security-reviewer result pending (task not ticked). Found 2 orphaned test workers (tsx CLI grandchild) — test fixed; kill needs the human (H-32 step 5).
