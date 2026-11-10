@@ -47,6 +47,7 @@ export function SegmentedControl<T extends string>({
     >
       <span
         aria-hidden="true"
+        data-part="thumb"
         className="rounded-pill bg-surface shadow-1 duration-base absolute top-1 bottom-1 left-1 transition-transform ease-out"
         style={{
           width: `calc((100% - 8px) / ${options.length})`,

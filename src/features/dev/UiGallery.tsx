@@ -1,7 +1,7 @@
 "use client";
 
 import { Coffee, Gift, Plus, Sparkles } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import {
   Badge,
   Button,
@@ -25,23 +25,9 @@ import {
   toast,
 } from "@/components/ui";
 import { PreferenceToggles } from "@/features/preferences/PreferenceToggles";
+import { Section } from "./Section";
+import { TokenPage } from "./TokenPage";
 
-const COLOURS = [
-  "bg",
-  "surface",
-  "surface-2",
-  "ink",
-  "ink-2",
-  "ink-3",
-  "line",
-  "gold-700",
-  "gold-500",
-  "gold-300",
-  "gold-100",
-  "success",
-  "warning",
-  "danger",
-];
 const CHIPS = [
   "Friendly staff",
   "Great coffee",
@@ -65,20 +51,6 @@ const COLUMNS: Column<Member>[] = [
   { key: "last", header: "Last visit", cell: (r) => r.last },
 ];
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section
-      className="border-line flex flex-col gap-4 border-t py-8"
-      aria-labelledby={`s-${title}`}
-    >
-      <h2 id={`s-${title}`} className="text-h2">
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
-}
-
 export function UiGallery(): React.JSX.Element {
   const [chips, setChips] = useState<string[]>(["Great coffee"]);
   const [range, setRange] = useState<"7" | "30" | "90">("30");
@@ -91,7 +63,7 @@ export function UiGallery(): React.JSX.Element {
       <p className="text-small text-gold-700 font-semibold">Dev only</p>
       <h1 className="text-display">UI gallery</h1>
       <p className="text-ink-2 mt-2 max-w-prose">
-        Every primitive and state from DESIGN.md §6. Tokens live in src/styles/tokens.css.
+        Every token (DESIGN.md §3, §7) and every primitive and state from DESIGN.md §6.
       </p>
 
       <Section title="Type scale">
@@ -105,23 +77,7 @@ export function UiGallery(): React.JSX.Element {
         <p className="text-h2 tabular">720 / 1,000 gold</p>
       </Section>
 
-      <Section title="Colour tokens">
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-          {COLOURS.map((c) => (
-            <li key={c} className="flex flex-col gap-1.5">
-              <span
-                className="border-line h-12 rounded-md border"
-                style={{ background: `var(--${c})` }}
-              />
-              <code className="text-caption">--{c}</code>
-            </li>
-          ))}
-          <li className="flex flex-col gap-1.5">
-            <span className="bg-gold-gradient h-12 rounded-md" />
-            <code className="text-caption">--gold-gradient</code>
-          </li>
-        </ul>
-      </Section>
+      <TokenPage />
 
       <Section title="Buttons">
         <div className="flex flex-wrap items-center gap-3">
