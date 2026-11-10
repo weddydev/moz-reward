@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-10 — Token rules, round 2 (human, after the plan audit)
+Decision: four rules in CLAUDE.md §4: fresh context per task (`/checkpoint` → human runs `/clear` + `/resume`, which has a light path); "security-relevant task" is now a named list of 23 tasks (others are reviewed at the sub-phase close; a re-review checks the fix only); no full E2E at task level and a 20-minute flake limit; findings policy (HIGH now, MEDIUM in one batch per sub-phase, nits logged).
+Why: one measured session (10 Nov, P0-19 + half of P0-18) spent about four-fifths of its usage re-reading the conversation, and every P0-E task went through 2–3 reviewer rounds. The foundation now enforces authz, RLS and library values mechanically, so feature tasks need less per-task review.
+Consequence: the human types two commands after each task. This narrows the 10 Nov "security design check first" rule to the listed tasks. Not adopted yet: merged design/QA pass, plugin clean-up, doc tidy, the audit's plan gaps (none written into the phase files).
+
 ## 2026-11-10 — Speed/token rules (human): gate stamps, quiet hooks, `pnpm fix`
 Decision: the human adopted these CLAUDE.md §4 rules: gate pass stamps (pre-push skips only byte-identical, already-gated trees with the same task IDs, ≤ 12 h), lefthook prints failures only, `pnpm fix` before checks, security design check before building, full 5-project E2E at sub-phase close/nightly plus immediately for every-page changes, screenshot widths per screen type, QA agent pinned to Opus high. Rejected by the human: splitting tasks; a cheaper QA model.
 Why: P0-13 spent much of its budget on repeated gates, fix loops and hook output, not on checks. Consequence: no check, criterion, review or test is removed; CI still runs on every push.

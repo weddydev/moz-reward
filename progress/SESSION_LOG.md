@@ -205,3 +205,9 @@ Evidence: gate:task PASS (unit 491, int 444, E2E 16/0); full 5-project E2E 313/0
 Carried: C-36 (Umami proxy scope), C-37 (VPS RUNBOOK walks) → P0-15. H-33 done; H-35 close issue #1. Next: P0-21.
 Speed/token rules (human, 10 Nov): gate pass stamps + pre-push skip, quiet lefthook, `pnpm fix`, design-first security check, E2E/screenshot scope, QA agent Opus high (CLAUDE.md §4). Task splitting and a cheaper QA model rejected.
 Handoff 2026-11-10 19:05 IST by talha.syed: P0-13 done + CI green; speed rules in place; next P0-21; human: H-34 (Sentry), H-35 (close issue #1), H-32 (Windows .env.local).
+
+## 2026-11-10 (20:55– IST) — plan audit (read-only) + token rules, round 2 (Syedbadeshah76, Windows)
+Done: read-only audit of the plan, progress logs, agents and gate scripts (no code reviewed, no tests run); four rules added to CLAUDE.md §4 (fresh context per task, named security-relevant list, no task-level full E2E + flake limit, findings policy); `/resume` light path; old "touches auth…" wording replaced in TESTING §4, ENGINEERING §1 and the P1–P5 headers.
+Evidence: one local session record (10 Nov): 134 M tokens re-read vs 0.34 M written; 60 min model, 80 min tools in 3.8 h.
+Open (audit findings not yet in the phase files; human to decide): push-endpoint allowlist (P3-07), private-file rule (P1-12/P2-09/P2-13), staff password reset (P2-04), device-signal capture, passkey task (C-16), age-restricted offers + birth year, leaderboard privacy (P4-07), customer Scan screen, reference-image names, stale lines in ENGINEERING §11/§13, DESIGN §12, README.
+Left off: P0-21 not started. Next: `/clear`, `/resume`, then P0-21.

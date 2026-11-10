@@ -79,6 +79,12 @@ Never report done without evidence from this session (command + result, screensh
 - **Screenshots:** customer screens at 320, 390 (iPhone) and 1440, all inspected; admin and developer pages at 320 and 1440.
 - **QA agent stays on Opus, high effort** (`.claude/agents/qa-engineer.md`), never a cheaper model.
 
+**Token rules, round 2 (human's standing rule, 10 Nov 2026, after the plan audit). No acceptance criterion, edge case or test is removed.**
+- **Fresh context per task.** Most of a session's usage is the conversation being re-read on every step, so keep it short. After every task, and at each lettered step (A, B, C…) of a task with more than three steps: `/checkpoint`, play the `task` sound, and stop with one line: "Checkpoint saved. Run `/clear`, then `/resume`." The review stop every 3–5 tasks (Cadence, §1) is unchanged. After a `/clear`, `/resume` takes its light path (baton already yours, nothing new pulled).
+- **Security-relevant task = a task on this list** (this replaces the "touches auth, authz, sessions, rate limits, payments, uploads, crypto or PII" wording wherever it appears): P0-12, P0-15 · P1-04, P1-10, P1-12, P1-14, P1-16 · P2-03, P2-04, P2-05, P2-09, P2-12, P2-13, P2-15 · P3-02, P3-06, P3-07 · P4-03, P4-07, P4-08 · P5-01, P5-02, P5-07. Only these get the `security-reviewer` design check and the task-level review. Every other task's diff is reviewed once, at the sub-phase close, with the other unreviewed commits (`/subphase-complete` step 4). A re-review after a HIGH checks the fix's diff only; it is not a fresh full review.
+- **No full E2E at task level** beyond the every-page exception above: not after review fixes and not "before the tick". CI's full run on the push is the evidence. **Flake limit:** a failure that passes when its spec is re-run alone gets 20 minutes of root-cause work; if the cause isn't found, quarantine it (TESTING §7: PROGRESS note + CARRIED row; it blocks the phase gate) and carry on.
+- **Findings policy:** BLOCK/HIGH → fixed before the tick, test first. MEDIUM / should-fix → collected and fixed together in one batch before the sub-phase closes (one commit, one gate run), not one by one. LOW / nits → one line each in PROGRESS follow-ups, not fixed, unless the line is already being changed.
+
 ## 5. Non-negotiables
 
 - **Never** build review gating: every star rating gets identical "Post on Google" and "Send privately" options. No rewards for reviews, no offers triggered by feedback. (COMPLIANCE §1.)

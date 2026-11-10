@@ -15,7 +15,7 @@ A task is done only when **all** of these are true, with evidence in the session
 4. Authorisation matrix entries exist for every new action/route.
 5. `pnpm gate:task` passes (TESTING §4): check incl. `format:check`, integration, **production build**, and the task's E2E specs against the production build. No new lint suppressions without a justification comment.
 6. UI tasks: the self-verification loop in TESTING §8 was run — console/network/axe guard clean; new or changed screens screenshotted at 320, 390 (Chromium + WebKit) and 1440 **and inspected by you**; keyboard-navigable; reduced motion verified; loading, empty and error states present.
-7. Unhappy paths for the task work, via the shared unhappy-path kit: server error, offline, double submit, expired session or token where relevant. Security-relevant tasks (auth, authz, sessions, limits, payments, uploads, crypto, PII): `security-reviewer` ran on the task diff with no BLOCK/HIGH open, and any library involved has its configuration inventoried (§14).
+7. Unhappy paths for the task work, via the shared unhappy-path kit: server error, offline, double submit, expired session or token where relevant. Security-relevant tasks (the list in CLAUDE.md §4): `security-reviewer` ran on the task diff with no BLOCK/HIGH open, and any library involved has its configuration inventoried (§14).
 8. Side effects verified: DB rows, audit log, queued jobs, emails (Mailpit), push payloads (fake sink).
 9. No TODO/FIXME left in the task's code unless it references an item in PROGRESS.md.
 10. Docs updated where behaviour or structure changed (PROGRESS map, DECISIONS, `.env.example`).

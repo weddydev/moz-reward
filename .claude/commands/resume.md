@@ -4,6 +4,8 @@ description: Pull latest work, take the baton, verify, and continue the next tas
 
 Resume Moz Rewards. Two developers take turns; the repo files are the only shared memory.
 
+**Light path (same developer continuing after `/clear`, CLAUDE.md §4):** if the Baton line already names you and step 1 pulled no new commits, skip steps 4, 5, 7 and 8 (no baton commit, no install/migrate, no `pnpm check`): read the Handoff note and the next task's section (step 6), state the next step in 2 lines, and continue. If the pull brought commits, do every step.
+
 1. `git pull --rebase origin main`. If it fails, stop and explain.
 2. Identify yourself with `git config user.name`.
 3. Read `progress/PROGRESS.md` fully. Check the **Baton** line:
