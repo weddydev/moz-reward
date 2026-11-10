@@ -47,9 +47,14 @@ export type RedisFacts = { runId: string; policy: string };
 
 /** The server's identity and eviction policy, from INFO (works where CONFIG is disabled). */
 export async function redisFacts(redis: Redis): Promise<RedisFacts> {
-  const info = (await redis.info("server")) + (await redis.info("memory"));
-  const field = (name: string): string =>
-    new RegExp(`^${name}:(.*)$`, "m").exec(info)?.[1]?.trim() ?? "";
+  const info = `${await redis.info("server")}\n${await redis.info("memory")}`;
+  // `key:value` lines; plain parsing, no regex built from a name.
+  const fields = new Map<string, string>();
+  for (const line of info.split(/\r?\n/)) {
+    const at = line.indexOf(":");
+    if (at > 0) fields.set(line.slice(0, at), line.slice(at + 1).trim());
+  }
+  const field = (name: string): string => fields.get(name) ?? "";
   return { runId: field("run_id"), policy: field("maxmemory_policy") };
 }
 

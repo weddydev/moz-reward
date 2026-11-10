@@ -110,6 +110,7 @@ pnpm format | format:check
 pnpm services:up | services:down   # Docker: Postgres+PostGIS, Redis, Mailpit, MinIO
 pnpm setup:env         # create .env.local with generated local secrets (never overwrites)
 pnpm check:bundle      # after build: fail if server-only env names appear in .next/static
+pnpm sast              # Semgrep SAST in Docker (same command as CI; part of gate:task)
 ```
 Until P0-14 lands `gate:task`/`gate:phase` and the production-build `pnpm e2e`, run their steps by hand (TESTING §4). Update this list when scripts change.
 

@@ -132,9 +132,12 @@ test("[P0-14] before hydration the devices buttons are disabled, so no press is 
   await page.goto("/me/security", { waitUntil: "commit" });
   const trigger = page.locator("#sign-out-everywhere");
   await expect(trigger).toBeDisabled();
+  // The hydration marker the E2E guard waits for (P0-18) is absent until the app's JS has run.
+  await expect(page.locator("html")).not.toHaveAttribute("data-hydrated", "true");
 
   release();
   await expect(trigger).toBeEnabled();
+  await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
   await trigger.focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("#confirm-everywhere-yes")).toBeFocused();
