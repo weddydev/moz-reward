@@ -3,10 +3,11 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by Syedbadeshah76 since 2026-11-10 20:55 IST
+Baton: free — last held by Syedbadeshah76, 2026-11-10 21:50 IST
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
+- **Handed over by Syedbadeshah76, 2026-11-10 21:50 IST (Windows).** P0-21 done and ticked (documents only, nothing to test; the gate was not run because the push is docs-only). Half-done: nothing. Not run on this laptop this session: `pnpm services:up`, `db:migrate`, `pnpm check` (H-32 still open on Windows). The notes below are talha.syed's P0-13 handoff and still apply.
 - **Handed over by talha.syed, 2026-11-10 19:05 IST (macOS). P0-13 done 10 Nov.** One squashed commit on main. Remote `wip/P0-13` and `wip/P0-18` are stale (delete only with the human's OK).
 - **What P0-13 is:** alerts (`src/server/ops/alerts.ts`: Redis dedup per kind, windows 5→30→60 min, ≤ 4/kind and ≤ 12/pool per day + one `alert.ceiling` notice, memory fallback; worker sends directly, web enqueues `email:ops-alert`; `ALERT_EMAILS`); health (`/api/health/{live,ready,worker}`, detail with `Authorization: Bearer $HEALTH_TOKEN`); health monitor in the worker (1-min timer, not BullMQ; `ops_snapshot` table 0012; scheduler grace 3 min after start); Sentry (`@sentry/node` web+worker, `@sentry/browser` lazy via `/api/monitoring` tunnel with placeholder DSN and its own budget; `src/lib/sentry-scrub.ts`; explicit `dataCollection`); Better Auth logger via pino; `/admin/system` (admin owner); consent-gated Umami (`NEXT_PUBLIC_UMAMI_PATH`/`_WEBSITE_ID`) + cookie notice; C-06 hint; `docs/RUNBOOK.md`; `infra/docker/daemon.json` (log rotation). DECISIONS has 8 P0-13 entries incl. the Sentry inventory and both security reviews.
 - **Tested:** gate:task PASS (unit 491, int 444, build, bundle, sast, E2E P0-13 16/0); full 5-project E2E 313/0/0 flaky (on 07c8463, before the review fixes; the fixes' E2E specs passed in gate:task); hands-on: Redis stop → ready 503 + `health.redis` email in Mailpit; worker stop → `/api/health/worker` 503 after 3 min; local restore drill + replay dry run; start-up grace and log throttle re-checked on the real worker. security-reviewer: 2 HIGH + 5 should-fix fixed, re-review 0 BLOCK/HIGH, its 2 new should-fix fixed.
