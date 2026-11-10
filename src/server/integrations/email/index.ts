@@ -2,6 +2,7 @@ import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
 import { env } from "@/server/env";
 import { log } from "@/server/log";
+import { countEmailSent } from "@/server/ops/usage";
 
 export type EmailMessage = {
   to: string;
@@ -207,6 +208,8 @@ function sender(): EmailSender {
 
 export async function sendEmail(message: EmailMessage): Promise<void> {
   await sender()(message);
+  // P0-13: today's sends vs the providers' combined cap (70% alert, System page).
+  countEmailSent();
 }
 
 /** One named provider with the configured key, for `pnpm test:live` (each provider proved on its own). */

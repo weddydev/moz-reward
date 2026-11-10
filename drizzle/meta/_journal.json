@@ -85,6 +85,13 @@
       "when": 1794299146632,
       "tag": "0011_rls_admin_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794312261623,
+      "tag": "0012_ops_snapshot",
+      "breakpoints": true
     }
   ]
 }

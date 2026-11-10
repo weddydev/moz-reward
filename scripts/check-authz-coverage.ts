@@ -16,6 +16,12 @@ const HTTP_METHODS = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "
 export const EXEMPT_ROUTES: Readonly<Record<string, string>> = {
   "src/app/api/auth/[...all]/route.ts":
     "Better Auth's own handler; its endpoints are guarded by the hooks in src/server/auth/auth.ts (P0-06 tests)",
+  "src/app/api/health/live/route.ts":
+    "public liveness probe: no session, no data, constant body (tests/integration/health.test.ts)",
+  "src/app/api/health/ready/route.ts":
+    "public readiness probe: status only; detail needs the HEALTH_TOKEN header, no session or user data (tests/integration/health.test.ts)",
+  "src/app/api/health/worker/route.ts":
+    "public worker liveness probe for UptimeRobot: status only, no data (tests/integration/health.test.ts)",
   "src/app/api/sign-in/confirm/route.ts":
     "anonymous sign-in step: the email link's token is the credential; same-origin check + auth rate limit, then Better Auth's own verify (tests/integration/link-confirm.test.ts)",
   "src/app/api/test/[action]/route.ts":

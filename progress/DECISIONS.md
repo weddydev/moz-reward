@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-10 — Health endpoints and the health monitor (P0-13)
+Decision: `/api/health/live` (constant body), `/api/health/ready` (Postgres + redis-queue only; Caddy/deploys) and `/api/health/worker` (monitor ticked < 3 min; for UptimeRobot) are public status-only; per-check detail needs `x-health-token` = `HEALTH_TOKEN` (constant-time), results memoised 2 s. The worker is deliberately not part of `ready` (a stopped worker must not take the web out of Caddy). The health monitor runs in the worker on its own 1-minute timer (not BullMQ, so it works with Redis down), writes `ops_snapshot` (admin owner reads via RLS) and a Redis liveness mark; thresholds in `ops/health-rules.ts` (ARCHITECTURE §11). Backup checks wait for `BACKUPS_ENABLED` (P0-15).
+Why: ARCHITECTURE says "every 5 min"; 1 min costs a few queries and halves detection time, alerts are deduplicated anyway. Request-rate/p95/error per route (ARCHITECTURE §11 System page) is not in P0-13's build list: carried to P0-15 (C-35), where host logs exist.
+Consequence: `pnpm dev` without `pnpm worker` shows `/api/health/worker` 503 (expected).
+
 ## 2026-11-10 — Alerts to both developers: Redis-deduplicated, worker sends (P0-13, C-22)
 Decision: `securityAlert`/`opsAlert` log, then dedupe per kind in redis-queue (first event per 5 min delivered, later ones counted; the health monitor's minute tick emails the count once the window closes); if Redis is down, the process's memory dedupes. The worker emails directly to `ALERT_EMAILS` (critical mail, no budget/drop order); a web process enqueues `email:ops-alert` straight to BullMQ, not via the outbox (an alert belongs to no transaction and must not need the database). Staff-lockout emails: ≤ 3 per account per UK day (C-31; the developers' alert is not capped).
 Why: one email per spray, not thousands (inboxes, the ≈ 400/day email quota); "Redis down" must still reach the developers.

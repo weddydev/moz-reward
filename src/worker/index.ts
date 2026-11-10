@@ -8,6 +8,7 @@
 import "../../scripts/load-env";
 import { bootOrExit, runBootChecks } from "@/server/boot";
 import { setDbProcess } from "@/server/db/client";
+import { startHealthMonitor } from "@/server/jobs/health-monitor";
 import { closeQueues } from "@/server/jobs/queues";
 import { type RunningRelay, startRelay } from "@/server/jobs/relay";
 import { registerSchedules } from "@/server/jobs/scheduler";
@@ -31,10 +32,15 @@ async function main(): Promise<void> {
   await bootOrExit(runBootChecks);
 
   // Signal handlers go in before any worker starts, so a stop during start-up is still graceful.
-  const started: { running?: RunningWorkers; relay?: RunningRelay } = {};
+  const started: {
+    running?: RunningWorkers;
+    relay?: RunningRelay;
+    monitor?: ReturnType<typeof startHealthMonitor>;
+  } = {};
   const shutdown = createShutdown({
     // Relay first (no new dispatches), then workers: in-flight handlers may still use the producer connection.
     close: async () => {
+      await started.monitor?.stop();
       await started.relay?.stop();
       await started.running?.close();
       await closeQueues();
@@ -53,6 +59,8 @@ async function main(): Promise<void> {
   const running = startWorkers();
   started.running = running;
   started.relay = startRelay();
+  // P0-13: its own timer, not a BullMQ job, so it still checks and emails while redis-queue is down.
+  started.monitor = startHealthMonitor();
   const schedules = await registerSchedules();
   log("worker.started", { queues: running.workers.map((w) => w.name), schedules });
 }

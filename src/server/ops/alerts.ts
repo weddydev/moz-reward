@@ -54,6 +54,8 @@ return tonumber(redis.call('GETDEL', KEYS[2]) or '0')`;
 
 type Sender = (alert: DeliveredAlert) => Promise<void>;
 
+export type Alerter = { raise(alert: Alert): Promise<RaiseResult>; flush(): Promise<number> };
+
 export function createAlerter(deps: {
   redis: () => Redis;
   send: Sender;
@@ -61,7 +63,7 @@ export function createAlerter(deps: {
   /** Key namespace below REDIS_KEY_PREFIX (tests isolate themselves with it). */
   keyPrefix?: string;
   now?: () => number;
-}): { raise(alert: Alert): Promise<RaiseResult>; flush(): Promise<number> } {
+}): Alerter {
   const windowMs = deps.windowMs ?? ALERT_WINDOW_MS;
   const now = deps.now ?? Date.now;
   const ns = `${env().REDIS_KEY_PREFIX}alert:${deps.keyPrefix ?? "v1"}`;
@@ -254,7 +256,7 @@ export async function enqueueAlert(alert: DeliveredAlert): Promise<string> {
   return job.id;
 }
 
-type AlertState = { alerter?: ReturnType<typeof createAlerter> | undefined; direct: boolean };
+type AlertState = { alerter?: Alerter | undefined; direct: boolean };
 const state = ((globalThis as { __mozAlerts?: AlertState }).__mozAlerts ??= { direct: false });
 
 /** The worker sends alerts itself (no queue round trip; works while Redis is down). Call once at start. */
@@ -263,7 +265,7 @@ export function enableDirectAlertDelivery(): void {
   state.alerter = undefined;
 }
 
-function alerter(): ReturnType<typeof createAlerter> {
+function alerter(): Alerter {
   state.alerter ??= createAlerter({
     redis: limiterRedis,
     send: state.direct
@@ -284,9 +286,9 @@ export function raiseAlert(alert: Alert): void {
     });
 }
 
-/** Health monitor tick: report the counts of windows that closed. */
-export function flushAlerts(): Promise<number> {
-  return alerter().flush();
+/** The process's shared alerter (the health monitor awaits it; request code uses `raiseAlert`). */
+export function sharedAlerter(): Alerter {
+  return alerter();
 }
 
 /** C-31: whether one more lockout email may go to this account today (fails open: security mail). */

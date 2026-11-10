@@ -9,16 +9,15 @@ export type CapturedEmail = { id: string; to: string; subject: string; text: str
 
 const api = (): string => process.env.MAILPIT_API_URL ?? "http://localhost:8025";
 
-/** Waits (auto-retry, no fixed sleep) for the newest email to `to`, up to `timeoutMs`. */
+/** Waits (auto-retry, no fixed sleep) for the newest email to `to` (optionally whose subject contains `subject`). */
 export async function latestEmailTo(
   to: string,
-  { timeoutMs = 10_000 }: { timeoutMs?: number } = {},
+  { timeoutMs = 10_000, subject }: { timeoutMs?: number; subject?: string } = {},
 ): Promise<CapturedEmail> {
   const deadline = Date.now() + timeoutMs;
+  const query = subject ? `to:"${to}" subject:"${subject}"` : `to:"${to}"`;
   for (;;) {
-    const res = await fetch(
-      `${api()}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}&limit=1`,
-    );
+    const res = await fetch(`${api()}/api/v1/search?query=${encodeURIComponent(query)}&limit=1`);
     if (!res.ok)
       throw new Error(
         `Mailpit search failed (${res.status}). Is Mailpit running? \`pnpm services:up\``,

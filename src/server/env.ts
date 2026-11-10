@@ -123,6 +123,23 @@ export const serverEnvSchema = z
       }),
     /** Combined daily send cap of the email providers (ARCHITECTURE §10: Resend 100 + Brevo 300). */
     EMAIL_DAILY_CAP: z.coerce.number().int().positive().default(400),
+    /**
+     * P0-13: `/api/health/ready` returns its per-check detail only with this value in `x-health-token`
+     * (deploy scripts, the System page); everyone else gets the status alone. Unset = never any detail.
+     */
+    HEALTH_TOKEN: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.string().min(32, "must be at least 32 characters").optional(),
+    ),
+    /** Filesystem the health monitor watches for the 80% disk alert (the data volume on the VPS). */
+    DISK_PATH: z.string().default("/"),
+    /** P0-15 turns this on once the backup jobs write their heartbeats (dump, WAL, restore drill). */
+    BACKUPS_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
+    /** Sentry free plan: errors per month (ARCHITECTURE §10); the 70% alert uses our own sent counter. */
+    SENTRY_MONTHLY_QUOTA: z.coerce.number().int().positive().default(5000),
   })
   .superRefine((e, ctx) => {
     // Zod 4 still runs object refinements after a field failed; `z.url()` has already reported a bad
@@ -135,6 +152,7 @@ export const serverEnvSchema = z
       ["DATA_ENCRYPTION_KEY", e.DATA_ENCRYPTION_KEY],
       ["BLIND_INDEX_KEY", e.BLIND_INDEX_KEY],
       ["MEMBER_QR_SIGNING_KEY", e.MEMBER_QR_SIGNING_KEY],
+      ["HEALTH_TOKEN", e.HEALTH_TOKEN ?? ""],
     ] as const;
     for (let i = 0; i < secrets.length; i++) {
       for (let j = i + 1; j < secrets.length; j++) {

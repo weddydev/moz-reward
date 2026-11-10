@@ -103,6 +103,7 @@ describe("[P0-03] app role moz_app (least privilege)", () => {
     outbox: "I", // C-29: INSERT only
     failed_jobs: "",
     job_heartbeats: "",
+    ops_snapshot: "S", // P0-13: admin owner reads the health snapshot (RLS); the worker writes it
   };
 
   it("has exactly the reviewed grants per table, never TRUNCATE", async () => {
