@@ -13,6 +13,10 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-10 — Loyalty-rule defaults accepted (H-22)
+Decision: the "Plan v4 defaults" loyalty rules (award cap £500/500 gold, 15-min own reversal, rewards 90 days, rolling expiry with 30/7-day warnings, ISO-week streaks, repeating milestones, multiplied multipliers rounded down, 30-day rejoin, two-admin 72 h recovery, quiet hours 21:00–08:00, 5 marketing pushes / 7 days) are confirmed by the human for P1.
+Why: H-22. Consequence: P1 builds them as specified; a later change updates PRODUCT/DECISIONS and the tests.
+
 ## 2026-11-10 — Launch tier and single-host risk confirmed (H-21)
 Decision: the client confirmed in writing the plan v5 launch tier (200 shops, 50,000 members, 30 req/s peak, 1,000 concurrent, a 10,000-member announcement in < 10 min), the single-host risk (≈ 2 h rebuild, ≤ 5 min data loss; internal target, not an SLA) and the Hostinger renewal (≈ £24.99/month).
 Why: H-21. Consequence: load tests and RUNBOOK targets use these numbers; no change to the plan.

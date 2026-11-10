@@ -15,7 +15,7 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 
 | ID | Priority | Task | Needed by | Why | Est. time |
 |---|---|---|---|---|---|
-| H-32 | 🔴 | On **each laptop**: update the database lines in `.env.local` to the P0-20 roles, then `pnpm db:reset` (see steps) | Before your next `pnpm dev` / `pnpm worker` on that laptop | The app now refuses to start as the `moz` superuser (RLS would be skipped); Claude never reads or edits `.env.local` | 3 min / laptop |
+| H-32 | 🔴 | **Windows laptop only now** (Mac done 10 Nov):  update the database lines in `.env.local` to the P0-20 roles, then `pnpm db:reset` (see steps) | Before your next `pnpm dev` / `pnpm worker` on that laptop | The app now refuses to start as the `moz` superuser (RLS would be skipped); Claude never reads or edits `.env.local` | 3 min / laptop |
 | H-07 | 🟠 | Buy domain; Cloudflare account (free); move DNS to Cloudflare | Sun 15 Nov 2026 (P0-15) | Tunnel hostnames, email domain, Turnstile | 30 min (+ up to 24 h DNS) |
 | H-06 | 🟠 | Buy Hostinger KVM 4 (UK location), add both developers' SSH keys, give Claude the IP | Sun 15 Nov 2026 (P0-15) | Hosts production **and** staging (plan v5) | 30 min |
 | H-08 | 🟠 | Cloudflare R2: two buckets (uploads, backups) with separate bucket-scoped tokens | Sun 15 Nov 2026 (P0-15) | Uploads (P2) and encrypted backups (P0-15) | 15 min |
@@ -25,7 +25,6 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 | H-20 | 🟠 | Cloudflare Turnstile keys (after H-07) | Sun 15 Nov 2026 | Bot protection on sign-in; staging fails closed without a real secret | 5 min |
 | H-28 | 🟠 | Google OAuth: separate **staging** and **production** clients; publish the consent screen with branding before P5-04 | Staging client Sun 15 Nov 2026; branding before Fri 8 Jan 2027 | Staging/production isolation; app name and logo on the Google screen | 20 min (+ Google brand review: minutes to 3 working days) |
 | H-12 | 🟠 | Google Play Console — **organisation** developer account (avoids the 14-day closed test for new personal accounts); verification takes days | **Start now**; verified before P5-04 (~Fri 8 Jan 2027) | Android app; launch date | 20 min + Google verification |
-| H-22 | 🟠 | Client: confirm loyalty-rule defaults (PRODUCT §4–§6, §15, §16; DECISIONS "Plan v4 defaults") | Thu 19 Nov 2026 (P1 start) | P1 builds these rules | 45 min with the client |
 | H-23 | 🟠 | Solicitor: review compliance drafts (ROPA, DPIA, processor register, retention schedule) after P0-21 | Before any real customer data (launch, Fri 22 Jan 2027); DPIA ideally by Mon 30 Nov 2026 | UK GDPR / PECR / DUAA obligations | Client side |
 | H-09 | 🟢 | Gemini **paid** (pay-as-you-go) API key with a project spend cap | Fri 11 Dec 2026 (P3 start) | AI review help; UK apps may use only Gemini's paid services | 15 min |
 | H-24 | 🟢 | Client: pen test (optional, client-funded); support after launch | Sat 2 Jan 2027 (P5 start) | Launch readiness; see steps | 20 min with the client |
@@ -152,6 +151,8 @@ Images live in `design/reference/desktop-view/` and `mobile-view/`.
 
 | ID | Task | Done by | Date |
 |---|---|---|---|
+| H-22 | Loyalty-rule defaults accepted as written (DECISIONS "Plan v4 defaults"); may be revised later | talha.syed | 10 Nov 2026 |
+| H-32 (Mac) | `.env.local` DB roles updated, `pnpm db:reset`, app starts; Windows laptop still to do | talha.syed | 10 Nov 2026 |
 | H-21 | Client confirmed in writing: launch tier (200 shops, 50,000 members, 30 req/s peak, 1,000 concurrent, 10,000-member announcement < 10 min), single-host risk (≈2 h down, ≤5 min data loss, internal target), Hostinger renewal ≈ £24.99/month | client (via talha.syed) | 10 Nov 2026 |
 | H-17 | Human delegated the choice: Claude added the suggested deny rules (`Read(./.env.*)`, force-push to main, remote branch delete, `git clean`, `docker compose down -v`); real controls stay dev-only keys + pre-push hook | talha.syed | 10 Nov 2026 |
 | H-25 | GitHub plan: **Free** for now (`GITHUB_MODE=free`: pre-push hook, CI on every push, manual production deploy gated on green CI). Upgrade to Pro later only if server-side branch protection is wanted | human | 9 Nov 2026 |
