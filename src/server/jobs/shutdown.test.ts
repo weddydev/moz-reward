@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createShutdown } from "./shutdown";
+import { createShutdown, WORKER_DRAIN_MS } from "./shutdown";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -34,11 +34,17 @@ describe("[P0-04] worker graceful shutdown", () => {
     expect(exit).toHaveBeenCalledExactlyOnceWith(0);
   });
 
+  it("[P0-18] the worker drains for 60 s (ARCHITECTURE §6)", () => {
+    expect(WORKER_DRAIN_MS).toBe(60_000);
+  });
+
   it("exits 1 when closing takes longer than the timeout", async () => {
     vi.useFakeTimers();
-    const { shutdown, exit, events } = setup(() => new Promise<void>(() => {}), 45_000);
+    const { shutdown, exit, events } = setup(() => new Promise<void>(() => {}), WORKER_DRAIN_MS);
     void shutdown("SIGTERM");
-    vi.advanceTimersByTime(45_000);
+    vi.advanceTimersByTime(WORKER_DRAIN_MS - 1);
+    expect(exit).not.toHaveBeenCalled(); // still draining at 59.999 s
+    vi.advanceTimersByTime(1);
     expect(exit).toHaveBeenCalledWith(1);
     expect(events).toContain("worker.shutdown_timeout");
   });

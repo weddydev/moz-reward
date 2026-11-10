@@ -11,12 +11,9 @@ import { setDbProcess } from "@/server/db/client";
 import { closeQueues } from "@/server/jobs/queues";
 import { type RunningRelay, startRelay } from "@/server/jobs/relay";
 import { registerSchedules } from "@/server/jobs/scheduler";
-import { createShutdown } from "@/server/jobs/shutdown";
+import { createShutdown, WORKER_DRAIN_MS } from "@/server/jobs/shutdown";
 import { type RunningWorkers, startWorkers } from "@/server/jobs/worker";
 import { log as appLog } from "@/server/log";
-
-/** Longest we wait for in-flight jobs on shutdown (container stop grace period is 60 s). */
-const SHUTDOWN_TIMEOUT_MS = 45_000;
 
 const log = (event: string, fields: Record<string, unknown> = {}): void => {
   appLog()
@@ -41,7 +38,7 @@ async function main(): Promise<void> {
     },
     exit: (code) => process.exit(code),
     log,
-    timeoutMs: SHUTDOWN_TIMEOUT_MS,
+    timeoutMs: WORKER_DRAIN_MS,
   });
   process.on("SIGTERM", () => {
     void shutdown("SIGTERM");

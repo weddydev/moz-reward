@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-10 — Failure modes, timeouts, schedule pruning, drain (P0-18 D)
+Decision: every action/route `rateLimit` must state `failMode` (type-required). `"closed"` (auth, money) → `UNAVAILABLE` (503, "This is briefly unavailable…", Retry-After 60) before anything is written; `"open"` → carry on (public reads, kill switches; the feature-flag action is open so an admin can flip a flag during an outage). After-commit follow-ups get 2 s each, then the response moves on (logged); delivery belongs in the outbox. Schedules are removed only when listed in `RETIRED_SCHEDULES`; unknown ones are reported and kept. Worker drain 60 s (`WORKER_DRAIN_MS`).
+Why: ENGINEERING §5, AC2, B-CR-9, CR-L2 (an older worker in a rolling deploy deleted newer schedules), ARCHITECTURE §6.
+Consequence: the container stop grace period must exceed the drain (C-27 → P0-15). The SSE jittered `retry:` waits for SSE itself (C-28 → P1-10).
+
 ## 2026-11-10 — Outbox, relay, replay and payload versions (P0-18 C, on wip/P0-18)
 Decision: side effects are `outbox` rows written in the change's transaction (`tools.outbox` in the action template; `writeOutbox` elsewhere; ids only, ≤ 8 KB, CHECK 16 KB backstop). The worker's relay polls every 1 s, claims rows with one `UPDATE … FOR UPDATE SKIP LOCKED` that also leases them for 30 s (`next_attempt_at`, no long transaction across Redis calls), enqueues with `jobId = outbox.id`, marks `dispatched_at`; a failed enqueue backs off 1 s → 5 min and releases the rest of the batch. The worker sets `completed_at` after the handler and skips a job whose row is complete. `pnpm relay --replay-since <ISO with zone>` re-dispatches dispatched-but-incomplete rows (keyset on the exact timestamptz text: a JS Date drops microseconds). Sweeper every minute: `opsAlert("outbox.stale")` for rows waiting > 2 min, prunes completed rows after 7 days. Payloads are `{ v, data }` with an upgrade chain per job; a newer version than the worker knows is moved to delayed for 30 s (DelayedError), never failed. First producer: the staff lockout email (audit row + outbox in one transaction).
 Why: ARCHITECTURE §6, ENGINEERING §4–5, AC1/4/6/7. Polling, not LISTEN/NOTIFY: one VPS, ≤ 1 s latency is fine, and nothing extra to keep connected.

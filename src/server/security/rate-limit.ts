@@ -45,7 +45,7 @@ local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')[2] or now
 return {ok, count, tonumber(oldest)}
 `;
 
-type Limiter = (opts: LimitOptions) => Promise<LimitResult>;
+export type Limiter = (opts: LimitOptions) => Promise<LimitResult>;
 
 export function createLimiter(redis: Redis): Limiter {
   return async ({ key, max, windowSec, now = Date.now(), onError = "open" }) => {
@@ -141,9 +141,24 @@ export function ipLimit(
 export const retryAfterSec = (r: LimitResult): number =>
   Math.max(1, Math.ceil((r.resetAt.getTime() - Date.now()) / 1000));
 
-/** For server actions: throws RATE_LIMITED (mapped to a 429 / form error by the action template). */
-export async function limitOrThrow(opts: LimitOptions): Promise<LimitResult> {
-  const result = await limit(opts);
+/** How long a client is asked to wait when a fail-closed limit can't reach Redis. */
+export const UNAVAILABLE_RETRY_SEC = 60;
+
+/**
+ * For server actions: throws RATE_LIMITED (429) over the limit, and UNAVAILABLE (friendly 503 + Retry-After)
+ * when Redis is down and the limit fails closed (`onError: "closed"`: auth and money, ENGINEERING §5).
+ * `limiter` is injectable so tests can point it at a dead Redis.
+ */
+export async function limitOrThrow(
+  opts: LimitOptions,
+  limiter: Limiter = limit,
+): Promise<LimitResult> {
+  const result = await limiter(opts);
+  if (!result.ok && result.degraded) {
+    throw new AppError("UNAVAILABLE", undefined, undefined, {
+      retryAfterSec: UNAVAILABLE_RETRY_SEC,
+    });
+  }
   if (!result.ok) {
     const wait = retryAfterSec(result);
     throw new AppError(

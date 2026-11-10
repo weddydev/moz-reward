@@ -15,7 +15,8 @@ export const setFeatureFlag = defineAction({
   name: "flags.set",
   input: z.object({ key: z.enum(FLAG_KEYS), enabled: z.boolean() }).strict(),
   authorize: (_input, p) => requireAdminRole(["owner"], p),
-  rateLimit: { max: 30, windowSec: 60 },
+  // Open: flags are kill switches, and an admin must be able to flip one during a Redis outage.
+  rateLimit: { max: 30, windowSec: 60, failMode: "open" },
   audit: ({ key, enabled }) => ({
     action: "feature_flag.set",
     entity: "feature_flag",

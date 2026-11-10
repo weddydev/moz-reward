@@ -17,6 +17,7 @@ export type AppErrorCode =
   | "PLAN_RESTRICTED"
   | "RATE_LIMITED"
   | "PAYLOAD_TOO_LARGE"
+  | "UNAVAILABLE"
   | "INTERNAL";
 
 export const ERROR_STATUS: Record<AppErrorCode, number> = {
@@ -31,6 +32,7 @@ export const ERROR_STATUS: Record<AppErrorCode, number> = {
   PLAN_RESTRICTED: 402,
   RATE_LIMITED: 429,
   PAYLOAD_TOO_LARGE: 413,
+  UNAVAILABLE: 503,
   INTERNAL: 500,
 };
 
@@ -46,6 +48,7 @@ export const ERROR_MESSAGES: Record<AppErrorCode, string> = {
   PLAN_RESTRICTED: "This isn't included in the shop's current plan.",
   RATE_LIMITED: "Too many attempts. Please try again in a minute.",
   PAYLOAD_TOO_LARGE: "That's too much to send in one go. Please shorten it and try again.",
+  UNAVAILABLE: "This is briefly unavailable. Please try again in a minute.",
   INTERNAL: "Something went wrong. Please try again.",
 };
 

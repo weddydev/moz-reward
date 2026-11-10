@@ -6,8 +6,8 @@ import type { JobName, JobPayload, QueueName } from "./registry";
 
 /**
  * Repeatable schedules (P0-04, ARCHITECTURE §6). Definitions live in code; every cron runs in Europe/London so
- * "06:00" means 06:00 UK time across the BST change. Registration is idempotent: upsert by id, and schedules
- * no longer in code are removed, so restarts never double-register.
+ * "06:00" means 06:00 UK time across the BST change. Registration is idempotent (upsert by id), so restarts
+ * never double-register; only schedules listed in RETIRED_SCHEDULES are removed.
  */
 export const SCHEDULE_TZ = "Europe/London";
 
@@ -53,11 +53,21 @@ function sealed(def: ScheduleDef): unknown {
   return sealEnvelope(job, def.data);
 }
 
+/**
+ * Schedule ids taken out of code. Only these are removed at start-up (CR-L2): during a rolling deploy or a
+ * rollback an older worker starts next to newer code, and "remove whatever isn't in my list" would delete
+ * the newer schedules. Add an id here when removing its definition; drop it a release later.
+ */
+export const RETIRED_SCHEDULES: readonly string[] = [];
+
 export async function registerSchedules(
   defs: readonly ScheduleDef[] = SCHEDULES,
-): Promise<{ upserted: string[]; removed: string[] }> {
+  retired: readonly string[] = RETIRED_SCHEDULES,
+): Promise<{ upserted: string[]; removed: string[]; unknown: string[] }> {
   const ids = new Set(defs.map((d) => d.id));
   if (ids.size !== defs.length) throw new Error("Duplicate schedule id");
+  const clash = retired.filter((id) => ids.has(id));
+  if (clash.length > 0) throw new Error(`Schedule both defined and retired: ${clash.join(", ")}`);
   const upserted: string[] = [];
   for (const def of defs) {
     await getQueue(def.queue).upsertJobScheduler(
@@ -67,14 +77,21 @@ export async function registerSchedules(
     );
     upserted.push(def.id);
   }
+  const retiredIds = new Set(retired);
   const removed: string[] = [];
+  const unknown: string[] = [];
   for (const queue of new Set<QueueName>(["scheduled", ...defs.map((d) => d.queue)])) {
     for (const existing of await getQueue(queue).getJobSchedulers()) {
-      if (existing.key && !ids.has(existing.key)) {
-        await getQueue(queue).removeJobScheduler(existing.key);
-        removed.push(existing.key);
+      const key = existing.key;
+      if (!key || ids.has(key)) continue;
+      if (retiredIds.has(key)) {
+        await getQueue(queue).removeJobScheduler(key);
+        removed.push(key);
+      } else {
+        // Probably defined by a newer release running alongside this one: leave it alone.
+        unknown.push(key);
       }
     }
   }
-  return { upserted, removed };
+  return { upserted, removed, unknown };
 }

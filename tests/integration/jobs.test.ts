@@ -298,7 +298,7 @@ describe("[P0-04] retries and dead letters", () => {
 });
 
 describe("[P0-04] scheduler", () => {
-  it("registers schedules idempotently in Europe/London and removes ones no longer in code", async () => {
+  it("registers schedules idempotently in Europe/London; removes only retired ones (CR-L2)", async () => {
     await getQueue("scheduled").obliterate({ force: true });
     const extra: ScheduleDef = {
       id: "probe",
@@ -316,12 +316,19 @@ describe("[P0-04] scheduler", () => {
       expect(s).toMatchObject({ pattern: "* * * * *", tz: SCHEDULE_TZ });
 
     const base = await import("@/server/jobs/scheduler");
+    // A newer release registered "probe"; this (older) code doesn't know it and must not delete it.
     await registerSchedules([...base.SCHEDULES, extra]);
+    const older = await registerSchedules();
+    expect(older).toMatchObject({ removed: [], unknown: ["probe"] });
     expect(await keys()).toEqual(["heartbeat", "outbox-sweep", "probe"]);
-    const result = await registerSchedules();
-    expect(result.removed).toEqual(["probe"]);
+    // Retired in code: removed.
+    const retired = await registerSchedules(base.SCHEDULES, ["probe"]);
+    expect(retired).toMatchObject({ removed: ["probe"], unknown: [] });
     expect(await keys()).toEqual(["heartbeat", "outbox-sweep"]);
     // One next run per schedule, never two (BullMQ keeps each scheduler's next job delayed).
     expect(await getQueue("scheduled").getJobCountByTypes("delayed")).toBe(2);
+    await expect(registerSchedules(base.SCHEDULES, ["heartbeat"])).rejects.toThrow(
+      /both defined and retired/,
+    );
   });
 });

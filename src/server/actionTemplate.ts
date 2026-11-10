@@ -21,7 +21,7 @@ import "server-only";
  *     name: "shop.rename",
  *     input: z.object({ shopId: z.uuid(), name: z.string().min(1).max(80) }).strict(),
  *     authorize: ({ shopId }, p) => requireShopRole(shopId, ["owner"], p),
- *     rateLimit: { max: 20, windowSec: 60 },
+ *     rateLimit: { max: 20, windowSec: 60, failMode: "closed" },
  *     audit: ({ shopId, name }) => ({ action: "shop.rename", entity: "shop", entityId: shopId, meta: { name } }),
  *     handler: ({ shopId, name }, scope, { tx }) => shopService.rename(scope, { shopId, name }, tx),
  *   });
@@ -88,6 +88,11 @@ type Spec<Schema extends z.ZodType, Ctx extends ScopeContext, Out> = {
   rateLimit?: {
     max: number;
     windowSec: number;
+    /**
+     * Redis down (ENGINEERING §5), always stated: `"closed"` for auth and money (friendly 503, nothing written),
+     * `"open"` where availability matters more than the limit (public reads, kill switches).
+     */
+    failMode: "open" | "closed";
     key?: (input: z.infer<Schema>, ctx: Ctx) => string;
   };
   /** Run the handler in one transaction. Defaults to true when `audit` is set. */
@@ -117,6 +122,28 @@ function validationError(error: z.ZodError): AppError {
   return new AppError("VALIDATION", undefined, fieldErrors);
 }
 
+/** Longest the response waits for one after-commit follow-up (it keeps running; the response doesn't wait). */
+export const AFTER_COMMIT_TIMEOUT_MS = 2_000;
+
+class TimeoutError extends Error {
+  constructor(ms: number) {
+    super(`timed out after ${String(ms)} ms`);
+    this.name = "TimeoutError";
+  }
+}
+
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new TimeoutError(ms));
+    }, ms);
+  });
+  return Promise.race([work, timeout]).finally(() => {
+    clearTimeout(timer);
+  });
+}
+
 /** Steps 1–8 for one call. Shared by actions and route handlers. */
 async function execute<Schema extends z.ZodType, Ctx extends ScopeContext, Out>(
   spec: Spec<Schema, Ctx, Out>,
@@ -137,8 +164,8 @@ async function execute<Schema extends z.ZodType, Ctx extends ScopeContext, Out>(
     const bucket = `action:${spec.name}`;
     // Custom keys stay namespaced per action, so two actions never share a bucket by accident.
     const custom = spec.rateLimit.key?.(input, ctx);
-    const { max, windowSec } = spec.rateLimit;
-    const opts =
+    const { max, windowSec, failMode } = spec.rateLimit;
+    const keyed =
       custom !== undefined
         ? { key: `${bucket}:${custom}`, max, windowSec }
         : principal
@@ -150,7 +177,7 @@ async function execute<Schema extends z.ZodType, Ctx extends ScopeContext, Out>(
               max,
               windowSec,
             });
-    await limitOrThrow(opts);
+    await limitOrThrow({ ...keyed, onError: failMode });
   }
 
   const pending: Array<() => unknown> = [];
@@ -182,14 +209,15 @@ async function execute<Schema extends z.ZodType, Ctx extends ScopeContext, Out>(
         requestId: facts.requestId,
       });
 
-  // The change is committed: a failing side effect is logged, never turned into a failed action.
+  // The change is committed: a failing or slow follow-up is logged, never turned into a failed action, and
+  // never holds the response for more than AFTER_COMMIT_TIMEOUT_MS each (B-CR-9).
   for (const fn of pending) {
     try {
-      await fn();
+      await withTimeout(Promise.resolve().then(fn), AFTER_COMMIT_TIMEOUT_MS);
     } catch (err) {
       requestLogger(facts.requestId, { action: spec.name }).error(
         { err },
-        "after-commit side effect failed",
+        "after-commit follow-up failed or timed out",
       );
     }
   }
