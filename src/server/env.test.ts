@@ -88,6 +88,7 @@ describe("[P0-02] server env", () => {
     TURNSTILE_SECRET_KEY: "0x4AAAAAAA-test-only-secret",
     TRUSTED_PROXY: "cloudflare",
     REDIS_URL: "rediss://:strong-password@redis.internal:6380",
+    REDIS_CACHE_URL: "rediss://:other-password@redis-cache.internal:6380",
     REDIS_KEY_PREFIX: "prod:",
   };
 
@@ -122,6 +123,18 @@ describe("[P0-02] server env", () => {
     expect(parseServerEnv({ ...base, NODE_ENV: "production", APP_ENV: "test" }).APP_ENV).toBe(
       "test",
     );
+  });
+
+  it("[P0-18] staging/production need a separate redis-cache instance over TLS with a password", () => {
+    const { REDIS_CACHE_URL: _c, ...noCache } = prod;
+    expect(() => parseServerEnv(noCache)).toThrow(/REDIS_CACHE_URL: required/);
+    expect(() => parseServerEnv({ ...prod, REDIS_CACHE_URL: prod.REDIS_URL })).toThrow(
+      /REDIS_CACHE_URL: must be a different Redis instance/,
+    );
+    expect(() =>
+      parseServerEnv({ ...prod, REDIS_CACHE_URL: "redis://:p@redis-cache.internal:6379" }),
+    ).toThrow(/REDIS_CACHE_URL: must use rediss/);
+    expect(parseServerEnv(base).REDIS_CACHE_URL).toBeUndefined(); // local: dev instance on 6380
   });
 
   it("[P0-19] boot fails when two secrets are equal, naming the variables but not the value", () => {
