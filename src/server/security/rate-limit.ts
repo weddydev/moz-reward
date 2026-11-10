@@ -4,6 +4,7 @@ import { env } from "@/server/env";
 import { AppError } from "@/server/errors";
 import { createRedis } from "@/server/jobs/connection";
 import { log } from "@/server/log";
+import { ipBucket } from "./ip-bucket";
 import type { Redis } from "ioredis";
 
 /**
@@ -101,12 +102,43 @@ export async function closeLimiter(): Promise<void> {
   delete state.limiter;
 }
 
-/** Per-IP key. Get the IP from `clientIp()` (never straight from X-Forwarded-For). */
-export const ipKey = (scope: string, ip: string): string => `${scope}:ip:${ip}`;
+/** Per-IP key. Get the IP from `clientIp()` (never straight from X-Forwarded-For); IPv6 keys on its /64. */
+export const ipKey = (scope: string, ip: string): string => `${scope}:ip:${ipBucket(ip)}`;
 /** Per-user (or per-email, normalised by the caller) key. */
 export const userKey = (scope: string, id: string): string => `${scope}:user:${id}`;
 
-const retryAfterSec = (r: LimitResult): number =>
+/**
+ * `clientIp()` results that are not a real address. "local": no trusted proxy (local/test only; env.ts refuses
+ * TRUSTED_PROXY=none in staging/production), so every request shares it and per-IP limits are skipped there.
+ * "unknown": a trusted proxy is configured but sent no valid address.
+ */
+export const LOCAL_IP = "local";
+export const UNKNOWN_IP = "unknown";
+/** An unknown client IP shares one bucket with this fraction of the per-IP allowance (SECURITY §6). */
+export const UNKNOWN_IP_DIVISOR = 4;
+
+/**
+ * Per-IP limit for `ip` (SECURITY §6): a real address gets its own bucket; every "unknown" request shares one
+ * strict bucket (a quarter of the allowance, at least 1), so a missing address is never a bypass. Returns
+ * null for "local" — callers skip the per-IP limit there.
+ */
+export function ipLimit(
+  scope: string,
+  ip: string,
+  spec: { max: number; windowSec: number },
+): Pick<LimitOptions, "key" | "max" | "windowSec"> | null {
+  if (ip === LOCAL_IP) return null;
+  if (ip === UNKNOWN_IP) {
+    return {
+      key: ipKey(scope, UNKNOWN_IP),
+      max: Math.max(1, Math.floor(spec.max / UNKNOWN_IP_DIVISOR)),
+      windowSec: spec.windowSec,
+    };
+  }
+  return { key: ipKey(scope, ip), ...spec };
+}
+
+export const retryAfterSec = (r: LimitResult): number =>
   Math.max(1, Math.ceil((r.resetAt.getTime() - Date.now()) / 1000));
 
 /** For server actions: throws RATE_LIMITED (mapped to a 429 / form error by the action template). */
@@ -132,8 +164,11 @@ export function tooManyRequests(result: LimitResult): Response {
   );
 }
 
-function humanWait(sec: number): string {
-  if (sec < 60) return "a minute";
+/** "a minute", "5 minutes", "2 hours" — for user-facing wait messages. */
+export function humanWait(sec: number): string {
   const min = Math.ceil(sec / 60);
-  return min < 60 ? `${String(min)} minutes` : `${String(Math.ceil(min / 60))} hours`;
+  if (min <= 1) return "a minute";
+  if (min < 60) return `${String(min)} minutes`;
+  const hours = Math.ceil(min / 60);
+  return hours === 1 ? "an hour" : `${String(hours)} hours`;
 }

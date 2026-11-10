@@ -7,3 +7,8 @@ export const TURNSTILE_BYPASS_TOKEN = "local-turnstile-bypass";
 export const TURNSTILE_FIELD = "cf-turnstile-response";
 /** Header the sign-in client sends the token in (Better Auth endpoints take JSON, not form fields). */
 export const TURNSTILE_HEADER = "x-turnstile-token";
+/**
+ * Error code on a staff sign-in that needs a Turnstile check first (P0-19: an account past its failure limit
+ * asks for a check instead of refusing). The form then shows the widget and sends the token in the header.
+ */
+export const TURNSTILE_REQUIRED_CODE = "TURNSTILE_REQUIRED";

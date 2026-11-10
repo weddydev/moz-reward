@@ -10,6 +10,9 @@ const base = {
   EMAIL_PROVIDER: "smtp",
   EMAIL_FROM: "Moz Rewards <hello@example.co.uk>",
   SMTP_HOST: "localhost",
+  DATA_ENCRYPTION_KEY: Buffer.alloc(32, 1).toString("base64"),
+  BLIND_INDEX_KEY: Buffer.alloc(32, 2).toString("base64"),
+  MEMBER_QR_SIGNING_KEY: Buffer.alloc(32, 3).toString("base64"),
 };
 
 describe("[P0-02] server env", () => {
@@ -80,7 +83,12 @@ describe("[P0-02] server env", () => {
     APP_URL: "https://mozrewards.co.uk",
     EMAIL_PROVIDER: "resend",
     EMAIL_API_KEY: "k",
+    EMAIL_FALLBACK_PROVIDER: "brevo",
+    EMAIL_FALLBACK_API_KEY: "k2",
+    TURNSTILE_SECRET_KEY: "0x4AAAAAAA-test-only-secret",
     TRUSTED_PROXY: "cloudflare",
+    REDIS_URL: "rediss://:strong-password@redis.internal:6380",
+    REDIS_KEY_PREFIX: "prod:",
   };
 
   it("[P0-05] refuses TRUSTED_PROXY=none on staging/production (client IPs would all share one bucket)", () => {
@@ -116,6 +124,42 @@ describe("[P0-02] server env", () => {
     );
   });
 
+  it("[P0-19] boot fails when two secrets are equal, naming the variables but not the value", () => {
+    const shared = Buffer.alloc(32, 9).toString("base64");
+    const run = () =>
+      parseServerEnv({ ...base, BLIND_INDEX_KEY: shared, MEMBER_QR_SIGNING_KEY: shared });
+    expect(run).toThrow(/MEMBER_QR_SIGNING_KEY: must differ from BLIND_INDEX_KEY/);
+    expect(run).not.toThrow(new RegExp(shared.replace(/[+/=]/g, "\\$&")));
+    expect(() => parseServerEnv({ ...base, DATA_ENCRYPTION_KEY: base.AUTH_SECRET })).toThrow();
+  });
+
+  it("[P0-19] staging/production require a Turnstile secret and refuse SMTP for sign-in mail", () => {
+    const { TURNSTILE_SECRET_KEY: _t, ...noTurnstile } = prod;
+    expect(() => parseServerEnv(noTurnstile)).toThrow(/TURNSTILE_SECRET_KEY: required/);
+    expect(() =>
+      parseServerEnv({ ...prod, EMAIL_FALLBACK_PROVIDER: "smtp", SMTP_HOST: "smtp.example" }),
+    ).toThrow(/EMAIL_FALLBACK_PROVIDER: smtp is for local\/test only/);
+    expect(() =>
+      parseServerEnv({ ...prod, EMAIL_PROVIDER: "smtp", SMTP_HOST: "smtp.example" }),
+    ).toThrow(/EMAIL_PROVIDER: smtp is for local\/test only/);
+    // Local keeps Mailpit over plain SMTP, without Turnstile.
+    expect(parseServerEnv(base).EMAIL_PROVIDER).toBe("smtp");
+  });
+
+  it("[P0-19] requires a different, configured fallback email provider on staging/production", () => {
+    const { EMAIL_FALLBACK_PROVIDER: _p, EMAIL_FALLBACK_API_KEY: _k, ...noFallback } = prod;
+    expect(() => parseServerEnv(noFallback)).toThrow(/EMAIL_FALLBACK_PROVIDER: required/);
+    expect(() => parseServerEnv({ ...prod, EMAIL_FALLBACK_PROVIDER: "resend" })).toThrow(
+      /EMAIL_FALLBACK_PROVIDER: must differ/,
+    );
+    expect(() => parseServerEnv({ ...prod, EMAIL_FALLBACK_API_KEY: "" })).toThrow(
+      /EMAIL_FALLBACK_API_KEY/,
+    );
+    expect(parseServerEnv(prod).EMAIL_FALLBACK_PROVIDER).toBe("brevo");
+    // Local/test may run without one (Mailpit only).
+    expect(parseServerEnv(base).EMAIL_FALLBACK_PROVIDER).toBeUndefined();
+  });
+
   it("requires provider credentials for the chosen email provider", () => {
     expect(() => parseServerEnv({ ...base, SMTP_HOST: undefined })).toThrow(/SMTP_HOST/);
     expect(() => parseServerEnv({ ...base, EMAIL_PROVIDER: "resend" })).toThrow(/EMAIL_API_KEY/);
@@ -140,5 +184,43 @@ describe("[P0-02] server env", () => {
   it("never declares browser variables: NEXT_PUBLIC_* belong to clientEnv in @/lib/env", () => {
     for (const name of Object.keys(serverEnvSchema.shape))
       expect(name).not.toMatch(/^NEXT_PUBLIC_/);
+  });
+
+  it("[P0-19] requires each crypto key as base64 of exactly 32 bytes (SEC-L3), never echoing it", () => {
+    for (const name of [
+      "DATA_ENCRYPTION_KEY",
+      "BLIND_INDEX_KEY",
+      "MEMBER_QR_SIGNING_KEY",
+    ] as const) {
+      const { [name]: _key, ...rest } = base;
+      expect(() => parseServerEnv(rest)).toThrow(new RegExp(`- ${name}: missing \\(required\\)`));
+      const short = Buffer.alloc(16, 9).toString("base64");
+      expect(() => parseServerEnv({ ...base, [name]: short })).toThrow(
+        new RegExp(`- ${name}: must be base64 of exactly 32 bytes`),
+      );
+      expect(() => parseServerEnv({ ...base, [name]: "not base64 at all!!" })).toThrow(
+        new RegExp(name),
+      );
+      try {
+        parseServerEnv({ ...base, [name]: short });
+      } catch (e) {
+        expect(String(e)).not.toContain(short);
+      }
+    }
+  });
+
+  it("[P0-19] staging/production need Redis over TLS with a password and a key prefix (SEC-M3)", () => {
+    expect(parseServerEnv(prod).REDIS_KEY_PREFIX).toBe("prod:");
+    expect(() => parseServerEnv({ ...prod, REDIS_URL: "redis://:pw@redis.internal:6379" })).toThrow(
+      /- REDIS_URL: must use rediss:\/\/ \(TLS\) outside local\/test/,
+    );
+    expect(() => parseServerEnv({ ...prod, REDIS_URL: "rediss://redis.internal:6380" })).toThrow(
+      /- REDIS_URL: must include a password outside local\/test/,
+    );
+    expect(() => parseServerEnv({ ...prod, REDIS_KEY_PREFIX: "" })).toThrow(
+      /- REDIS_KEY_PREFIX: required outside local\/test/,
+    );
+    // Local keeps the plain dev Redis.
+    expect(parseServerEnv(base).REDIS_URL).toBe("redis://:p@localhost:6379");
   });
 });

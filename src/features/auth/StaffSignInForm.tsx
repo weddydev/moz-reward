@@ -1,14 +1,31 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
+import { Turnstile } from "@/components/security/Turnstile";
 import { authClient } from "@/lib/auth-client";
 import { safeReturnTo } from "@/lib/return-to";
+import { TURNSTILE_HEADER, TURNSTILE_REQUIRED_CODE } from "@/lib/turnstile";
 import { formString, formValue, useHydrated } from "@/lib/use-hydrated";
 import { inputClass, primaryButtonClass } from "./AuthCard";
 import { withNetworkGuard } from "./network";
 
 const GENERIC = "Email or password is incorrect.";
+
+/**
+ * Our limiter (429) and fail-closed (503) answers say what to do next, so show them; a proxy's bare 429/503
+ * (no message) gets copy that fits its status. Anything else stays generic (no account enumeration).
+ */
+function serverMessage(
+  err: { status: number; message?: string | undefined },
+  fallback: string,
+): string {
+  const text = err.message?.trim();
+  if (err.status === 429) return text || "Too many attempts. Please wait and try again.";
+  if (err.status === 503)
+    return text || "Sign-in is briefly unavailable. Please try again in a minute.";
+  return fallback;
+}
 
 export function StaffSignInForm(): React.JSX.Element {
   const router = useRouter();
@@ -20,6 +37,35 @@ export function StaffSignInForm(): React.JSX.Element {
   const hydrated = useHydrated();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Security check (P0-19): an account past its failure limit needs a Turnstile token with the password.
+  // The widget appears only then; while it works the button says "Checking…", and when its token arrives the
+  // form re-sends itself, so most people see no extra step. A token is single-use: each attempt spends the
+  // current one and the widget re-arms (new `round`).
+  const [check, setCheck] = useState<{ round: number } | null>(null);
+  const [waiting, setWaiting] = useState(false);
+  const checkToken = useRef("");
+  const resendOnToken = useRef(false);
+  const passwordForm = useRef<HTMLFormElement>(null);
+
+  function waitForCheck() {
+    resendOnToken.current = true;
+    setWaiting(true);
+  }
+
+  function onCheckToken(token: string) {
+    checkToken.current = token;
+    if (!resendOnToken.current) return;
+    if (token) {
+      resendOnToken.current = false;
+      setWaiting(false);
+      passwordForm.current?.requestSubmit();
+    } else {
+      // The widget expired or failed to load (Cloudflare's error/expired callbacks).
+      resendOnToken.current = false;
+      setWaiting(false);
+      setError("The security check didn't load. Please refresh the page and try again.");
+    }
+  }
 
   async function submitPassword(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -29,22 +75,41 @@ export function StaffSignInForm(): React.JSX.Element {
       setError("Please enter your email and password.");
       return;
     }
+    const token = checkToken.current;
+    if (check && !token) {
+      setError(null);
+      waitForCheck(); // sends as soon as the check finishes
+      return;
+    }
+    checkToken.current = "";
     setBusy(true);
     setError(null);
-    const call = await withNetworkGuard(() => authClient.signIn.email({ email, password }));
+    const call = await withNetworkGuard(() =>
+      authClient.signIn.email({
+        email,
+        password,
+        ...(token ? { fetchOptions: { headers: { [TURNSTILE_HEADER]: token } } } : {}),
+      }),
+    );
     setBusy(false);
+    if (check) setCheck({ round: check.round + 1 }); // the token was spent: re-arm the widget
     if (!call.ok) {
       setError(call.message);
       return;
     }
     const { data, error: err } = call.value;
     if (err) {
-      // 429 messages come from our limiter and say how long to wait ("Please wait 1 minute…"): keep them.
-      setError(
-        err.status === 429
-          ? (err.message ?? "Too many attempts. Please wait and try again.")
-          : GENERIC,
-      );
+      if (err.code === TURNSTILE_REQUIRED_CODE) {
+        if (token) {
+          // The check itself failed: say so, and let the person retry by hand with a fresh widget.
+          setError(err.message?.trim() || "The security check didn't work. Please try it again.");
+        } else {
+          setCheck({ round: 0 });
+          waitForCheck();
+        }
+        return;
+      }
+      setError(serverMessage(err, GENERIC));
       return;
     }
     if ("twoFactorRedirect" in data && data.twoFactorRedirect) {
@@ -77,11 +142,12 @@ export function StaffSignInForm(): React.JSX.Element {
     const codeError = call.value.error;
     if (codeError) {
       setError(
-        codeError.status === 429
-          ? (codeError.message ?? "Too many attempts. Please wait and try again.")
-          : useBackup
+        serverMessage(
+          codeError,
+          useBackup
             ? "That backup code didn't work. Each code works once — try another one."
             : "That code didn't work. Check your authenticator app and try again.",
+        ),
       );
       return;
     }
@@ -138,6 +204,7 @@ export function StaffSignInForm(): React.JSX.Element {
 
   return (
     <form
+      ref={passwordForm}
       method="post"
       onSubmit={(e) => void submitPassword(e)}
       className="flex flex-col gap-3"
@@ -173,9 +240,19 @@ export function StaffSignInForm(): React.JSX.Element {
         className={inputClass}
         aria-describedby={error ? ids.error : undefined}
       />
+      {/* Always mounted, so screen readers announce the text when the check starts (a live region that
+          appears together with its content is often not read). */}
+      <p role="status" className={check ? "bg-gold-100 rounded-md p-3 text-sm" : "sr-only"}>
+        {!check
+          ? ""
+          : waiting
+            ? "For your security, we're running a quick check before signing you in."
+            : "A security check is on for this account. Press Continue to try again."}
+      </p>
+      {check ? <Turnstile key={check.round} action="staff-sign-in" onToken={onCheckToken} /> : null}
       {errorEl}
-      <button type="submit" className={primaryButtonClass} disabled={!hydrated || busy}>
-        {busy ? "Signing in…" : "Continue"}
+      <button type="submit" className={primaryButtonClass} disabled={!hydrated || busy || waiting}>
+        {busy ? "Signing in…" : waiting ? "Checking…" : "Continue"}
       </button>
     </form>
   );

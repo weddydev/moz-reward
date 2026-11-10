@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TEST_API_HEADER, testApiToken } from "@/lib/test-api-token";
+import { stubDeployedEnv } from "../support/deployed-env";
 
 /** The token the route expects, from whatever AUTH_SECRET this test run uses (read lazily: env may be stubbed). */
 const token = (): Record<string, string> => ({
@@ -64,17 +65,9 @@ describe("[P0-17] test-only seeding API", () => {
     expect((await call(route, { role: "customer" }, "drop-tables")).status).toBe(404);
   });
 
-  it.each([
-    ["staging", "https://staging.mozrewards.co.uk"],
-    ["production", "https://mozrewards.co.uk"],
-  ])("returns 404 when APP_ENV=%s", async (appEnv, url) => {
+  it.each(["staging", "production"] as const)("returns 404 when APP_ENV=%s", async (appEnv) => {
     vi.resetModules();
-    vi.stubEnv("NODE_ENV", "production"); // staging/production run a production build (env cross-check)
-    vi.stubEnv("APP_ENV", appEnv);
-    vi.stubEnv("APP_URL", url);
-    vi.stubEnv("EMAIL_PROVIDER", "resend");
-    vi.stubEnv("EMAIL_API_KEY", "re_test_key");
-    vi.stubEnv("TRUSTED_PROXY", "caddy");
+    stubDeployedEnv(appEnv);
     const route = await import("@/app/api/test/[action]/route");
     const res = await call(route, { role: "admin_owner" });
     expect(res.status).toBe(404);

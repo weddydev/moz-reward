@@ -10,6 +10,7 @@ export const ROUTES = [
   "/",
   "/sign-in",
   "/sign-in/link-expired",
+  "/sign-in/confirm",
   "/staff/sign-in",
   "/staff/security",
   "/me/security",

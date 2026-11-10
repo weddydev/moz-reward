@@ -33,7 +33,7 @@ import type { Transaction } from "@/server/db/client";
 import { AppError, errorResult, isAppError, type Result } from "@/server/errors";
 import { requestLogger } from "@/server/log";
 import { transaction } from "@/server/repos/_base";
-import { ipKey, limitOrThrow, userKey } from "@/server/security/rate-limit";
+import { ipKey, ipLimit, limitOrThrow, userKey } from "@/server/security/rate-limit";
 import { assertSameOrigin, clientIp } from "@/server/security/request";
 import { audit as writeAudit } from "@/server/services/audit";
 import type { z } from "zod";
@@ -121,13 +121,20 @@ async function execute<Schema extends z.ZodType, Ctx extends ScopeContext, Out>(
     const bucket = `action:${spec.name}`;
     // Custom keys stay namespaced per action, so two actions never share a bucket by accident.
     const custom = spec.rateLimit.key?.(input, ctx);
-    const key =
+    const { max, windowSec } = spec.rateLimit;
+    const opts =
       custom !== undefined
-        ? `${bucket}:${custom}`
+        ? { key: `${bucket}:${custom}`, max, windowSec }
         : principal
-          ? userKey(bucket, principal.userId)
-          : ipKey(bucket, facts.ip);
-    await limitOrThrow({ key, max: spec.rateLimit.max, windowSec: spec.rateLimit.windowSec });
+          ? { key: userKey(bucket, principal.userId), max, windowSec }
+          : // Signed out: per IP; "unknown" is one strict shared bucket. "local" (no proxy, local/test) stays
+            // one shared bucket here so action limits remain testable.
+            (ipLimit(bucket, facts.ip, { max, windowSec }) ?? {
+              key: ipKey(bucket, facts.ip),
+              max,
+              windowSec,
+            });
+    await limitOrThrow(opts);
   }
 
   const pending: Array<() => unknown> = [];
@@ -182,13 +189,48 @@ export function defineAction<Schema extends z.ZodType, Ctx extends ScopeContext,
   };
 }
 
+/** Default JSON body limit for route handlers (P0-19, SEC-13). */
+export const DEFAULT_MAX_BODY_BYTES = 64 * 1024;
+
+/**
+ * The JSON body, refused with 413 past `maxBytes`: by Content-Length up front, and by counting while reading
+ * (a chunked body declares no length), so an oversized body is never buffered whole.
+ */
+async function readJsonBody(request: Request, maxBytes: number): Promise<unknown> {
+  const declared = Number(request.headers.get("content-length") ?? Number.NaN);
+  if (Number.isFinite(declared) && declared > maxBytes) throw new AppError("PAYLOAD_TOO_LARGE");
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  const reader = request.body?.getReader();
+  for (;;) {
+    if (!reader) break;
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > maxBytes) {
+      await reader.cancel();
+      throw new AppError("PAYLOAD_TOO_LARGE");
+    }
+    chunks.push(value);
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+  } catch {
+    throw new AppError("VALIDATION", "The request body must be JSON.");
+  }
+}
+
 /**
  * A route handler following the same template, plus an `Origin` check for mutations (ENGINEERING §4).
  * Input is the JSON body for POST/PUT/PATCH/DELETE and the query string for GET. Errors become
  * `{ error: { code, message } }` with the code's HTTP status; 429s carry a Retry-After header.
  */
 export function defineRoute<Schema extends z.ZodType, Ctx extends ScopeContext, Out>(
-  spec: Spec<Schema, Ctx, Out> & { status?: number },
+  spec: Spec<Schema, Ctx, Out> & {
+    status?: number;
+    /** JSON body limit in bytes (default 64 KB): route inputs are small forms, never uploads. */
+    maxBodyBytes?: number;
+  },
 ): (request: Request) => Promise<Response> {
   return async (request) => {
     const requestId = request.headers.get("x-request-id") ?? randomUUID();
@@ -198,9 +240,7 @@ export function defineRoute<Schema extends z.ZodType, Ctx extends ScopeContext, 
       const raw: unknown =
         request.method === "GET" || request.method === "HEAD"
           ? Object.fromEntries(new URL(request.url).searchParams)
-          : await request.json().catch(() => {
-              throw new AppError("VALIDATION", "The request body must be JSON.");
-            });
+          : await readJsonBody(request, spec.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES);
       const data = await execute(spec, raw, facts);
       return Response.json({ data }, { status: spec.status ?? 200 });
     } catch (err) {

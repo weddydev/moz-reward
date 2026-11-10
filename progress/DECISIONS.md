@@ -13,6 +13,26 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-10 — P0-19 security review: outage fallback, key derivation, accepted risks
+Decision: (1) Turnstile **outage** (timeout/5xx): customer sign-in links still go out under extra limits (2/h per email, 5/h per IP, on top of the normal ones); staff sign-in is denied (503). A rejected or missing token is refused as before. (2) **Human decision:** keyed hashes keep HKDF subkeys of `BLIND_INDEX_KEY` (email key, IP hash, phone blind index via `purposeKey("blind-index")`); SECURITY §7 reworded. (3) Boot refuses equal secrets, a missing Turnstile secret and SMTP on staging/production, and DB roles with BYPASSRLS or membership of the table owner. (4) Credential endpoints are lint-banned from server-side `auth.api.*` calls (the guards only see HTTP). (5) Failed staff/admin sign-ins are audit-logged for real accounts. (6) Passkey sign-in gets the per-IP second-factor limit only.
+Why: security-reviewer on the P0-19 branch (no blockers; 5 should-fix, 12 nits).
+Accepted risk: someone on the same network as a shop (shop Wi-Fi, same IPv6 /64) can use up that address's staff-login allowance (10 / 15 min) and the account + IP backoff for it; the owner then signs in from another network or waits. A misconfigured proxy that sends no client IP puts everyone in one strict "unknown" bucket (logged).
+
+## 2026-11-10 — Runtime dependencies on record: pino, React Email, nodemailer (SEC-14)
+Decision: `pino` ^10 (structured JSON logs with redaction paths, src/server/log.ts), `@react-email/components` 1.0.12 + `@react-email/render` 2.1.1 (email templates rendered server-side; versions pinned exactly), `nodemailer` ^10 (SMTP: Mailpit locally, any relay as a fallback provider). `otpauth` is a dev dependency (tests and the APP_ENV=test seeding API only).
+Why: SEC-14 asked for every runtime dependency to have a line here. All three are widely used and actively maintained (MIT; nodemailer MIT-0); none runs in the browser bundle (`server-only` boundary, `check:bundle`).
+Consequence: Renovate keeps them current (`minimumReleaseAge` 3 days); a replacement needs a new entry.
+
+## 2026-11-10 — IPv6 limits key on the /64; E2E server runs as behind Caddy; staff cookie Max-Age per role (P0-19 I)
+Decision: every per-IP limit and the account + IP lock key IPv6 by its /64 (`src/server/security/ip-bucket.ts`); Better Auth's `ipv6Subnet: 64` set explicitly, so session rows record the same unit. The E2E server runs with `TRUSTED_PROXY=caddy` and each test sends its own X-Forwarded-For (random /64), so per-IP limits run on the production build instead of being skipped for "local". Staff/admin session cookies get Max-Age = time left of 12 h / 2 h (after-hook re-sets the library's 30-day cookie); the session row keeps the library's sliding expiry, the app enforces the absolute limit.
+Why: one IPv6 customer owns a whole /64, so full-address keys gave an attacker 2^64 fresh buckets; AC1 needs the limits proven on the production build; a cookie should not outlive its session (SECURITY §2/§5).
+Consequence: a household or office behind one /64 shares limits like an IPv4 NAT. Clamping the row's `expiresAt` needs the library's update hook to expose the row; revisit if Better Auth adds per-session expiry. Caddy must overwrite `X-Request-Id` (CARRIED C-23 → P0-15).
+
+## 2026-11-10 — Staff lockout: challenge per account, lock per account + IP, atomic reserve (P0-19 G)
+Decision: `attempt-guard.ts` reserves each password/2FA attempt in one Lua script (Redis `TIME`, not the app clock) before the credential is checked; the request's own `after` hook settles it (401 keeps it, success clears, other errors release). Password: 5 failures on an account → every later attempt needs Turnstile (never a flat refusal); 5 from one account + IP → that source backs off 1 → 15 min even with Turnstile. 2FA: per user, 5 failures → backoff lock (the attacker already has the password); the plugin's own `accountLockout` (10 / 15 min) stays on as a backstop. Turnstile outage or no secret → staff sign-in 503 (deny privileged).
+Why: SECURITY §2/§6, B-SEC-5 (lockout held open by 1 attempt / 15 min) and B-CR-5 (non-atomic HMGET-then-write; 2FA counted per IP only). Passkey sign-in has no pre-verification user to count against; signature forgery is the barrier.
+Consequence: a lockout raises `securityAlert("auth.lockout")` (log line today; routed to both developers in P0-13, CARRIED C-22), an audit row and one owner email. Only HTTP requests are guarded; server-side `auth.api` calls stay trusted.
+
 _The P0-19 entries below describe code on `wip/P0-19` until it is squashed onto main._
 
 ## 2026-11-10 — Sign-in links are confirmed by POST; OAuth errors land on /sign-in (P0-19)

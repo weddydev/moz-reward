@@ -31,16 +31,25 @@ export async function isPrivilegedUser(userId: string): Promise<boolean> {
   return (await privilegedKind(userId)) !== null;
 }
 
-/** Same check by email, for flows that start before there is a session (email links). */
-export async function isPrivilegedEmail(email: string): Promise<boolean> {
+/** The staff/admin account behind an email, or null (no such user, or a customer). */
+export async function privilegedUserByEmail(
+  email: string,
+): Promise<{ id: string; email: string; kind: "admin" | "staff" } | null> {
   // lower(email) matches users_email_lower_uq: raw inserts may keep mixed case, and this check must not fail open.
   const normalized = email.trim().toLowerCase();
   const [user] = await db()
-    .select({ id: users.id })
+    .select({ id: users.id, email: users.email })
     .from(users)
     .where(sql`lower(${users.email}) = ${normalized}`)
     .limit(1);
-  return user ? isPrivilegedUser(user.id) : false;
+  if (!user) return null;
+  const kind = await privilegedKind(user.id);
+  return kind ? { id: user.id, email: user.email, kind } : null;
+}
+
+/** Same check by email, for flows that start before there is a session (email links). */
+export async function isPrivilegedEmail(email: string): Promise<boolean> {
+  return (await privilegedUserByEmail(email)) !== null;
 }
 
 /**

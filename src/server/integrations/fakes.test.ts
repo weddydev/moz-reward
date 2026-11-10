@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { stubDeployedEnv } from "../../../tests/support/deployed-env";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -84,12 +85,7 @@ describe("[P0-17] fakes fail closed outside local/test", () => {
   it.each(["push", "ai", "postcodes", "places"] as const)(
     "%s refuses to use a fake in staging",
     async (name) => {
-      vi.stubEnv("NODE_ENV", "production"); // staging runs a production build (env cross-check)
-      vi.stubEnv("APP_ENV", "staging");
-      vi.stubEnv("APP_URL", "https://staging.mozrewards.co.uk");
-      vi.stubEnv("EMAIL_PROVIDER", "resend");
-      vi.stubEnv("EMAIL_API_KEY", "re_test_key");
-      vi.stubEnv("TRUSTED_PROXY", "caddy");
+      stubDeployedEnv("staging");
       const calls = {
         push: async () =>
           (await import("./push")).sendPush({ endpoint: "e" }, { title: "t", body: "b" }),

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { stubDeployedEnv } from "../tests/support/deployed-env";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -66,12 +67,7 @@ describe("[P0-05] proxy: CSP nonce, security headers, request id, /dev gate", ()
   });
 
   it("/dev/* is a real 404 in production (with headers), and served elsewhere", async () => {
-    vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("APP_ENV", "production");
-    vi.stubEnv("APP_URL", "https://mozrewards.co.uk");
-    vi.stubEnv("EMAIL_PROVIDER", "resend");
-    vi.stubEnv("EMAIL_API_KEY", "re_test_key");
-    vi.stubEnv("TRUSTED_PROXY", "cloudflare");
+    stubDeployedEnv("production");
     for (const path of ["/dev", "/dev/ui", "/dev/guard-check?x=1"]) {
       const { res } = await run(path);
       expect(res.status, path).toBe(404);

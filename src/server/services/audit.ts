@@ -3,8 +3,8 @@ import { createHmac } from "node:crypto";
 import { auditActor, type Scope } from "@/server/authz/scope";
 import type { Database, Transaction } from "@/server/db/client";
 import { auditLogs } from "@/server/db/schema";
-import { env } from "@/server/env";
 import { REDACTED, redactText } from "@/server/jobs/redact";
+import { purposeKey } from "@/server/security/keys";
 
 export type AuditEntry = {
   actorId: string | null;
@@ -19,7 +19,7 @@ export type AuditEntry = {
 
 /** IPs are stored as a keyed hash so abuse can be correlated without keeping raw addresses. */
 export const hashIp = (ip: string): string =>
-  createHmac("sha256", env().AUTH_SECRET).update(ip).digest("base64url").slice(0, 22);
+  createHmac("sha256", purposeKey("ip-hash")).update(ip).digest("base64url").slice(0, 22);
 
 /** Keys whose values are personal data or secrets, wherever they appear in meta. */
 const SENSITIVE_KEY =

@@ -198,3 +198,30 @@ export async function makeActor(
 export async function markSessionMfaVerified(token: string): Promise<void> {
   await db().update(sessions).set({ mfaVerified: true }).where(eq(sessions.token, token));
 }
+
+/**
+ * Moves a user's sessions back in time (P0-19 conformance): `createdAgoMs` sets the sign-in moment (role
+ * limits are absolute from it); `expiresInMs` sets the row's expiry (customer idle limit, refresh window).
+ */
+export async function ageUserSessions(
+  userId: string,
+  opts: { createdAgoMs?: number | undefined; expiresInMs?: number | undefined },
+): Promise<void> {
+  const now = Date.now();
+  await db()
+    .update(sessions)
+    .set({
+      ...(opts.createdAgoMs === undefined ? {} : { createdAt: new Date(now - opts.createdAgoMs) }),
+      ...(opts.expiresInMs === undefined ? {} : { expiresAt: new Date(now + opts.expiresInMs) }),
+    })
+    .where(eq(sessions.userId, userId));
+}
+
+/** The client addresses recorded on a user's sessions (P0-19 conformance: the proxy's, never a spoofed one). */
+export async function userSessionIps(userId: string): Promise<Array<string | null>> {
+  const rows = await db()
+    .select({ ip: sessions.ipAddress })
+    .from(sessions)
+    .where(eq(sessions.userId, userId));
+  return rows.map((r) => r.ip);
+}

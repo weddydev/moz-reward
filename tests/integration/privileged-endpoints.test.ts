@@ -7,12 +7,15 @@ import { createPasswordUser } from "../fixtures/auth";
 import { makeActor, makeAdmin, makeShop, makeStaff } from "../fixtures/factories";
 
 /**
- * Audit security #8: Better Auth's own account endpoints (list/revoke sessions, update user, link accounts)
+ * Audit security #8: Better Auth's own account endpoints (update user, passkeys; list/revoke sessions and
+ * link accounts are disabled since P0-19)
  * bypass our require* policies, so staff/admin sessions that haven't passed MFA, or are past their role's limit
  * (staff 12 h, admin 2 h), must be refused there too. Driven over HTTP through getAuth().handler.
  */
 const BASE = "http://localhost:3000/api/auth";
 const HOUR = 3_600_000;
+/** A gated, still-enabled account read (the library's list-sessions is disabled since P0-19). */
+const LIST = "/passkey/list-user-passkeys";
 
 type TestHelpers = {
   login(opts: {
@@ -60,10 +63,12 @@ describe("[P0-07] Better Auth account endpoints obey staff/admin MFA and session
     const user = await staff();
     const headers = await sessionFor(user.id, { mfa: false });
 
-    expect((await get("/list-sessions", headers)).status).toBe(403);
-    expect((await post("/revoke-other-sessions", headers)).status).toBe(403);
+    expect((await get(LIST, headers)).status).toBe(403);
     expect((await post("/update-user", headers, { name: "Mallory" })).status).toBe(403);
-    expect((await get("/list-accounts", headers)).status).toBe(403);
+    // P0-19: the library's own session/account endpoints are disabled outright for everyone.
+    expect((await get("/list-sessions", headers)).status).toBe(404);
+    expect((await post("/revoke-other-sessions", headers)).status).toBe(404);
+    expect((await get("/list-accounts", headers)).status).toBe(404);
     // It can still read itself and sign out.
     expect((await get("/get-session", headers)).status).toBe(200);
     expect((await post("/sign-out", headers)).status).toBe(200);
@@ -71,12 +76,10 @@ describe("[P0-07] Better Auth account endpoints obey staff/admin MFA and session
 
   it("an MFA-verified staff session within 12 h may use them; past 12 h it may only sign out", async () => {
     const user = await staff();
-    expect((await get("/list-sessions", await sessionFor(user.id, { mfa: true }))).status).toBe(
-      200,
-    );
+    expect((await get(LIST, await sessionFor(user.id, { mfa: true }))).status).toBe(200);
 
     const stale = await sessionFor(user.id, { mfa: true, ageMs: 12 * HOUR + 60_000 });
-    expect((await get("/list-sessions", stale)).status).toBe(403);
+    expect((await get(LIST, stale)).status).toBe(403);
     expect((await post("/update-user", stale, { name: "Late" })).status).toBe(403);
     expect((await post("/sign-out", stale)).status).toBe(200);
   });
@@ -84,24 +87,24 @@ describe("[P0-07] Better Auth account endpoints obey staff/admin MFA and session
   it("admins are cut off after 2 h", async () => {
     const user = await createPasswordUser();
     await makeAdmin(user.id, "support");
-    expect(
-      (await get("/list-sessions", await sessionFor(user.id, { mfa: true, ageMs: HOUR }))).status,
-    ).toBe(200);
+    expect((await get(LIST, await sessionFor(user.id, { mfa: true, ageMs: HOUR }))).status).toBe(
+      200,
+    );
     const stale = await sessionFor(user.id, { mfa: true, ageMs: 2 * HOUR + 60_000 });
-    expect((await get("/list-sessions", stale)).status).toBe(403);
+    expect((await get(LIST, stale)).status).toBe(403);
   });
 
   it("customers are unaffected: no MFA needed, and older sessions still edit the account", async () => {
     const { user } = await makeActor("customer");
     const fresh = await sessionFor(user.id, { mfa: false, ageMs: 2 * HOUR });
-    expect((await get("/list-sessions", fresh)).status).toBe(200);
+    expect((await get(LIST, fresh)).status).toBe(200);
     const older = await sessionFor(user.id, { mfa: false, ageMs: 20 * 24 * HOUR });
     expect((await post("/update-user", older, { name: "Casey" })).status).toBe(200);
   });
 
   it("the refusal is our gate (not Better Auth freshness), with a message that says what to do", async () => {
     const user = await staff();
-    const res = await get("/list-sessions", await sessionFor(user.id, { mfa: false }));
+    const res = await get(LIST, await sessionFor(user.id, { mfa: false }));
     expect(res.status).toBe(403);
     expect(await res.json()).toMatchObject({
       message: "For your security, please sign in again with two-step verification.",

@@ -1,4 +1,4 @@
-import { expect, test, uniqueEmail } from "./support/test";
+import { clientHeaders, expect, openSignInLink, test, uniqueEmail } from "./support/test";
 
 const SEND = "Email me a sign-in link";
 
@@ -13,11 +13,12 @@ test("[P0-06] a used sign-in link shows the friendly expired page, not an error"
   await page.getByRole("button", { name: SEND }).click();
   await expect(page.getByText("Check your email")).toBeVisible();
   const link = mail.firstLink((await mail.latestTo(email)).text) ?? "";
-  await page.goto(link); // first use signs in
+  await openSignInLink(page, link); // first use signs in
+  await expect(page).toHaveURL(/\/wallet$/);
 
-  const other = await browser.newContext();
+  const other = await browser.newContext({ extraHTTPHeaders: clientHeaders() });
   const second = await other.newPage();
-  await second.goto(link);
+  await openSignInLink(second, link);
   await expect(second).toHaveURL(/\/sign-in\/link-expired\?error=/);
   await expect(second.getByRole("heading", { name: "This link has expired" })).toBeVisible();
   await expect(second.getByRole("link", { name: "Send me a new link" })).toHaveAttribute(

@@ -1,5 +1,5 @@
 import { TOTP } from "otpauth";
-import { expect, test, uniqueEmail } from "./support/test";
+import { expect, openSignInLink, test, uniqueEmail } from "./support/test";
 
 type SessionResponse = { user: { email: string }; session: { mfaVerified?: boolean } } | null;
 
@@ -14,7 +14,7 @@ test("[P0-06] customer signs in with an email link (Mailpit)", async ({ page, ma
   const link = mail.firstLink(message.text);
   expect(link, "sign-in link in the email").toBeTruthy();
 
-  await page.goto(link!);
+  await openSignInLink(page, link!);
   await expect(page).toHaveURL(/\/wallet$/);
   const session = (await (
     await page.request.get("/api/auth/get-session")

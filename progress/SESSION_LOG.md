@@ -164,3 +164,9 @@ Done on `wip/P0-19`: E blanket `/api/auth/*` limit (100/min/IP, 503 fail-closed,
 Evidence: gate:task PASS (unit 394, int 296, E2E P0-19 10/0); new tests `auth-limit`, `link-confirm` (scanner GET consumes nothing, CSRF 403, open-redirect fallback, staff → FORBIDDEN, retry keeps token), E2E scanner + no-JS sign-in on Chromium+WebKit.
 Fixed: axe-guard races (mid-fade contrast on WebKit 1/24 → 48/0; streamed `<title>` after client nav, CI run 42690679564). CI of `4b4f931` pending at handover.
 Next: check CI, then P0-19 G (lockout redesign) → H → I → J → security-reviewer → squash.
+
+## 2026-11-10 (08:08–10:00 IST) — P0 — P0-19 done (Syedbadeshah76, Windows)
+Done: G atomic lockout guard (per-account Turnstile challenge, account+IP backoff, 2FA per user, alert/audit/owner mail) · H email failover · I conformance spec on the production build (E2E server as behind Caddy, per-test client IP; staff/admin cookie Max-Age per role; IPv6 limits per /64) · J SECURITY §7 secret inventory · security-reviewer (0 blockers, 5 should-fix + 12 nits) and design-reviewer (0 blockers, 6 should-fix) findings fixed or carried (C-24 → P0-12, C-25 → P2-04, C-26 → P0-13, C-23 → P0-15, C-22 widened). Also `chore(deps)` release-age list removed on main.
+Evidence: gate:task PASS on every push (last: unit 419, int 322, E2E P0-19 30/0); full E2E Chromium+WebKit 116/0; CI green 42747422177 (G), 42748449980 (H), 42751913848 (I+J), 42755271081 (review fixes); AC4/AC5 over HTTP (15 parallel wrong passwords → exactly 5 × 401); AC1 conformance 14/14 on two browsers.
+Decision (human): keep HKDF subkeys of BLIND_INDEX_KEY; SECURITY §7 reworded. Mistake fixed: human's `src/features/moz-plan-v5-prompt.md` was committed in 61c8376, removed in 52b734d (now in `.git/info/exclude` locally).
+Next: P0-18 (outbox, Redis split, failure modes, safe migrations; C-11, C-18).

@@ -10,10 +10,20 @@ describe("[P0-07] Better Auth client IP follows TRUSTED_PROXY (security review #
     expect(betterAuthIpOptions("caddy")).toEqual({
       ipAddressHeaders: ["x-forwarded-for"],
       trustedProxies: ["127.0.0.1/32", "::1/128"],
+      ipv6Subnet: 64,
     });
   });
 
   it("Cloudflare: CF-Connecting-IP only", () => {
-    expect(betterAuthIpOptions("cloudflare")).toEqual({ ipAddressHeaders: ["cf-connecting-ip"] });
+    expect(betterAuthIpOptions("cloudflare")).toEqual({
+      ipAddressHeaders: ["cf-connecting-ip"],
+      ipv6Subnet: 64,
+    });
+  });
+
+  it("[P0-19] IPv6 is recorded as its /64 — set explicitly, the same unit our limits key on", () => {
+    for (const proxy of ["caddy", "cloudflare"] as const) {
+      expect(betterAuthIpOptions(proxy)).toMatchObject({ ipv6Subnet: 64 });
+    }
   });
 });

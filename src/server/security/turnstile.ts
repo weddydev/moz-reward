@@ -77,3 +77,7 @@ export function verifyTurnstile(
   });
   return shared(token, ip);
 }
+
+/** Cloudflare itself failed (timeout, network, 5xx), as opposed to a missing or rejected token. */
+export const isTurnstileOutage = (reason: string): boolean =>
+  reason === "unavailable" || reason.startsWith("http-5");

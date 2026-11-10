@@ -1,4 +1,4 @@
-import { expect, test, uniqueEmail } from "./support/test";
+import { clientHeaders, expect, openSignInLink, test, uniqueEmail } from "./support/test";
 import type { Page } from "@playwright/test";
 
 const IPHONE_UA =
@@ -22,7 +22,7 @@ async function signInByEmail(page: Page, mail: Mail, email: string, nth: number)
   await expect.poll(() => mail.countTo(email), { timeout: 10_000 }).toBe(nth);
   const link = mail.firstLink((await mail.latestTo(email)).text);
   expect(link, "sign-in link").toBeTruthy();
-  await page.goto(link!);
+  await openSignInLink(page, link!);
   await expect(page).toHaveURL(/\/me\/security$/);
 }
 
@@ -37,7 +37,11 @@ test("[P0-06] customer sees their signed-in devices and signs another device out
   // 30 s on WebKit under a full parallel run. It can't be split: both devices must be signed in at once.
   test.setTimeout(60_000);
   const email = uniqueEmail("e2e-devices");
-  const phone = await browser.newContext({ userAgent: IPHONE_UA, baseURL: baseURL! });
+  const phone = await browser.newContext({
+    userAgent: IPHONE_UA,
+    baseURL: baseURL!,
+    extraHTTPHeaders: clientHeaders(),
+  });
   const phonePage = await phone.newPage();
   await signInByEmail(phonePage, mail, email, 1);
   await signInByEmail(page, mail, email, 2);

@@ -28,3 +28,26 @@ export function cookieHeaderFrom(res: Response | Headers): Headers {
     .join("; ");
   return new Headers({ cookie: cookies, origin: "http://localhost:3000" });
 }
+
+/**
+ * Follows an emailed sign-in link the way a person does (P0-19): the link opens the confirm page, which
+ * consumes nothing; pressing "Sign in" POSTs the token to the confirm route. Returns that route's 303
+ * (Location + session Set-Cookie on success).
+ */
+export async function confirmSignInLink(
+  link: string,
+  opts: { origin?: string; headers?: Record<string, string> } = {},
+): Promise<Response> {
+  const { POST } = await import("@/app/api/sign-in/confirm/route");
+  const url = new URL(link);
+  const form = new FormData();
+  form.set("token", url.searchParams.get("token") ?? "");
+  form.set("returnTo", url.searchParams.get("returnTo") ?? "");
+  return POST(
+    new Request(`${url.origin}/api/sign-in/confirm`, {
+      method: "POST",
+      headers: { origin: opts.origin ?? url.origin, ...opts.headers },
+      body: form,
+    }),
+  );
+}

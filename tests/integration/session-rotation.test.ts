@@ -97,3 +97,40 @@ describe("[P0-06] email casing (SECURITY §2, audit SEC-M5b)", () => {
     expect(row?.n).toBe(0);
   });
 });
+
+describe("[P0-19] the session-revocation trigger can't be redirected through search_path (SEC-9)", () => {
+  it("clears public.sessions even when a hostile schema with its own `sessions` comes first", async () => {
+    const user = await makeUser();
+    const shop = await makeShop();
+    await addSession(user.id);
+    const schema = `evil_${String(process.pid)}`;
+    try {
+      const counts = await db().transaction(async (tx) => {
+        await tx.execute(sql.raw(`CREATE SCHEMA ${schema}`));
+        await tx.execute(sql.raw(`CREATE TABLE ${schema}.sessions (user_id uuid)`));
+        await tx.execute(sql.raw(`INSERT INTO ${schema}.sessions VALUES ('${user.id}')`));
+        await tx.execute(sql.raw(`SET LOCAL search_path = ${schema}, public`));
+        await tx.execute(
+          sql`INSERT INTO public.shop_staff (id, shop_id, user_id, role) VALUES (${newId()}, ${shop.id}, ${user.id}, 'staff')`,
+        );
+        const [real] = await tx.execute<{ n: number }>(
+          sql`SELECT count(*)::int AS n FROM public.sessions WHERE user_id = ${user.id}`,
+        );
+        const [impostor] = await tx.execute<{ n: number }>(
+          sql.raw(`SELECT count(*)::int AS n FROM ${schema}.sessions`),
+        );
+        return { real: real?.n, impostor: impostor?.n };
+      });
+      expect(counts).toEqual({ real: 0, impostor: 1 });
+    } finally {
+      await db().execute(sql.raw(`DROP SCHEMA IF EXISTS ${schema} CASCADE`));
+    }
+  });
+
+  it("pins the function's search_path", async () => {
+    const [row] = await db().execute<{ config: string[] | null }>(
+      sql`SELECT proconfig AS config FROM pg_proc WHERE proname = 'revoke_sessions_on_privilege_change'`,
+    );
+    expect(row?.config).toEqual(["search_path=pg_catalog, public"]);
+  });
+});

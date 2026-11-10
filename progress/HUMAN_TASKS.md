@@ -78,7 +78,7 @@ wal-g (the continuous WAL archiver) supports OpenPGP but not `age`, so one OpenP
 ### H-04 — Email (Resend primary, Brevo failover)
 1. resend.com → sign up (free: 100/day, 3,000/month) → Domains → add `mail.<domain>` → add its DNS records in Cloudflare (DNS only) → wait for "Verified".
 2. brevo.com → sign up (free: 300/day after approval) → add and authenticate the same sending domain.
-3. Create API keys in both. Dev keys may go in `.env.local`; **staging/production keys go into GitHub secrets yourself** (`gh secret set EMAIL_API_KEY`, `EMAIL_FAILOVER_API_KEY`) and the password manager.
+3. Create API keys in both. Dev keys may go in `.env.local`; **staging/production keys go into GitHub secrets yourself** (`gh secret set EMAIL_API_KEY` for Resend, `gh secret set EMAIL_FALLBACK_API_KEY` for Brevo; Claude sets `EMAIL_PROVIDER=resend`, `EMAIL_FALLBACK_PROVIDER=brevo`) and the password manager. Staging/production refuse to start without the fallback.
 4. Tell Claude "H-04 done".
 
 ### H-20 — Turnstile keys (needs the Cloudflare account from H-07)

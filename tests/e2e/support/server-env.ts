@@ -24,6 +24,9 @@ export function e2eServerEnv(): Record<string, string> {
     EMAIL_PROVIDER: "smtp",
     SMTP_HOST: process.env.SMTP_HOST ?? "localhost",
     REDIS_KEY_PREFIX: "e2e:",
+    // As behind Caddy: the client IP is the right-most X-Forwarded-For hop, which every test sets to its own
+    // address (support/test.ts), so per-IP limits run as on staging instead of being skipped for "local".
+    TRUSTED_PROXY: "caddy",
     NEXT_DIST_DIR: ".next-e2e",
   };
 }

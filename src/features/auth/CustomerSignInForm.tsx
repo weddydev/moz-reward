@@ -5,6 +5,7 @@ import { useId, useRef, useState } from "react";
 import { Turnstile } from "@/components/security/Turnstile";
 import { authClient } from "@/lib/auth-client";
 import { safeReturnTo } from "@/lib/return-to";
+import { LINK_EXPIRED_PATH } from "@/lib/sign-in-link";
 import { TURNSTILE_HEADER } from "@/lib/turnstile";
 import { formValue, useHydrated } from "@/lib/use-hydrated";
 import { inputClass, primaryButtonClass, secondaryButtonClass } from "./AuthCard";
@@ -12,7 +13,6 @@ import { networkErrorMessage } from "./network";
 
 /** Pragmatic shape check; the server validates again. */
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-export const LINK_EXPIRED_PATH = "/sign-in/link-expired";
 
 function messageFor(err: { status: number; message?: string | undefined }): string {
   if (err.status === 429)
@@ -35,7 +35,8 @@ export function CustomerSignInForm({
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState<string | null>(
-    params.get("error") === "google"
+    // "google" from our errorCallbackURL, or a library code from onAPIError.errorURL (OAuth state/callback).
+    params.has("error")
       ? "Google sign-in didn't finish. Please try again, or use an email link."
       : null,
   );

@@ -1,19 +1,37 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { TURNSTILE_BYPASS_TOKEN } from "@/lib/turnstile";
 import { getAuth } from "@/server/auth/auth";
-import { checkMagicLinkRequest } from "@/server/auth/magic-link";
+import { MAGIC_LINK_LIMITS, checkMagicLinkRequest } from "@/server/auth/magic-link";
 import { db } from "@/server/db/client";
 import { verifications } from "@/server/db/schema";
 import { createRedis } from "@/server/jobs/connection";
-import { testEmail } from "../fixtures/auth";
+import { ipKey, limiterKey, limiterRedis } from "@/server/security/rate-limit";
+import type * as TurnstileModule from "@/server/security/turnstile";
+import { confirmSignInLink, testEmail } from "../fixtures/auth";
 import { makeShop, makeStaff, makeUser } from "../fixtures/factories";
 import { countEmailsTo, firstLink, latestEmailTo } from "../support/mailpit";
 
+// Cloudflare outage on demand; the real verifier otherwise.
+const outage = vi.hoisted(() => ({ reason: null as null | string }));
+vi.mock("@/server/security/turnstile", async (importOriginal) => {
+  const actual = await importOriginal<typeof TurnstileModule>();
+  return {
+    ...actual,
+    verifyTurnstile: (token: string | null | undefined, ip: string) =>
+      outage.reason
+        ? Promise.resolve({ ok: false as const, reason: outage.reason })
+        : actual.verifyTurnstile(token, ip),
+  };
+});
+afterEach(() => {
+  outage.reason = null;
+});
+
 const ORIGIN = "http://localhost:3000";
-/** Unique per call (IPv6 documentation range): limiter state outlives a test run, so shared IPs would collide. */
-const ip = (): string => `2001:db8::${randomUUID().slice(0, 4)}:${randomUUID().slice(0, 4)}`;
+/** Unique per call (IPv6 documentation range, random /64: limits key IPv6 by its /64): limiter state outlives a test run, so shared IPs would collide. */
+const ip = (): string => `2001:db8:${randomUUID().slice(0, 4)}:${randomUUID().slice(0, 4)}::1`;
 
 /** Through the real HTTP handler, as the browser does (hooks see ctx.request). */
 const requestLink = (
@@ -71,6 +89,26 @@ describe("[P0-06] magic-link request checks (Turnstile + SECURITY §6 limits)", 
       await checkMagicLinkRequest({
         email: testEmail("ip-over"),
         ip: from,
+        turnstileToken: TURNSTILE_BYPASS_TOKEN,
+      }),
+    ).toMatchObject({ ok: false, status: 429 });
+  });
+
+  it("[P0-19] an unknown client IP is one strict shared bucket (a quarter of the per-IP allowance)", async () => {
+    await limiterRedis().del(limiterKey(ipKey("magic-link", "unknown")));
+    const strict = MAGIC_LINK_LIMITS.perIp.max / 4;
+    for (let i = 0; i < strict; i++) {
+      const r = await checkMagicLinkRequest({
+        email: testEmail(`unknown-ip${String(i)}`),
+        ip: "unknown",
+        turnstileToken: TURNSTILE_BYPASS_TOKEN,
+      });
+      expect(r.ok).toBe(true);
+    }
+    expect(
+      await checkMagicLinkRequest({
+        email: testEmail("unknown-ip-over"),
+        ip: "unknown",
         turnstileToken: TURNSTILE_BYPASS_TOKEN,
       }),
     ).toMatchObject({ ok: false, status: 429 });
@@ -134,9 +172,9 @@ describe("[P0-06] magic-link over HTTP", () => {
     const link = firstLink((await latestEmailTo(email)).text) ?? "";
 
     // Used once: second use goes to the error page.
-    const first = await getAuth().handler(new Request(link, { headers: { origin: ORIGIN } }));
-    expect(first.status).toBe(302);
-    const reuse = await getAuth().handler(new Request(link, { headers: { origin: ORIGIN } }));
+    const first = await confirmSignInLink(link);
+    expect(first.status).toBe(303);
+    const reuse = await confirmSignInLink(link);
     expect(reuse.headers.get("location")).toMatch(/\/sign-in\/link-expired\?error=/);
 
     // Expired: push the stored expiry into the past.
@@ -147,8 +185,59 @@ describe("[P0-06] magic-link over HTTP", () => {
       .update(verifications)
       .set({ expiresAt: new Date(Date.now() - 1000) })
       .where(eq(verifications.expiresAt, verifications.expiresAt));
-    const expired = await getAuth().handler(new Request(link2, { headers: { origin: ORIGIN } }));
+    const expired = await confirmSignInLink(link2);
     expect(expired.headers.get("location")).toMatch(/\/sign-in\/link-expired\?error=/);
     expect(expired.headers.getSetCookie().some((c) => c.includes("session_token="))).toBe(false);
+  });
+});
+
+describe("[P0-19] Turnstile outage: customers can still get a link, under stricter limits", () => {
+  it("a Cloudflare outage lets the request through with 2/hour per email; a rejected token still fails", async () => {
+    const email = testEmail("outage");
+    outage.reason = "unavailable";
+    const from = ip();
+    for (let i = 0; i < MAGIC_LINK_LIMITS.degraded.perEmail.max; i++) {
+      expect(await checkMagicLinkRequest({ email, ip: from, turnstileToken: null })).toEqual({
+        ok: true,
+      });
+    }
+    expect(await checkMagicLinkRequest({ email, ip: from, turnstileToken: null })).toMatchObject({
+      ok: false,
+      status: 429,
+    });
+    outage.reason = "http-502";
+    expect(
+      (
+        await checkMagicLinkRequest({
+          email: testEmail("outage-2"),
+          ip: ip(),
+          turnstileToken: null,
+        })
+      ).ok,
+    ).toBe(true);
+    // Not an outage: a bad or missing token is refused as before.
+    outage.reason = "invalid-input-response";
+    expect(
+      await checkMagicLinkRequest({ email: testEmail("bad-token"), ip: ip(), turnstileToken: "x" }),
+    ).toMatchObject({ ok: false, status: 400 });
+  });
+
+  it("5 per IP per hour while degraded, across different emails", async () => {
+    outage.reason = "unavailable";
+    const from = ip();
+    for (let i = 0; i < MAGIC_LINK_LIMITS.degraded.perIp.max; i++) {
+      expect(
+        (
+          await checkMagicLinkRequest({
+            email: testEmail(`deg${String(i)}`),
+            ip: from,
+            turnstileToken: null,
+          })
+        ).ok,
+      ).toBe(true);
+    }
+    expect(
+      await checkMagicLinkRequest({ email: testEmail("deg-over"), ip: from, turnstileToken: null }),
+    ).toMatchObject({ ok: false, status: 429 });
   });
 });

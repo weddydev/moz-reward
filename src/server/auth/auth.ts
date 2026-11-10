@@ -3,15 +3,18 @@ import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
+import { deleteSessionCookie, setSessionCookie } from "better-auth/cookies";
 import { nextCookies } from "better-auth/next-js";
 import { magicLink, testUtils, twoFactor } from "better-auth/plugins";
 import { newId } from "@/lib/id";
+import { confirmPageUrl } from "@/lib/sign-in-link";
 import { TURNSTILE_HEADER } from "@/lib/turnstile";
 import { ADMIN_SESSION_MAX_MS, STAFF_SESSION_MAX_MS } from "@/server/authz/policies";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { env } from "@/server/env";
 import { checkBreachedPassword } from "@/server/integrations/breach";
+import { log } from "@/server/log";
 import { clientIp } from "@/server/security/request";
 import { recordAudit } from "@/server/services/audit";
 import { authCookieOptions } from "./cookies";
@@ -27,16 +30,60 @@ import {
 } from "./mfa";
 import { hashPassword, verifyPassword } from "./password";
 import { isPrivilegedUser, privilegedKind } from "./privileged";
+import { DISABLED_PATHS } from "./routes";
 import { googleProviderOptions, socialSignUpAllowed } from "./social";
 import {
-  checkSecondFactor,
-  checkStaffLogin,
-  clearStaffLoginFailures,
-  recordStaffLoginFailure,
+  type AttemptOutcome,
+  beginSecondFactor,
+  beginStaffLogin,
+  finishSecondFactor,
+  finishStaffLogin,
+  type GuardFailure,
 } from "./staff-login";
+import type { Reservation } from "./attempt-guard";
 
-/** Second-factor endpoints (sign-in challenge and enrolment): rate limited per IP. */
-const SECOND_FACTOR_PATHS = new Set(["/two-factor/verify-totp", "/two-factor/verify-backup-code"]);
+/**
+ * Second-factor endpoints: limited per IP, and per user when the user is known before the check (TOTP and
+ * backup codes, via the session or the two_factor cookie). Passkey sign-in names no user until the assertion
+ * is verified, so it gets the per-IP limit only (a WebAuthn signature can't be guessed; SECURITY §2).
+ */
+const SECOND_FACTOR_PATHS = new Set([
+  "/two-factor/verify-totp",
+  "/two-factor/verify-backup-code",
+  "/passkey/verify-authentication",
+]);
+/** The two-factor plugin's pending-sign-in cookie (better-auth/plugins/two-factor/constant). */
+const TWO_FACTOR_COOKIE = "two_factor";
+
+/**
+ * Attempts reserved by the `before` hook, settled by the `after` hook of the same request (P0-19). Keyed by
+ * the Request object, which both hooks share; a request that never reaches `after` is garbage-collected and
+ * its reservation simply stays counted (fail safe).
+ */
+type PendingAttempt =
+  | { kind: "password"; email: string; ip: string; reservation: Reservation }
+  | { kind: "second-factor"; userId: string; ip: string; reservation: Reservation };
+const pendingAttempts = new WeakMap<Request, PendingAttempt>();
+
+/** 401 = wrong credential; any other error = the credential was not judged; no error = correct. */
+function attemptOutcome(returned: unknown): AttemptOutcome {
+  if (returned instanceof APIError) return returned.statusCode === 401 ? "failed" : "aborted";
+  return "succeeded";
+}
+
+function guardError(failure: GuardFailure): APIError {
+  const status =
+    failure.status === 429
+      ? "TOO_MANY_REQUESTS"
+      : failure.status === 503
+        ? "SERVICE_UNAVAILABLE"
+        : "BAD_REQUEST";
+  return new APIError(
+    status,
+    { code: failure.code, message: failure.message },
+    failure.retryAfterSec ? { "Retry-After": String(failure.retryAfterSec) } : {},
+  );
+}
 
 /** Endpoints that set a password, and the body field carrying it (breached-password check). */
 const PASSWORD_SET_PATHS: Record<string, "password" | "newPassword"> = {
@@ -49,6 +96,19 @@ const bodyEmail = (body: unknown): string => {
   const email = (body as { email?: unknown } | undefined)?.email;
   return typeof email === "string" ? email : "";
 };
+
+/** Why an /update-user body is refused, or null. Only `name` (1–80 characters after trimming) is accepted. */
+export function updateUserProblem(body: unknown): string | null {
+  if (typeof body !== "object" || body === null) return "Nothing to update.";
+  const keys = Object.keys(body);
+  if (keys.length !== 1 || keys[0] !== "name") return "Only your name can be changed here.";
+  const { name } = body as { name: unknown };
+  if (typeof name !== "string") return "Enter your name.";
+  const trimmed = name.trim();
+  if (trimmed.length < 1 || trimmed.length > 80)
+    return "Use between 1 and 80 characters for your name.";
+  return null;
+}
 
 export const SESSION_MAX_AGE = {
   customer: 60 * 60 * 24 * 30, // 30 days
@@ -71,6 +131,11 @@ function createAuth() {
     baseURL: e.APP_URL,
     secret: e.AUTH_SECRET,
     trustedOrigins: [e.APP_URL],
+    // OAuth state/callback failures land on our sign-in page (it shows the Google message), not the library's
+    // bare /error page, which is blocked (routes.ts).
+    onAPIError: { errorURL: `${e.APP_URL}/sign-in` },
+    // Second layer behind the route allowlist (src/server/auth/routes.ts): unused endpoints answer 404.
+    disabledPaths: [...DISABLED_PATHS],
     database: drizzleAdapter(db(), { provider: "pg", schema, usePlural: true }),
     advanced: {
       database: { generateId: () => newId() },
@@ -170,6 +235,11 @@ function createAuth() {
             });
           }
         }
+        if (ctx.path === "/update-user") {
+          // Only a display name may change here (P0-19): bounded, no other field (email, image, roles…).
+          const problem = updateUserProblem(ctx.body);
+          if (problem) throw new APIError("BAD_REQUEST", { message: problem });
+        }
         if (ctx.path === "/sign-in/magic-link" && ctx.request) {
           // Browser requests only: server code calling auth.api directly is trusted (SECURITY §6 limits).
           const body = ctx.body as { email?: unknown } | undefined;
@@ -179,19 +249,37 @@ function createAuth() {
             turnstileToken: ctx.request.headers.get(TURNSTILE_HEADER),
           });
           if (!check.ok) {
-            throw new APIError(check.status === 429 ? "TOO_MANY_REQUESTS" : "BAD_REQUEST", {
-              message: check.message,
-            });
+            throw new APIError(
+              check.status === 429
+                ? "TOO_MANY_REQUESTS"
+                : check.status === 503
+                  ? "SERVICE_UNAVAILABLE"
+                  : "BAD_REQUEST",
+              { message: check.message },
+              check.status === 503 ? { "Retry-After": "60" } : {},
+            );
           }
           return;
         }
         if (ctx.path === "/sign-in/email" && ctx.request) {
-          // Staff/admin password sign-in (customers have no passwords): per-IP limit + per-account backoff.
-          const check = await checkStaffLogin({
-            email: bodyEmail(ctx.body),
-            ip: clientIp(ctx.request.headers),
+          // Staff/admin password sign-in (customers have no passwords): per-IP limit, per account + IP backoff,
+          // Turnstile once the account is past its failure limit (staff-login.ts).
+          const email = bodyEmail(ctx.body);
+          const ip = clientIp(ctx.request.headers);
+          const guard = await beginStaffLogin({
+            email,
+            ip,
+            turnstileToken: ctx.request.headers.get(TURNSTILE_HEADER),
           });
-          if (!check.ok) throw new APIError("TOO_MANY_REQUESTS", { message: check.message });
+          if (!guard.ok) throw guardError(guard);
+          if (guard.reservation) {
+            pendingAttempts.set(ctx.request, {
+              kind: "password",
+              email,
+              ip,
+              reservation: guard.reservation,
+            });
+          }
           return;
         }
         const passwordField = Object.hasOwn(PASSWORD_SET_PATHS, ctx.path)
@@ -209,8 +297,30 @@ function createAuth() {
           return;
         }
         if (SECOND_FACTOR_PATHS.has(ctx.path) && ctx.request) {
-          const check = await checkSecondFactor(clientIp(ctx.request.headers));
-          if (!check.ok) throw new APIError("TOO_MANY_REQUESTS", { message: check.message });
+          const ip = clientIp(ctx.request.headers);
+          // The user being verified: the session's (enrolment) or the pending sign-in's (two_factor cookie, the
+          // same signed identifier the plugin itself reads). Unknown, or a passkey (no user until verified) → per-IP
+          // limit only.
+          const perUser = ctx.path !== "/passkey/verify-authentication";
+          let userId = perUser ? ((await getSessionFromCtx(ctx))?.user.id ?? null) : null;
+          if (perUser && !userId) {
+            const cookie = ctx.context.createAuthCookie(TWO_FACTOR_COOKIE);
+            const identifier = await ctx.getSignedCookie(cookie.name, ctx.context.secret);
+            const pending = identifier
+              ? await ctx.context.internalAdapter.findVerificationValue(identifier)
+              : null;
+            userId = pending && pending.expiresAt > new Date() ? pending.value : null;
+          }
+          const guard = await beginSecondFactor({ ip, userId });
+          if (!guard.ok) throw guardError(guard);
+          if (guard.reservation && userId) {
+            pendingAttempts.set(ctx.request, {
+              kind: "second-factor",
+              userId,
+              ip,
+              reservation: guard.reservation,
+            });
+          }
           return;
         }
         if (PRIVILEGED_FORBIDDEN_PATHS.has(ctx.path)) {
@@ -232,16 +342,42 @@ function createAuth() {
         }
       }),
       after: createAuthMiddleware(async (ctx) => {
-        if (ctx.path !== "/sign-in/email" || !ctx.request) return;
-        const email = bodyEmail(ctx.body);
-        const returned: unknown = ctx.context.returned;
-        if (returned instanceof APIError) {
-          // Wrong email or password (same 401 for both). Other errors (e.g. our 429) are not failures.
-          if (returned.statusCode === 401) await recordStaffLoginFailure({ email });
-          return;
+        // Settle the attempt the `before` hook reserved first (none when it refused the request itself), so
+        // nothing below can leave it unsettled.
+        const pending = ctx.request ? pendingAttempts.get(ctx.request) : undefined;
+        if (pending && ctx.request) {
+          pendingAttempts.delete(ctx.request);
+          // Wrong email or password, or wrong code: 401. A correct password also "succeeds" when it only leads
+          // on to the second factor.
+          const outcome = attemptOutcome(ctx.context.returned);
+          if (pending.kind === "password") await finishStaffLogin({ ...pending, outcome });
+          else await finishSecondFactor({ ...pending, outcome });
         }
-        // Correct password (signed in, or sent on to the second factor): forget earlier failures.
-        await clearStaffLoginFailures(email);
+        // SECURITY §2/§5: a staff/admin session cookie lives no longer than the role's absolute limit (12 h /
+        // 2 h from sign-in); the library would give every cookie the customer's 30 days. Covers sign-in, the
+        // second factor and refreshes; a session already past its limit gets an expired cookie. A
+        // "don't remember me" cookie stays a browser-session cookie (no Max-Age added).
+        const issued = ctx.context.newSession;
+        if (!issued) return;
+        try {
+          const kind = await privilegedKind(issued.user.id);
+          if (!kind) return;
+          const limitMs = kind === "admin" ? ADMIN_SESSION_MAX_MS : STAFF_SESSION_MAX_MS;
+          const createdMs = new Date(issued.session.createdAt).getTime();
+          const leftSec = Math.floor((createdMs + limitMs - Date.now()) / 1000);
+          if (leftSec <= 0) {
+            deleteSessionCookie(ctx);
+            return;
+          }
+          const dontRemember = await ctx.getSignedCookie(
+            ctx.context.authCookies.dontRememberToken.name,
+            ctx.context.secret,
+          );
+          if (!dontRemember) await setSessionCookie(ctx, issued, undefined, { maxAge: leftSec });
+        } catch (err) {
+          // The app still enforces the role limit on every request (sessionFromHeaders): log, don't fail sign-in.
+          log().error({ err }, "staff session cookie lifetime not applied");
+        }
       }),
     },
     emailAndPassword: {
@@ -267,11 +403,16 @@ function createAuth() {
         // Only a hash is stored: a database leak can't be turned into sign-ins (SECURITY §2).
         storeToken: "hashed",
         // Delivery (incl. the staff/admin refusal) happens after the response: same answer, same timing.
+        // The email links to our confirm page, never to the library's GET verify (mail scanners, P0-19 AC3).
         sendMagicLink: ({ email, url }) => {
-          deliverMagicLink(email, url);
+          deliverMagicLink(email, confirmPageUrl(url, e.APP_URL));
         },
       }),
-      twoFactor({ issuer: "Moz Rewards" }),
+      twoFactor({
+        issuer: "Moz Rewards",
+        // Backstop to our per-user backoff (staff-login.ts, 5 failures): the plugin's own DB-level lock.
+        accountLockout: { enabled: true, maxFailedAttempts: 10, durationSeconds: 15 * 60 },
+      }),
       passkey({
         rpID: appUrl.hostname,
         rpName: "Moz Rewards",

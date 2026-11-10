@@ -52,4 +52,24 @@ describe("[P0-05] Turnstile widget", () => {
     unmount();
     expect(api.remove).toHaveBeenCalledWith("widget-1");
   });
+
+  it("[P0-19] uses the compact widget when the form is narrower than 300 px (320 px phones)", () => {
+    const sizes: string[] = [];
+    (window as { turnstile?: TurnstileApi }).turnstile = {
+      render: (_el, opts) => {
+        sizes.push(opts.size);
+        return "w";
+      },
+      remove: vi.fn(),
+    };
+    const widthOf = (px: number) =>
+      vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(px);
+    const narrow = widthOf(232);
+    render(<Turnstile siteKey="0x4AAAAAAA-site" />).unmount();
+    narrow.mockRestore();
+    const wide = widthOf(400);
+    render(<Turnstile siteKey="0x4AAAAAAA-site" />).unmount();
+    wide.mockRestore();
+    expect(sizes).toEqual(["compact", "flexible"]);
+  });
 });

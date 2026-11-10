@@ -6,6 +6,7 @@ import { db } from "@/server/db/client";
 import { auditLogs, sessions, users } from "@/server/db/schema";
 import {
   TEST_PASSWORD,
+  confirmSignInLink,
   cookieHeaderFrom,
   createPasswordUser,
   testEmail,
@@ -100,10 +101,8 @@ describe("[P0-06] customer magic link", () => {
     const link = firstLink(message.text);
     expect(link).toBeDefined();
 
-    const res = await getAuth().handler(
-      new Request(link!, { headers: { origin: "http://localhost:3000" } }),
-    );
-    expect(res.status).toBe(302);
+    const res = await confirmSignInLink(link!);
+    expect(res.status).toBe(303);
     const token = res.headers
       .getSetCookie()
       .find((c) => c.includes("session_token="))

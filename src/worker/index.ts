@@ -5,7 +5,7 @@
  * `server-only` modules load outside Next.
  */
 import "../../scripts/load-env";
-import { env } from "@/server/env";
+import { bootOrExit, runBootChecks } from "@/server/boot";
 import { closeQueues } from "@/server/jobs/queues";
 import { registerSchedules } from "@/server/jobs/scheduler";
 import { createShutdown } from "@/server/jobs/shutdown";
@@ -22,12 +22,8 @@ const log = (event: string, fields: Record<string, unknown> = {}): void => {
 };
 
 async function main(): Promise<void> {
-  try {
-    env();
-  } catch (err) {
-    console.error(`[worker] ${(err as Error).message}`);
-    process.exit(1);
-  }
+  // Same startup checks as the web server: env, and in staging/production the database role (P0-19).
+  await bootOrExit(runBootChecks);
 
   // Signal handlers go in before any worker starts, so a stop during start-up is still graceful.
   const started: { running?: RunningWorkers } = {};

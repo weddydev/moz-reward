@@ -20,14 +20,32 @@ describe("[P0-17] live provider smoke", () => {
     },
   );
 
+  // Each provider on its own, so a failover can't hide a broken primary (or an untested secondary).
   it.skipIf(!has("EMAIL_API_KEY", "LIVE_TEST_EMAIL_TO"))(
-    "email provider accepts a message",
+    "primary email provider accepts a message",
     async () => {
-      const { sendEmail } = await import("@/server/integrations/email");
+      const { configuredProvider } = await import("@/server/integrations/email");
       await expect(
-        sendEmail({
+        configuredProvider("primary")?.provider.send({
           to: process.env.LIVE_TEST_EMAIL_TO!,
-          subject: "Moz Rewards live smoke",
+          subject: "Moz Rewards live smoke (primary)",
+          text: `Live smoke ${new Date().toISOString()}`,
+          kind: "live-smoke",
+        }),
+      ).resolves.toBeUndefined();
+    },
+  );
+
+  it.skipIf(!has("EMAIL_FALLBACK_PROVIDER", "EMAIL_FALLBACK_API_KEY", "LIVE_TEST_EMAIL_TO"))(
+    "fallback email provider accepts a message",
+    async () => {
+      const { configuredProvider } = await import("@/server/integrations/email");
+      const fallback = configuredProvider("fallback");
+      expect(fallback).not.toBeNull();
+      await expect(
+        fallback?.provider.send({
+          to: process.env.LIVE_TEST_EMAIL_TO!,
+          subject: "Moz Rewards live smoke (fallback)",
           text: `Live smoke ${new Date().toISOString()}`,
           kind: "live-smoke",
         }),

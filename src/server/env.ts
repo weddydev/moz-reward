@@ -31,6 +31,15 @@ const optionalConnectionUrl = (protocols: readonly string[]) =>
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
+const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
+/** A 256-bit key as base64 (`pnpm setup:env` and `openssl rand -base64 32` produce this). Never echoed. */
+const key32 = z
+  .string()
+  .refine(
+    (v) => BASE64.test(v) && Buffer.from(v, "base64").length === 32,
+    "must be base64 of exactly 32 bytes",
+  );
+
 export const serverEnvSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -43,7 +52,7 @@ export const serverEnvSchema = z
     DATABASE_URL_TEST: optionalConnectionUrl(POSTGRES),
     REDIS_URL: connectionUrl(REDIS),
     REDIS_URL_TEST: optionalConnectionUrl(REDIS),
-    /** Per-worker key prefix in tests; empty elsewhere. */
+    /** Key prefix: per worker in tests; empty locally; required in staging/production (e.g. `prod:`). */
     REDIS_KEY_PREFIX: z.string().default(""),
 
     AUTH_SECRET: z.string().min(32, "must be at least 32 characters"),
@@ -53,13 +62,19 @@ export const serverEnvSchema = z
     /** Which proxy sets the client IP header (SECURITY §6): none (local/test), caddy, cloudflare. */
     TRUSTED_PROXY: z.enum(["none", "caddy", "cloudflare"]).default("none"),
 
-    DATA_ENCRYPTION_KEY: optional,
+    DATA_ENCRYPTION_KEY: key32,
     DATA_ENCRYPTION_KEY_ID: z.string().default("k1"),
-    BLIND_INDEX_KEY: optional,
-    MEMBER_QR_SIGNING_KEY: optional,
+    BLIND_INDEX_KEY: key32,
+    MEMBER_QR_SIGNING_KEY: key32,
 
     EMAIL_PROVIDER: z.enum(["smtp", "resend", "brevo"]),
     EMAIL_API_KEY: optional,
+    /** Secondary provider (P0-19): takes over when the primary fails. Required outside local/test. */
+    EMAIL_FALLBACK_PROVIDER: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.enum(["smtp", "resend", "brevo"]).optional(),
+    ),
+    EMAIL_FALLBACK_API_KEY: optional,
     EMAIL_FROM: z.string().min(3),
     SMTP_HOST: optional,
     SMTP_PORT: z.coerce.number().int().positive().optional(),
@@ -85,6 +100,42 @@ export const serverEnvSchema = z
     // APP_URL, so skip the URL-based checks rather than letting `new URL()` throw a bare TypeError.
     const appUrl = URL.canParse(e.APP_URL) ? new URL(e.APP_URL) : undefined;
     const isLocalEnv = e.APP_ENV === "local" || e.APP_ENV === "test";
+    // SECURITY §7: every secret is its own value — two equal secrets fail the boot (names only, never values).
+    const secrets = [
+      ["AUTH_SECRET", e.AUTH_SECRET],
+      ["DATA_ENCRYPTION_KEY", e.DATA_ENCRYPTION_KEY],
+      ["BLIND_INDEX_KEY", e.BLIND_INDEX_KEY],
+      ["MEMBER_QR_SIGNING_KEY", e.MEMBER_QR_SIGNING_KEY],
+    ] as const;
+    for (let i = 0; i < secrets.length; i++) {
+      for (let j = i + 1; j < secrets.length; j++) {
+        const [a, av] = secrets[i] ?? ["", ""];
+        const [b, bv] = secrets[j] ?? ["", ""];
+        if (av && av === bv) {
+          ctx.addIssue({ code: "custom", path: [b], message: `must differ from ${a}` });
+        }
+      }
+    }
+    if (!isLocalEnv && !e.TURNSTILE_SECRET_KEY) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["TURNSTILE_SECRET_KEY"],
+        message: "required outside local/test (bot checks on sign-in)",
+      });
+    }
+    // Sign-in links must not travel over SMTP without enforced TLS: deployed environments use the HTTPS APIs.
+    for (const [name, value] of [
+      ["EMAIL_PROVIDER", e.EMAIL_PROVIDER],
+      ["EMAIL_FALLBACK_PROVIDER", e.EMAIL_FALLBACK_PROVIDER],
+    ] as const) {
+      if (!isLocalEnv && value === "smtp") {
+        ctx.addIssue({
+          code: "custom",
+          path: [name],
+          message: "smtp is for local/test only (use resend or brevo)",
+        });
+      }
+    }
     if (appUrl && isLocalEnv && !LOCAL_HOSTS.has(appUrl.hostname)) {
       ctx.addIssue({
         code: "custom",
@@ -113,6 +164,29 @@ export const serverEnvSchema = z
         message: "must be caddy or cloudflare outside local/test (client IPs for rate limits)",
       });
     }
+    // SEC-M3: outside local/test, Redis is reached over TLS with a password, and keys carry an env prefix.
+    const redisUrl = URL.canParse(e.REDIS_URL) ? new URL(e.REDIS_URL) : undefined;
+    if (redisUrl && !isLocalEnv && redisUrl.protocol !== "rediss:") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["REDIS_URL"],
+        message: "must use rediss:// (TLS) outside local/test",
+      });
+    }
+    if (redisUrl && !isLocalEnv && redisUrl.password === "") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["REDIS_URL"],
+        message: "must include a password outside local/test",
+      });
+    }
+    if (!isLocalEnv && e.REDIS_KEY_PREFIX === "") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["REDIS_KEY_PREFIX"],
+        message: "required outside local/test",
+      });
+    }
     if (e.EMAIL_PROVIDER === "smtp" && !e.SMTP_HOST) {
       ctx.addIssue({
         code: "custom",
@@ -125,6 +199,36 @@ export const serverEnvSchema = z
         code: "custom",
         path: ["EMAIL_API_KEY"],
         message: `required when EMAIL_PROVIDER=${e.EMAIL_PROVIDER}`,
+      });
+    }
+    // Auth/security mail fails over to a second provider (ARCHITECTURE §2, §10).
+    const fallback = e.EMAIL_FALLBACK_PROVIDER;
+    if (!fallback && !isLocalEnv) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["EMAIL_FALLBACK_PROVIDER"],
+        message: "required outside local/test (sign-in mail must survive a provider outage)",
+      });
+    }
+    if (fallback && fallback === e.EMAIL_PROVIDER) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["EMAIL_FALLBACK_PROVIDER"],
+        message: "must differ from EMAIL_PROVIDER",
+      });
+    }
+    if ((fallback === "resend" || fallback === "brevo") && !e.EMAIL_FALLBACK_API_KEY) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["EMAIL_FALLBACK_API_KEY"],
+        message: `required when EMAIL_FALLBACK_PROVIDER=${fallback}`,
+      });
+    }
+    if (fallback === "smtp" && !e.SMTP_HOST) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["SMTP_HOST"],
+        message: "required when EMAIL_FALLBACK_PROVIDER=smtp",
       });
     }
   });

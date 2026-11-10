@@ -14,6 +14,7 @@ import { AppError } from "@/server/errors";
  */
 export type TrustedProxy = "none" | "caddy" | "cloudflare";
 
+/** "unknown" is a strict shared bucket for limits, never a bypass (`ipLimit` in rate-limit.ts). */
 const valid = (ip: string | undefined): string => (ip && isIP(ip) ? ip : "unknown");
 
 export function clientIp(headers: Headers, trusted: TrustedProxy = env().TRUSTED_PROXY): string {

@@ -25,6 +25,16 @@ const scopeCastRules = ["TSAsExpression", "TSTypeAssertion"].map((node) => ({
   message:
     "Scopes come from requireCustomer/requireShopRole/requireAdminRole or systemScope(), never a cast.",
 }));
+// P0-19: lockout, challenge and attempt counting run in the auth hooks only for HTTP requests (ctx.request). A server-side
+// call to a credential endpoint would skip them silently, so it is an error outside the test-only seeding code.
+const authApiRules = [
+  {
+    selector:
+      "CallExpression[callee.object.property.name=api][callee.property.name=/^(signInEmail|signInMagicLink|verifyTOTP|verifyBackupCode|verifyPasskeyAuthentication|magicLinkVerify)$/]",
+    message:
+      "Credential endpoints go through HTTP (auth.handler), where the lockout and limits run; never auth.api.* on the server.",
+  },
+];
 const dbClientRule = {
   name: "@/server/db/client",
   importNames: ["db"],
@@ -108,7 +118,7 @@ const eslintConfig = defineConfig([
     ignores: ["**/*.test.{ts,tsx}"],
     rules: {
       ...restrictImports(dbClientRule, mintRule),
-      "no-restricted-syntax": ["error", ...scopeCastRules],
+      "no-restricted-syntax": ["error", ...scopeCastRules, ...authApiRules],
     },
   },
   {
@@ -126,6 +136,11 @@ const eslintConfig = defineConfig([
   {
     files: ["src/components/**/*.{ts,tsx}", "src/app/**/*.{ts,tsx}", "src/features/**/*.{ts,tsx}"],
     ignores: ["**/*.test.{ts,tsx}"],
+    rules: { "no-restricted-syntax": ["error", ...hexRules, ...scopeCastRules, ...authApiRules] },
+  },
+  // The APP_ENV=test seeding API enrols TOTP through auth.api on purpose (it is never served elsewhere).
+  {
+    files: ["src/app/api/test/**/*.ts"],
     rules: { "no-restricted-syntax": ["error", ...hexRules, ...scopeCastRules] },
   },
   globalIgnores([

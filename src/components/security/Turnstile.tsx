@@ -22,12 +22,14 @@ export type TurnstileApi = {
       "expired-callback": () => void;
       "error-callback": () => void;
       appearance: "interaction-only";
-      size: "flexible";
+      size: "flexible" | "compact";
     },
   ) => string;
   remove: (widgetId: string) => void;
 };
 
+/** Narrowest container Cloudflare's "flexible" widget fits in. */
+const FLEXIBLE_MIN_PX = 300;
 const SCRIPT = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 
 export function Turnstile({
@@ -68,7 +70,12 @@ export function Turnstile({
         update("");
       },
       appearance: "interaction-only",
-      size: "flexible",
+      // The flexible widget needs about 300 px; at 320 px screens the card leaves less, so go compact there.
+      // Measured on the parent: the container itself is display:none while empty.
+      size:
+        (container.current.parentElement?.offsetWidth ?? 0) < FLEXIBLE_MIN_PX
+          ? "compact"
+          : "flexible",
     });
   }, [siteKey, action, update]);
 
@@ -90,7 +97,7 @@ export function Turnstile({
       <input type="hidden" name={TURNSTILE_FIELD} value={token} />
       {siteKey ? (
         <>
-          <div ref={container} />
+          <div ref={container} className="empty:hidden" />
           <Script src={SCRIPT} strategy="afterInteractive" onReady={mount} />
         </>
       ) : null}

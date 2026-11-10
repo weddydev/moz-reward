@@ -16,6 +16,8 @@ const HTTP_METHODS = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "
 export const EXEMPT_ROUTES: Readonly<Record<string, string>> = {
   "src/app/api/auth/[...all]/route.ts":
     "Better Auth's own handler; its endpoints are guarded by the hooks in src/server/auth/auth.ts (P0-06 tests)",
+  "src/app/api/sign-in/confirm/route.ts":
+    "anonymous sign-in step: the email link's token is the credential; same-origin check + auth rate limit, then Better Auth's own verify (tests/integration/link-confirm.test.ts)",
   "src/app/api/test/[action]/route.ts":
     "test-only API: 404 for every method unless APP_ENV=test (tests/integration/test-api.test.ts)",
 };

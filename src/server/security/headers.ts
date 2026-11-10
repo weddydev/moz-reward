@@ -1,4 +1,5 @@
 import "server-only";
+import { permissionsPolicy, staticSecurityHeaders } from "@/lib/static-security-headers";
 
 /**
  * Security headers (P0-05, SECURITY §5), applied by `src/proxy.ts` to every page and route response.
@@ -15,8 +16,6 @@ export type HeaderInput = {
   cdnUrl?: string | undefined;
 };
 
-/** Pages that may use the camera (member QR scanner, customer shop-code scan). */
-const CAMERA_PATHS = ["/scan", "/staff/scan"] as const;
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
 export function contentSecurityPolicy({ nonce, appEnv, isDev, cdnUrl }: HeaderInput): string {
@@ -42,34 +41,11 @@ export function contentSecurityPolicy({ nonce, appEnv, isDev, cdnUrl }: HeaderIn
   return directives.join("; ");
 }
 
-export function permissionsPolicy(pathname: string): string {
-  const camera = CAMERA_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-  return [
-    camera ? "camera=(self)" : "camera=()",
-    "geolocation=(self)",
-    "microphone=()",
-    "payment=()",
-    "usb=()",
-    "bluetooth=()",
-    "serial=()",
-    "hid=()",
-    "midi=()",
-    "magnetometer=()",
-    "gyroscope=()",
-    "accelerometer=()",
-    "display-capture=()",
-    "browsing-topics=()",
-  ].join(", ");
-}
+export { permissionsPolicy };
 
 export function securityHeaders(input: HeaderInput & { pathname: string }): Record<string, string> {
   return {
     "Content-Security-Policy": contentSecurityPolicy(input),
-    "Cross-Origin-Opener-Policy": "same-origin",
-    "Permissions-Policy": permissionsPolicy(input.pathname),
-    "Referrer-Policy": "strict-origin-when-cross-origin",
-    // Browsers ignore HSTS over plain http, so sending it locally is harmless and keeps one code path.
-    "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
-    "X-Content-Type-Options": "nosniff",
+    ...staticSecurityHeaders(input.pathname),
   };
 }

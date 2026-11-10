@@ -36,6 +36,27 @@ async function axeProblems(page: Page, baseURL: string | undefined): Promise<Gua
   if (page.isClosed() || !baseURL) return [];
   const url = page.url();
   if (!url.startsWith(new URL(baseURL).origin)) return [];
+  // Dynamic pages stream metadata after the visible content (Next "streaming metadata"), so right after a
+  // client navigation <title> can still be empty. Wait for it (2 s cap); a page that never gets one still fails.
+  await page
+    .waitForFunction(() => document.title !== "", undefined, { timeout: 2000 })
+    .catch(() => undefined);
+  // Measure the settled page: a scan during a transition (e.g. a button fading from its pre-hydration
+  // disabled opacity to 1) reads blended colours and reports false contrast failures. Finite animations only
+  // (spinners loop forever), capped at 1 s.
+  await page
+    .evaluate(() =>
+      Promise.race([
+        Promise.all(
+          document
+            .getAnimations()
+            .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+            .map((a) => a.finished.catch(() => undefined)),
+        ),
+        new Promise((resolve) => setTimeout(resolve, 1000)),
+      ]),
+    )
+    .catch(() => undefined);
   const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
   return results.violations
     .filter((v) => v.impact === "serious" || v.impact === "critical")
@@ -59,15 +80,41 @@ type SignedIn = {
 };
 type CreatedUser = { userId: string; email: string; password: string; totpSecret?: string };
 
+/**
+ * Opens an emailed sign-in link the way a person does (P0-19): the link shows the confirm page, and the token
+ * is used only when "Sign in" is pressed.
+ */
+export async function openSignInLink(page: Page, link: string): Promise<void> {
+  await page.goto(link);
+  await expect(page.getByRole("heading", { name: "Finish signing in" })).toBeVisible();
+  await page.getByRole("button", { name: "Sign in" }).click();
+}
+
 /** Unique, undeliverable address (`.invalid` TLD); Mailpit still captures it. Specs never import server code. */
 export const uniqueEmail = (label: string): string =>
   `${label}.${randomUUID().slice(0, 12)}@test.moz.invalid`;
 
+/**
+ * A fresh client address (IPv6 documentation range, random /64: limits key IPv6 by its /64). The E2E server trusts X-Forwarded-For the way it does
+ * behind Caddy (TRUSTED_PROXY=caddy, P0-19), so per-IP limits run exactly as on staging. Every test gets its
+ * own (the `clientIp` fixture); contexts a spec opens itself pass `{ extraHTTPHeaders: clientHeaders() }`.
+ */
+export const newClientIp = (): string =>
+  `2001:db8:${randomUUID().slice(0, 4)}:${randomUUID().slice(0, 4)}::e2e`;
+export const clientHeaders = (ip: string = newClientIp()): Record<string, string> => ({
+  "x-forwarded-for": ip,
+});
+
 type Fixtures = {
+  /** This test's client address, sent as X-Forwarded-For on every page and API request. */
+  clientIp: string;
   guard: { problems: GuardProblem[] };
   signInAs: (role: ActorRole, opts?: { shopId?: string }) => Promise<SignedIn>;
   /** A password user with no session, via `/api/test/user` (for flows that sign in through the UI). */
-  createUser: (label?: string, opts?: { totp?: boolean }) => Promise<CreatedUser>;
+  createUser: (
+    label?: string,
+    opts?: { totp?: boolean; failedSignIns?: number; admin?: boolean },
+  ) => Promise<CreatedUser>;
   /** Freezes the page clock at an ISO instant (Europe/London is the app's zone; pass an explicit offset). */
   freezeTime: (iso: string) => Promise<void>;
   /** Screenshot to `.artifacts/screens/<task-id>/<name>--<project>.png`; returns the path to inspect. */
@@ -125,6 +172,13 @@ function watch(page: Page, problems: GuardProblem[]): void {
 
 export const test = base.extend<Fixtures & Options>({
   guardAllow: [[], { option: true }],
+
+  clientIp: async ({}, provide) => {
+    await provide(newClientIp());
+  },
+  extraHTTPHeaders: async ({ extraHTTPHeaders, clientIp }, provide) => {
+    await provide({ ...extraHTTPHeaders, ...clientHeaders(clientIp) });
+  },
 
   // Unhandled promise rejections don't always surface as `pageerror` (WebKit); re-raise them as errors.
   page: async ({ page }, provide) => {

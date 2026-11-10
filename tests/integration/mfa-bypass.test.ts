@@ -6,6 +6,7 @@ import { db } from "@/server/db/client";
 import { sessions, twoFactors, users } from "@/server/db/schema";
 import {
   TEST_PASSWORD,
+  confirmSignInLink,
   cookieHeaderFrom,
   createPasswordUser,
   testEmail,
@@ -85,7 +86,8 @@ describe("[P0-06] staff/admin MFA bypass is closed (audit security #1, #6)", () 
 
     const shop = await makeShop();
     await makeStaff(shop.id, user.id, "staff");
-    const res = await getAuth().handler(new Request(link!, { headers: ORIGIN }));
+    const res = await confirmSignInLink(link!);
+    expect(res.headers.get("location")).toMatch(/\/sign-in\/link-expired\?error=FORBIDDEN$/);
     expect(res.headers.getSetCookie().some((c) => c.includes("session_token="))).toBe(false);
     expect(await sessionsOf(user.id)).toEqual([]);
   });
@@ -105,7 +107,7 @@ describe("[P0-06] staff/admin MFA bypass is closed (audit security #1, #6)", () 
     const email = testEmail("customer-passkey");
     await sendLink(email);
     const link = firstLink((await latestEmailTo(email)).text);
-    const signedIn = await getAuth().handler(new Request(link!, { headers: ORIGIN }));
+    const signedIn = await confirmSignInLink(link!);
     const res = await registerOptions(cookieHeaderFrom(signedIn));
     expect(res.status).toBe(403);
   });
@@ -137,7 +139,8 @@ describe("[P0-06] staff/admin MFA bypass is closed (audit security #1, #6)", () 
         body: JSON.stringify({ password: TEST_PASSWORD }),
       }),
     );
-    expect(res.status).toBe(403);
+    // P0-19: the endpoint is disabled for everyone (404); before that our gate refused it (403).
+    expect(res.status).toBe(404);
     const [row] = await db().select().from(users).where(eq(users.id, staff.id));
     expect(row?.twoFactorEnabled).toBe(true);
     expect(

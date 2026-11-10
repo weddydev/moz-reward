@@ -26,3 +26,31 @@ test.describe("[P0-05] security headers and CSP", () => {
     await expect(page.getByRole("button", { name: /email me a sign-in link/i })).toBeEnabled();
   });
 });
+
+test.describe("[P0-19] prefetch responses carry the static security headers (SEC-10)", () => {
+  // The proxy skips prefetch requests (a nonce is useless there), so next.config adds the static set.
+  for (const prefetch of [
+    { "next-router-prefetch": "1", rsc: "1" },
+    { purpose: "prefetch" },
+  ] as const) {
+    test(`[P0-19] ${Object.keys(prefetch).join(" + ")}`, async ({ request }) => {
+      const res = await request.get("/sign-in", { headers: prefetch });
+      const h = res.headers();
+      expect(h["strict-transport-security"]).toBe("max-age=63072000; includeSubDomains; preload");
+      expect(h["x-content-type-options"]).toBe("nosniff");
+      expect(h["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+      expect(h["cross-origin-opener-policy"]).toBe("same-origin");
+      expect(h["permissions-policy"]).toContain("camera=()");
+      expect(h["x-frame-options"]).toBe("DENY");
+    });
+  }
+
+  test("[P0-19] normal pages keep the proxy's nonce CSP and frame-ancestors, with the same static set", async ({
+    request,
+  }) => {
+    const h = (await request.get("/sign-in")).headers();
+    expect(h["content-security-policy"]).toContain("frame-ancestors 'none'");
+    expect(h["x-frame-options"]).toBe("DENY");
+    expect(h["strict-transport-security"]).toBe("max-age=63072000; includeSubDomains; preload");
+  });
+});

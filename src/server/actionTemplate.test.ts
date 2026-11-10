@@ -4,6 +4,7 @@ import { mintShopScope } from "./authz/scope";
 import { AppError } from "./errors";
 import type { HandlerTools } from "./actionTemplate";
 import type { Principal } from "./authz/policies";
+import type * as RateLimit from "./security/rate-limit";
 
 const calls: string[] = [];
 const fakeTx = { fake: "tx" };
@@ -35,9 +36,9 @@ vi.mock("./repos/_base", () => ({
     return out;
   },
 }));
-vi.mock("./security/rate-limit", () => ({
-  ipKey: (s: string, ip: string) => `${s}:ip:${ip}`,
-  userKey: (s: string, id: string) => `${s}:user:${id}`,
+// Real key/policy helpers (pure); only the Redis call is replaced.
+vi.mock("./security/rate-limit", async (actual) => ({
+  ...(await actual<typeof RateLimit>()),
   limitOrThrow: (opts: { key: string }) => {
     calls.push(`rateLimit:${opts.key}`);
     if (state.rateLimited)
@@ -281,6 +282,41 @@ describe("[P0-07] defineRoute: same steps for route handlers, plus Origin checks
     const res = await limited(req());
     expect(res.status).toBe(429);
     expect(res.headers.get("retry-after")).toBe("42");
+  });
+
+  it("[P0-19] refuses a body over the limit with 413 before running anything (declared or streamed)", async () => {
+    const big = JSON.stringify({ shopId: SHOP, name: "x".repeat(70 * 1024) });
+    const declared = await route()(req({ body: big }));
+    expect(declared.status).toBe(413);
+    expect(await declared.json()).toMatchObject({ error: { code: "PAYLOAD_TOO_LARGE" } });
+
+    // Chunked: no Content-Length, so the limit is enforced while reading.
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const chunk = new TextEncoder().encode("x".repeat(16 * 1024));
+        for (let i = 0; i < 5; i++) controller.enqueue(chunk);
+        controller.close();
+      },
+    });
+    const streamed = await route()(
+      new Request("http://localhost:3000/api/x", {
+        method: "POST",
+        headers: { origin: "http://localhost:3000", "content-type": "application/json" },
+        body: stream,
+        duplex: "half",
+      } as RequestInit),
+    );
+    expect(streamed.status).toBe(413);
+    expect(calls).toEqual([]);
+
+    const roomy = defineRoute({
+      name: "shop.rename.route",
+      input,
+      maxBodyBytes: 128 * 1024,
+      authorize: () => Promise.resolve(scope),
+      handler: () => Promise.resolve("ok"),
+    });
+    expect((await roomy(req({ body: big }))).status).toBe(400); // past the size check; then input validation
   });
 
   it("reads GET input from the query string (no Origin needed for safe methods)", async () => {

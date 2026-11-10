@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuth } from "@/server/auth/auth";
+import { beginStaffLogin } from "@/server/auth/staff-login";
 import { systemScope } from "@/server/authz/scope";
 import { fakeAi } from "@/server/integrations/ai";
 import { fakePushSink } from "@/server/integrations/push";
 import { deleteUserSessions } from "@/server/repos/sessions";
 import {
   ACTOR_ROLES,
+  ageUserSessions,
+  userSessionIps,
   TEST_PASSWORD,
   fakeEmail,
   makeActor,
+  makeAdmin,
   makeUser,
   markSessionMfaVerified,
 } from "@/server/testing/factories";
@@ -45,6 +49,13 @@ const userInput = z
       .default("e2e-user"),
     /** Enrol TOTP up front (through Better Auth's own endpoints) and return the secret. */
     totp: z.boolean().default(false),
+    /**
+     * Wrong-password attempts already made on the account, each from its own address (P0-19): reserved
+     * through the real guard and never cleared, so `lockAfter` of them put the account in "needs a check".
+     */
+    failedSignIns: z.number().int().min(0).max(20).default(0),
+    /** Also an admin (owner): admin session rules (2 h) instead of staff ones. */
+    admin: z.boolean().default(false),
   })
   .strict();
 
@@ -82,6 +93,25 @@ const fakesInput = z
   })
   .strict();
 
+/** Moves a user's sessions back in time (role limits, idle expiry) for the P0-19 conformance spec. */
+const ageInput = z
+  .object({
+    userId: z.string().min(1).max(64),
+    createdAgoMs: z
+      .number()
+      .int()
+      .min(0)
+      .max(400 * 24 * 3600 * 1000)
+      .optional(),
+    expiresInMs: z
+      .number()
+      .int()
+      .min(-400 * 24 * 3600 * 1000)
+      .max(400 * 24 * 3600 * 1000)
+      .optional(),
+  })
+  .strict();
+
 type Ctx = { params: Promise<{ action: string }> };
 const invalid = (): Response => NextResponse.json({ error: "invalid input" }, { status: 400 });
 
@@ -100,13 +130,28 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
         name: "Test Staff",
         password: TEST_PASSWORD,
       });
+      if (parsed.data.admin) await makeAdmin(user.id, "owner");
       const totpSecret = parsed.data.totp ? await enrolTotp(user.id) : undefined;
+      for (let i = 0; i < parsed.data.failedSignIns; i++) {
+        // TEST-NET-2 addresses: distinct sources, so no single account + IP pair is locked.
+        const seeded = await beginStaffLogin({
+          email: user.email,
+          ip: `198.51.100.${String(i + 1)}`,
+        });
+        if (!seeded.ok) throw new Error(`seeding failed sign-ins: ${seeded.code}`);
+      }
       return NextResponse.json({
         userId: user.id,
         email: user.email,
         password: TEST_PASSWORD,
         ...(totpSecret ? { totpSecret } : {}),
       });
+    }
+    case "age-sessions": {
+      const parsed = ageInput.safeParse(body);
+      if (!parsed.success) return invalid();
+      await ageUserSessions(parsed.data.userId, parsed.data);
+      return NextResponse.json({ ok: true });
     }
     case "fakes": {
       const parsed = fakesInput.safeParse(body);
@@ -136,6 +181,12 @@ export async function GET(req: Request, ctx: Ctx): Promise<Response> {
   switch (action) {
     case "push":
       return NextResponse.json(fakePushSink.list());
+    case "sessions": {
+      // ?userId= → the client IPs recorded on that user's sessions (P0-19 conformance).
+      const userId = new URL(req.url).searchParams.get("userId") ?? "";
+      if (!userId || userId.length > 64) return invalid();
+      return NextResponse.json({ ips: await userSessionIps(userId) });
+    }
     case "runtime": {
       const context = (await getAuth().$context) as unknown as {
         rateLimit?: { enabled?: unknown };
