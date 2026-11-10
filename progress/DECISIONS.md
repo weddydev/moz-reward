@@ -13,6 +13,16 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-10 — Outbox, relay, replay and payload versions (P0-18 C, on wip/P0-18)
+Decision: side effects are `outbox` rows written in the change's transaction (`tools.outbox` in the action template; `writeOutbox` elsewhere; ids only, ≤ 8 KB, CHECK 16 KB backstop). The worker's relay polls every 1 s, claims rows with one `UPDATE … FOR UPDATE SKIP LOCKED` that also leases them for 30 s (`next_attempt_at`, no long transaction across Redis calls), enqueues with `jobId = outbox.id`, marks `dispatched_at`; a failed enqueue backs off 1 s → 5 min and releases the rest of the batch. The worker sets `completed_at` after the handler and skips a job whose row is complete. `pnpm relay --replay-since <ISO with zone>` re-dispatches dispatched-but-incomplete rows (keyset on the exact timestamptz text: a JS Date drops microseconds). Sweeper every minute: `opsAlert("outbox.stale")` for rows waiting > 2 min, prunes completed rows after 7 days. Payloads are `{ v, data }` with an upgrade chain per job; a newer version than the worker knows is moved to delayed for 30 s (DelayedError), never failed. First producer: the staff lockout email (audit row + outbox in one transaction).
+Why: ARCHITECTURE §6, ENGINEERING §4–5, AC1/4/6/7. Polling, not LISTEN/NOTIFY: one VPS, ≤ 1 s latency is fine, and nothing extra to keep connected.
+Consequence: delivery is at-least-once with completion de-duplication; a handler that crashes after its side effect but before `completed_at` can repeat on retry, so handlers stay idempotent. Moving the remaining direct sends (sign-in links) is not in scope: Better Auth sends those inside its own request, and they are user-retriable.
+
+## 2026-11-10 — Worker and CLI run as plain Node with a `server-only` hook (P0-18)
+Decision: `pnpm worker` and `pnpm relay` use `tsx --import ./scripts/server-only-hook.mjs` (maps `server-only` to its empty module) instead of `--conditions=react-server`.
+Why: under react-server, `react-dom/server` is a stub that refuses to render, so the first email job failed in the real worker while Vitest (which stubs `server-only`) passed. `tests/integration/worker-process.test.ts` now spawns the real worker.
+Consequence: `db:seed` keeps react-server (renders nothing); move it to the hook too if it ever renders.
+
 ## 2026-11-10 — Safe migrations and Redis split (P0-18 A–B, on wip/P0-18)
 Decision: indexes on existing tables live in `drizzle/concurrent/` (one `CREATE INDEX CONCURRENTLY IF NOT EXISTS` per file, applied after Drizzle's transactional migrations, tracked in `drizzle.moz_concurrent_migrations`, INVALID leftovers rebuilt); migration sessions lock_timeout 5 s / statement 5 min; app statement_timeout 5 s web / 60 s worker; connection budget (web + worker + 1 deploy overlap) × 10 + reserved ≤ 80% of max_connections, checked at boot (staging max_connections 60). Two Redis instances: queue (BullMQ + limiter, noeviction, AOF) and cache (data + pub/sub, allkeys-lru); the dev queue service keeps the name `redis` so existing containers don't orphan port 6379.
 Why: ENGINEERING §6, ARCHITECTURE §6/§9, C-18, CR-M3; Drizzle runs every pending migration in one transaction, where CONCURRENTLY can't run.

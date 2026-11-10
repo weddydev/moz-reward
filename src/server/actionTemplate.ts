@@ -7,7 +7,9 @@ import "server-only";
  *   4. rate limit     – optional, per user (or per IP for anonymous callers) unless a key is given
  *   5. handler        – inside one transaction when it writes more than once or is audited
  *   6. audit          – optional, written in the same transaction as the change
- *   7. after commit   – side effects (emails, push, jobs) registered with `afterCommit` run only after commit
+ *   7. side effects   – `outbox(queue, name, payload)` writes the job in the same transaction; the relay
+ *                       enqueues it after commit (survives a crash in between). `afterCommit` is only for
+ *                       in-process follow-ups that may be lost (cache invalidation, logs), never for delivery
  *   8. Result         – `{ ok, data }` or `{ ok: false, error }`; AppErrors keep their safe message, anything
  *                       else is logged with the request id and shown as a generic message
  *
@@ -31,6 +33,8 @@ import { currentPrincipal } from "@/server/authz/principal";
 import type { Scope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import { AppError, errorResult, isAppError, type Result } from "@/server/errors";
+import { writeOutbox } from "@/server/jobs/outbox";
+import type { JobName, JobPayload, QueueName } from "@/server/jobs/registry";
 import { requestLogger } from "@/server/log";
 import { transaction } from "@/server/repos/_base";
 import { ipKey, ipLimit, limitOrThrow, userKey } from "@/server/security/rate-limit";
@@ -57,7 +61,19 @@ export type AuditRecord = {
 export type HandlerTools = {
   /** The action's transaction (undefined when the action is not transactional). Pass it to repositories. */
   tx: Transaction | undefined;
-  /** Runs `fn` after the transaction commits (or after the handler, when not transactional). */
+  /**
+   * Writes a side effect (email, push, PDF…) to the outbox in this action's transaction (ENGINEERING §4 step 7).
+   * Needs a transactional action (`transaction: true`, or `audit`).
+   */
+  outbox: <Q extends QueueName, N extends JobName<Q>>(
+    queue: Q,
+    name: N,
+    payload: JobPayload<Q, N>,
+  ) => Promise<string>;
+  /**
+   * Runs `fn` after the transaction commits (or after the handler, when not transactional). Best effort: lost
+   * if the process dies, so delivery goes through `outbox`.
+   */
   afterCommit: (fn: () => unknown) => void;
   requestId: string;
 };
@@ -143,10 +159,15 @@ async function execute<Schema extends z.ZodType, Ctx extends ScopeContext, Out>(
   };
 
   const transactional = spec.transaction ?? spec.audit !== undefined;
+  const noOutbox = (): Promise<string> =>
+    Promise.reject(
+      new Error(`${spec.name}: outbox() needs a transactional action (transaction: true)`),
+    );
   const out = transactional
     ? await transaction(scope, async (tx) => {
         const result = await spec.handler(input, ctx, {
           tx,
+          outbox: (queue, name, payload) => writeOutbox(scope, tx, queue, name, payload),
           afterCommit,
           requestId: facts.requestId,
         });
@@ -154,7 +175,12 @@ async function execute<Schema extends z.ZodType, Ctx extends ScopeContext, Out>(
         if (entry) await writeAudit(tx, { actor: scope, ...entry, ip: facts.ip });
         return result;
       })
-    : await spec.handler(input, ctx, { tx: undefined, afterCommit, requestId: facts.requestId });
+    : await spec.handler(input, ctx, {
+        tx: undefined,
+        outbox: noOutbox,
+        afterCommit,
+        requestId: facts.requestId,
+      });
 
   // The change is committed: a failing side effect is logged, never turned into a failed action.
   for (const fn of pending) {

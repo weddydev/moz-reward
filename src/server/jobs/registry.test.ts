@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { isSafeKey } from "./redact";
-import { DEFAULT_JOB_OPTIONS, JOBS } from "./registry";
+import { DEFAULT_JOB_OPTIONS, type JobDef, JOBS } from "./registry";
 
 /** Unwraps optional/nullable/default so `z.string().optional()` still counts as a string field. */
 function base(schema: z.ZodType): z.ZodType {
@@ -32,8 +32,8 @@ function stringFields(schema: z.ZodType, path: string[] = []): string[][] {
 describe("[P0-04] job registry", () => {
   it("payloads carry ids only: every free-string field sits under an id/enum key (SECURITY §7)", () => {
     const offenders = Object.entries(JOBS).flatMap(([queue, jobs]) =>
-      Object.entries(jobs as Record<string, z.ZodType>).flatMap(([name, schema]) =>
-        stringFields(schema)
+      Object.entries(jobs as Record<string, JobDef>).flatMap(([name, def]) =>
+        stringFields(def.schema)
           .filter((path) => !isSafeKey(path.at(-1) ?? ""))
           .map((path) => `${queue}:${name}.${path.join(".")}`),
       ),

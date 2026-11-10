@@ -92,6 +92,7 @@ Signature moments in DESIGN §8 keep their specified durations (exceptions to "U
 ```
 pnpm dev               # local app (next dev)
 pnpm worker            # background jobs (validates env at start)
+pnpm relay --replay-since <ISO time with zone>   # after a restore: re-dispatch outbox rows (RUNBOOK)
 pnpm build / start     # production build / serve
 pnpm check             # typecheck + lint (incl. authz coverage, migrations, css-hex) + format:check + unit — no Docker
 pnpm gate:task         # task gate: check + test:int + build + task E2E on the production build (TESTING §4)  [built in P0-14]

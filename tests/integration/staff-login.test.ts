@@ -1,13 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { Redis } from "ioredis";
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { TURNSTILE_BYPASS_TOKEN, TURNSTILE_REQUIRED_CODE } from "@/lib/turnstile";
 import type * as AttemptGuardModule from "@/server/auth/attempt-guard";
 import { getAuth } from "@/server/auth/auth";
 import { beginSecondFactor, beginStaffLogin, STAFF_LOGIN } from "@/server/auth/staff-login";
 import { db } from "@/server/db/client";
-import { auditLogs } from "@/server/db/schema";
+import { auditLogs, outbox } from "@/server/db/schema";
+import { closeQueues } from "@/server/jobs/queues";
+import { startRelay } from "@/server/jobs/relay";
+import { startWorkers } from "@/server/jobs/worker";
 import { securityAlert } from "@/server/security/alert";
 import { ipKey, limiterKey, limiterRedis } from "@/server/security/rate-limit";
 import type * as RequestModule from "@/server/security/request";
@@ -43,7 +46,7 @@ vi.mock("@/server/auth/attempt-guard", async (importOriginal) => {
       actual.reserveAttempt(faults.redisDown ? { ...opts, redis: faults.redisDown } : opts),
   };
 });
-vi.mock("@/server/security/alert", () => ({ securityAlert: vi.fn() }));
+vi.mock("@/server/security/alert", () => ({ securityAlert: vi.fn(), opsAlert: vi.fn() }));
 
 const ORIGIN = "http://localhost:3000";
 /** Unique per call (IPv6 documentation range, random /64: limits key IPv6 by its /64): limiter state outlives a test run, so shared IPs would collide. */
@@ -51,6 +54,23 @@ const ip = (): string => `2001:db8:${randomUUID().slice(0, 4)}:${randomUUID().sl
 const T0 = Date.UTC(2026, 10, 10, 9, 0, 0);
 const WRONG = "wrong-password-123";
 const { lockAfter } = STAFF_LOGIN.password;
+
+// Lockout emails are outbox rows (P0-18): the relay and the real email worker deliver them to Mailpit.
+let delivery: { stop: () => Promise<void> } | undefined;
+beforeAll(() => {
+  const relay = startRelay({ intervalMs: 50 });
+  const workers = startWorkers(["email"]);
+  delivery = {
+    stop: async () => {
+      await relay.stop();
+      await workers.close();
+      await closeQueues();
+    },
+  };
+});
+afterAll(async () => {
+  await delivery?.stop();
+});
 
 afterEach(() => {
   faults.turnstileDown = false;
@@ -244,6 +264,15 @@ describe("[P0-06][P0-19] staff/admin password sign-in throttling (SECURITY §2, 
       ]);
     expect(await countEmailsTo(email)).toBe(1);
     expect(await countEmailsTo(unknown)).toBe(0);
+    const jobs = () =>
+      db()
+        .select({ payload: outbox.payload, done: sql<boolean>`${outbox.completedAt} IS NOT NULL` })
+        .from(outbox)
+        .where(sql`${outbox.payload} -> 'data' ->> 'userId' = ${id}`);
+    // One job, ids only (no address), marked complete by the worker.
+    await expect
+      .poll(jobs)
+      .toEqual([{ payload: { v: 1, data: { userId: id, reason: "password" } }, done: true }]);
     const alerts = vi.mocked(securityAlert).mock.calls.filter(([, d]) => d.scope === "account");
     expect(alerts).toHaveLength(2); // one per account, the unknown address included
     expect(JSON.stringify(alerts)).not.toContain(email);

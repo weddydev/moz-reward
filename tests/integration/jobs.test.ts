@@ -309,20 +309,19 @@ describe("[P0-04] scheduler", () => {
     };
     await registerSchedules();
     await registerSchedules(); // restart: must not double-register
-    let all = await getQueue("scheduled").getJobSchedulers();
-    expect(all.map((s) => s.key)).toEqual(["heartbeat"]);
-    expect(all[0]).toMatchObject({ pattern: "* * * * *", tz: SCHEDULE_TZ });
+    const keys = async (): Promise<string[]> =>
+      (await getQueue("scheduled").getJobSchedulers()).map((s) => s.key).sort();
+    expect(await keys()).toEqual(["heartbeat", "outbox-sweep"]);
+    for (const s of await getQueue("scheduled").getJobSchedulers())
+      expect(s).toMatchObject({ pattern: "* * * * *", tz: SCHEDULE_TZ });
 
     const base = await import("@/server/jobs/scheduler");
     await registerSchedules([...base.SCHEDULES, extra]);
-    expect((await getQueue("scheduled").getJobSchedulers()).map((s) => s.key).sort()).toEqual([
-      "heartbeat",
-      "probe",
-    ]);
+    expect(await keys()).toEqual(["heartbeat", "outbox-sweep", "probe"]);
     const result = await registerSchedules();
     expect(result.removed).toEqual(["probe"]);
-    all = await getQueue("scheduled").getJobSchedulers();
-    expect(all.map((s) => s.key)).toEqual(["heartbeat"]);
-    expect(await getQueue("scheduled").getJobCountByTypes("delayed")).toBe(1);
+    expect(await keys()).toEqual(["heartbeat", "outbox-sweep"]);
+    // One next run per schedule, never two (BullMQ keeps each scheduler's next job delayed).
+    expect(await getQueue("scheduled").getJobCountByTypes("delayed")).toBe(2);
   });
 });

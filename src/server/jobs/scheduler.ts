@@ -1,6 +1,7 @@
 import "server-only";
+import { sealEnvelope } from "./envelope";
 import { getQueue } from "./queues";
-import { DEFAULT_JOB_OPTIONS } from "./registry";
+import { DEFAULT_JOB_OPTIONS, jobDef } from "./registry";
 import type { JobName, JobPayload, QueueName } from "./registry";
 
 /**
@@ -36,7 +37,21 @@ export const SCHEDULES: readonly ScheduleDef[] = [
     pattern: "* * * * *",
     data: {},
   }),
+  defineSchedule({
+    id: "outbox-sweep",
+    queue: "scheduled",
+    name: "outbox-sweep",
+    pattern: "* * * * *",
+    data: {},
+  }),
 ];
+
+/** The schedule's data in the versioned envelope (re-sealed on every start, so a version bump applies). */
+function sealed(def: ScheduleDef): unknown {
+  const job = jobDef(def.queue, def.name);
+  if (!job) throw new Error(`Schedule ${def.id}: unknown job ${def.queue}:${def.name}`);
+  return sealEnvelope(job, def.data);
+}
 
 export async function registerSchedules(
   defs: readonly ScheduleDef[] = SCHEDULES,
@@ -48,7 +63,7 @@ export async function registerSchedules(
     await getQueue(def.queue).upsertJobScheduler(
       def.id,
       { pattern: def.pattern, tz: SCHEDULE_TZ },
-      { name: def.name, data: def.data, opts: DEFAULT_JOB_OPTIONS },
+      { name: def.name, data: sealed(def), opts: DEFAULT_JOB_OPTIONS },
     );
     upserted.push(def.id);
   }

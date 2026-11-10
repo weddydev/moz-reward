@@ -1,12 +1,12 @@
 import "server-only";
-import { eq } from "drizzle-orm";
 import { after } from "next/server";
 import { TURNSTILE_REQUIRED_CODE } from "@/lib/turnstile";
+import { systemScope } from "@/server/authz/scope";
 import { db } from "@/server/db/client";
-import { users } from "@/server/db/schema";
-import { type LockoutReason, renderStaffLockoutEmail } from "@/server/emails/StaffLockoutEmail";
-import { sendEmail } from "@/server/integrations/email";
+import type { LockoutReason } from "@/server/emails/StaffLockoutEmail";
+import { writeOutbox } from "@/server/jobs/outbox";
 import { log } from "@/server/log";
+import { transaction } from "@/server/repos/_base";
 import { securityAlert } from "@/server/security/alert";
 import { emailKey } from "@/server/security/email-key";
 import { ipBucket } from "@/server/security/ip-bucket";
@@ -168,7 +168,7 @@ export async function finishStaffLogin(input: {
       scope: "account",
       ip: input.ip,
       tag: emailKey(input.email),
-      owner: () => privilegedUserByEmail(input.email), // mails the stored address, not the typed one
+      owner: () => privilegedUserByEmail(input.email), // the job mails the stored address, not the typed one
     });
   }
   if (sourceCount === lockAfter) {
@@ -231,18 +231,18 @@ export async function finishSecondFactor(input: {
     ip: input.ip,
     tag: input.userId,
     owner: async () => {
-      const [user] = await db()
-        .select({ email: users.email })
-        .from(users)
-        .where(eq(users.id, input.userId))
-        .limit(1);
       const kind = await privilegedKind(input.userId);
-      return user && kind ? { id: input.userId, kind, email: user.email } : null;
+      return kind ? { id: input.userId, kind } : null;
     },
   });
 }
 
-type Owner = { id: string; kind: "admin" | "staff"; email: string };
+/** The address is read when the email job runs (lockout-email.ts), so it never sits in a job payload. */
+type Owner = { id: string; kind: "admin" | "staff" };
+
+const LOCKOUT_SCOPE = systemScope(
+  "lockout follow-up: audit row and owner email for a staff/admin account",
+);
 
 /**
  * A lockout began: alert now; after the response, audit and email the owner (real staff/admin accounts only,
@@ -267,19 +267,22 @@ function lockoutStarted(input: {
     try {
       const user = await owner();
       if (!user) return;
-      await recordAudit(db(), {
-        actorId: null,
-        actorRole: "system",
-        action: "auth.lockout",
-        entity: "user",
-        entityId: user.id,
-        meta: { reason: input.reason, scope: input.scope, role: user.kind },
-        ip: input.ip,
-      });
-      await sendEmail({
-        kind: "staff-lockout",
-        to: user.email,
-        ...(await renderStaffLockoutEmail(input.reason)),
+      // Audit row and owner email commit together: the email is an outbox row (P0-18), delivered by the
+      // relay even if this process dies right after the commit.
+      await transaction(LOCKOUT_SCOPE, async (tx) => {
+        await recordAudit(tx, {
+          actorId: null,
+          actorRole: "system",
+          action: "auth.lockout",
+          entity: "user",
+          entityId: user.id,
+          meta: { reason: input.reason, scope: input.scope, role: user.kind },
+          ip: input.ip,
+        });
+        await writeOutbox(LOCKOUT_SCOPE, tx, "email", "staff-lockout", {
+          userId: user.id,
+          reason: input.reason,
+        });
       });
     } catch (err) {
       log().error({ err }, "staff lockout follow-up failed");

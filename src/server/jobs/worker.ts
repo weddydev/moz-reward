@@ -1,12 +1,14 @@
 import "server-only";
-import { type Job, UnrecoverableError, Worker } from "bullmq";
+import { DelayedError, type Job, UnrecoverableError, Worker } from "bullmq";
 import { systemScope } from "@/server/authz/scope";
 import { log as appLog } from "@/server/log";
 import { recordFailedJob } from "@/server/repos/jobs";
+import { isOutboxCompleted, markOutboxCompleted } from "@/server/repos/outbox";
 import { bullPrefix, createRedis } from "./connection";
+import { openEnvelope } from "./envelope";
 import { HANDLERS } from "./handlers";
 import { redact, redactText } from "./redact";
-import { payloadSchema, QUEUE_NAMES, QUEUES, type QueueName } from "./registry";
+import { type JobDef, jobDef, QUEUE_NAMES, QUEUES, type QueueName } from "./registry";
 import type { Redis } from "ioredis";
 
 /**
@@ -19,7 +21,7 @@ import type { Redis } from "ioredis";
  * `maxStalledCount` (BullMQ fails it with a deferred UnrecoverableError without calling the processor) and a
  * dead-letter write that threw on the final attempt (e.g. the database was briefly unreachable).
  */
-export type Processor = (job: Job) => Promise<unknown>;
+export type Processor = (job: Job, token?: string) => Promise<unknown>;
 /** Writes the dead-letter row (injectable so tests can simulate a failing database). */
 export type RecordFailure = typeof recordFailedJob;
 
@@ -57,10 +59,12 @@ export function withDeadLetter(
   processor: Processor,
   record: RecordFailure = recordFailedJob,
 ): Processor {
-  return async (job) => {
+  return async (job, token) => {
     try {
-      return await processor(job);
+      return await processor(job, token);
     } catch (err) {
+      // Deferred on purpose (moved to delayed by the processor): not a failure, not an attempt.
+      if (err instanceof DelayedError) throw err;
       const final = isFinalAttempt(job, err);
       const message = errorText(err);
       log(final ? "job.dead_lettered" : "job.retrying", {
@@ -108,20 +112,71 @@ export function onJobFailed(
   };
 }
 
-/** Validates the payload against the registry and calls the registered handler. */
-export function registryProcessor(queue: QueueName): Processor {
-  const handlers = HANDLERS[queue] as Record<
-    string,
-    (payload: unknown, job: Job) => Promise<unknown>
-  >;
-  return async (job) => {
-    const schema = payloadSchema(queue, job.name);
-    const handler = Object.hasOwn(handlers, job.name) ? handlers[job.name] : undefined;
-    if (!schema || !handler) throw new UnrecoverableError(`No handler for ${queue}:${job.name}`);
-    const parsed = schema.safeParse(job.data);
-    if (!parsed.success) throw new UnrecoverableError(`Invalid payload for ${queue}:${job.name}`);
-    return handler(parsed.data, job);
+/** How long a job from a newer payload version waits for a newer worker (rolling deploy). */
+export const FUTURE_VERSION_DELAY_MS = 30_000;
+
+const OUTBOX_SCOPE = systemScope("worker: outbox completion bookkeeping for every tenant");
+
+export type OutboxBookkeeping = {
+  isCompleted: (id: string) => Promise<boolean>;
+  markCompleted: (id: string) => Promise<void>;
+};
+
+const outboxBookkeeping: OutboxBookkeeping = {
+  isCompleted: (id) => isOutboxCompleted(OUTBOX_SCOPE, id),
+  markCompleted: (id) => markOutboxCompleted(OUTBOX_SCOPE, id),
+};
+
+type Entry = { def: JobDef; handler: (payload: unknown, job: Job) => Promise<unknown> };
+
+/**
+ * Opens the versioned envelope (upgrading old payloads), defers payloads from a newer version, skips an
+ * outbox job whose side effect is already recorded (replay), runs the handler and records completion.
+ * `lookup` is injectable so tests can run a registry of their own (payload versioning, AC4).
+ */
+export function jobProcessor(
+  queue: string,
+  lookup: (name: string) => Entry | undefined,
+  outboxRows: OutboxBookkeeping = outboxBookkeeping,
+): Processor {
+  return async (job, token) => {
+    const entry = lookup(job.name);
+    if (!entry) throw new UnrecoverableError(`No handler for ${queue}:${job.name}`);
+    const opened = openEnvelope(entry.def, job.data);
+    if (opened.kind === "future") {
+      log("job.deferred_newer_version", { queue, job: job.name, id: job.id, v: opened.v });
+      await job.moveToDelayed(Date.now() + FUTURE_VERSION_DELAY_MS, token);
+      throw new DelayedError();
+    }
+    if (opened.kind === "invalid") {
+      throw new UnrecoverableError(`Invalid payload for ${queue}:${job.name} (${opened.reason})`);
+    }
+    const { outboxId } = opened;
+    if (outboxId && (await outboxRows.isCompleted(outboxId))) {
+      log("job.already_completed", { queue, job: job.name, id: job.id });
+      return { skipped: "completed" };
+    }
+    const result = await entry.handler(opened.data, job);
+    if (outboxId) {
+      try {
+        await outboxRows.markCompleted(outboxId);
+      } catch (err) {
+        // The side effect happened; failing the job now would repeat it. Only a later replay could.
+        log("job.completion_not_recorded", { queue, id: job.id, error: errorText(err) });
+      }
+    }
+    return result;
   };
+}
+
+/** The registry's jobs and handlers for one queue. */
+export function registryProcessor(queue: QueueName): Processor {
+  const handlers = HANDLERS[queue] as Record<string, Entry["handler"]>;
+  return jobProcessor(queue, (name) => {
+    const def = jobDef(queue, name);
+    const handler = Object.hasOwn(handlers, name) ? handlers[name] : undefined;
+    return def && handler ? { def, handler } : undefined;
+  });
 }
 
 export type RunningWorkers = { workers: Worker[]; close: () => Promise<void> };
