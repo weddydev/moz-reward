@@ -280,7 +280,19 @@ describe("[P0-10] motion CSS animates transform and opacity only (AC 6)", () => 
   it("view-transition rules only time the browser's own morph, never animate other properties", () => {
     const vt = rules.filter((r) => r.selector.includes("::view-transition"));
     expect(vt.length).toBeGreaterThan(0);
-    for (const rule of vt) {
+    // Static box of a shape-changing morph's snapshots (fill and crop): fixed values, nothing animated.
+    const cover = vt.filter((r) => r.selector.includes(".morph-cover"));
+    expect(cover.length).toBeGreaterThan(0);
+    for (const rule of cover) {
+      expect(rule.selector).toMatch(/^::view-transition-(old|new)\(\.morph-cover\)/);
+      expect([...rule.decls.keys()].sort()).toEqual([
+        "border-radius",
+        "height",
+        "object-fit",
+        "overflow",
+      ]);
+    }
+    for (const rule of vt.filter((r) => !cover.includes(r))) {
       for (const prop of rule.decls.keys()) {
         expect(prop, rule.selector).toMatch(
           /^(animation|animation-duration|animation-timing-function|pointer-events)$/,

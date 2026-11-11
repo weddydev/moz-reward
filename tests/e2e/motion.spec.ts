@@ -1,8 +1,8 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { expect, test } from "./support/test";
+import { expect, newClientContext, test } from "./support/test";
 import { vtName } from "../../src/lib/motion/route-transitions";
-import type { Page } from "@playwright/test";
+import type { BrowserType, Page } from "@playwright/test";
 
 /**
  * P0-10 route transitions on /dev/motion. A recorder samples `document.getAnimations()` every frame from
@@ -503,6 +503,11 @@ test.describe("[P0-10] reduced motion", () => {
  * Verify (P0-10): frame screenshots with every route animation held at ~50%. `shoot` disables animations
  * (it fast-forwards them), so these use `page.screenshot` with animations allowed. A paused animation is
  * not "running", so `settled` only waits once the hold is released.
+ *
+ * WebKit's `page.screenshot` cannot show a morph: it paints the page flat, so the destination element
+ * appears in place at full opacity and `::view-transition-new` is empty, while the screen (the compositor)
+ * shows the pair moving as one (measured 12 Nov 2026: screenshot vs recorded video of the same held frame).
+ * So the WebKit morph frame comes from a recorded video of the held transition.
  */
 test.describe("[P0-10] frame screenshots mid-transition", () => {
   type Scene = { name: string; from: string; to: RegExp; go: (page: Page) => Promise<void> };
@@ -537,6 +542,8 @@ test.describe("[P0-10] frame screenshots mid-transition", () => {
     },
   ];
 
+  type Held = { what: string; state: string; at: number; half: number; opacity: number };
+
   /** Pauses each route animation (VT pseudos + page enters) at half its duration until released. */
   const hold = (page: Page): Promise<void> =>
     page.evaluate(() => {
@@ -560,6 +567,23 @@ test.describe("[P0-10] frame screenshots mid-transition", () => {
       };
       requestAnimationFrame(tick);
     });
+  /** What is held right now: proof that the picture is a mid-transition frame, not the page at rest. */
+  const heldNow = (page: Page): Promise<Held[]> =>
+    page.evaluate(() => {
+      const w = window as unknown as { __held: Set<Animation> };
+      return [...w.__held].map((a) => {
+        const effect = a.effect as KeyframeEffect | null;
+        const target = effect?.target as HTMLElement | null;
+        const pseudo = effect?.pseudoElement ?? "";
+        return {
+          what: pseudo || "route-content",
+          state: a.playState,
+          at: Number(a.currentTime ?? -1),
+          half: Number(effect?.getComputedTiming().endTime ?? 0) / 2,
+          opacity: target ? Number(getComputedStyle(target, pseudo || null).opacity) : 1,
+        };
+      });
+    });
   const release = (page: Page): Promise<void> =>
     page.evaluate(() => {
       const w = window as unknown as { __held: Set<Animation>; __holding: boolean };
@@ -567,37 +591,156 @@ test.describe("[P0-10] frame screenshots mid-transition", () => {
       for (const a of w.__held) a.play();
     });
 
+  /** Runs one scene up to the held frame and checks the hold. */
+  async function toHeldFrame(page: Page, scene: Scene): Promise<void> {
+    await page.goto(scene.from);
+    await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
+    await hold(page);
+    await scene.go(page);
+    await expect(page).toHaveURL(scene.to);
+    await page.waitForFunction(
+      () => (window as unknown as { __held: Set<Animation> }).__held.size > 0,
+    );
+    const held = await heldNow(page);
+    for (const h of held) {
+      expect(h.state, `${scene.name} ${h.what}`).toBe("paused");
+      expect(Math.abs(h.at - h.half), `${scene.name} ${h.what} at half`).toBeLessThan(1);
+    }
+    // Mid-fade: the arriving content (or, in a morph, the new snapshot) is partly transparent.
+    const fading = held.filter(
+      (h) => h.what === "route-content" || h.what.startsWith("::view-transition-new"),
+    );
+    expect(fading.length, `${scene.name}: something is fading in`).toBeGreaterThan(0);
+    for (const h of fading) {
+      expect(h.opacity, `${scene.name} ${h.what} opacity`).toBeGreaterThan(0);
+      expect(h.opacity, `${scene.name} ${h.what} opacity`).toBeLessThan(1);
+    }
+    if (scene.name === "morph") {
+      expect(
+        held.some((h) => h.what.startsWith("::view-transition-group(")),
+        "the morph's group is held",
+      ).toBe(true);
+      // The image changes shape (square thumb → wide header): both snapshots fill the moving box and crop,
+      // so nothing spills out of it mid-flight (`fit="cover"`).
+      const boxes = await page.evaluate(
+        (name) => {
+          const box = (pseudo: string): { height: string; fit: string; overflow: string } => {
+            const cs = getComputedStyle(
+              document.documentElement,
+              `::view-transition-${pseudo}(${name})`,
+            );
+            return { height: cs.height, fit: cs.objectFit, overflow: cs.overflow };
+          };
+          return { group: box("group"), old: box("old"), fresh: box("new") };
+        },
+        vtName("shopimage", "brew-bloom"),
+      );
+      for (const snapshot of [boxes.old, boxes.fresh]) {
+        expect(snapshot.fit).toBe("cover");
+        expect(snapshot.overflow).toBe("clip");
+        expect(Number.parseFloat(snapshot.height)).toBeCloseTo(
+          Number.parseFloat(boxes.group.height),
+          0,
+        );
+      }
+    }
+  }
+
+  /** The last frame of a recorded video as a PNG (decoded in Chromium: the bundled ffmpeg only encodes). */
+  async function lastVideoFrame(
+    chromium: BrowserType,
+    video: string,
+    secondsFromEnd: number,
+  ): Promise<Buffer> {
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage();
+      const data = readFileSync(video).toString("base64");
+      await page.setContent(`<video id="v" muted src="data:video/webm;base64,${data}"></video>`);
+      const png = await page.evaluate(async (back) => {
+        const v = document.getElementById("v") as HTMLVideoElement;
+        const seeked = (): Promise<void> =>
+          new Promise((resolve) => {
+            v.addEventListener(
+              "seeked",
+              () => {
+                resolve();
+              },
+              { once: true },
+            );
+          });
+        if (v.readyState < 1)
+          await new Promise<void>((resolve) => {
+            v.addEventListener(
+              "loadedmetadata",
+              () => {
+                resolve();
+              },
+              { once: true },
+            );
+          });
+        if (!Number.isFinite(v.duration)) {
+          // A recorded webm has no duration in its header: seeking past the end makes the browser find it.
+          v.currentTime = 1e6;
+          await seeked();
+        }
+        v.currentTime = Math.max(0, v.duration - back);
+        await seeked();
+        const canvas = document.createElement("canvas");
+        canvas.width = v.videoWidth;
+        canvas.height = v.videoHeight;
+        canvas.getContext("2d")?.drawImage(v, 0, 0);
+        return canvas.toDataURL("image/png").split(",")[1] ?? "";
+      }, secondsFromEnd);
+      expect(png.length, "a decoded video frame").toBeGreaterThan(1000);
+      return Buffer.from(png, "base64");
+    } finally {
+      await browser.close();
+    }
+  }
+
   for (const width of [390, 1440] as const) {
     test(`[P0-10] verify: transitions held at ~50% at ${String(width)}px`, async ({
       page,
+      browser,
+      baseURL,
+      playwright,
     }, testInfo) => {
       test.skip(
         !["chromium", "webkit"].includes(testInfo.project.name),
         "frame shots: desktop Chromium + WebKit",
       );
-      await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+      const viewport = { width, height: width === 390 ? 844 : 900 };
+      await page.setViewportSize(viewport);
       const dir = path.join(".artifacts", "screens", "P0-10");
       mkdirSync(dir, { recursive: true });
+      const file = (scene: Scene): string =>
+        path.join(dir, `frame-${scene.name}-${String(width)}--${testInfo.project.name}.png`);
       for (const scene of scenes) {
-        await page.goto(scene.from);
-        await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
-        await hold(page);
-        await scene.go(page);
-        await expect(page).toHaveURL(scene.to);
-        await page.waitForFunction(
-          () => (window as unknown as { __held: Set<Animation> }).__held.size > 0,
-        );
-        await page.screenshot({
-          path: path.join(
-            dir,
-            `frame-${scene.name}-${String(width)}--${testInfo.project.name}.png`,
-          ),
-          animations: "allow",
-          caret: "initial",
-        });
+        if (scene.name === "morph" && testInfo.project.name === "webkit") continue;
+        await toHeldFrame(page, scene);
+        await page.screenshot({ path: file(scene), animations: "allow", caret: "initial" });
         await release(page);
         await settled(page);
       }
+      if (testInfo.project.name !== "webkit") return;
+      // WebKit morph: the held frame as the screen shows it, from a video (see the note above).
+      const morph = scenes.find((s) => s.name === "morph");
+      if (!morph || !baseURL) throw new Error("morph scene or baseURL missing");
+      const context = await newClientContext(browser, baseURL, {
+        viewport,
+        recordVideo: { dir: testInfo.outputPath("video"), size: viewport },
+      });
+      const filmed = await context.newPage();
+      await toHeldFrame(filmed, morph);
+      await filmed.waitForTimeout(600); // a few video frames of the held picture
+      const video = filmed.video();
+      await context.close();
+      if (!video) throw new Error("no video was recorded");
+      writeFileSync(
+        file(morph),
+        await lastVideoFrame(playwright.chromium, await video.path(), 0.2),
+      );
     });
   }
 });

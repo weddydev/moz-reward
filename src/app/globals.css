@@ -615,6 +615,18 @@
   animation-duration: var(--dur-slow);
   animation-timing-function: var(--ease-in-out);
 }
+/*
+ * A morph between boxes of different shapes (square card thumb → wide page header): by default each snapshot
+ * keeps its own aspect ratio at the group's width, so the old one spills out of the moving box (seen in the
+ * P0-10 frame shots: a square ghost behind a wide header). Both snapshots fill the box and crop instead.
+ */
+::view-transition-old(.morph-cover),
+::view-transition-new(.morph-cover) {
+  height: 100%;
+  object-fit: cover;
+  overflow: clip; /* these pseudo-elements don't clip their image by default, unlike <img> */
+  border-radius: var(--r-md); /* the crop would otherwise cut the snapshots' own corners square */
+}
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-reduce-motion="false"])::view-transition-group(.morph) {
     animation: none;

@@ -25,7 +25,7 @@ export default async function MotionShopPage({
       >
         ← Motion gallery
       </TransitionLink>
-      <SharedElement kind="shopimage" id={shop.id}>
+      <SharedElement kind="shopimage" id={shop.id} fit="cover">
         <div data-shared="image">
           <ShopThumb large />
         </div>

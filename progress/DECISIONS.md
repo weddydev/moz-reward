@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-12 — Morph evidence in WebKit comes from video, and shape-changing morphs crop (P0-10 step C)
+Decision: (1) The WebKit frame shot of a card → page morph is a frame of a recorded video (`lastVideoFrame` in `tests/e2e/motion.spec.ts`), never `page.screenshot`. (2) `SharedElement fit="cover"` (class `morph-cover`) makes both snapshots fill the moving box and crop (`height: 100%; object-fit: cover; overflow: clip; border-radius: --r-md`); use it for images, never for text.
+Why: (1) WebKit's `page.screenshot` paints the page flat: mid-morph it draws the destination element in place at full opacity with an empty `::view-transition-new`, which looked like a broken morph in Safari. The compositor output (video of the same held frame, with and without a React render mid-morph) shows the pair moving as one, same as Chromium. A guard that re-applied React's `view-transition-name` was built on the screenshot reading and removed once the video disproved it. (2) By default each snapshot keeps its own aspect ratio at the group's width, so a square thumb spilled out of a wide header's box (frame shots).
+Consequence: any future "Safari shows X during a view transition" claim needs a video frame, not a screenshot. React takes the pair's names off early when anything else renders mid-morph (a tap that sets state); both engines keep the captured element hidden until the transition ends, so nothing needs doing.
+
 ## 2026-11-12 — E2E: extra browser contexts via `newClientContext` (P0-10)
 A spec that opens a second context (another device, a signed-out visitor) uses `newClientContext(browser, baseURL, opts)` from `tests/e2e/support/test.ts`: its own client IP plus the same stored consent choice as the `page` fixture. Raw `browser.newContext` showed the cookie notice, which covered the sign-in button at 390×664 on Windows WebKit. Specs that copy the page's cookies (preferences, tokens) already carry it.
 

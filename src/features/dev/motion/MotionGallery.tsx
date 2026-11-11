@@ -46,7 +46,7 @@ export function MotionGallery(): React.JSX.Element {
                 direction="forward"
                 className="pressable bg-surface shadow-1 flex items-center gap-3 rounded-md p-3"
               >
-                <SharedElement kind="shopimage" id={shop.id}>
+                <SharedElement kind="shopimage" id={shop.id} fit="cover">
                   <div data-shared="image">
                     <ShopThumb />
                   </div>
