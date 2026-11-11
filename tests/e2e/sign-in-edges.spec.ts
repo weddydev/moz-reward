@@ -1,4 +1,4 @@
-import { clientHeaders, expect, openSignInLink, test, uniqueEmail } from "./support/test";
+import { expect, newClientContext, openSignInLink, test, uniqueEmail } from "./support/test";
 
 const SEND = "Email me a sign-in link";
 
@@ -6,6 +6,7 @@ test("[P0-06] a used sign-in link shows the friendly expired page, not an error"
   page,
   mail,
   browser,
+  baseURL,
 }) => {
   const email = uniqueEmail("e2e-reuse");
   await page.goto("/sign-in");
@@ -16,7 +17,7 @@ test("[P0-06] a used sign-in link shows the friendly expired page, not an error"
   await openSignInLink(page, link); // first use signs in
   await expect(page).toHaveURL(/\/wallet$/);
 
-  const other = await browser.newContext({ extraHTTPHeaders: clientHeaders() });
+  const other = await newClientContext(browser, baseURL!);
   const second = await other.newPage();
   await openSignInLink(second, link);
   await expect(second).toHaveURL(/\/sign-in\/link-expired\?error=/);

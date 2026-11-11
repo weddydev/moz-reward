@@ -1,4 +1,4 @@
-import { clientHeaders, expect, openSignInLink, test, uniqueEmail } from "./support/test";
+import { expect, newClientContext, openSignInLink, test, uniqueEmail } from "./support/test";
 import type { Page } from "@playwright/test";
 
 type SessionResponse = { user: { email: string } } | null;
@@ -58,11 +58,7 @@ test("[P0-19] the confirm page signs in without JavaScript (plain form POST) and
   await requestLink(page, email, "/me/security");
   const link = mail.firstLink((await mail.latestTo(email)).text) ?? "";
 
-  const noJs = await browser.newContext({
-    javaScriptEnabled: false,
-    baseURL: baseURL!,
-    extraHTTPHeaders: clientHeaders(),
-  });
+  const noJs = await newClientContext(browser, baseURL!, { javaScriptEnabled: false });
   const tab = await noJs.newPage();
   await openSignInLink(tab, link);
   await expect(tab).toHaveURL(/\/me\/security$/);

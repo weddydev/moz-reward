@@ -1,4 +1,4 @@
-import { clientHeaders, expect, openSignInLink, test, uniqueEmail } from "./support/test";
+import { expect, newClientContext, openSignInLink, test, uniqueEmail } from "./support/test";
 import type { Page } from "@playwright/test";
 
 /**
@@ -35,11 +35,7 @@ test("[P0-20] under RLS roles, sign-in works and each user's device list shows o
   mail,
 }) => {
   test.setTimeout(60_000);
-  const other = await browser.newContext({
-    userAgent: FIREFOX_WINDOWS_UA,
-    baseURL: baseURL!,
-    extraHTTPHeaders: clientHeaders(),
-  });
+  const other = await newClientContext(browser, baseURL!, { userAgent: FIREFOX_WINDOWS_UA });
   const otherPage = await other.newPage();
   await signIn(otherPage, mail, uniqueEmail("e2e-rls-b"));
   await signIn(page, mail, uniqueEmail("e2e-rls-a"));

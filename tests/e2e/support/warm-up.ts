@@ -17,6 +17,9 @@ export const ROUTES = [
   "/wallet",
   "/dashboard",
   "/dev/ui",
+  "/dev/motion",
+  "/dev/motion/shop/brew-bloom",
+  "/dev/motion/tabs/wallet",
   "/dev/guard-check",
   "/api/auth/get-session",
 ];

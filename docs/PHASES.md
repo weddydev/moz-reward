@@ -48,7 +48,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 
 - [x] P0-08 · Tokens, fonts, global styles, motion preference
 - [x] P0-09 · UI primitives and gallery
-- [ ] P0-10 · Motion primitives and page transitions
+- [x] P0-10 · Motion primitives and page transitions
 - [ ] P0-11 · Sound and haptics
 - [ ] P0-C closed with `/subphase-complete`
 

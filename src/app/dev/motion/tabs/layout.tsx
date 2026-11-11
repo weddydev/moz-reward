@@ -1,0 +1,25 @@
+import { RouteTransition, TransitionLink } from "@/components/motion";
+import { DemoTabBar } from "@/features/dev/motion/DemoTabBar";
+
+/**
+ * Tab demo: a tab switch slides only the tab content, 6px in tab order (this nested `RouteTransition` claims
+ * it, so the gallery layout's one holds still with the bar). Entering the tabs from the gallery slides the
+ * whole page (the outer one).
+ */
+export default function MotionTabsLayout({
+  children,
+}: LayoutProps<"/dev/motion/tabs">): React.JSX.Element {
+  return (
+    <main id="main" className="mx-auto flex w-full max-w-xl flex-col gap-6 px-5 py-10">
+      <TransitionLink
+        href="/dev/motion"
+        direction="back"
+        className="text-small text-ink-2 hit-44 self-start font-semibold underline"
+      >
+        ← Motion gallery
+      </TransitionLink>
+      <DemoTabBar />
+      <RouteTransition className="bg-surface shadow-1 rounded-md p-6">{children}</RouteTransition>
+    </main>
+  );
+}

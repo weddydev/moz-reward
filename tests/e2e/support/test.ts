@@ -6,7 +6,15 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import { test as base, expect, type Page, type TestInfo } from "@playwright/test";
+import {
+  test as base,
+  expect,
+  type Browser,
+  type BrowserContext,
+  type BrowserContextOptions,
+  type Page,
+  type TestInfo,
+} from "@playwright/test";
 import type { ActorRole } from "@/server/testing/factories";
 import { TEST_API_HEADER, testApiToken } from "../../../src/lib/test-api-token";
 import { countEmailsTo, firstLink, latestEmailTo } from "../../support/mailpit";
@@ -121,6 +129,36 @@ export const clientHeaders = (ip: string = newClientIp()): Record<string, string
   "x-forwarded-for": ip,
 });
 
+/** P0-13: a stored analytics choice, so the cookie notice doesn't sit over a spec's controls. */
+export async function storeConsent(
+  context: BrowserContext,
+  baseURL: string,
+  choice: "granted" | "denied" = "denied",
+): Promise<void> {
+  await context.addCookies([
+    { name: "moz_consent", value: `analytics-v1-${choice}`, url: baseURL, sameSite: "Lax" },
+  ]);
+}
+
+/**
+ * A second browser for a spec (another device, a signed-out visitor): its own client address and the same
+ * stored consent choice as the `page` fixture. Without it the cookie notice covers controls at 390×664
+ * (iPhone 14 on Windows WebKit: the sign-in button sits 23px above the notice on macOS).
+ */
+export async function newClientContext(
+  browser: Browser,
+  baseURL: string,
+  options: BrowserContextOptions = {},
+): Promise<BrowserContext> {
+  const context = await browser.newContext({
+    extraHTTPHeaders: clientHeaders(),
+    ...options,
+    baseURL,
+  });
+  await storeConsent(context, baseURL);
+  return context;
+}
+
 type Fixtures = {
   /** This test's client address, sent as X-Forwarded-For on every page and API request. */
   clientIp: string;
@@ -200,17 +238,9 @@ export const test = base.extend<Fixtures & Options>({
 
   // Unhandled promise rejections don't always surface as `pageerror` (WebKit); re-raise them as errors.
   page: async ({ page, analyticsConsent, baseURL }, provide) => {
-    // P0-13: a stored analytics choice, so the cookie notice doesn't sit over other specs' controls.
     // The consent spec sets `analyticsConsent: null` to start undecided.
     if (analyticsConsent && baseURL) {
-      await page.context().addCookies([
-        {
-          name: "moz_consent",
-          value: `analytics-v1-${analyticsConsent}`,
-          url: baseURL,
-          sameSite: "Lax",
-        },
-      ]);
+      await storeConsent(page.context(), baseURL, analyticsConsent);
     }
     await page.addInitScript(() => {
       window.addEventListener("unhandledrejection", (e) => {
@@ -279,13 +309,22 @@ export const test = base.extend<Fixtures & Options>({
       const dir = path.join(".artifacts", "screens", taskIdFrom(testInfo));
       mkdirSync(dir, { recursive: true });
       const file = path.join(dir, `${name}--${testInfo.project.name}.png`);
+      const fullPage = opts.fullPage ?? true;
+      // WebKit on Windows refuses shots over 32767 device px ("Cannot take screenshot larger than 32767
+      // pixels"): /dev/ui is ~22,000 CSS px tall, × DPR 2–3 on phones. Only those shots drop to CSS scale.
+      const tooTall =
+        fullPage &&
+        (await page.evaluate(
+          () => document.documentElement.scrollHeight * window.devicePixelRatio > 32767,
+        ));
       // caret "initial": hiding the caret writes inline styles onto inputs, which React reports as a hydration
       // mismatch when the shot is taken before the page segment has hydrated. Screenshots must not touch the DOM.
       await page.screenshot({
         path: file,
-        fullPage: opts.fullPage ?? true,
+        fullPage,
         animations: "disabled",
         caret: "initial",
+        ...(tooTall ? { scale: "css" as const } : {}),
       });
       return file;
     });

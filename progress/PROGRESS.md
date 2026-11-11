@@ -7,31 +7,28 @@ Baton: held by talha.syed since 2026-11-12 01:12 IST (macOS)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handoff by talha.syed, 2026-11-12 01:10 IST (macOS; human switched model mid-session). P0-10 still on `wip/P0-10` (pushed, HEAD `b04614f`; NOT on main; `main` untouched).** Continue: `git checkout wip/P0-10 && git pull && git merge origin/main` (never `pull --rebase` on a wip branch); progress files conflict on that merge: keep main's (`git checkout --theirs progress/ && git add progress/`).
-- **Done this session (`fea5139`): the 4 full-E2E issues from the last handoff.** (1) iPhone 14 motion AC2 was a test bug: 2nd card at y 686 > viewport 664 (measured) → `clickCentre` scrolls into view first; AC2 5 projects ×3 15/0. (2) devices/rls on iPhone 14: extra contexts had no consent cookie, so the cookie notice showed 23px below the sign-in button (measured on macOS; covered it on Windows) → `newClientContext`/`storeConsent` in `tests/e2e/support/test.ts`, used in rls, devices, sign-in-edges, sign-in-screens, link-confirm; macOS 70/0 ×5 (Windows not re-run). (3) `shoot` uses CSS scale when height × DPR > 32767 (iPhone 14 gallery shot now 390×21067). (4) overlays screenshot test split per width (was 15s of a 30s budget on macOS WebKit; Windows WebKit ran past it); 115/0 ×5 on WebKit engines.
-- **Step C started (`b04614f`):** `[P0-10] frame screenshots mid-transition` in motion.spec (forward, back, tab, morph held at 50%, 390 + 1440, Chromium + WebKit) → 16 PNGs in `.artifacts/screens/P0-10/frame-*`. **Not inspected yet.**
-- **FIRST: CI 43086119817 on `eb87d7d` is RED** (flaky = failure): desktop1440 `motion-primitives.spec.ts:267` AC5 reduced motion (system): "popover" recorded 0 animations, passed on retry. The `eb87d7d` fix (no frame wait) does not cover the ≤150ms reduced-motion fade, which can end before it is read. Fix: record the popover animation when it starts (like motion.spec's `Element.prototype.animate` / `transitionrun` hook) instead of sampling after open. CI 43089285819 on `b04614f` was running at handoff: check it.
-- **Tested:** gate:task P0-10 PASS on `b04614f` (unit 786, int 475, build, bundle, sast, E2E P0-10 40/0 incl. the 4 frame tests). `pnpm check` PASS after merging main.
-- **Not yet tested:** full 5-project E2E after the support-fixture change (started, stopped at handover with 449 passed and no unexpected failures seen; the ✘ lines were guard.spec self-tests, which are meant to fail): **must be re-run**. Windows re-run of items 2–4. Frame screenshots not inspected. CI on `b04614f`.
-- **Next:** fix the AC5 popover flake → full 5-project E2E (support fixture changed) → inspect the 16 frame shots → `design-reviewer` (+ `review-animations`) on the P0-10 diff → fix BLOCK/HIGH → squash to main, tick P0-10. Nothing to install, migrate or seed.
+- **Checkpoint by talha.syed, 2026-11-12 02:03 IST (macOS). P0-10 is done and squashed to `main`** (wip branch `wip/P0-10` can be deleted). Nothing half-done.
+- **What closed it:** AC5 popover flake root cause (click landed before the page segment hydrated; `openGallery` now waits for the demos); frame shots inspected (16); morph snapshots fill and crop (`SharedElement fit="cover"`); WebKit morph frame from video (WebKit screenshots paint a view transition flat: DECISIONS 12 Nov); `design-reviewer` + `review-animations`: 0 BLOCK/HIGH, 4 MEDIUM fixed (desktop cross-fade in place, slide clipped so the page never widens, Toaster outside `RouteTransition`, 44px back links), LOWs in follow-ups.
+- **Tested:** gate:task P0-10 PASS (unit 786, int 475, build, bundle, sast, E2E P0-10 46/0); motion + motion-primitives on 5 projects 109/0 (6 skipped by design); full 5-project E2E 616/0 (169 skipped by design) on the tree before the review fixes (those touch only `/dev/motion` and `RouteContent`).
+- **Not yet tested:** CI on `main` after this push (check `gh run list --limit 3`; Actions runs were sitting in "queued" for 15+ min at 02:05 IST). Windows re-run of the P0-10 specs. Edge cases without a test: tab hidden mid-transition, a destination that suspends (both rely on WAAPI/CSS only, no rAF loop).
+- **Next:** P0-11 sound and haptics (first: read its section in `docs/phases/P0.md` + DESIGN §9–10), then `/subphase-complete` for P0-C. P0-15 still waits on H-06/07/08/26/27. Nothing to install, migrate or seed.
 
 ## Status
-- **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20, P0-13, P0-21, P0-16, P0-08, P0-09. Next: P0-15 (waits on human tasks); P0-C continues meanwhile (P0-10).
+- **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20, P0-13, P0-21, P0-16, P0-08, P0-09, P0-10. Next: P0-15 (waits on human tasks); P0-C continues meanwhile (P0-11).
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → ~~P0-16~~; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-12 01:10 IST, talha.syed (handoff: P0-10 E2E issues fixed on wip `b04614f`; AC5 popover CI flake open)
+- **Last updated:** 2026-11-12 02:03 IST, talha.syed (P0-10 done, squashed to main)
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- **P0-10 in progress on `wip/P0-10`** (`b04614f`): steps A + B done; the 4 full-E2E issues fixed; step C started (frame shots written, not inspected). CI on `eb87d7d` red (AC5 popover flake, handoff).
-- **P0-09 done 11 Nov** (UI primitives, overlays, toasts, table, gallery state matrix; design review fixes; macOS visual baselines).
-- P0-08 done 11 Nov; P0-16 done 10 Nov. P0-15 is the only P0-E task left and waits on H-06/07/08/26/27.
+- **P0-10 done 12 Nov** (route transitions as live content, morphs, presets, popover, stagger, `/dev/motion`; review fixes; frame shots).
+- P0-09 done 11 Nov; P0-08 done 11 Nov; P0-16 done 10 Nov. P0-15 is the only P0-E task left and waits on H-06/07/08/26/27.
 
 ## Next (top 3)
-1. **P0-10** on `wip/P0-10`: fix the AC5 reduced-motion popover flake (red CI), full 5-project E2E, inspect frame shots, design-reviewer + review-animations, squash, tick.
-2. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); waits on H-06/07/08/26/27 (+ H-34 Sentry, H-36 demo inbox).
-3. P0-11 sound and haptics, then P0-C close (`/subphase-complete`).
+1. **P0-11** sound and haptics.
+2. P0-C close (`/subphase-complete`).
+3. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); waits on H-06/07/08/26/27 (+ H-34 Sentry, H-36 demo inbox).
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
@@ -76,17 +73,13 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - `src/server/integrations/` — email (SMTP→Mailpit, Resend, Brevo), storage (MinIO/R2), fakes (push, ai, postcodes, places)
 - `infra/docker-compose.dev.yml` via `pnpm services:up` — Postgres 17 + PostGIS, Redis queue instance (:6379, noeviction) + redis-cache (:6380, allkeys-lru), Mailpit (:8025), MinIO (:9000/:9001)
 - `src/server/env.ts` (fail-closed server env) / `src/lib/env.ts` (client); `.env.local` never committed
-- Motion (P0-10): `src/lib/motion/` (`route-transitions.ts`: NAV, `enterKeyframes`, `vtName`, `cssTimeMs`, `viewTransitionActive`, VT downgrade; `nav-intent.ts`; `presets.ts`: `MOTION_PRESETS`, `staggerDelay`/`staggerStyle`, `transformOriginFor`, `placePopover`), `src/components/motion/` (`RouteTransition`/`RouteContent`, `TransitionLink`, `SharedElement`, `Popover`), `/dev/motion` demos (`src/features/dev/motion/`); `src/features/dev/DevGate.tsx` (/dev 404 in production)
+- Motion (P0-10): `src/lib/motion/` (`route-transitions.ts`: NAV, `enterKeyframes`, `FADE_IN_PLACE_QUERY`, `vtName`, `cssTimeMs`, `viewTransitionActive`, VT downgrade; `nav-intent.ts`; `presets.ts`: `MOTION_PRESETS`, `staggerDelay`/`staggerStyle`, `transformOriginFor`, `placePopover`), `src/components/motion/` (`RouteTransition`/`RouteContent`, `TransitionLink`, `SharedElement` (`fit="cover"` for images), `Popover`; fixed UI stays outside `RouteTransition`), `/dev/motion` demos (`src/features/dev/motion/`); `src/features/dev/DevGate.tsx` (/dev 404 in production)
 - UI: `src/styles/tokens.css` (+ `tokens.ts` list), `src/app/globals.css` (hover variant, `hit-44`, `[data-press]`, `.spinner`, `.skeleton`), `src/components/ui/` (overlays: `Overlay.tsx` + `Modal`/`SidePanel`/`BottomSheet`; gallery `src/features/dev/UiGallery.tsx`), `src/lib/use-hydrated.ts`, `src/features/auth/`
 - CI/tooling: `.github/workflows/ci.yml` + `scheduled.yml`; `scripts/gate-task.ts`, `gate-phase.ts`, `lib/gate.ts`, `pre-push.ts` (+ `.lefthook/pre-push/guard-and-gate.sh`), `osv-gate.ts`, `ci-usage.ts`, `e2e.ts`; `Dockerfile`, `tsconfig.build.json`, `renovate.json`
 - Tests: Vitest `unit` + `integration` (per-worker DBs); `tests/authz/` (matrix, harness self-test); `scripts/check-authz-coverage.ts` (AST, in `pnpm lint`); `tests/e2e/` (Playwright :3100, import `test` from `support/test.ts`); `tests/load/`, `tests/live/`, `stryker.config.mjs`
 
 ## Last verified (12 Nov 2026)
-- P0-10 (wip `b04614f`): gate:task P0-10 PASS (unit 786, int 475, build, bundle, sast, E2E 40/0); AC2 5 projects ×3 15/0; devices+rls iPhone 14 + WebKit ×5 70/0; overlays WebKit engines ×5 115/0; gallery shots ≤ 32767px. CI 43086119817 (`eb87d7d`) red: AC5 popover flake.
-- P0-10 step B (wip `e4dfed0`): gate:task P0-10 PASS (unit 786, int 475, build, bundle, sast, E2E 36/0); full 5-project E2E 599/9 failed/152 skipped (4 issues open, handoff); motion-primitives ×3 on 4 projects 96/0 (`eb87d7d`); CI 43076645227 1 flaky (fixed).
-- P0-10 step A rework (wip `1a63e95`): gate:task P0-10 PASS (unit 761, int 475, build, bundle, sast, E2E P0-10 20/0, 0 skipped); motion.spec Chromium + WebKit `--repeat-each=4` 80/0.
-- P0-10 step A E2E (wip `bf132ed`): gate:task P0-10 PASS (int 475, build, bundle, sast, E2E P0-10 13/0, 5 skipped: 4 fixme + AC2 WebKit); `pnpm check` unit 740.
-- P0-10 step A (wip): gate:task P0-10 PASS (unit 740, int 475, E2E P0-10 2/0); main `9cef136` CI green (43017023053).
+- P0-10 (squashed to main): gate:task P0-10 PASS (unit 786, int 475, build, bundle, sast, E2E 46/0); motion specs 5 projects 109/0; full 5-project E2E 616/0 (169 skipped by design); AC5 flake reproduced by delaying the page chunk (0 popovers without the hydration wait, 1 with) then 120/0 ×3; CI 43091420964 green on wip `658350e`; design review 0 BLOCK/HIGH, 4 MEDIUM fixed.
 - P0-09 (wip `1d61e71` → squashed): gate:task P0-09 PASS (unit 723, int 475, build, bundle, sast, E2E P0-09 59/0); CI green 43014246719 (pixel7 + desktop1440); full 5-project E2E locally 503 passed / 0 failed / 152 skipped by design; e2e:visual macOS 2/0; design review: 1 HIGH + 4 MEDIUM fixed, LOWs in follow-ups.
 - P0-09 step C (`0553311`, wip): gate:task PASS (unit 713, int 475, build, bundle, sast, E2E P0-09 34/0); overlays.spec 5 projects 55/0 (10 skipped by design); CI on 0553311 started at the push. CI green on `620cde6` (run 42991161938) and main `7d9a05f` (run 42990900896).
 - P0-08: gate:task PASS (unit 595, int 475, build, bundle, sast, E2E P0-08 35/0, 11 skipped by design); tokens spec on 5 projects 55/0; CLS on `/dev/ui` 0.000 at 320/390/1440 (normal and fonts blocked), fonts 1.5 s late 0.000 / 0.048 / 0.009; contrast 24 pairs, 0 failing; CI green on `wip/P0-08` `8f241c0` (run 42967476496).
@@ -100,6 +93,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - Staging: none yet.
 
 ## Follow-ups (LOW, not fixed)
+- P0-10 review: morph box radius is `--r-md`, the page header is `--r-lg` (corner pops at the end); mid-morph the thumb passes over page text (a 60–80ms content-fade delay would hide it); Popover: Tab out of the last control leaves the document instead of returning to the trigger, and `place()` runs on every scroll event (wrap in one rAF); `hasTypedViewTransitions` is used by tests only. `motion.spec` waits on `<html data-hydrated>` only (the page segment can hydrate later: same cause as the AC5 flake; add a page-level wait if it ever flakes).
 - P0-09 review: sheet spring-back is the 220ms CSS ease-out, not DESIGN §7's spring (380/32) and ignores release velocity (`use-sheet-drag.ts`); try `--ease-drawer` in P0-10. KPI cards at 1440: one sparkline wraps under its value while neighbours sit inline. Remaining toasts jump up when one leaves (160ms, cosmetic). Gallery only: vertical MilestoneTracks at 1440 have no gap; Avatar captions on different baselines; `--r-lg` swatch looks like pill.
 - Safari streamed-content check on customer pages (from step C).
 - Safe-area padding (modal, panel, sheet, toasts) only checkable on a real iPhone (Playwright reports insets 0).

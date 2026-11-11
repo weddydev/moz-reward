@@ -212,8 +212,12 @@
     0 0 0 4px var(--focus-ring);
 }
 
-/* An overlay panel takes focus only programmatically, on open; it is not a control, so it draws no ring. */
-.overlay-panel:focus-visible {
+/*
+ * An overlay panel or popover takes focus only programmatically, on open; it is not a control, so it draws no
+ * ring (and its shadow never changes, so nothing but transform/opacity animates when it opens).
+ */
+.overlay-panel:focus-visible,
+.popover:focus-visible {
   outline: none;
   box-shadow: var(--shadow-2);
 }
@@ -422,6 +426,8 @@
   }
   .overlay-panel {
     position: relative;
+    /* One layer, the same value as its focus state, so taking focus on open animates nothing. */
+    box-shadow: var(--shadow-2);
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -515,6 +521,60 @@
     justify-content: center;
     padding-top: var(--space-8);
   }
+
+  /*
+   * Popover (P0-10 AC 8; Popover.tsx): grows from its trigger (Popover sets `transform-origin` from
+   * `transformOriginFor`), scale .95 + fade, never from 0. Transitions, so re-opening mid-exit reverses from
+   * where it is. Reduced motion: the scale is multiplied away (fade only, ≤ 150ms).
+   */
+  .popover {
+    box-shadow: var(--shadow-2);
+    transition:
+      transform var(--dur-base) var(--ease-out),
+      opacity var(--dur-base) var(--ease-out);
+    @starting-style {
+      opacity: 0;
+      transform: scale(calc(1 - 0.05 * var(--motion-on)));
+    }
+  }
+  .popover[data-state="closing"] {
+    opacity: 0;
+    transform: scale(calc(1 - 0.05 * var(--motion-on)));
+    transition-duration: var(--dur-exit);
+    pointer-events: none;
+  }
+
+  /*
+   * Stagger (P0-10 AC 7): each item rises 8px + fades in after its `--stagger-delay` (`staggerStyle(i)`).
+   * Only opacity hides it while it waits, so it is in the DOM, read by assistive tech and clickable from the
+   * first paint. Reduced motion: a plain fade, no delay.
+   */
+  .stagger-item {
+    animation: moz-rise var(--dur-base) var(--ease-out) backwards;
+    animation-delay: var(--stagger-delay); /* unset → initial (no delay) */
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-reduce-motion="false"]) .stagger-item {
+      animation-name: moz-fade;
+      animation-delay: initial;
+    }
+  }
+  :root[data-reduce-motion="true"] .stagger-item {
+    animation-name: moz-fade;
+    animation-delay: initial;
+  }
+}
+
+@keyframes moz-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes moz-fade {
+  from {
+    opacity: 0;
+  }
 }
 
 @keyframes moz-shimmer {
@@ -530,4 +590,52 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/*
+ * ---- Route transitions (P0-10, DESIGN §7 "Page transitions"; DECISIONS "Pages slide as live content") ----
+ * Pages slide as live content (RouteContent + enterKeyframes, WAAPI), never as a snapshot: in Chromium and
+ * WebKit nothing a view transition captures can be tapped while it runs, the root included. So the root is
+ * never captured, and view transitions only carry the card → page morphs (SharedElement). The overlay lets
+ * clicks through to the live page: navigation never waits for an animation.
+ */
+:root {
+  view-transition-name: none;
+}
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: var(--dur-base);
+}
+/*
+ * Shared-element morph (SharedElement): the box moves for --dur-slow while the two snapshots cross-fade in
+ * --dur-base (rule above), so the new image is in before the move ends. Reduced motion → no movement, the
+ * snapshots cross-fade.
+ */
+::view-transition-group(.morph) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease-in-out);
+}
+/*
+ * A morph between boxes of different shapes (square card thumb → wide page header): by default each snapshot
+ * keeps its own aspect ratio at the group's width, so the old one spills out of the moving box (seen in the
+ * P0-10 frame shots: a square ghost behind a wide header). Both snapshots fill the box and crop instead.
+ */
+::view-transition-old(.morph-cover),
+::view-transition-new(.morph-cover) {
+  height: 100%;
+  object-fit: cover;
+  overflow: clip; /* these pseudo-elements don't clip their image by default, unlike <img> */
+  border-radius: var(--r-md); /* the crop would otherwise cut the snapshots' own corners square */
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-reduce-motion="false"])::view-transition-group(.morph) {
+    animation: none;
+  }
+}
+:root[data-reduce-motion="true"]::view-transition-group(.morph) {
+  animation: none;
 }

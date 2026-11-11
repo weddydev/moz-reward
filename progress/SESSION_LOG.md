@@ -333,3 +333,11 @@ Done: the 4 issues from the previous handoff fixed on `wip/P0-10` `fea5139` (AC2
 Evidence: measured: iPhone 14 2nd card y 686 > 664 viewport; cookie notice top 482 vs sign-in button bottom 459 in a second context. AC2 15/0 (5 projects ×3); devices+rls 70/0; overlays WebKit ×5 115/0; iPhone gallery PNG 390×21067.
 Evidence: gate:task P0-10 PASS on `b04614f` (unit 786, int 475, E2E 40/0). CI 43086119817 (`eb87d7d`) red: desktop1440 AC5 popover flake (0 animations recorded).
 Not verified: full 5-project E2E (stopped at handover, 449 passed so far); Windows re-run; CI on `b04614f`. Next: see PROGRESS handoff.
+
+## 2026-11-12 (01:12–02:03 IST) — P0 — P0-10 done: flake root cause, frame shots, review fixes, squash (talha.syed, macOS)
+Done: AC5 popover flake fixed at the cause (first click before the page segment hydrated); 16 frame shots inspected; `SharedElement fit="cover"`; WebKit morph frame from video; design review (0 BLOCK/HIGH; 4 MEDIUM fixed: desktop cross-fade, slide clip, Toaster outside, 44px back links); edge tests; squashed to main, P0-10 ticked.
+Evidence: page chunk delayed 1.5s + `waitUntil: commit` → 0 popovers without the wait (3/3), 1 with (3/3); spec 5 projects ×3 120/0.
+Evidence: WebKit `page.screenshot` vs video of the same held morph: screenshot shows the header in place + old ghost, video shows one moving pair (also after a tap mid-morph that makes React drop the names).
+Evidence: slide overflow measured 8px (5 projects) → 0 after the clip; gate:task P0-10 PASS (unit 786, int 475, E2E 46/0); motion specs 5 projects 109/0; full E2E 616/0.
+Not verified: CI on main after the push (Actions queue slow); Windows re-run.
+

@@ -121,7 +121,7 @@ The installed Emil Kowalski skills (`emil-design-eng`, `animation-performance`, 
 - `will-change` only during an animation, removed after.
 
 ### Page transitions
-- Use the **View Transitions API** where supported (feature-detect); fallback: Motion fade+slide (8px, `--dur-slow`).
+- Use the **View Transitions API** where supported (feature-detect) for the shared-element morph; page slides animate the live content (fade + 8px, `--dur-slow`, in every browser), because a view-transition snapshot can't be tapped while it animates (DECISIONS 11 Nov 2026 "Pages slide as live content"). No old-page cross-fade: the old page leaves at once.
 - **Card → page**: tapping a shop card morphs the card image and title into the shop page header (shared element via `view-transition-name`).
 - **Tab switches (bottom nav)**: cross-fade with 6px directional slide based on tab order.
 - **Back**: reverse direction.
