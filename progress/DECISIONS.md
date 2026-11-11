@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-11 — Overlays on the native modal `<dialog>`, CSS motion, no library (P0-09 step C)
+Decision: Modal, SidePanel and BottomSheet share one engine (`Overlay.tsx`): a portalled `<dialog>` opened with `showModal()` (top layer; the page behind is inert to pointer and assistive tech), plus our own Tab wrap (`focus-trap.ts`), Esc on the dialog itself (top one only), a scroll-lock counter on `<html>` (`overflow: hidden`, scrollbar padded; no `position: fixed` body), focus back to the trigger (`overlay-trigger.ts` prefers the control clicked in the last second, because Safari does not focus buttons on click). Enter = `@starting-style`, exit = `[data-state="closing"]` whose transitions are awaited (`getAnimations()`), so reopening mid-exit reverses. Sheet drag: pointer events on handle + header, touch events on the content only while it is at its top; close rule is the pure `shouldCloseSheet` (25% or 0.5 px/ms over the last 100ms). New tokens `--scrim` and `--motion-on` (0 when motion is reduced: offsets vanish, overlays only fade).
+Why: native inertness and top layer beat a hand-made `aria-hidden` sweep; CSS transitions are interruptible and run off the main thread; Motion is not installed until P0-10 and is not needed here (DESIGN §7 allows CSS for simple transitions). The sheet uses ease-out 220ms rather than the 380/32 spring.
+Consequence / revisit when: P0-10 brings Motion: switch the sheet's spring-back to the token spring if it feels stiff on a real phone. Side panel leaves a 40px backdrop strip on phones so a tap beside it closes it.
+
 ## 2026-11-11 — `pnpm clear:check` before every "Run /clear" (human's standing rule)
 Decision: Claude may only tell the human to `/clear` after `pnpm clear:check` passes in the same reply (CLAUDE.md §1). The script is read-only: clean tree, no stash, current branch and main pushed, PROGRESS "Last updated" and a SESSION_LOG entry on origin/main dated today, and a wip branch's name + pushed HEAD in PROGRESS. `/checkpoint` and `/handoff` end with it.
 Why: the human asked for proof, not judgment, that a fresh session resumes exactly where this one stopped.

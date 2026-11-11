@@ -271,3 +271,9 @@ Next: `git checkout wip/P0-09`, check CI, then step C (overlays, tests first).
 Done: human's standing rule: prove the session is saved before saying `/clear`. `scripts/check-clear.ts` (+ 10 unit tests), CLAUDE.md §1 rule, `/checkpoint` + `/handoff` final step.
 Evidence: unit 10/0 (each failure case seen failing); first real run correctly FAILED on the then-uncommitted files.
 Next: unchanged — `git checkout wip/P0-09`, check CI 42989846839, then P0-09 step C.
+
+## 2026-11-11 (14:28–15:00 IST) — P0 — P0-09 step C overlays (talha.syed, macOS)
+Done: resume (pull --rebase rewrote wip/P0-09; restored with `reset --keep` + merge, human approved). Step C on `wip/P0-09` (`0553311`): Overlay engine (native modal dialog, focus trap, Esc top-only, scroll-lock counter, Safari trigger memory), Modal/SidePanel/BottomSheet, sheet drag (pure close rule), tokens `--scrim`/`--motion-on`, gallery Overlays section, overlays.spec.ts; DECISIONS entry.
+Evidence: unit tests first (close rule 14, scroll lock 5, overlays 31) red → green; first E2E run found 4 real issues (WebKit focus return, full-width panel had no backdrop on phones, scroll body not focusable for axe, test measured scroll before click scrolled) → fixed; overlays.spec 5 projects 55/0; screenshots inspected; gate:task PASS (unit 713, int 475, E2E P0-09 34/0) after root-causing a WebKit axe mid-fade (old spec 3/8 fail, new 16/16).
+Not verified: step C CI (running); AC 11 touch paths, C-20 chunks held, other ACs' E2E (step D).
+Next: `git checkout wip/P0-09 && git pull && git merge origin/main`, check CI on 0553311, then P0-09 step D (see PROGRESS handoff).
