@@ -7,28 +7,28 @@ Baton: held by Syedbadeshah76 since 2026-11-11 18:19 IST (Windows)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by Syedbadeshah76, 2026-11-11 19:00 IST (Windows). P0-10 step A on `wip/P0-10` (pushed, HEAD `ab24ac8`; NOT on main); the approach changes (below).** Continue: `git checkout wip/P0-10 && git pull && git merge origin/main` (never `pull --rebase` on a wip branch).
-- **Human decision (11 Nov):** slide the **root snapshot**, not a named content layer (DECISIONS "Page slides on the root snapshot"). Measured on Chromium + WebKit: content under a `view-transition-name` is not hit-testable mid-transition even with `::view-transition{pointer-events:none}` (`elementFromPoint` → parent/`<html>`); root-snapshot content (the tab bar link) is. React scopes update flags to the nearest boundary and cancels the root VT when no boundary changed (react-dom `rootViewTransitionNameCanceled`).
-- **Rework (step A):** directional CSS on `::view-transition-old/new(root)` selected by `:active-view-transition-type(nav-forward|nav-back|nav-tab-forward|nav-tab-back)`; content stays in root (no name, but React must still start the VT: keep a boundary that changes, e.g. `RouteTransition` with class `none`, and confirm the root is not cancelled); header/tab bars get their own names so they hold still; morphs (`SharedElement`) unchanged. Then un-`fixme` in `tests/e2e/motion.spec.ts`: AC2 (all), tabs on WebKit (nested boundaries both slid), AC4 on WebKit (no fallback enter animation recorded: investigate `RouteContent` there). Update P0-10 Build line + the old DECISIONS entry wording at the tick.
-- **motion.spec.ts now has:** recorder (VT pseudos + `[data-route-content]` WAAPI), AC1 forward/back/tabs, AC2 (JS `playbackRate` slow-down + capture-click log, works in both engines), AC3 (pairs via `vtName`, names ≤ 1), AC4 ×2 (no startViewTransition; VT without types), AC5 system + toggle (`moz:motion=reduce`). The tab demo bar is wrapped in its own `<ViewTransition default="none">` (likely replaced by the rework).
-- **Not yet tested:** full 5-project E2E after the head-script change (step C); AC 9 axe on `/dev/motion`; win32 visual baselines (first `pnpm e2e:visual` on Windows fails once → inspect, commit `-win32.png`). H-32 verified on Windows (`db:migrate` with no DB URLs in the shell). Nothing new to install, migrate or seed.
-- Then step B (presets, popover origin, stagger, `/dev/motion` sections; `emil-design-eng` skill), step C (frame screenshots, `design-reviewer` + `review-animations`, full E2E, squash, tick).
+- **Checkpoint by Syedbadeshah76, 2026-11-11 22:45 IST (Windows). P0-10 step A done on `wip/P0-10` (pushed, HEAD `1a63e95`; NOT on main).** Continue: `git checkout wip/P0-10 && git pull && git merge origin/main` (never `pull --rebase` on a wip branch).
+- **Approach changed again (DECISIONS "Pages slide as live content"; human delegated the choice):** the root-snapshot slide failed too: with the root captured, taps mid-transition hit `<html>` in both engines (the earlier "tappable" reading had the root cancelled). Now: WAAPI enter on the live content (`RouteContent` + `enterKeyframes`, direction from `TransitionLink` → `nav-intent.ts`), `:root{view-transition-name:none}`, View Transitions only for morphs (content fades only during one: WebKit crashes on a transform there). Enter runs in a **layout** effect (React may defer passive effects past the VT). `cssTimeMs` reads minified tokens (`.38s`). New demo `/dev/motion/details` (plain forward/back).
+- **motion.spec:** 20/0 on Chromium + WebKit, no fixme left; 80/80 with `--repeat-each=4` under load. Recorder hooks `Element.prototype.animate` for page enters (WebKit paints ~1 frame/100ms during a VT).
+- **Sentry wizard** ran in the repo at 21:29 (H-34 onboarding): output parked on local unpushed branch `local/sentry-wizard` (this laptop); `.env.sentry-build-plugin` (token) left untouched, git-ignored. H-34 note added.
+- **Not yet tested:** full 5-project E2E (root layout CSS changed: step C); AC 9 axe on `/dev/motion`; win32 visual baselines (first `pnpm e2e:visual` on Windows fails once → inspect, commit `-win32.png`). Nothing to install, migrate or seed.
+- **Next: step B** (presets, popover origin `transformOriginFor`, `staggerDelay`, press/hover docs, `/dev/motion` sections, AC 6 motion-CSS scan unit test; load `emil-design-eng`), then **step C** (frame screenshots 390 Chromium + WebKit and 1440, `design-reviewer` + `review-animations`, full E2E, squash to main, tick). The sheet spring-back follow-up (`--ease-drawer`) can ride along in B.
 
 ## Status
 - **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20, P0-13, P0-21, P0-16, P0-08, P0-09. Next: P0-15 (waits on human tasks); P0-C continues meanwhile (P0-10).
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → ~~P0-16~~; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-11 19:00 IST, Syedbadeshah76 (checkpoint: P0-10 step A rework to root-snapshot slide)
+- **Last updated:** 2026-11-11 22:45 IST, Syedbadeshah76 (checkpoint: P0-10 step A done, live-content slide)
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- **P0-10 in progress on `wip/P0-10`**: step A E2E written; rework to the root-snapshot slide (human, 11 Nov); B and C to come.
+- **P0-10 in progress on `wip/P0-10`** (`1a63e95`): step A done (live-content slide, morphs only via View Transitions); B and C to come.
 - **P0-09 done 11 Nov** (UI primitives, overlays, toasts, table, gallery state matrix; design review fixes; macOS visual baselines).
 - P0-08 done 11 Nov; P0-16 done 10 Nov. P0-15 is the only P0-E task left and waits on H-06/07/08/26/27.
 
 ## Next (top 3)
-1. **P0-10** on `wip/P0-10`: rework step A to slide the root snapshot, un-fixme AC2 / WebKit tabs / WebKit AC4, then steps B and C.
+1. **P0-10** on `wip/P0-10`: step B (presets, popover, stagger, gallery sections, AC 6 scan), then step C (screenshots, reviews, full E2E, squash, tick).
 2. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); waits on H-06/07/08/26/27 (+ H-34 Sentry, H-36 demo inbox).
 3. P0-11 sound and haptics, then P0-C close (`/subphase-complete`).
 
@@ -75,11 +75,13 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - `src/server/integrations/` — email (SMTP→Mailpit, Resend, Brevo), storage (MinIO/R2), fakes (push, ai, postcodes, places)
 - `infra/docker-compose.dev.yml` via `pnpm services:up` — Postgres 17 + PostGIS, Redis queue instance (:6379, noeviction) + redis-cache (:6380, allkeys-lru), Mailpit (:8025), MinIO (:9000/:9001)
 - `src/server/env.ts` (fail-closed server env) / `src/lib/env.ts` (client); `.env.local` never committed
+- Motion (P0-10): `src/lib/motion/` (`route-transitions.ts`: NAV, `enterKeyframes`, `vtName`, `cssTimeMs`, `viewTransitionActive`, VT downgrade; `nav-intent.ts`), `src/components/motion/` (`RouteTransition`/`RouteContent`, `TransitionLink`, `SharedElement`), `/dev/motion` demos
 - UI: `src/styles/tokens.css` (+ `tokens.ts` list), `src/app/globals.css` (hover variant, `hit-44`, `[data-press]`, `.spinner`, `.skeleton`), `src/components/ui/` (overlays: `Overlay.tsx` + `Modal`/`SidePanel`/`BottomSheet`; gallery `src/features/dev/UiGallery.tsx`), `src/lib/use-hydrated.ts`, `src/features/auth/`
 - CI/tooling: `.github/workflows/ci.yml` + `scheduled.yml`; `scripts/gate-task.ts`, `gate-phase.ts`, `lib/gate.ts`, `pre-push.ts` (+ `.lefthook/pre-push/guard-and-gate.sh`), `osv-gate.ts`, `ci-usage.ts`, `e2e.ts`; `Dockerfile`, `tsconfig.build.json`, `renovate.json`
 - Tests: Vitest `unit` + `integration` (per-worker DBs); `tests/authz/` (matrix, harness self-test); `scripts/check-authz-coverage.ts` (AST, in `pnpm lint`); `tests/e2e/` (Playwright :3100, import `test` from `support/test.ts`); `tests/load/`, `tests/live/`, `stryker.config.mjs`
 
 ## Last verified (11 Nov 2026)
+- P0-10 step A rework (wip `1a63e95`): gate:task P0-10 PASS (unit 761, int 475, build, bundle, sast, E2E P0-10 20/0, 0 skipped); motion.spec Chromium + WebKit `--repeat-each=4` 80/0.
 - P0-10 step A E2E (wip `bf132ed`): gate:task P0-10 PASS (int 475, build, bundle, sast, E2E P0-10 13/0, 5 skipped: 4 fixme + AC2 WebKit); `pnpm check` unit 740.
 - P0-10 step A (wip): gate:task P0-10 PASS (unit 740, int 475, E2E P0-10 2/0); main `9cef136` CI green (43017023053).
 - P0-09 (wip `1d61e71` → squashed): gate:task P0-09 PASS (unit 723, int 475, build, bundle, sast, E2E P0-09 59/0); CI green 43014246719 (pixel7 + desktop1440); full 5-project E2E locally 503 passed / 0 failed / 152 skipped by design; e2e:visual macOS 2/0; design review: 1 HIGH + 4 MEDIUM fixed, LOWs in follow-ups.
