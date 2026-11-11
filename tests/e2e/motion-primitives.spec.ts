@@ -17,6 +17,10 @@ type Anim = {
 async function openGallery(page: Page): Promise<void> {
   await page.goto("/dev/motion");
   await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
+  // The root layout sets <html data-hydrated> from its own boundary, which can hydrate before the page
+  // segment; a click in that gap does nothing (CI 43086119817: "popover" read 0 animations). This button is
+  // disabled until the demos themselves hydrate.
+  await expect(page.getByRole("button", { name: "Open modal", exact: true })).toBeEnabled();
 }
 
 /** Clicks a button by its text inside the page and reads the animations it started on `selector`. */
@@ -33,6 +37,9 @@ async function clickAndRead(page: Page, buttonText: string, selector: string): P
       // first on a slow CI runner (seen flaky on Linux Pixel 7).
       for (let i = 0; i < 50; i++) await Promise.resolve();
       const targets = [...document.querySelectorAll<HTMLElement>(selector)];
+      // Nothing matched: the click did nothing (e.g. it landed before hydration). Say so, instead of
+      // returning "0 animations", which reads like a motion bug.
+      if (targets.length === 0) throw new Error(`"${buttonText}" produced no ${selector}`);
       return targets.flatMap((el) =>
         el.getAnimations().map((a) => {
           const effect = a.effect as KeyframeEffect | null;
