@@ -364,8 +364,12 @@ test.describe("[P0-08] AC4: focus ring", () => {
     });
 
   const targets = (page: Page): Array<{ name: string; target: Locator }> => [
-    { name: "gold-button", target: page.getByRole("button", { name: "Collect points" }) },
-    { name: "ink-button", target: page.getByRole("button", { name: "Rate your visit" }) },
+    {
+      // The gallery shows "Collect points" as primary, secondary and ghost (in that order).
+      name: "gold-button",
+      target: page.getByRole("button", { name: "Collect points" }).first(),
+    },
+    { name: "ink-button", target: page.getByRole("button", { name: "Collect points" }).nth(1) },
     { name: "input", target: page.getByRole("textbox", { name: "Full name" }) },
     { name: "chip", target: page.getByRole("button", { name: "Friendly staff" }) },
   ];

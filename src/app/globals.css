@@ -44,6 +44,19 @@
   --ease-in-out: var(--ease-in-out);
 }
 
+/*
+ * Hover only where a real pointer hovers (DESIGN §7, §11): on touch screens a tap must not leave a hover style
+ * behind. This replaces Tailwind's own `hover:` variant (which checks `(hover: hover)` only), so every
+ * `hover:` class in the app gets the rule without a prefix.
+ */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
 /* Type scale (mobile / desktop ≥1024px) — DESIGN §4 */
 @utility text-display {
   font-family: var(--font-display);
@@ -131,6 +144,23 @@
 @utility tabular {
   font-variant-numeric: tabular-nums;
 }
+/*
+ * Touch target of at least 44×44 CSS px (DESIGN §13) for controls drawn smaller (40px buttons, chips, the
+ * table toggle): an invisible pseudo-element centred on the control takes the hits. The element itself
+ * becomes the positioning box, so it must not clip (no overflow-hidden on the same element).
+ */
+@utility hit-44 {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    translate: -50% -50%;
+  }
+}
 
 @layer base {
   html {
@@ -182,6 +212,12 @@
     0 0 0 4px var(--focus-ring);
 }
 
+/* An overlay panel takes focus only programmatically, on open; it is not a control, so it draws no ring. */
+.overlay-panel:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-2);
+}
+
 /*
  * Global reduced-motion safety net (DESIGN §7): nothing moves. Only colour and opacity may still transition
  * (the duration tokens cap those at 150ms), so a transform or position change lands at once; keyframe
@@ -220,8 +256,36 @@
     -webkit-user-select: none;
     user-select: none;
   }
-  .pressable:active:not(:disabled):not([aria-disabled="true"]) {
+  /*
+   * `[data-press]` marks the visible part of a control whose hit area is bigger than it (Switch: the row is
+   * the target, only the track scales; a transform on the button itself would shrink its row-wide ::after).
+   */
+  [data-press] {
+    transition:
+      transform var(--dur-fast) var(--ease-out),
+      opacity var(--dur-fast) ease;
+  }
+  .pressable:active:not(:disabled):not([aria-disabled="true"]),
+  :active:not(:disabled):not([aria-disabled="true"]) > [data-press] {
     transform: scale(0.97);
+  }
+  /* Reduced motion: the press still shows, as a dim instead of a scale (DESIGN §7). */
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-reduce-motion="false"])
+      .pressable:active:not(:disabled):not([aria-disabled="true"]),
+    :root:not([data-reduce-motion="false"])
+      :active:not(:disabled):not([aria-disabled="true"])
+      > [data-press] {
+      transform: none;
+      opacity: 0.8;
+    }
+  }
+  :root[data-reduce-motion="true"] .pressable:active:not(:disabled):not([aria-disabled="true"]),
+  :root[data-reduce-motion="true"]
+    :active:not(:disabled):not([aria-disabled="true"])
+    > [data-press] {
+    transform: none;
+    opacity: 0.8;
   }
 
   /* Primary button: gold gradient with a soft sheen on desktop hover (gradient position shift). */
@@ -245,26 +309,48 @@
     }
   }
 
-  /* Skeleton shimmer ≤ 1.2s loop; static under reduced motion. */
+  /*
+   * Skeleton: a flat block with a highlight band sliding across it (≤ 1.2s loop). The band moves by
+   * transform on a pseudo-element, so the loop stays on the compositor; reduced motion leaves the block flat.
+   */
   .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface-2);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
     background: linear-gradient(
       90deg,
-      var(--surface-2) 0%,
+      transparent 0%,
       color-mix(in oklab, var(--surface-2), var(--surface)) 50%,
-      var(--surface-2) 100%
+      transparent 100%
     );
-    background-size: 200% 100%;
+    transform: translateX(-100%);
     animation: moz-shimmer var(--dur-shimmer) linear infinite;
   }
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-reduce-motion="false"]) .skeleton {
-      animation: none;
-      background: var(--surface-2);
+    :root:not([data-reduce-motion="false"]) .skeleton::after {
+      display: none;
     }
   }
-  :root[data-reduce-motion="true"] .skeleton {
+  :root[data-reduce-motion="true"] .skeleton::after {
+    display: none;
+  }
+
+  /* Spinner: one turn per --dur-spin. Reduced motion: it stays visible and still (the arc shows it is busy). */
+  .spinner {
+    animation: moz-spin var(--dur-spin) linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-reduce-motion="false"]) .spinner {
+      animation: none;
+    }
+  }
+  :root[data-reduce-motion="true"] .spinner {
     animation: none;
-    background: var(--surface-2);
   }
 
   /* Foil texture overlay for hero cards and the member card (opacity ≤ .06). */
@@ -293,14 +379,150 @@
     opacity: 0;
     transition-duration: var(--dur-exit);
   }
+
+  /*
+   * Overlays: Modal, SidePanel, BottomSheet (P0-09 AC 3, 11; Overlay.tsx). The <dialog> is a transparent
+   * full-viewport layer holding a backdrop and the panel. Enter: @starting-style. Exit: [data-state="closing"],
+   * whose transitions Overlay.tsx waits for before closing the dialog; reopening mid-exit reverses them.
+   * Transform + opacity only, ≤ 300ms. Offsets are multiplied by --motion-on (0 when motion is reduced), so a
+   * reduced-motion overlay only fades; panels that slide stay opaque while they move.
+   */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+  .overlay[open] {
+    display: flex;
+  }
+  .overlay::backdrop {
+    background: transparent;
+  }
+  .overlay[data-state="closing"] {
+    pointer-events: none;
+  }
+  .overlay-backdrop {
+    position: absolute;
+    inset: 0;
+    background: var(--scrim);
+    transition: opacity var(--dur-base) var(--ease-out);
+    @starting-style {
+      opacity: 0;
+    }
+  }
+  .overlay-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    transition:
+      transform var(--dur-base) var(--ease-out),
+      opacity var(--dur-base) var(--ease-out);
+  }
+  .overlay-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .overlay[data-state="closing"] .overlay-backdrop,
+  .overlay[data-state="closing"] .overlay-panel {
+    opacity: 0;
+    transition-duration: var(--dur-exit);
+  }
+
+  /* Modal: centred, scales from .96 with a fade (never from 0); not anchored to its trigger. */
+  .overlay[data-kind="modal"] {
+    align-items: center;
+    justify-content: center;
+    padding: max(var(--space-16), env(safe-area-inset-top, 0px))
+      max(var(--space-16), env(safe-area-inset-right, 0px))
+      max(var(--space-16), env(safe-area-inset-bottom, 0px))
+      max(var(--space-16), env(safe-area-inset-left, 0px));
+  }
+  .overlay[data-kind="modal"] .overlay-panel {
+    width: min(100%, var(--content-max));
+    border-radius: var(--r-lg);
+    @starting-style {
+      opacity: 0;
+      transform: scale(calc(1 - 0.04 * var(--motion-on)));
+    }
+  }
+  .overlay[data-kind="modal"][data-state="closing"] .overlay-panel {
+    transform: scale(calc(1 - 0.04 * var(--motion-on)));
+  }
+
+  /* SidePanel: full height from the right, slides its own width. */
+  .overlay[data-kind="panel"] {
+    justify-content: flex-end;
+  }
+  .overlay[data-kind="panel"] .overlay-panel {
+    /* A strip of backdrop stays visible on phones, so a tap beside the panel closes it. */
+    width: min(480px, calc(100% - var(--space-40)));
+    height: 100%;
+    border-radius: var(--r-lg) 0 0 var(--r-lg);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    @starting-style {
+      opacity: var(--motion-on);
+      transform: translateX(calc(100% * var(--motion-on)));
+    }
+  }
+  .overlay[data-kind="panel"][data-state="closing"] .overlay-panel {
+    opacity: var(--motion-on);
+    transform: translateX(calc(100% * var(--motion-on)));
+  }
+
+  /* BottomSheet: rises its own height; safe-area padding below; the grip (handle + header) owns the drag. */
+  .overlay[data-kind="sheet"] {
+    align-items: flex-end;
+    justify-content: center;
+    padding-top: max(var(--space-24), env(safe-area-inset-top, 0px));
+  }
+  .overlay[data-kind="sheet"] .overlay-panel {
+    width: min(100%, var(--content-max));
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    @starting-style {
+      opacity: var(--motion-on);
+      transform: translateY(calc(100% * var(--motion-on)));
+    }
+  }
+  .overlay[data-kind="sheet"][data-state="closing"] .overlay-panel {
+    opacity: var(--motion-on);
+    transform: translateY(calc(100% * var(--motion-on)));
+  }
+  .overlay[data-kind="sheet"] .overlay-grip {
+    touch-action: none;
+    cursor: grab;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .overlay-handle {
+    display: flex;
+    justify-content: center;
+    padding-top: var(--space-8);
+  }
 }
 
 @keyframes moz-shimmer {
   from {
-    background-position: 200% 0;
+    transform: translateX(-100%);
   }
   to {
-    background-position: -200% 0;
+    transform: translateX(100%);
   }
 }
 

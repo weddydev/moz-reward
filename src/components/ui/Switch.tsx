@@ -2,8 +2,13 @@
 
 import { useId } from "react";
 import { cx } from "@/lib/cx";
+import { useHydrated } from "@/lib/use-hydrated";
 
-/** Toggle: 120ms gold fill sweep (DESIGN §7). Controlled. 44px tall hit area. */
+/**
+ * Toggle: 120ms gold fill sweep (DESIGN §7). Controlled. The whole row is the target: the button's
+ * `::after` covers the row (so a tap anywhere on it, label included, toggles), and the label is linked for
+ * assistive tech. Disabled until hydrated so an early press is never lost (C-20).
+ */
 export function Switch({
   checked,
   onCheckedChange,
@@ -18,9 +23,15 @@ export function Switch({
   disabled?: boolean;
 }): React.JSX.Element {
   const id = useId();
+  const hydrated = useHydrated();
   return (
-    <div className="flex min-h-11 items-center justify-between gap-4">
-      <div className="flex flex-col">
+    <div
+      className={cx(
+        "relative flex min-h-11 items-center justify-between gap-4",
+        disabled && "opacity-55",
+      )}
+    >
+      <div className="flex min-w-0 flex-col [overflow-wrap:anywhere]">
         <label htmlFor={id} className="text-body font-semibold">
           {label}
         </label>
@@ -36,25 +47,31 @@ export function Switch({
         role="switch"
         aria-checked={checked}
         aria-describedby={description ? `${id}-d` : undefined}
-        disabled={disabled}
+        disabled={disabled || !hydrated}
         onClick={() => {
           onCheckedChange(!checked);
         }}
         className={cx(
-          "pressable rounded-pill border-line bg-surface-2 relative h-7 w-12 shrink-0 overflow-hidden border disabled:opacity-55",
+          "rounded-pill shrink-0 select-none after:absolute after:inset-0 after:content-['']",
+          disabled && "cursor-not-allowed",
         )}
       >
         <span
           aria-hidden="true"
-          className="bg-gold-gradient duration-fast absolute inset-0 origin-left transition-transform ease-out"
-          style={{ transform: checked ? "scaleX(1)" : "scaleX(0)" }}
-        />
-        <span
-          aria-hidden="true"
-          data-part="thumb"
-          className="rounded-pill bg-surface shadow-1 duration-fast absolute top-0.5 left-0.5 size-[22px] transition-transform ease-out"
-          style={{ transform: checked ? "translateX(20px)" : "translateX(0)" }}
-        />
+          data-part="track"
+          data-press
+          className="rounded-pill border-ink-3 bg-surface-2 relative block h-7 w-12 overflow-hidden border"
+        >
+          <span
+            className="bg-gold-gradient duration-fast absolute inset-0 origin-left transition-transform ease-out"
+            style={{ transform: checked ? "scaleX(1)" : "scaleX(0)" }}
+          />
+          <span
+            data-part="thumb"
+            className="rounded-pill bg-surface shadow-1 duration-fast absolute top-0.5 left-0.5 size-[22px] transition-transform ease-out"
+            style={{ transform: checked ? "translateX(20px)" : "translateX(0)" }}
+          />
+        </span>
       </button>
     </div>
   );

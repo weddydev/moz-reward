@@ -5,7 +5,7 @@ import { type MotionPreference, useMotionPreference, useSoundPreference } from "
 import { useHydrated } from "@/lib/use-hydrated";
 
 const MOTION_OPTIONS: ReadonlyArray<{ value: MotionPreference; label: string }> = [
-  { value: "system", label: "Device setting" },
+  { value: "system", label: "Device" },
   { value: "reduce", label: "Reduced" },
   { value: "full", label: "Full" },
 ];

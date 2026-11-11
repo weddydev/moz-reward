@@ -48,6 +48,7 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
       { name: "on-danger", use: "Text on a danger background" },
       { name: "success-tint", use: "Success badge background" },
       { name: "warning-tint", use: "Warning badge and notice background" },
+      { name: "scrim", use: "Dim layer behind Modal, SidePanel and BottomSheet" },
     ],
   },
   {
@@ -97,6 +98,7 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
       { name: "dur-exit", use: "Leaving elements (toast dismiss)" },
       { name: "dur-sheen", use: "Primary button hover sheen" },
       { name: "dur-shimmer", use: "Skeleton shimmer loop" },
+      { name: "dur-spin", use: "One spinner turn (fast spin feels faster)" },
       { name: "dur-reduced", use: "Longest fade when motion is reduced" },
     ],
   },
@@ -106,6 +108,13 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
     tokens: [
       { name: "ease-out", use: "Entrances" },
       { name: "ease-in-out", use: "Moves" },
+    ],
+  },
+  {
+    title: "Motion: switch",
+    kind: "number",
+    tokens: [
+      { name: "motion-on", use: "1, or 0 when motion is reduced (overlays then only fade)" },
     ],
   },
   {

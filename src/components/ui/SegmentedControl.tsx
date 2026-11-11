@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { cx } from "@/lib/cx";
+import { useHydrated } from "@/lib/use-hydrated";
 
 /** Radio-style segmented control with arrow-key support. The thumb slides (220ms) via transform. */
 export function SegmentedControl<T extends string>({
@@ -16,6 +17,7 @@ export function SegmentedControl<T extends string>({
   onChange: (value: T) => void;
 }): React.JSX.Element {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
+  const hydrated = useHydrated();
   const index = Math.max(
     0,
     options.findIndex((o) => o.value === value),
@@ -64,15 +66,18 @@ export function SegmentedControl<T extends string>({
           role="radio"
           aria-checked={o.value === value}
           tabIndex={o.value === value ? 0 : -1}
+          // Disabled until hydrated so an early press is never lost (C-20).
+          disabled={!hydrated}
           onClick={() => {
             onChange(o.value);
           }}
           className={cx(
-            "rounded-pill text-small duration-fast relative z-10 h-10 px-3 font-semibold transition-colors",
+            "hit-44 rounded-pill text-small duration-fast z-10 h-10 min-w-0 px-3 font-semibold transition-colors",
             o.value === value ? "text-ink" : "text-ink-2",
           )}
         >
-          {o.label}
+          {/* Truncation sits on the label: overflow on the button would clip its hit-44 area. */}
+          <span className="block truncate">{o.label}</span>
         </button>
       ))}
     </div>

@@ -44,9 +44,16 @@ async function axeProblems(page: Page, baseURL: string | undefined): Promise<Gua
   // Hydration enables controls (disabled until hydrated) and they fade in: wait for it first, else the scan can
   // land mid-fade on a slow runner (CI 42772627338). <html data-hydrated> is set by ApplyPreferences (2 s cap).
   await page
-    .waitForFunction(() => document.documentElement.dataset.hydrated === "true", undefined, {
-      timeout: 2000,
-    })
+    .waitForFunction(
+      // The root marks <html> from its own Suspense boundary, which can hydrate before the page segment; a
+      // page whose controls wait for hydration marks itself `data-hydrating` until then (CI 43005714982:
+      // axe saw /dev/ui's scroll rows with every control still disabled).
+      () =>
+        document.documentElement.dataset.hydrated === "true" &&
+        !document.querySelector("[data-hydrating]"),
+      undefined,
+      { timeout: 2000 },
+    )
     .catch(() => undefined);
   // Measure the settled page: a scan during a transition (e.g. a button fading from its pre-hydration
   // disabled opacity to 1) reads blended colours and reports false contrast failures. Finite animations only

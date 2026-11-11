@@ -63,12 +63,12 @@ test("[P0-08] AC8: the toggles apply at once and persist across a reload", async
     "false",
   );
 
-  // "Full" beats a system that asks for reduced motion; "Device setting" removes the attribute again.
+  // "Full" beats a system that asks for reduced motion; "Device" removes the attribute again.
   await page.emulateMedia({ reducedMotion: "reduce" });
   await toggles.getByRole("radio", { name: "Full" }).click();
   await expect(page.locator(html)).toHaveAttribute(ATTR, "false");
   await expect(page.getByTestId("motion-result")).toHaveText("Animations are on.");
-  await toggles.getByRole("radio", { name: "Device setting" }).click();
+  await toggles.getByRole("radio", { name: "Device" }).click();
   await expect(page.locator(html)).not.toHaveAttribute(ATTR);
   await expect(page.getByTestId("motion-result")).toHaveText("Animations are reduced.");
 });

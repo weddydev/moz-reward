@@ -35,6 +35,8 @@
   --on-danger: var(--surface);
   --success-tint: color-mix(in srgb, var(--success) 6%, var(--surface));
   --warning-tint: color-mix(in srgb, var(--warning) 14%, var(--surface));
+  /* Dim layer behind Modal, SidePanel and BottomSheet. */
+  --scrim: color-mix(in srgb, var(--ink) 45%, transparent);
 
   /* Space: the 4px unit Tailwind's spacing utilities multiply, and the DESIGN §3 scale. */
   --space-unit: 4px;
@@ -72,8 +74,11 @@
   --dur-exit: 160ms;
   --dur-sheen: 600ms;
   --dur-shimmer: 1200ms;
+  --dur-spin: 700ms;
   /* The longest any fade lasts when motion is reduced (DESIGN §7). */
   --dur-reduced: 150ms;
+  /* 1 = movement on, 0 = reduced motion: overlays multiply their enter/exit offsets by it, so they only fade. */
+  --motion-on: 1;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
@@ -99,6 +104,7 @@
     --dur-hero: var(--dur-reduced);
     --dur-exit: var(--dur-reduced);
     --dur-sheen: 0ms;
+    --motion-on: 0;
   }
 }
 :root[data-reduce-motion="true"] {
@@ -108,4 +114,5 @@
   --dur-hero: var(--dur-reduced);
   --dur-exit: var(--dur-reduced);
   --dur-sheen: 0ms;
+  --motion-on: 0;
 }
