@@ -13,6 +13,16 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-11 — Touch-safe hover and 44px hit areas (P0-09 step A)
+Decision: `globals.css` redefines Tailwind's `hover` variant as `@media (hover: hover) and (pointer: fine) { &:hover }`, so plain `hover:` classes are touch-safe; controls drawn under 44px get the `hit-44` utility (centred invisible `::after`, `max(100%, 44px)`). Controls whose target is bigger than what's drawn (Switch: the whole row) mark the visible part `data-press`, which scales on the parent's `:active` instead of the control itself.
+Why: AC4/AC7; a transform on the Switch button would make it the containing block of its row-wide `::after` mid-press and lose clicks.
+Consequence: `hit-44` elements must not use `overflow-hidden`; never reintroduce `[@media(hover:hover)]:` prefixes.
+
+## 2026-11-11 — Toast announcers and Table row actions (P0-09 step A)
+Decision: toasts are announced once, when they become visible, through two sr-only regions (`role=status` polite, `role=alert` for errors) cleared after 1 s; the visible list is a non-live `section` named "Notifications". Rows with an action get a real `<button data-row-action>` in the first cell named by `rowLabel`; the row's click handler runs the action once (ignores other controls and text selection).
+Why: AC10 (no double reading, none dropped) and AC9 (keyboard rows without `tabindex` on `<tr>`).
+Consequence: E2E must scope toast text to the "Notifications" region (it also appears in the announcer for 1 s).
+
 ## 2026-11-11 — P0-08: visual snapshots run on request, with per-OS baselines
 Decision: `toHaveScreenshot` tests carry the tag `@visual` and are left out of ordinary runs and CI (`grepInvert` in `playwright.config.ts`). They run with `VISUAL=1`: `pnpm gate:phase` sets it, and `pnpm e2e:visual` runs only them (`--update-snapshots` accepts a new look). One browser (Chromium) holds the baselines, stored beside the spec with the OS in the file name (`…-chromium-win32.png`, `…-darwin.png`).
 Why: font rendering differs between Windows, macOS and CI's Linux, so one shared baseline would fail on two of the three; TESTING §4 puts visual snapshots in the phase gate, which runs on a developer laptop.
