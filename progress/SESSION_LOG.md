@@ -315,3 +315,15 @@ Done: root-snapshot slide built and disproved (captured root → taps hit `<html
 Evidence: WebKit crash isolated (transform anim on content during a morph; opacity fine); React passive effects ran after `vtfin` in ~half of 16 loaded runs → layout effect: 32/32 inside the VT. Minifier `380ms` → `.38s` (enter ran 0.38ms) fixed.
 Evidence: gate:task P0-10 PASS (unit 761, int 475, E2E 20/0); motion.spec ×4 under load 80/0 (Chromium + WebKit).
 Next: P0-10 step B (presets, `transformOriginFor`, `staggerDelay`, gallery sections, AC 6 scan; `emil-design-eng`), then step C.
+
+## 2026-11-11 (22:50–23:45 IST) — P0 — P0-10 step B: presets, popover, stagger, AC 6 scan (Syedbadeshah76, Windows)
+Done: `presets.ts` (MOTION_PRESETS, staggerDelay, transformOriginFor, placePopover) test-first; `<Popover>`; `.popover`/`.stagger-item` CSS; /dev/motion Presets/Popover/Stagger/Press-and-hover; DevGate extracted + production-404 unit test; DECISIONS "Popover: portal + CSS transitions".
+Evidence: AC 6 scan fails on an injected `color` transition (then restored); diag showed focus-visible box-shadow 5-layer→1-layer transition under reduced motion → shadow moved into CSS for overlay panel + popover.
+Evidence: gate:task P0-10 PASS (unit 786, int 475, build, bundle, sast, E2E 36/0); 4-project run of motion-primitives + overlays all pass (WebKit overlay screenshot timeout under load, passed alone). Screenshots 320/1440 inspected.
+Next: step C (frame screenshots, reviews, full E2E, squash, tick).
+
+## 2026-11-11/12 (23:45–00:21 IST) — P0 — P0-10 step B full E2E + handoff (Syedbadeshah76, Windows)
+Done: full 5-project E2E on `e4dfed0`; failures re-run alone and triaged (handoff items 1–4); CI flake (AC5 popover frame wait) fixed in `eb87d7d`; H-31 row moved back to Open.
+Evidence: full E2E 599 passed / 9 failed / 152 skipped (19.6m); alone: 3 WebKit pass (load), iPhone AC2 `<HTML>` hit mid-morph, devices/rls stuck at /sign-in, gallery screenshot 22,356 CSS px × DPR > 32767.
+Evidence: motion-primitives.spec `--repeat-each=3` Chromium/WebKit/Pixel 7/iPhone 14 96/0; CI 43076645227: 232 passed, 1 flaky.
+Next: handoff items 1–4, then P0-10 step C.

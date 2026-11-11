@@ -13,6 +13,13 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-11 — Popover: portal + CSS transitions, not the HTML popover attribute (P0-10 step B)
+Decision: `<Popover>` (src/components/motion) is a React portal with `position: fixed`, placed by `placePopover` and grown from its trigger via `transformOriginFor`; enter is `@starting-style`, exit a `data-state="closing"` the CSS transitions to (same engine as the P0-09 overlays). No `motion` package: CSS + WAAPI cover every P0-10 primitive.
+Why: `hidePopover()` removes the element at once, so an interruptible exit (AC 8: re-open mid-exit reverses) needs `transition-behavior: allow-discrete` on `display`/`overlay`, which Safari 18 handles unevenly; transitions on a mounted element reverse everywhere. A portal also escapes the transformed `RouteContent` while a page enters.
+Consequence / revisit when: menus/selects built on it in P1+ add roving focus themselves. DESIGN §7 names Motion as the library; add it (with a DECISIONS line) only when a gesture needs springs with velocity (sheet spring-back follow-up).
+
+---
+
 ## 2026-11-11 — Pages slide as live content; View Transitions only for morphs (P0-10; supersedes "Page slides on the root snapshot")
 Decision: The page slide is a WAAPI enter on the live content (`RouteContent`, `enterKeyframes`): opacity 0→1 + translateX 8px (forward/back) or 6px (tabs) over `--dur-slow`, nothing on exit, direction recorded by `TransitionLink` at click time (`setNavIntent`/`takeNavIntent`; no direction → fade only). `:root { view-transition-name: none }`: the page is never captured; View Transitions only carry card → page morphs (`SharedElement`), and while one runs the content only fades. Same code in every browser (the old CSS fallback is now the only path). Nested `RouteTransition`s are allowed: the innermost whose page changed animates. Human delegated the choice ("whichever is best").
 Why: re-measured 11 Nov on the production build: with the root captured, `elementFromPoint` mid-transition returns `<html>` in Chromium and WebKit (the earlier "root content is tappable" reading was taken while React had cancelled the root), so any snapshot slide swallows taps for ≤ 380ms (AC 2, CLAUDE.md §5). WebKit crashes the page when a transform animation starts on content while a morph runs (opacity is fine). The minifier writes `380ms` as `.38s`, so JS reads tokens with `cssTimeMs`.
