@@ -303,3 +303,9 @@ Done: P0-10 brief tightened (main `d4cb149`). Step A part 1 on `wip/P0-10`: rout
 Evidence: page-level `<ViewTransition enter/exit>` never fired (instrumented startViewTransition: no call between two minimal pages); layout `update` boundary fires with `nav-forward` (old fade 160 + slide, new 380ms) → DECISIONS. Concatenated head scripts threw (guard caught it) → `HEAD_SCRIPT` joined with ";", unit test.
 Evidence: gate:task P0-10 PASS (unit 740, int 475, E2E P0-10 2/0); motion.spec Chromium + WebKit 2/0.
 Not verified: full 5-project E2E after the root layout change; tabs/back/interrupt/fallback/reduced-motion E2E. Next: see PROGRESS handoff.
+
+## 2026-11-11 (18:19–19:00 IST) — P0 — P0-10 step A E2E, root-snapshot decision (Syedbadeshah76, Windows)
+Done: H-32 verified on Windows (`db:migrate` with no DB URLs in the shell). motion.spec extended (back, tabs, AC2 interrupt, AC3 shared pairs, AC4 fallback ×2, AC5 system + toggle); tab bar wrapped in its own boundary. `wip/P0-10` `bf132ed`.
+Evidence: Chromium + WebKit, `elementFromPoint` mid-transition: content under a named boundary → parent/`<html>` (not hit-testable even with `::view-transition{pointer-events:none}`); root-snapshot content (tab bar link) → hit. React scopes update flags to the nearest boundary (react-dom `pushMutationContext`). Human chose "slide the root snapshot" → DECISIONS.
+Evidence: gate:task P0-10 PASS (int 475, build, bundle, sast, E2E P0-10 13/0, 5 skipped: 4 fixme + AC2 WebKit).
+Next: rework step A to slide the root snapshot by type (`:active-view-transition-type`), bars named; un-fixme AC2, WebKit tabs, WebKit AC4 (no enter animation recorded: investigate).

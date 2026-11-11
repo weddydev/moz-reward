@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-11 — Page slides on the root snapshot, so content stays tappable (P0-10; human's choice)
+Decision: The directional slide (nav-forward/back/tab) moves the **root** snapshot (the whole page, cross-fade + 8px/6px), selected by the navigation's types; the content is not a separately named layer. Header and tab bars get their own names so they hold still (taps on them are ignored for ≤ 380ms). Supersedes the "layout boundary" entry's naming of the content area; shared-element morphs stay.
+Why: measured on Chromium and WebKit (production build): during a view transition, elements captured under a `view-transition-name` are not hit-tested even with `::view-transition { pointer-events: none }` (`elementFromPoint` → the parent/`<html>`), while content in the root snapshot is (tab bar link hit mid-transition). CLAUDE.md §5 (never block interaction) + AC 2. Human chose this over "keep content layer" and "skip slide on tap", 11 Nov 2026.
+Consequence: React only starts a view transition when a boundary changes and otherwise cancels the root (`rootViewTransitionNameCanceled`): the rework must keep some boundary changing per navigation without naming the content. Also seen: nested `RouteTransition`s both slide in WebKit (don't nest), and the WebKit "no startViewTransition" fallback recorded no enter animation (open).
+
 ## 2026-11-11 — Route transitions on a layout boundary (P0-10)
 Decision: Page transitions use a persistent `<ViewTransition update>` in a layout (`RouteTransition` around `{children}`, nav bars outside), not `enter`/`exit` on each page as the Next guide suggests; shared elements use `<ViewTransition name share>` (`SharedElement`, `vtName`). No `motion` dependency: browsers without typed View Transitions get a CSS-token WAAPI enter fade + 8px rise (`RouteContent`); Safari 18.0–18.1 (VT without types) are downgraded to that fallback by the inline head script.
 Why: measured on our production build: page-level enter/exit never fired (React never called `startViewTransition` for a navigation between two minimal pages), while a layout boundary's `update` fires with the navigation's types (`nav-forward` → old fade 160ms + slide, new fade + slide 380ms). The fallback needs no library (bundle budget).
