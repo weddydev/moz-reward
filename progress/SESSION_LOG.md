@@ -321,3 +321,9 @@ Done: `presets.ts` (MOTION_PRESETS, staggerDelay, transformOriginFor, placePopov
 Evidence: AC 6 scan fails on an injected `color` transition (then restored); diag showed focus-visible box-shadow 5-layer→1-layer transition under reduced motion → shadow moved into CSS for overlay panel + popover.
 Evidence: gate:task P0-10 PASS (unit 786, int 475, build, bundle, sast, E2E 36/0); 4-project run of motion-primitives + overlays all pass (WebKit overlay screenshot timeout under load, passed alone). Screenshots 320/1440 inspected.
 Next: step C (frame screenshots, reviews, full E2E, squash, tick).
+
+## 2026-11-12 (from 23:45 on 11 Nov to 00:21 IST) — P0 — P0-10 step B full E2E + handoff (Syedbadeshah76, Windows)
+Done: full 5-project E2E on `e4dfed0`; failures re-run alone and triaged (handoff items 1–4); CI flake (AC5 popover frame wait) fixed in `eb87d7d`; H-31 row moved back to Open.
+Evidence: full E2E 599 passed / 9 failed / 152 skipped (19.6m); alone: 3 WebKit pass (load), iPhone AC2 `<HTML>` hit mid-morph, devices/rls stuck at /sign-in, gallery screenshot 22,356 CSS px × DPR > 32767.
+Evidence: motion-primitives.spec `--repeat-each=3` Chromium/WebKit/Pixel 7/iPhone 14 96/0; CI 43076645227: 232 passed, 1 flaky.
+Next: handoff items 1–4, then P0-10 step C.

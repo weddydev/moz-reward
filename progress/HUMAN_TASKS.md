@@ -17,6 +17,7 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 |---|---|---|---|---|---|
 | H-35 | 🟢 | Close GitHub issue #1 "Scheduled CI failing" (fixed in `dd05afe`, re-run 42812524717 green) | Any time | Claude may not write to GitHub issues | 1 min |
 | H-34 | 🟠 | Sentry free account (one owner), one project, alert rule emailing the owner; DSN into GitHub secrets for staging | Sun 15 Nov 2026 (P0-15 staging) | Error reporting for web + worker (P0-13 builds the code; local proof uses a fake Sentry endpoint) | 15 min |
+| H-31 | 🟠 | Install the **Renovate** GitHub App on the `moz-reward` repo only (free) | Sun 15 Nov 2026 (P0-E close) | `renovate.json` (P0-14) does nothing until the app is installed; weekly dependency PRs | 5 min |
 | H-36 | 🟠 | Demo accounts on staging: choose one real inbox for `DEMO_EMAIL_BASE` (GitHub secret); after the first staging deploy, save the output of `demo:credentials` in the password manager and add the six TOTP keys to your authenticator apps | Sun 15 Nov 2026 (P0-15 staging) | The demo customer signs in by email link; staff/admin demo accounts need password + code. Credentials are never committed or pasted into chat | 15 min |
 | H-07 | 🟠 | Buy domain; Cloudflare account (free); move DNS to Cloudflare | Sun 15 Nov 2026 (P0-15) | Tunnel hostnames, email domain, Turnstile | 30 min (+ up to 24 h DNS) |
 | H-06 | 🟠 | Buy Hostinger KVM 4 (UK location), add both developers' SSH keys, give Claude the IP | Sun 15 Nov 2026 (P0-15) | Hosts production **and** staging (plan v5) | 30 min |
@@ -193,4 +194,3 @@ Images live in `design/reference/desktop-view/` and `mobile-view/`.
 | H-19 | Windows laptop: local PostgreSQL services stopped, port 5432 free for Docker | Syedbadeshah76 | 8 Nov 2026 |
 | H-16 | Reference images: 17 desktop + 11 mobile screenshots in `design/reference/` | Syedbadeshah76 | 8 Nov 2026 |
 | H-21 | **Answered (plan v5):** single VPS, free tiers; client written acknowledgement still open (see Open) | client | 9 Nov 2026 |
-| H-31 | 🟠 | Install the **Renovate** GitHub App on the `moz-reward` repo only (free) | Sun 15 Nov 2026 (P0-E close) | `renovate.json` (P0-14) does nothing until the app is installed; weekly dependency PRs | 5 min |
