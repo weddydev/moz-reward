@@ -74,7 +74,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-17 | Stryker | P0 phase gate | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 
 ## Blockers
-- Human 🔴: **H-32** `.env.local` on the Windows laptop: add the `DATABASE_URL_MIGRATIONS` and `DATABASE_URL_TEST` lines (Mac done). 🟠: H-34 Sentry account, H-36 demo inbox + staging demo credentials, H-31 Renovate app; by Sun 15 Nov for P0-15: H-06 Hostinger VPS, H-07 domain + Cloudflare, H-08 R2 buckets, H-26 backup key, H-27 UptimeRobot, H-04 Resend + Brevo, H-20 Turnstile, H-28 staging OAuth client, H-21 client's written risk acceptance, H-17 permissions. **Start now:** H-12 Play organisation account.
+- Human 🔴: none. H-32 done (human, 11 Nov): **on the next Windows session, verify** `pnpm db:migrate` and `pnpm gate:task` run without setting the two DB URLs in the shell. 🟠: H-34 Sentry account, H-36 demo inbox + staging demo credentials, H-31 Renovate app; by Sun 15 Nov for P0-15: H-06 Hostinger VPS, H-07 domain + Cloudflare, H-08 R2 buckets, H-26 backup key, H-27 UptimeRobot, H-04 Resend + Brevo, H-20 Turnstile, H-28 staging OAuth client, H-21 client's written risk acceptance, H-17 permissions. **Start now:** H-12 Play organisation account.
 - Technical: none blocking P0-14/18/19/20/13/21. Known risk for P0-15: wal-g `wal-push` hangs against R2 without `ca-certificates` in the Postgres image (wal-g #2550) — fix planned; fallback documented.
 
 ## Map of the codebase
