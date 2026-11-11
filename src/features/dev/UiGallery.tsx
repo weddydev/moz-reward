@@ -130,7 +130,13 @@ export function UiGallery(): React.JSX.Element {
   );
 
   return (
-    <main id="main" className="mx-auto w-full max-w-5xl px-5 py-10">
+    <main
+      id="main"
+      className="mx-auto w-full max-w-5xl px-5 py-10"
+      // Until this segment hydrates its controls are disabled (C-20). The page can hydrate after the root
+      // layout's <html data-hydrated>, so tests also wait for no [data-hydrating] before measuring.
+      data-hydrating={hydrated ? undefined : ""}
+    >
       <p className="text-small text-gold-700 font-semibold">Dev only</p>
       <h1 className="text-display">UI gallery</h1>
       <p className="text-ink-2 mt-2 max-w-prose">

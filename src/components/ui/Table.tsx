@@ -46,11 +46,13 @@ function isOwnRowClick(e: React.MouseEvent<HTMLTableRowElement>): boolean {
 
 const PAD_Y: Record<Density, string> = { comfortable: "py-3", compact: "py-1.5" };
 /**
- * One minimum height for data and loading rows: padding + a 24px line, which holds one line of any cell
- * content (mixed inline content such as the row button or a mono span makes a line box taller than the
- * 20px text line). A one-line data row and a skeleton row are then the same height: no shift (AC 9).
+ * One minimum height for data and loading rows: padding + a 28px line box. A one-line cell needs 20–24px,
+ * but mixed inline content (the row button, a mono span) can make the line box a pixel or two taller where
+ * the fallback mono font has larger metrics (Linux CI: data rows were 49px against 48px skeleton rows). The
+ * 4px of headroom keeps every one-line row at exactly the minimum, so data replacing skeletons never shifts
+ * the layout (AC 9).
  */
-const ROW_H: Record<Density, string> = { comfortable: "h-12", compact: "h-9" };
+const ROW_H: Record<Density, string> = { comfortable: "h-13", compact: "h-10" };
 
 /**
  * Dashboard table (DESIGN §6): sticky header inside its own scroll region, row hover (pointer devices),

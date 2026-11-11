@@ -291,3 +291,4 @@ Evidence: gate:task P0-09 PASS (unit 723, int 475, build, bundle, sast, E2E P0-0
 Not verified: CI full E2E on this push; real-iPhone safe areas.
 Next: CI green → squash wip/P0-09 to main, tick P0-09, drop C-13/C-20; then P0-10.
 CI 43002131604 (step D part 1) red on one flake: [pixel7] staff sign-in offline cut a late JS chunk request; both offline tests now wait for network idle before going offline (20/20 ×5 on pixel7 + desktop1440).
+CI 43005714982 red (pixel7/desktop1440): /dev/ui axe before page hydration, stale focus-ring labels, Linux table rows 49 vs 48px, AC5 load flake → fixed at the root (PROGRESS); affected specs 5 projects 270/0; AC5 seen failing with --dur-fast 200ms.

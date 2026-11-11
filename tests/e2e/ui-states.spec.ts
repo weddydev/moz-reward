@@ -217,7 +217,11 @@ test.describe("[P0-09] UI gallery states", () => {
         await el.scrollIntoViewIfNeeded();
         const box = await el.boundingBox();
         if (!box) continue;
-        // Timed inside the page: from the pointerdown event to the first frame that shows the press.
+        // Timed inside the page. The press must be driven by CSS from pointerdown: the transition that
+        // carries it (transform, or opacity under reduced motion) has delay + duration ≤ 150ms. That is read
+        // from the running CSSTransition, so a busy runner's late frames can't fail it (two flakes at 162 and
+        // 214ms with 5 browsers in parallel); the wall clock from pointerdown to the first frame that shows
+        // the press only has to stay under 300ms, which still catches a press deferred by script.
         await page.evaluate(
           ({ i, reduced }) => {
             const w = window as unknown as { __press?: unknown };
@@ -228,7 +232,19 @@ test.describe("[P0-09] UI gallery states", () => {
               "pointerdown",
               (e) => {
                 const down = e.timeStamp;
+                let planned: number | null = null;
                 const check = (now: number) => {
+                  const t = visible
+                    ?.getAnimations()
+                    .find(
+                      (a) =>
+                        (a as CSSTransition).transitionProperty ===
+                        (reduced ? "opacity" : "transform"),
+                    );
+                  if (t && planned === null) {
+                    const timing = t.effect?.getComputedTiming();
+                    planned = (timing?.delay ?? 0) + Number(timing?.duration ?? 0);
+                  }
                   const cs = visible ? getComputedStyle(visible) : null;
                   const transform = cs?.transform ?? "none";
                   const opacity = cs?.opacity ?? "1";
@@ -239,7 +255,7 @@ test.describe("[P0-09] UI gallery states", () => {
                     ? transform === "none" && Number.parseFloat(opacity) < 1
                     : Math.abs(scale - 0.97) < 0.002;
                   const ms = now - down;
-                  if (ok || ms > 400) w.__press = { ok, ms, transform, opacity };
+                  if (ok || ms > 400) w.__press = { ok, ms, planned, transform, opacity };
                   else requestAnimationFrame(check);
                 };
                 requestAnimationFrame(check);
@@ -257,18 +273,20 @@ test.describe("[P0-09] UI gallery states", () => {
         const result = (await handle.jsonValue()) as {
           ok: boolean;
           ms: number;
+          /** delay + duration of the press transition; null when the change was instant (no transition). */
+          planned: number | null;
           transform: string;
           opacity: string;
         };
         // Release away from the control so the press doesn't open overlays or fire handlers.
         await page.mouse.move(2, 2);
         await page.mouse.up();
-        if (!result.ok || result.ms > 150) {
+        if (!result.ok || (result.planned ?? 0) > 150 || result.ms > 300) {
           const name = await el.evaluate((n) =>
             (n.getAttribute("aria-label") ?? n.textContent).trim().slice(0, 30),
           );
           failures.push(
-            `"${name}" ${result.ok ? `${result.ms.toFixed(0)}ms` : `${result.transform} opacity ${result.opacity}`}`,
+            `"${name}" ${result.ok ? `planned ${String(result.planned)}ms, seen at ${result.ms.toFixed(0)}ms` : `${result.transform} opacity ${result.opacity}`}`,
           );
         }
       }
@@ -484,6 +502,9 @@ test.describe("[P0-09] UI gallery states", () => {
     expect(Math.abs((await rowHeight(loading)) - (await rowHeight(first)))).toBeLessThanOrEqual(
       0.5,
     );
+    // …and a one-line data row is exactly the row minimum (52px): content that outgrows it would make data
+    // rows taller than skeleton rows on platforms with larger font metrics (CI 43005714982, Linux: 49 vs 48).
+    expect(Math.abs((await rowHeight(first)) - 52)).toBeLessThanOrEqual(0.5);
 
     // Density toggle: compact rows are shorter, and the toggle reports its state.
     const comfy = await rowHeight(first);
