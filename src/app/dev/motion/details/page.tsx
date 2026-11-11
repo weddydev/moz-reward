@@ -14,7 +14,7 @@ export default function MotionDetailsPage(): React.JSX.Element {
       <TransitionLink
         href="/dev/motion"
         direction="back"
-        className="text-small text-ink-2 font-semibold underline"
+        className="text-small text-ink-2 hit-44 self-start font-semibold underline"
       >
         ← Motion gallery
       </TransitionLink>

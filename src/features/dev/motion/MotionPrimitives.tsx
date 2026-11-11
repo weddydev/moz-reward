@@ -2,16 +2,7 @@
 
 import { useState } from "react";
 import { Popover } from "@/components/motion";
-import {
-  BottomSheet,
-  Button,
-  Card,
-  Modal,
-  SidePanel,
-  Switch,
-  Toaster,
-  toast,
-} from "@/components/ui";
+import { BottomSheet, Button, Card, Modal, SidePanel, Switch, toast } from "@/components/ui";
 import { MOTION_PRESETS, staggerStyle } from "@/lib/motion/presets";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Section } from "../Section";
@@ -89,7 +80,6 @@ function PresetDemos(): React.JSX.Element {
       <BottomSheet open={open === "sheet"} onClose={close} title="Bottom sheet preset">
         <p>Rises its own height. Drag the handle down, or flick it, to close.</p>
       </BottomSheet>
-      <Toaster />
     </Section>
   );
 }

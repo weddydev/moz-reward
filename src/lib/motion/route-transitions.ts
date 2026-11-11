@@ -67,6 +67,12 @@ export function hasTypedViewTransitions(win: Window): boolean {
  */
 export const VT_DOWNGRADE_SCRIPT = `(function(){try{var d=document,V=window.ViewTransition;if(typeof d.startViewTransition==="function"&&!(V&&V.prototype&&"types" in V.prototype))d.startViewTransition=undefined}catch(e){}})()`;
 
+/**
+ * From this width up, pages don't slide: the content cross-fades in place and the rail stays still
+ * (DESIGN §7 "Desktop"; the desktop layout starts at 1024px, DESIGN §5).
+ */
+export const FADE_IN_PLACE_QUERY = "(min-width: 1024px)";
+
 const OFFSET_PX: Readonly<Record<NavType, number>> = {
   [NAV.forward]: 8,
   [NAV.back]: -8,

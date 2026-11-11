@@ -213,6 +213,15 @@ function expectOneEnter(enter: Seen[], offset: string, depth = 0): void {
 
 const cards = (page: Page) => page.locator('[data-demo="cards"] a');
 
+/**
+ * Slides are for phones and tablets; from 1024px up the content cross-fades in place (DESIGN §7 "Desktop").
+ * The slide tests therefore run at a phone size on every project.
+ */
+async function phoneSize(page: Page): Promise<void> {
+  const size = page.viewportSize();
+  if (!size || size.width >= 1024) await page.setViewportSize({ width: 390, height: 844 });
+}
+
 async function openGallery(page: Page): Promise<void> {
   await page.goto("/dev/motion");
   await expect(cards(page).first()).toBeVisible();
@@ -223,11 +232,28 @@ test.describe("[P0-10] route transitions", () => {
   test("[P0-10] AC1 forward: the new page fades in sliding 8px from the right; transform + opacity, ≤ 380ms", async ({
     page,
   }) => {
+    await phoneSize(page);
     await openGallery(page);
     await record(page);
+    // The slide must not make the page wider than the screen (no sideways pan, no scrollbar flash).
+    await page.evaluate(() => {
+      const w = window as unknown as { __overflowX: number };
+      w.__overflowX = 0;
+      const until = performance.now() + 1500;
+      const tick = (): void => {
+        const root = document.documentElement;
+        w.__overflowX = Math.max(w.__overflowX, root.scrollWidth - root.clientWidth);
+        if (performance.now() < until) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
     await page.getByRole("link", { name: "Open a detail page" }).click();
     await expect(page).toHaveURL(/\/dev\/motion\/details$/);
     await settled(page);
+    expect(
+      await page.evaluate(() => (window as unknown as { __overflowX: number }).__overflowX),
+      "horizontal overflow while the page slides in",
+    ).toBe(0);
     expectOneEnter(await contentAnimations(page), "8px");
     const all = await seen(page);
     expectRootNeverCaptured(all);
@@ -235,6 +261,7 @@ test.describe("[P0-10] route transitions", () => {
   });
 
   test("[P0-10] AC1 back reverses the direction (enters from the left)", async ({ page }) => {
+    await phoneSize(page);
     await page.goto("/dev/motion/details");
     await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
     await record(page);
@@ -250,6 +277,7 @@ test.describe("[P0-10] route transitions", () => {
   test("[P0-10] AC1 tab switches slide only the tab content 6px in tab order; the bar stays still", async ({
     page,
   }) => {
+    await phoneSize(page);
     await page.goto("/dev/motion/tabs/wallet");
     await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
     const bar = page.getByRole("navigation", { name: "Demo tabs" });
@@ -270,6 +298,23 @@ test.describe("[P0-10] route transitions", () => {
     expectOneEnter(await contentAnimations(page), "-6px", 1);
   });
 
+  test("[P0-10] AC1 desktop (≥ 1024px): the content cross-fades in place, no slide", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openGallery(page);
+    await record(page);
+    await page.getByRole("link", { name: "Open a detail page" }).click();
+    await expect(page).toHaveURL(/\/dev\/motion\/details$/);
+    await settled(page);
+    const enter = await contentAnimations(page);
+    expect(enter, "page enters").toHaveLength(1);
+    expect(enter[0]?.props).toEqual(["opacity"]);
+    expect(enter[0]?.transforms).toEqual([]);
+    expect((enter[0]?.duration ?? 0) + (enter[0]?.delay ?? 0)).toBeLessThanOrEqual(380);
+    expect(enter[0]?.duration).toBeGreaterThanOrEqual(300);
+  });
+
   test("[P0-10] edge: browser back/forward has no direction, so the page only fades in", async ({
     page,
   }) => {
@@ -288,6 +333,92 @@ test.describe("[P0-10] route transitions", () => {
       expect(a.props).toEqual(["opacity"]);
       expect(a.transforms).toEqual([]);
     }
+  });
+
+  test("[P0-10] edge: reduced motion switched on while a page slides in ends the slide at once", async ({
+    page,
+  }) => {
+    await phoneSize(page);
+    await openGallery(page);
+    // Hold the enter at its first frame so the switch lands mid-slide whatever the machine's speed.
+    await page.evaluate(() => {
+      const w = window as unknown as { __enter: Animation | null };
+      w.__enter = null;
+      const tick = (): void => {
+        const found = document
+          .getAnimations()
+          .find((a) =>
+            ((a.effect as KeyframeEffect | null)?.target as HTMLElement | null)?.hasAttribute(
+              "data-route-content",
+            ),
+          );
+        if (found) {
+          found.pause();
+          w.__enter = found;
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    await page.getByRole("link", { name: "Open a detail page" }).click();
+    await expect(page).toHaveURL(/\/dev\/motion\/details$/);
+    await page.waitForFunction(
+      () => !!(window as unknown as { __enter: Animation | null }).__enter,
+    );
+    const state = (): Promise<{ play: string; transform: string; overflow: string }> =>
+      page.evaluate(() => {
+        const el = document.querySelector<HTMLElement>("[data-route-content]");
+        return {
+          play: (window as unknown as { __enter: Animation }).__enter.playState,
+          transform: el ? getComputedStyle(el).transform : "",
+          overflow: document.body.style.overflowX,
+        };
+      });
+    const mid = await state();
+    expect(mid.play).toBe("paused");
+    expect(mid.transform).not.toBe("none");
+    await page.evaluate(() => {
+      document.documentElement.setAttribute("data-reduce-motion", "true");
+    });
+    await expect.poll(async () => (await state()).play).toBe("finished");
+    const after = await state();
+    expect(after.transform).toBe("none");
+    expect(after.overflow, "the slide's clip is taken off again").toBe("");
+  });
+
+  test("[P0-10] edge: a search-param change on the same page animates nothing; focus and scroll are Next's", async ({
+    page,
+  }) => {
+    await phoneSize(page);
+    await openGallery(page);
+    await record(page);
+    await page.evaluate(() => {
+      (
+        window as unknown as { next: { router: { push: (href: string) => void } } }
+      ).next.router.push("/dev/motion?view=1");
+    });
+    await expect(page).toHaveURL(/\/dev\/motion\?view=1$/);
+    await settled(page);
+    expect(await contentAnimations(page), "no page enter for a query-only change").toEqual([]);
+
+    // A long page scrolled down, then a navigation: the new page starts at the top (Next's reset), and
+    // focus is where Next leaves it: on the page, never on a transition pseudo-element or a removed node.
+    const link = page.getByRole("link", { name: "Wallet", exact: true });
+    await link.scrollIntoViewIfNeeded();
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    await link.click();
+    await expect(page).toHaveURL(/\/tabs\/wallet$/);
+    await settled(page);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    expect(
+      await page.evaluate(() => {
+        const active = document.activeElement;
+        return (
+          !!active && active.isConnected && (active === document.body || !!active.closest("body"))
+        );
+      }),
+    ).toBe(true);
   });
 
   test("[P0-10] AC2 navigation never waits: taps register mid-transition; a second navigation wins", async ({
@@ -437,6 +568,7 @@ test.describe("[P0-10] fallback without typed View Transitions", () => {
       page,
     }) => {
       await page.addInitScript(variant.init);
+      await phoneSize(page);
       await openGallery(page);
       expect(await typedVt(page)).toBe(false);
       await record(page);

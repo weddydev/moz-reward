@@ -610,7 +610,11 @@
 ::view-transition-new(*) {
   animation-duration: var(--dur-base);
 }
-/* Shared-element morph (SharedElement): --dur-slow; reduced motion → no movement, the snapshots cross-fade. */
+/*
+ * Shared-element morph (SharedElement): the box moves for --dur-slow while the two snapshots cross-fade in
+ * --dur-base (rule above), so the new image is in before the move ends. Reduced motion → no movement, the
+ * snapshots cross-fade.
+ */
 ::view-transition-group(.morph) {
   animation-duration: var(--dur-slow);
   animation-timing-function: var(--ease-in-out);
