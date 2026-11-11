@@ -13,6 +13,16 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-11 — `pnpm clear:check` before every "Run /clear" (human's standing rule)
+Decision: Claude may only tell the human to `/clear` after `pnpm clear:check` passes in the same reply (CLAUDE.md §1). The script is read-only: clean tree, no stash, current branch and main pushed, PROGRESS "Last updated" and a SESSION_LOG entry on origin/main dated today, and a wip branch's name + pushed HEAD in PROGRESS. `/checkpoint` and `/handoff` end with it.
+Why: the human asked for proof, not judgment, that a fresh session resumes exactly where this one stopped.
+Consequence: what a script can't judge (the handoff names the exact next step, half-done and untested work) stays a reading check in the same rule.
+
+## 2026-11-11 — Form controls: native inputs, hydration rule, outline contrast (P0-09 step B)
+Decision: Select, Checkbox and Radio wrap native inputs (platform picker, arrow keys, form submit for free); the row is a `<label>` and the input is named by the label text only (`aria-labelledby`). Only *controlled* ones are disabled until hydrated (C-20): an uncontrolled native input keeps its state through hydration, so it stays usable without JS. Unchecked/unreached outlines use `--ink-3` (3.35:1), not `--line` (1.25:1), for WCAG 1.4.11. Avatar uses `next/image` with `unoptimized` (any origin, no optimiser config).
+Why: AC8/AC13; accessibility over the softer look.
+Consequence: a form that must work before hydration uses uncontrolled controls.
+
 ## 2026-11-11 — Touch-safe hover and 44px hit areas (P0-09 step A)
 Decision: `globals.css` redefines Tailwind's `hover` variant as `@media (hover: hover) and (pointer: fine) { &:hover }`, so plain `hover:` classes are touch-safe; controls drawn under 44px get the `hit-44` utility (centred invisible `::after`, `max(100%, 44px)`). Controls whose target is bigger than what's drawn (Switch: the whole row) mark the visible part `data-press`, which scales on the parent's `:active` instead of the control itself.
 Why: AC4/AC7; a transform on the Switch button would make it the containing block of its row-wide `::after` mid-press and lose clicks.
