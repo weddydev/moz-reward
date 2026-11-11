@@ -3,7 +3,7 @@ import { Redis } from "ioredis";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { redisFacts, redisPairProblem } from "@/server/boot";
 import { cached, cacheKey, cacheRedis, closeCache } from "@/server/cache";
-import { createRedis } from "@/server/jobs/connection";
+import { cacheUrl, createRedis } from "@/server/jobs/connection";
 import { enqueue, getQueue } from "@/server/jobs/queues";
 import { limiterKey, limiterRedis } from "@/server/security/rate-limit";
 
@@ -49,7 +49,9 @@ describe("[P0-18] Redis split: queue and limiter never share an instance with th
   });
 
   it("filling redis-cache to maxmemory evicts cache entries only; queue and limiter keys survive", async () => {
-    const cache = cacheRedis();
+    // Its own connection to the cache instance: the app's cache client gives up after 250ms (right for a
+    // request, wrong for a 12 MB fill), and a timed-out fill left the instance busy for the next test.
+    const cache = new Redis(cacheUrl(), { connectionName: "moz:test-fill" });
     const limiterProbe = limiterKey(`split-probe:${randomUUID()}`);
     await limiterRedis().set(limiterProbe, "1", "EX", 300);
     const jobId = `split-probe-${randomUUID()}`;
@@ -60,13 +62,18 @@ describe("[P0-18] Redis split: queue and limiter never share an instance with th
     await cache.config("SET", "maxmemory", "4mb");
     try {
       const blob = "x".repeat(8 * 1024);
-      const pipeline = cache.pipeline();
-      for (let i = 0; i < 1500; i++) pipeline.set(cacheKey(`fill:${String(i)}`), blob, "EX", 60);
-      await pipeline.exec();
+      // 12 MB in batches of 100 keys (0.8 MB each).
+      for (let start = 0; start < 1500; start += 100) {
+        const pipeline = cache.pipeline();
+        for (let i = start; i < start + 100; i++)
+          pipeline.set(cacheKey(`fill:${String(i)}`), blob, "EX", 60);
+        await pipeline.exec();
+      }
       const after = Number(/evicted_keys:(\d+)/.exec(await cache.info("stats"))?.[1] ?? 0);
       expect(after).toBeGreaterThan(before); // the cache really was full and evicted
     } finally {
       await cache.config("SET", "maxmemory", original);
+      await cache.quit();
     }
     expect(await limiterRedis().get(limiterProbe)).toBe("1");
     expect(await (await getQueue("scheduled").getJob(jobId))?.getState()).toBe("delayed");

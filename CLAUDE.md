@@ -119,6 +119,7 @@ pnpm test:unit         # vitest unit project
 pnpm test:int          # integration + authz (per-worker DBs; needs services:up)
 pnpm e2e               # Playwright against a PRODUCTION build (APP_ENV=test) — the evidence run
 pnpm e2e:dev           # Playwright against next dev — fast inner loop only, never evidence
+pnpm e2e:visual        # only the @visual snapshot tests (per-OS baselines; --update-snapshots accepts a new look); also part of gate:phase
 pnpm test:titles       # warn on tests without [Pn-nn]/[Jn]; --strict exits 1
 pnpm test:mutation     # stryker on rules modules (phase gate, changed modules)
 pnpm test:load:smoke   # k6 smoke (BASE_URL/VUS/DURATION)

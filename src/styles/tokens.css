@@ -1,6 +1,8 @@
 /*
- * Design tokens — docs/DESIGN.md §3, §4, §7. Single source of truth for colour, radius,
+ * Design tokens — docs/DESIGN.md §3, §4, §7. Single source of truth for colour, space, radius,
  * elevation and motion. Components use these via the Tailwind theme (globals.css); never hard-code.
+ * Every custom property declared here is listed (with its use) in tokens.ts and shown on /dev/ui;
+ * tokens.test.ts fails when the two lists differ.
  */
 :root {
   /* Colour */
@@ -26,6 +28,27 @@
   --success: #2f7d5b;
   --warning: #b7791f;
   --danger: #b3432f;
+  /* Focus ring: ink ring with a 2px gold outer ring (DESIGN §3). */
+  --focus: var(--ink);
+  --focus-ring: var(--gold-500);
+  /* Derived colours (one definition each, so no component mixes its own). */
+  --on-danger: var(--surface);
+  --success-tint: color-mix(in srgb, var(--success) 6%, var(--surface));
+  --warning-tint: color-mix(in srgb, var(--warning) 14%, var(--surface));
+
+  /* Space: the 4px unit Tailwind's spacing utilities multiply, and the DESIGN §3 scale. */
+  --space-unit: 4px;
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-56: 56px;
+  --space-72: 72px;
+  --space-96: 96px;
 
   /* Radius */
   --r-sm: 8px;
@@ -37,12 +60,20 @@
   --shadow-1: 0 1px 2px rgba(60, 45, 20, 0.06), 0 2px 8px rgba(60, 45, 20, 0.05);
   --shadow-2: 0 8px 24px rgba(60, 45, 20, 0.1);
   --shadow-gold: 0 6px 20px rgba(201, 162, 74, 0.28);
+  --shadow-gold-pressed: 0 3px 10px rgba(201, 162, 74, 0.22);
+  --foil-opacity: 0.05;
 
   /* Motion */
   --dur-fast: 120ms;
   --dur-base: 220ms;
   --dur-slow: 380ms;
+  /* Signature moments only (DESIGN §8 gives each its own 900–1600ms length; this is the middle). */
   --dur-hero: 1200ms;
+  --dur-exit: 160ms;
+  --dur-sheen: 600ms;
+  --dur-shimmer: 1200ms;
+  /* The longest any fade lasts when motion is reduced (DESIGN §7). */
+  --dur-reduced: 150ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
@@ -55,18 +86,26 @@
   --content-max-desktop: 1280px;
 }
 
-/* Reduced motion: system setting, unless the user chose "full" in Me; or the user forced "reduce". */
+/*
+ * Reduced motion: the system setting, unless the user turned "Reduce animations" off in Me
+ * (data-reduce-motion="false"); or the user turned it on (data-reduce-motion="true"). DESIGN §7: movement
+ * becomes fades of at most 150ms.
+ */
 @media (prefers-reduced-motion: reduce) {
-  :root:not([data-motion="full"]) {
+  :root:not([data-reduce-motion="false"]) {
     --dur-fast: 0ms;
-    --dur-base: 150ms;
-    --dur-slow: 150ms;
-    --dur-hero: 150ms;
+    --dur-base: var(--dur-reduced);
+    --dur-slow: var(--dur-reduced);
+    --dur-hero: var(--dur-reduced);
+    --dur-exit: var(--dur-reduced);
+    --dur-sheen: 0ms;
   }
 }
-:root[data-motion="reduce"] {
+:root[data-reduce-motion="true"] {
   --dur-fast: 0ms;
-  --dur-base: 150ms;
-  --dur-slow: 150ms;
-  --dur-hero: 150ms;
+  --dur-base: var(--dur-reduced);
+  --dur-slow: var(--dur-reduced);
+  --dur-hero: var(--dur-reduced);
+  --dur-exit: var(--dur-reduced);
+  --dur-sheen: 0ms;
 }

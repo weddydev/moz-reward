@@ -241,3 +241,10 @@ Left off: checkpoint, baton kept. Next: step C on `wip/P0-08` (token page, contr
 Done: on `wip/P0-08` (`d722abe`): token page and contrast table on `/dev/ui` (`TokenPage.tsx`, values read with `getComputedStyle`), `Section.tsx`, thumb hooks for tests.
 Evidence: gate:task PASS on the branch (unit 594, int 475, build, bundle, sast, E2E P0-08 6/0). The new page was NOT viewed in a browser and has no E2E yet.
 Left off: handoff, baton free. Next: the step C list in the PROGRESS handoff note (tokens.spec.ts, screenshots, visual-snapshot decision, DECISIONS, full E2E, squash, tick).
+
+## 2026-11-11 (08:24–11:25 IST) — P0 — P0-08 step C, P0-08 done (Syedbadeshah76, Windows)
+Done: `tests/e2e/tokens.spec.ts`; `parseHex` reads 3-digit hex (the production minifier's `#fff` broke the contrast table); `@visual` snapshots (`pnpm e2e:visual`, `VISUAL=1` in gate:phase); `pnpm fix` on Windows; two integration tests robust on Windows; 3 DECISIONS entries. P0-08 squashed to main and ticked.
+Evidence: AC1/AC2 E2E: 57 token rows with values equal to tokens.css by meaning, contrast "24 pairs checked, 0 failing."; unit: token list, pairs, hex (seen failing first). AC3 lint css-hex + unit (step A). AC4 two-ring box-shadow on gold button, ink button, input, chip (Chromium, WebKit, 1440), same box and radius, crops inspected; forced-colours outline 2px solid.
+Evidence: AC5 computed styles of toast, switch thumb, segmented thumb: no transform transition, ≤ 150ms, system and toggle; "Full" keeps 120ms transform. AC6 CLS 0.000 at 320/390/1440 (also fonts blocked); fonts 1.5 s late 0.000/0.048/0.009 (DECISIONS). AC7/AC8 preferences.spec (step B) + signed-out choice → profile at sign-in → fresh browser.
+Evidence: gate:task PASS (unit 595, int 475, build, bundle, sast, E2E P0-08 35/0); tokens spec 5 projects 55/0; screenshots 320, 390 (Chromium + iPhone WebKit), 1440 inspected; CI green on `wip/P0-08` `8f241c0` (run 42967476496; first run red on one race in the new spec, fixed).
+Not verified: `e2e:visual` on macOS (no baseline yet). Left off: checkpoint, baton kept. Next: P0-09.

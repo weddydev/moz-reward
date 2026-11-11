@@ -52,7 +52,7 @@ export function SystemView({ view }: { view: View }): React.JSX.Element {
         </p>
       ) : null}
       {view.alerts.length > 0 ? (
-        <p className="text-small rounded-md bg-[color-mix(in_srgb,var(--warning)_14%,white)] p-3">
+        <p className="text-small bg-warning-tint rounded-md p-3">
           <span className="font-semibold">Alerts raised by this snapshot:</span>{" "}
           {view.alerts.join(", ")}
         </p>

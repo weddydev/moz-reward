@@ -1,8 +1,16 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  BODY,
+  colourLabel,
+  contrast,
+  CONTRAST_PAIRS,
+  contrastResults,
+  parseHex,
+  resolveColour,
+} from "./contrast";
 
-/** WCAG 2.2 contrast checks for every text/background pair the design uses (DESIGN §3, §13). */
 const css = readFileSync(join(__dirname, "tokens.css"), "utf8");
 /** First declaration of each token with a 6-digit hex value (later ones are theme overrides). */
 const declared = new Map<string, string>();
@@ -14,45 +22,53 @@ const token = (name: string): string => {
   return hex;
 };
 
-const channel = (c: number) => {
-  const s = c / 255;
-  return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-};
-const luminance = (hex: string) => {
-  const n = parseInt(hex.slice(1), 16);
-  return (
-    0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255)
-  );
-};
-export const contrast = (a: string, b: string) => {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
-  return (hi + 0.05) / (lo + 0.05);
-};
+describe("[P0-08] contrast maths (WCAG 2.2)", () => {
+  it("black on white is 21:1, a colour on itself 1:1", () => {
+    expect(contrast(parseHex("#000000"), parseHex("#ffffff"))).toBeCloseTo(21, 5);
+    expect(contrast(parseHex("#8a6a1f"), parseHex("#8a6a1f"))).toBeCloseTo(1, 5);
+  });
 
-const BODY = 4.5;
-const LARGE_OR_UI = 3;
+  it("mixes two tokens like color-mix(in srgb)", () => {
+    const mixed = resolveColour({ mix: ["a", 25, "b"] }, (t) =>
+      t === "a" ? "#000000" : "#ffffff",
+    );
+    expect(mixed.map(Math.round)).toEqual([191, 191, 191]);
+  });
 
-const PAIRS: Array<[fg: string, bg: string, min: number, use: string]> = [
-  ["ink", "bg", BODY, "primary text on ivory"],
-  ["ink", "surface", BODY, "primary text on cards"],
-  ["ink", "surface-2", BODY, "input text"],
-  ["ink-2", "bg", BODY, "secondary text on ivory"],
-  ["ink-2", "surface", BODY, "secondary text on cards"],
-  ["ink-2", "surface-2", BODY, "secondary text on panels"],
-  ["ink", "gold-500", BODY, "text on primary (gold) buttons"],
-  ["ink", "gold-300", BODY, "text on gold highlight"],
-  ["ink", "gold-100", BODY, "text on gold tint"],
-  ["gold-700", "bg", LARGE_OR_UI, "gold large text / icons on ivory"],
-  ["gold-700", "surface", LARGE_OR_UI, "gold large text / icons on cards"],
-  ["ink-3", "bg", LARGE_OR_UI, "placeholders / tertiary (never body)"],
-  ["danger", "surface", BODY, "error messages"],
-  ["danger", "bg", BODY, "error messages on ivory"],
-  ["success", "surface", BODY, "success text"],
-  ["warning", "surface", LARGE_OR_UI, "warning icons / large text"],
-];
+  it("reads the 3-digit form the production CSS minifier writes (#ffffff → #fff)", () => {
+    expect(parseHex("#fff")).toEqual(parseHex("#ffffff"));
+    expect(parseHex("#1AB")).toEqual(parseHex("#11aabb"));
+    expect(parseHex(" #FBF8F1 ")).toEqual([251, 248, 241]);
+  });
+
+  it("refuses anything that is not a 3- or 6-digit hex colour", () => {
+    expect(() => parseHex("rgb(0,0,0)")).toThrow(/hex/);
+    expect(() => parseHex("#ffff")).toThrow(/hex/);
+    expect(() => parseHex("#ffffff80")).toThrow(/hex/);
+  });
+});
 
 describe("[P0-08] token contrast (WCAG AA)", () => {
-  it.each(PAIRS)("%s on %s ≥ %s (%s)", (fg, bg, min) => {
-    expect(contrast(token(fg), token(bg))).toBeGreaterThanOrEqual(min);
+  it.each(contrastResults(token).map((r) => [colourLabel(r.fg), colourLabel(r.bg), r] as const))(
+    "%s on %s meets its minimum",
+    (_fg, _bg, result) => {
+      expect(result.ratio).toBeGreaterThanOrEqual(result.min);
+    },
+  );
+
+  it("the mixes in the pair list are the mixes tokens.css declares", () => {
+    expect(css).toContain("--success-tint: color-mix(in srgb, var(--success) 6%, var(--surface));");
+    expect(css).toContain(
+      "--warning-tint: color-mix(in srgb, var(--warning) 14%, var(--surface));",
+    );
+  });
+
+  it("every body-text pair is at least 4.5:1 and the list covers the text colours on each background", () => {
+    const body = CONTRAST_PAIRS.filter((p) => p.min === BODY);
+    expect(body.length).toBeGreaterThanOrEqual(14);
+    for (const bg of ["bg", "surface", "surface-2"]) {
+      expect(body.some((p) => p.fg === "ink" && p.bg === bg)).toBe(true);
+      expect(body.some((p) => p.fg === "ink-2" && p.bg === bg)).toBe(true);
+    }
   });
 });

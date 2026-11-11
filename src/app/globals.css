@@ -3,6 +3,10 @@
 
 /* Expose tokens to Tailwind (runtime CSS variables, so reduced motion can retune durations). */
 @theme inline {
+  /* Only our palette exists: `text-white`, `bg-slate-100`… are not classes here (DESIGN §3). */
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
@@ -17,6 +21,12 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-on-danger: var(--on-danger);
+  --color-success-tint: var(--success-tint);
+  --color-warning-tint: var(--warning-tint);
+
+  /* Spacing utilities multiply the token unit (p-4 = 16px); the DESIGN §3 steps are --space-*. */
+  --spacing: var(--space-unit);
 
   --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -102,6 +112,25 @@
 @utility pt-safe {
   padding-top: env(safe-area-inset-top);
 }
+@utility pl-safe {
+  padding-left: env(safe-area-inset-left);
+}
+@utility pr-safe {
+  padding-right: env(safe-area-inset-right);
+}
+/* Full-height screens: dynamic viewport units, never 100vh (DESIGN §11). */
+@utility min-h-screen-d {
+  min-height: 100dvh;
+}
+@utility h-screen-d {
+  height: 100dvh;
+}
+@utility h-screen-s {
+  height: 100svh;
+}
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
 
 @layer base {
   html {
@@ -134,39 +163,48 @@
   textarea {
     font-size: max(16px, 1em);
   }
-  /* Focus ring: ink with a 2px gold outer ring (DESIGN §3). */
-  :focus-visible {
-    outline: 2px solid var(--ink);
-    outline-offset: 2px;
-    box-shadow: 0 0 0 4px var(--gold-500);
-    border-radius: inherit;
-  }
-  .tabular {
-    font-variant-numeric: tabular-nums;
-  }
   ::selection {
     background: var(--gold-100);
     color: var(--ink);
   }
 }
 
-/* Global reduced-motion safety net (DESIGN §7): no long movement anywhere. */
+/*
+ * Focus ring (DESIGN §3, §13): an ink ring with a 2px gold outer ring. Unlayered on purpose, so it wins over
+ * any component or utility shadow; it follows the element's own radius. The transparent outline is what
+ * forced-colours mode (Windows High Contrast) draws, because that mode removes box-shadows.
+ */
+:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px var(--focus),
+    0 0 0 4px var(--focus-ring);
+}
+
+/*
+ * Global reduced-motion safety net (DESIGN §7): nothing moves. Only colour and opacity may still transition
+ * (the duration tokens cap those at 150ms), so a transform or position change lands at once; keyframe
+ * animations run once, briefly, to their end state.
+ */
 @media (prefers-reduced-motion: reduce) {
-  :root:not([data-motion="full"]) *,
-  :root:not([data-motion="full"]) *::before,
-  :root:not([data-motion="full"]) *::after {
-    animation-duration: 150ms !important;
+  :root:not([data-reduce-motion="false"]) *,
+  :root:not([data-reduce-motion="false"]) *::before,
+  :root:not([data-reduce-motion="false"]) *::after {
+    animation-duration: var(--dur-reduced) !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 150ms !important;
+    transition-property:
+      opacity, color, background-color, border-color, outline-color, box-shadow, fill, stroke !important;
     scroll-behavior: auto !important;
   }
 }
-:root[data-motion="reduce"] *,
-:root[data-motion="reduce"] *::before,
-:root[data-motion="reduce"] *::after {
-  animation-duration: 150ms !important;
+:root[data-reduce-motion="true"] *,
+:root[data-reduce-motion="true"] *::before,
+:root[data-reduce-motion="true"] *::after {
+  animation-duration: var(--dur-reduced) !important;
   animation-iteration-count: 1 !important;
-  transition-duration: 150ms !important;
+  transition-property:
+    opacity, color, background-color, border-color, outline-color, box-shadow, fill, stroke !important;
   scroll-behavior: auto !important;
 }
 
@@ -195,11 +233,11 @@
     transition:
       transform var(--dur-fast) var(--ease-out),
       box-shadow var(--dur-fast) var(--ease-out),
-      background-position 600ms var(--ease-in-out),
+      background-position var(--dur-sheen) var(--ease-in-out),
       opacity var(--dur-fast) ease;
   }
   .btn-gold:active:not(:disabled):not([aria-disabled="true"]) {
-    box-shadow: 0 3px 10px rgba(201, 162, 74, 0.22);
+    box-shadow: var(--shadow-gold-pressed);
   }
   @media (hover: hover) and (pointer: fine) {
     .btn-gold:hover:not(:disabled) {
@@ -216,15 +254,15 @@
       var(--surface-2) 100%
     );
     background-size: 200% 100%;
-    animation: moz-shimmer 1.2s linear infinite;
+    animation: moz-shimmer var(--dur-shimmer) linear infinite;
   }
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-motion="full"]) .skeleton {
+    :root:not([data-reduce-motion="false"]) .skeleton {
       animation: none;
       background: var(--surface-2);
     }
   }
-  :root[data-motion="reduce"] .skeleton {
+  :root[data-reduce-motion="true"] .skeleton {
     animation: none;
     background: var(--surface-2);
   }
@@ -236,7 +274,7 @@
     inset: 0;
     pointer-events: none;
     border-radius: inherit;
-    opacity: 0.05;
+    opacity: var(--foil-opacity);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
@@ -253,7 +291,7 @@
   .toast[data-leaving="true"] {
     transform: translateY(12px);
     opacity: 0;
-    transition-duration: 160ms;
+    transition-duration: var(--dur-exit);
   }
 }
 

@@ -51,6 +51,7 @@ export function Switch({
         />
         <span
           aria-hidden="true"
+          data-part="thumb"
           className="rounded-pill bg-surface shadow-1 duration-fast absolute top-0.5 left-0.5 size-[22px] transition-transform ease-out"
           style={{ transform: checked ? "translateX(20px)" : "translateX(0)" }}
         />

@@ -46,7 +46,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 
 **P0-C · Design system, motion, sound**
 
-- [ ] P0-08 · Tokens, fonts, global styles, motion preference
+- [x] P0-08 · Tokens, fonts, global styles, motion preference
 - [ ] P0-09 · UI primitives and gallery
 - [ ] P0-10 · Motion primitives and page transitions
 - [ ] P0-11 · Sound and haptics
