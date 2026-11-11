@@ -290,3 +290,4 @@ Done: resume (light path; merged main's progress commit). Screenshots inspected 
 Evidence: gate:task P0-09 PASS (unit 723, int 475, build, bundle, sast, E2E P0-09 59/0); P0-09 specs on chromium/webkit/iphone14/pixel7 116/0 + 1 AC5 timing flake (3/3 alone); e2e:visual 2/0.
 Not verified: CI full E2E on this push; real-iPhone safe areas.
 Next: CI green → squash wip/P0-09 to main, tick P0-09, drop C-13/C-20; then P0-10.
+CI 43002131604 (step D part 1) red on one flake: [pixel7] staff sign-in offline cut a late JS chunk request; both offline tests now wait for network idle before going offline (20/20 ×5 on pixel7 + desktop1440).

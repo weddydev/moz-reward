@@ -73,8 +73,10 @@ test.describe("offline", () => {
     await page.goto("/sign-in");
     await page.getByLabel("Email").fill(uniqueEmail("e2e-offline"));
     await expect(page.getByRole("button", { name: SEND })).toBeEnabled();
-    // Page fully loaded first: a font still downloading when we go offline would fail on its own.
+    // Page fully loaded first: a font or a late JS chunk still downloading when we go offline would fail on
+    // its own (CI 43002131604: a chunk request was cut on pixel7), so wait for the network to go quiet too.
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await page.waitForLoadState("networkidle");
     await context.setOffline(true);
     await page.getByRole("button", { name: SEND }).click();
     await expect(page.locator("form").getByRole("alert")).toHaveText(/offline|couldn't reach/i);
@@ -99,6 +101,7 @@ test.describe("offline (staff)", () => {
     await page.getByLabel("Password").fill("correct horse battery");
     await expect(page.getByRole("button", { name: "Continue" })).toBeEnabled();
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await page.waitForLoadState("networkidle"); // see the customer test above
     await context.setOffline(true);
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.locator("form").getByRole("alert")).toHaveText(/offline|couldn't reach/i);
