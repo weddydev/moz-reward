@@ -3,31 +3,35 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-11 13:21 IST (macOS)
+Baton: free — last held by talha.syed, 2026-11-11 17:55 IST (macOS)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **talha.syed, 2026-11-11 17:30 IST (macOS): P0-09 done, squashed to main and ticked.** Nothing half-done. Next: **P0-10** (motion primitives and page transitions): first commit the tightened P0-10 brief in `docs/phases/P0.md` (measurable ACs, edge cases, tests, verify), then step A on `wip/P0-10`.
-- **P0-10 notes:** React 19.3 ships `<ViewTransition>` and Next 16 `<Link transitionTypes>` (guide: `node_modules/next/dist/docs/01-app/02-guides/view-transitions.md`), so route transitions need no new dependency; the plan is a CSS enter-only fallback instead of adding `motion` (DECISIONS entry when built).
-- **P0-09 summary:** primitives in `src/components/ui` (overlays on the native modal `<dialog>`: `Overlay.tsx`, Modal/SidePanel/BottomSheet, sheet drag), gallery `/dev/ui` with a per-primitive state matrix (`src/features/dev/gallery-list.ts`), E2E `ui-states.spec.ts`, `overlays.spec.ts`, `ui-gallery.spec.ts`. Tables should give columns a `width` (fixed layout, no shift loading → data). Pages whose controls wait for hydration can set `data-hydrating` on their root until hydrated; the E2E guard waits for none before axe.
-- **Windows laptop:** the win32 visual baselines predate the P0-09 tokens (`--scrim`, `--motion-on` rows): the first `pnpm e2e:visual` there fails once → inspect, commit the new `-win32.png`. Also verify `pnpm db:migrate` / `gate:task` run without setting the two DB URLs in the shell (H-32).
+- **Handoff by talha.syed, 2026-11-11 17:55 IST (macOS). P0-09 done and on main (`9cef136`, CI green 43017023053). P0-10 step A half-done on `wip/P0-10` (pushed; HEAD in SESSION_LOG's last entry; NOT on main).** Continue: `git checkout wip/P0-10 && git pull && git merge origin/main` (never `pull --rebase` on a wip branch). Check `gh run list --branch wip/P0-10 --limit 1` first (CI started by this push).
+- **P0-10 brief** tightened and on main (`d4cb149`): measurable ACs 1–9, edge cases, tests, verify. Update its Build line to "layout boundary" wording (see the DECISIONS entry) when ticking.
+- **Step A so far (wip):** `src/lib/motion/route-transitions.ts` (`NAV` types, `PAGE_TRANSITION`, `navDirection`, `tabTransitionTypes`, `vtName`, `hasTypedViewTransitions`, `VT_DOWNGRADE_SCRIPT`, `fallbackEnterKeyframes`; 16 unit tests, written first); `src/lib/head-script.ts` (`HEAD_SCRIPT` = pre-paint + downgrade joined with ";", unit test; the root layout uses it: **a first version concatenated two IIFEs and broke the pre-paint script; the E2E guard caught it**); `src/components/motion/` `RouteTransition` (layout wrapper, `<ViewTransition update>`), `RouteContent` (client: CSS-token WAAPI enter fallback on path change), `SharedElement`, `TransitionLink` (`direction` or `tab: {from,to}`); route-transition CSS at the end of `globals.css` (`::view-transition { pointer-events: none }`, nav classes, `--vt-offset × --motion-on`, `.morph` group at `--dur-slow`, no morph movement under reduced motion); demos `/dev/motion` (cards → `/dev/motion/shop/[id]` morph), `/dev/motion/tabs/[tab]` (tab bar in `tabs/layout.tsx`, outside the inner transition); routes added to `tests/e2e/support/warm-up.ts`. DECISIONS "Route transitions on a layout boundary" (page-level enter/exit never fired here; layout `update` does).
+- **Tested:** gate:task P0-10 PASS (unit 740, int 475, build, bundle, sast, E2E P0-10 2/0); `motion.spec.ts` forward-slide check on Chromium + WebKit 2/0 (old/new snapshots slide, `8px` in the new keyframes, only transform/opacity, ≤ 380ms). By hand in E2E logs: forward morph pairs form (`vt-shopimage-…`, `vt-shoptitle-…` groups 380ms).
+- **Not yet tested:** full 5-project E2E after the root-layout head-script change (CI covers pixel7 + desktop1440 on the push; run all 5 at step C); tab-switch direction (does the outer `/dev/motion` boundary also slide the tab bar? the tabs layout was restructured but not yet re-measured); back direction; AC 2 (click during a transition, interrupt); AC 4 fallback (Chromium with `startViewTransition` removed by an init script; the downgrade path); AC 5 reduced motion; AC 9 axe on `/dev/motion` (routes-axe now lists it).
+- **Next (step A rest, then B and C):** extend `motion.spec.ts` for back, tabs, AC 2, AC 4, AC 5; fix what they find; then step B (presets, popover origin, stagger, `/dev/motion` sections; `emil-design-eng` skill), step C (frame screenshots, `design-reviewer` + `review-animations`, full E2E, squash, tick).
+- **Windows laptop:** the win32 visual baselines predate the P0-09 tokens: the first `pnpm e2e:visual` there fails once → inspect, commit the new `-win32.png`. Also verify `pnpm db:migrate` / `gate:task` without setting the two DB URLs in the shell (H-32). Nothing new to install, migrate or seed.
 - Remote `wip/P0-08`, `wip/P0-09`, `wip/P0-13`, `wip/P0-18`, `wip/p0-17-test-infra` are stale (squashed to main); delete only with the human's OK. P0-15 still waits on H-06/07/08/26/27.
-- **Watch out:** E2E pages get a default `moz_consent=denied` cookie (fixture option `analyticsConsent`; `null` shows the notice). The web process has no worker pool, so System-page E2E data comes from the `ops-snapshot` test action. Server env names must not collide with strings in client bundles (`SENTRY_RELEASE` did → renamed `APP_RELEASE`). `gate:task` with no unpushed commits picks the first unticked task (P0-15): pass the ID (`pnpm gate:task P0-10`). CI's push run covers pixel7 + desktop1440 only: run those two locally too when a change touches layout.
+- **Watch out:** E2E pages get a default `moz_consent=denied` cookie. `gate:task` with no unpushed commits picks the first unticked task (P0-15): pass the ID (`pnpm gate:task P0-10`). CI's push run covers pixel7 + desktop1440 only: run those locally too when layout changes. Pages whose controls wait for hydration set `data-hydrating` on their root; the E2E guard waits for none before axe. Two inline scripts must be joined with ";".
 
 ## Status
 - **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20, P0-13, P0-21, P0-16, P0-08, P0-09. Next: P0-15 (waits on human tasks); P0-C continues meanwhile (P0-10).
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → ~~P0-16~~; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-11 17:30 IST, talha.syed (P0-09 squashed to main and ticked; next P0-10)
+- **Last updated:** 2026-11-11 17:55 IST, talha.syed (handoff: P0-10 step A half-done on `wip/P0-10`)
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
+- **P0-10 in progress on `wip/P0-10`**: step A (route transitions) half-done; B and C to come.
 - **P0-09 done 11 Nov** (UI primitives, overlays, toasts, table, gallery state matrix; design review fixes; macOS visual baselines).
 - P0-08 done 11 Nov; P0-16 done 10 Nov. P0-15 is the only P0-E task left and waits on H-06/07/08/26/27.
 
 ## Next (top 3)
-1. **P0-10** motion primitives and page transitions (brief review first, then `wip/P0-10`).
+1. **P0-10** on `wip/P0-10`: finish step A E2E (back, tabs, interrupt, fallback, reduced motion), then steps B and C.
 2. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); waits on H-06/07/08/26/27 (+ H-34 Sentry, H-36 demo inbox).
 3. P0-11 sound and haptics, then P0-C close (`/subphase-complete`).
 
@@ -79,6 +83,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - Tests: Vitest `unit` + `integration` (per-worker DBs); `tests/authz/` (matrix, harness self-test); `scripts/check-authz-coverage.ts` (AST, in `pnpm lint`); `tests/e2e/` (Playwright :3100, import `test` from `support/test.ts`); `tests/load/`, `tests/live/`, `stryker.config.mjs`
 
 ## Last verified (11 Nov 2026)
+- P0-10 step A (wip): gate:task P0-10 PASS (unit 740, int 475, E2E P0-10 2/0); main `9cef136` CI green (43017023053).
 - P0-09 (wip `1d61e71` → squashed): gate:task P0-09 PASS (unit 723, int 475, build, bundle, sast, E2E P0-09 59/0); CI green 43014246719 (pixel7 + desktop1440); full 5-project E2E locally 503 passed / 0 failed / 152 skipped by design; e2e:visual macOS 2/0; design review: 1 HIGH + 4 MEDIUM fixed, LOWs in follow-ups.
 - P0-09 step C (`0553311`, wip): gate:task PASS (unit 713, int 475, build, bundle, sast, E2E P0-09 34/0); overlays.spec 5 projects 55/0 (10 skipped by design); CI on 0553311 started at the push. CI green on `620cde6` (run 42991161938) and main `7d9a05f` (run 42990900896).
 - P0-08: gate:task PASS (unit 595, int 475, build, bundle, sast, E2E P0-08 35/0, 11 skipped by design); tokens spec on 5 projects 55/0; CLS on `/dev/ui` 0.000 at 320/390/1440 (normal and fonts blocked), fonts 1.5 s late 0.000 / 0.048 / 0.009; contrast 24 pairs, 0 failing; CI green on `wip/P0-08` `8f241c0` (run 42967476496).

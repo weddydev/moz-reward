@@ -5,7 +5,7 @@ import { CookieNotice } from "@/features/consent/CookieNotice";
 import { ApplyPreferences } from "@/features/preferences/ApplyPreferences";
 import { loadAccountPreferences } from "@/features/preferences/load";
 import { clientEnv } from "@/lib/env";
-import { PREPAINT_SCRIPT } from "@/lib/preferences-prepaint";
+import { HEAD_SCRIPT } from "@/lib/head-script";
 import { fraunces, manrope } from "@/styles/fonts";
 import { colourTokens } from "@/styles/tokens";
 import type { Metadata, Viewport } from "next";
@@ -47,7 +47,7 @@ export default async function RootLayout({
           nonce={nonce}
           suppressHydrationWarning
           // eslint-disable-next-line react/no-danger -- a constant from our own module, no request data
-          dangerouslySetInnerHTML={{ __html: PREPAINT_SCRIPT }}
+          dangerouslySetInnerHTML={{ __html: HEAD_SCRIPT }}
         />
       </head>
       <body className="flex min-h-full flex-col">

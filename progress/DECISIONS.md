@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-11 — Route transitions on a layout boundary (P0-10)
+Decision: Page transitions use a persistent `<ViewTransition update>` in a layout (`RouteTransition` around `{children}`, nav bars outside), not `enter`/`exit` on each page as the Next guide suggests; shared elements use `<ViewTransition name share>` (`SharedElement`, `vtName`). No `motion` dependency: browsers without typed View Transitions get a CSS-token WAAPI enter fade + 8px rise (`RouteContent`); Safari 18.0–18.1 (VT without types) are downgraded to that fallback by the inline head script.
+Why: measured on our production build: page-level enter/exit never fired (React never called `startViewTransition` for a navigation between two minimal pages), while a layout boundary's `update` fires with the navigation's types (`nav-forward` → old fade 160ms + slide, new fade + slide 380ms). The fallback needs no library (bundle budget).
+Consequence: P0-12 shells put `RouteTransition` around the content area of each portal layout. Revisit page-level enter/exit if a later Next/React release fixes it.
+
 ## 2026-11-11 — P0-09 design review fixes: table column widths, KPI line breaks, "Device" label
 Decision: `Column.width` (optional CSS length) switches a Table to `table-layout: fixed` with a `<colgroup>`, so columns don't move between loading, empty and full; the empty message is pinned to the region's visible width (`@container` + `100cqw`, sticky). KpiCard values may wrap only after a thousands separator (`<wbr>` + `word-break: keep-all`), never inside a digit group. The motion preference's first option is now "Device" (was "Device setting", which wrapped in its pill at 320/390); SegmentedControl labels stay on one line (ellipsis on the label span, not the button, so `hit-44` isn't clipped).
 Why: design-reviewer MEDIUM findings (empty row clipped, "£1,234,56 / 7.89", wrapped segment, 70px column shift loading → data).
