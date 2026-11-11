@@ -157,7 +157,7 @@ function check(values: ReadonlyMap<string, string> | null): Checked {
   try {
     return { state: "done", rows: contrastResults((token) => values.get(token) ?? "") };
   } catch {
-    // A colour token that is not a 6-digit hex: the table says so instead of showing nothing.
+    // A colour token that is not a hex colour: the table says so instead of showing nothing.
     return { state: "error" };
   }
 }

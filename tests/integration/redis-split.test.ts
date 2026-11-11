@@ -60,9 +60,14 @@ describe("[P0-18] Redis split: queue and limiter never share an instance with th
     await cache.config("SET", "maxmemory", "4mb");
     try {
       const blob = "x".repeat(8 * 1024);
-      const pipeline = cache.pipeline();
-      for (let i = 0; i < 1500; i++) pipeline.set(cacheKey(`fill:${String(i)}`), blob, "EX", 60);
-      await pipeline.exec();
+      // 12 MB in batches of 100 keys (0.8 MB): one pipeline of all 1,500 ran into the cache client's 250ms
+      // command timeout on a busy machine (Windows laptop, full parallel run).
+      for (let start = 0; start < 1500; start += 100) {
+        const pipeline = cache.pipeline();
+        for (let i = start; i < start + 100; i++)
+          pipeline.set(cacheKey(`fill:${String(i)}`), blob, "EX", 60);
+        await pipeline.exec();
+      }
       const after = Number(/evicted_keys:(\d+)/.exec(await cache.info("stats"))?.[1] ?? 0);
       expect(after).toBeGreaterThan(before); // the cache really was full and evicted
     } finally {

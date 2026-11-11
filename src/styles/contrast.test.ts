@@ -35,8 +35,16 @@ describe("[P0-08] contrast maths (WCAG 2.2)", () => {
     expect(mixed.map(Math.round)).toEqual([191, 191, 191]);
   });
 
-  it("refuses anything that is not a 6-digit hex colour", () => {
+  it("reads the 3-digit form the production CSS minifier writes (#ffffff → #fff)", () => {
+    expect(parseHex("#fff")).toEqual(parseHex("#ffffff"));
+    expect(parseHex("#1AB")).toEqual(parseHex("#11aabb"));
+    expect(parseHex(" #FBF8F1 ")).toEqual([251, 248, 241]);
+  });
+
+  it("refuses anything that is not a 3- or 6-digit hex colour", () => {
     expect(() => parseHex("rgb(0,0,0)")).toThrow(/hex/);
+    expect(() => parseHex("#ffff")).toThrow(/hex/);
+    expect(() => parseHex("#ffffff80")).toThrow(/hex/);
   });
 });
 

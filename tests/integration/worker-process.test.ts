@@ -69,6 +69,10 @@ describe("[P0-18] worker process", () => {
     const mail = await latestEmailTo(user.email, { timeoutMs: 20_000 });
     expect(mail.subject).toBe("Several wrong codes were tried on your Moz Rewards staff account");
 
+    expect(worker.output()).not.toContain("job.retrying");
+    // Windows has no SIGTERM: `kill` ends the process at once, so the graceful stop can only be proved on
+    // macOS and Linux (CI and the VPS run Linux). The start, relay and email parts above run everywhere.
+    if (process.platform === "win32") return;
     const exited = new Promise<number | null>((resolve) => worker.proc.on("exit", resolve));
     worker.proc.kill("SIGTERM");
     expect(await exited).toBe(0);

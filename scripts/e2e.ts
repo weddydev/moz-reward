@@ -114,17 +114,25 @@ function main(): void {
   const dev = args.includes("--dev");
   const force = args.includes("--rebuild");
   const buildOnly = args.includes("--build-only");
-  const pwArgs = args.filter((a) => !["--dev", "--rebuild", "--build-only"].includes(a));
+  // `--visual`: only the @visual snapshot tests (add `--update-snapshots` to accept a new look).
+  const visual = args.includes("--visual");
+  const pwArgs = args.filter(
+    (a) => !["--dev", "--rebuild", "--build-only", "--visual"].includes(a),
+  );
 
   if (!dev && !process.env.E2E_BASE_URL) {
     const build = ensureProductionBuild({ force });
     if (!build.ok) process.exit(1);
     if (buildOnly) process.exit(0);
   }
-  const r = spawnSync(process.execPath, [PLAYWRIGHT_CLI, "test", ...pwArgs], {
-    stdio: "inherit",
-    env: { ...process.env, E2E_MODE: dev ? "dev" : "prod" },
-  });
+  const r = spawnSync(
+    process.execPath,
+    [PLAYWRIGHT_CLI, "test", ...(visual ? ["--grep", "@visual"] : []), ...pwArgs],
+    {
+      stdio: "inherit",
+      env: { ...process.env, E2E_MODE: dev ? "dev" : "prod", ...(visual ? { VISUAL: "1" } : {}) },
+    },
+  );
   process.exit(r.status ?? 1);
 }
 

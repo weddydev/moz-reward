@@ -13,6 +13,21 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-11 — P0-08: visual snapshots run on request, with per-OS baselines
+Decision: `toHaveScreenshot` tests carry the tag `@visual` and are left out of ordinary runs and CI (`grepInvert` in `playwright.config.ts`). They run with `VISUAL=1`: `pnpm gate:phase` sets it, and `pnpm e2e:visual` runs only them (`--update-snapshots` accepts a new look). One browser (Chromium) holds the baselines, stored beside the spec with the OS in the file name (`…-chromium-win32.png`, `…-darwin.png`).
+Why: font rendering differs between Windows, macOS and CI's Linux, so one shared baseline would fail on two of the three; TESTING §4 puts visual snapshots in the phase gate, which runs on a developer laptop.
+Consequence: the first `VISUAL=1` run on a laptop without a baseline for its OS writes it and fails once: inspect the image, commit it. First baselines: token page at 390 and 1440 (Windows). The Mac baseline is created at the next phase gate run there.
+
+## 2026-11-11 — P0-08: fonts, and what `display: swap` costs
+Decision: Fraunces (variable, `opsz` axis kept) is the only preloaded font (67 KB); Manrope is not preloaded (DESIGN §12 budget). Both use `display: swap` with next/font's metric-adjusted fallback. AC 6 (CLS ≤ 0.01 at 320/390/1440) is asserted for a normal load and for fonts that never load. For fonts that arrive 1.5 s late the E2E bound is the Web Vitals "good" limit (≤ 0.1).
+Why: measured on `/dev/ui` (Chromium, production build): normal load 0.000 at all three widths; fonts blocked 0.000; fonts 1.5 s late 0.000 at 320, 0.048 at 390 (one heading 6% wider in the fallback wraps to two lines, then returns to one), 0.009 at 1440 (one Manrope paragraph). A fallback can match average width, not every string, so a late swap can re-wrap a line that nearly fills its column. `display: optional` would remove the shift but show the fallback font for the whole visit on slow connections; tuning `size-adjust` to the gallery's sample strings would only move the mismatch to other text.
+Consequence / revisit when: field CLS (P5 Lighthouse / real-user data) is above 0.05 on customer screens: then preload Manrope's Latin file or switch headings to `optional`.
+
+## 2026-11-11 — P0-08: tokens page reads computed values; spacing unit; focus ring
+Decision: (1) The `/dev/ui` token page and contrast table read values with `getComputedStyle`, so they show what the production CSS holds. The minifier rewrites values (`#ffffff` → `#fff`, `120ms` → `.12s`), so `parseHex` accepts 3- and 6-digit hex and the E2E compares values by meaning (hex expanded, durations in ms), not as strings. (2) Spacing utilities multiply one token, `--space-unit` (4px); the named steps (`--space-4` … ) exist for CSS that needs a fixed step. (3) The focus ring is an unlayered `:focus-visible` rule: `box-shadow` ink 2px + gold 4px, plus a transparent 2px outline that forced-colours mode paints.
+Why: (1) found on the first production-build run: the contrast table showed "could not be read" because `--surface` arrived as `#fff`. (2) one source for the scale, no duplicated values (AC 3). (3) unlayered so it beats any component shadow in `@layer components`; `box-shadow` follows the element's radius and does not change its box (AC 4).
+Consequence: a component that needs its own shadow while focused must add the two rings to it, not replace them. A colour token in another notation (`rgb()`, `oklch()`) makes the contrast table say so; extend `parseHex` then.
+
 ## 2026-11-10 — P0-08: display preferences, device and profile
 Decision: `customer_profiles.sound_on` is now nullable with no default (migration 0013), like `reduce_motion`: null = no choice (sounds on, motion follows the system). The device keeps the choice in localStorage (`moz:motion`, `moz:sound`) plus a sync marker (`moz:prefs-sync`). Rule (`reconcile` in `src/lib/preferences.ts`): an unsent change on the device wins and is sent again; a device already in step follows the profile (also back to "no choice"); a choice made signed out is saved when the profile has none, otherwise the profile wins. Signed out or no customer profile → device-only, and the marker is cleared.
 Why: AC 8 needs "the profile has none" to be detectable for sounds too; without the marker a second device could never return to "follow the system".

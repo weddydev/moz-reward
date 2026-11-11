@@ -55,9 +55,11 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
 type Rgb = readonly [number, number, number];
 
 export function parseHex(hex: string): Rgb {
-  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m?.[1]) throw new Error(`not a 6-digit hex colour: ${hex}`);
-  const n = parseInt(m[1], 16);
+  // The page reads computed values, and the production CSS minifier shortens #ffffff to #fff.
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m?.[1]) throw new Error(`not a 3- or 6-digit hex colour: ${hex}`);
+  const digits = m[1].length === 3 ? m[1].replace(/./g, "$&$&") : m[1];
+  const n = parseInt(digits, 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 

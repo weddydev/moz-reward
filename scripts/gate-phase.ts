@@ -160,6 +160,8 @@ function unreachable(): StepResult {
 }
 
 function main(): void {
+  // The phase gate's E2E run includes the visual snapshots (TESTING §4); see playwright.config grepInvert.
+  process.env.VISUAL = "1";
   const before = treeState();
   const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
     scripts: Record<string, string>;

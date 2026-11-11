@@ -23,6 +23,9 @@ export default defineConfig({
   outputDir: "test-results",
   globalSetup: "./tests/e2e/support/warm-up.ts",
   fullyParallel: true,
+  // Visual snapshots (@visual) compare against per-OS baselines, so they run only when asked for
+  // (VISUAL=1: `pnpm gate:phase`, or `pnpm e2e:visual`), never in an ordinary run or in CI.
+  ...(process.env.VISUAL ? {} : { grepInvert: /@visual/ }),
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
