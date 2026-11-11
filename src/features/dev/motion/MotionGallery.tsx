@@ -1,6 +1,7 @@
 import { SharedElement, TransitionLink } from "@/components/motion";
 import { Section } from "../Section";
 import { DEMO_SHOPS, DEMO_TABS } from "./demo-data";
+import { MotionPrimitives } from "./MotionPrimitives";
 import { ShopThumb } from "./ShopThumb";
 
 /**
@@ -26,7 +27,7 @@ export function MotionGallery(): React.JSX.Element {
         <TransitionLink
           href="/dev/motion/details"
           direction="forward"
-          className="pressable bg-surface border-line text-small rounded-pill hit-44 inline-flex border px-4 py-2 font-semibold"
+          className="pressable bg-surface border-line text-small rounded-pill hit-44 inline-flex self-start border px-4 py-2 font-semibold"
         >
           Open a detail page
         </TransitionLink>
@@ -79,6 +80,8 @@ export function MotionGallery(): React.JSX.Element {
           ))}
         </div>
       </Section>
+
+      <MotionPrimitives />
     </main>
   );
 }

@@ -224,7 +224,7 @@ export function Overlay({
         ref={panelRef}
         tabIndex={-1}
         data-part="panel"
-        className={cx("overlay-panel bg-surface text-ink shadow-2", className)}
+        className={cx("overlay-panel bg-surface text-ink", className)}
       >
         <div ref={gripRef} data-part="grip" className="overlay-grip">
           {kind === "sheet" && (

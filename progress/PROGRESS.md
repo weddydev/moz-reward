@@ -7,28 +7,27 @@ Baton: held by Syedbadeshah76 since 2026-11-11 18:19 IST (Windows)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by Syedbadeshah76, 2026-11-11 22:45 IST (Windows). P0-10 step A done on `wip/P0-10` (pushed, HEAD `1a63e95`; NOT on main).** Continue: `git checkout wip/P0-10 && git pull && git merge origin/main` (never `pull --rebase` on a wip branch).
-- **Approach changed again (DECISIONS "Pages slide as live content"; human delegated the choice):** the root-snapshot slide failed too: with the root captured, taps mid-transition hit `<html>` in both engines (the earlier "tappable" reading had the root cancelled). Now: WAAPI enter on the live content (`RouteContent` + `enterKeyframes`, direction from `TransitionLink` → `nav-intent.ts`), `:root{view-transition-name:none}`, View Transitions only for morphs (content fades only during one: WebKit crashes on a transform there). Enter runs in a **layout** effect (React may defer passive effects past the VT). `cssTimeMs` reads minified tokens (`.38s`). New demo `/dev/motion/details` (plain forward/back).
-- **motion.spec:** 20/0 on Chromium + WebKit, no fixme left; 80/80 with `--repeat-each=4` under load. Recorder hooks `Element.prototype.animate` for page enters (WebKit paints ~1 frame/100ms during a VT).
-- **Sentry wizard** ran in the repo at 21:29 (H-34 onboarding): output parked on local unpushed branch `local/sentry-wizard` (this laptop); `.env.sentry-build-plugin` (token) left untouched, git-ignored. H-34 note added.
-- **Not yet tested:** full 5-project E2E (root layout CSS changed: step C); AC 9 axe on `/dev/motion`; win32 visual baselines (first `pnpm e2e:visual` on Windows fails once → inspect, commit `-win32.png`). Nothing to install, migrate or seed.
-- **Next: step B** (presets, popover origin `transformOriginFor`, `staggerDelay`, press/hover docs, `/dev/motion` sections, AC 6 motion-CSS scan unit test; load `emil-design-eng`), then **step C** (frame screenshots 390 Chromium + WebKit and 1440, `design-reviewer` + `review-animations`, full E2E, squash to main, tick). The sheet spring-back follow-up (`--ease-drawer`) can ride along in B.
+- **Checkpoint by Syedbadeshah76, 2026-11-11 23:45 IST (Windows). P0-10 steps A + B done on `wip/P0-10` (pushed; NOT on main).** Continue: `git checkout wip/P0-10 && git pull && git merge origin/main` (never `pull --rebase` on a wip branch).
+- **Step B built:** `src/lib/motion/presets.ts` (`MOTION_PRESETS` names the existing overlay/toast/press CSS + new `.popover` and `.stagger-item`; `staggerDelay` 30–80ms clamped after the 8th; `transformOriginFor`; `placePopover`), `<Popover>` in `src/components/motion` (portal + CSS transitions, DECISIONS "Popover: portal…"), `/dev/motion` sections Presets / Popover / Stagger / Press and hover. AC 6 scan = `presets.test.ts` (CSS walker; proved it fails on an injected `color` transition). `DevGate` moved to `src/features/dev/DevGate.tsx` + unit test (AC 9 production 404).
+- **Found + fixed:** a focused overlay panel/popover "transitioned" box-shadow under reduced motion (Tailwind `shadow-2` = 5-layer list vs the single-layer `:focus-visible` value): `.overlay-panel`/`.popover` now set `box-shadow: var(--shadow-2)` in CSS (same look).
+- **Not yet tested:** full 5-project E2E after the globals.css changes (started after this push; result goes in SESSION_LOG next session if not recorded); AC 9 axe at rest passes in motion-primitives.spec (Chromium/WebKit/phones); win32 visual baselines; CI on this push. WebKit `overlays.spec` screenshot test timed out once under a 4-project load and passed alone (38s): watch it.
+- **Next: step C** (frame screenshots mid-transition at 390 Chromium + WebKit and 1440, `design-reviewer` + `review-animations`, full E2E, squash to main, tick P0-10). Sheet spring-back (`--ease-drawer`/spring) stays a LOW follow-up (needs a token).
 
 ## Status
 - **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20, P0-13, P0-21, P0-16, P0-08, P0-09. Next: P0-15 (waits on human tasks); P0-C continues meanwhile (P0-10).
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → ~~P0-16~~; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-11 22:45 IST, Syedbadeshah76 (checkpoint: P0-10 step A done, live-content slide)
+- **Last updated:** 2026-11-11 23:45 IST, Syedbadeshah76 (checkpoint: P0-10 step B done)
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- **P0-10 in progress on `wip/P0-10`** (`1a63e95`): step A done (live-content slide, morphs only via View Transitions); B and C to come.
+- **P0-10 in progress on `wip/P0-10`**: steps A (live-content slide) and B (presets, popover, stagger, AC 6 scan, gallery) done; C to come.
 - **P0-09 done 11 Nov** (UI primitives, overlays, toasts, table, gallery state matrix; design review fixes; macOS visual baselines).
 - P0-08 done 11 Nov; P0-16 done 10 Nov. P0-15 is the only P0-E task left and waits on H-06/07/08/26/27.
 
 ## Next (top 3)
-1. **P0-10** on `wip/P0-10`: step B (presets, popover, stagger, gallery sections, AC 6 scan), then step C (screenshots, reviews, full E2E, squash, tick).
+1. **P0-10** on `wip/P0-10`: step C (frame screenshots, design-reviewer + review-animations, full E2E, squash, tick).
 2. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); waits on H-06/07/08/26/27 (+ H-34 Sentry, H-36 demo inbox).
 3. P0-11 sound and haptics, then P0-C close (`/subphase-complete`).
 
@@ -81,6 +80,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - Tests: Vitest `unit` + `integration` (per-worker DBs); `tests/authz/` (matrix, harness self-test); `scripts/check-authz-coverage.ts` (AST, in `pnpm lint`); `tests/e2e/` (Playwright :3100, import `test` from `support/test.ts`); `tests/load/`, `tests/live/`, `stryker.config.mjs`
 
 ## Last verified (11 Nov 2026)
+- P0-10 step B (wip): gate:task P0-10 PASS (unit 786, int 475, build, bundle, sast, E2E P0-10 36/0); motion-primitives.spec + overlays.spec on Chromium/WebKit/Pixel 7/iPhone 14: all pass (one WebKit overlay screenshot timeout under load passed alone).
 - P0-10 step A rework (wip `1a63e95`): gate:task P0-10 PASS (unit 761, int 475, build, bundle, sast, E2E P0-10 20/0, 0 skipped); motion.spec Chromium + WebKit `--repeat-each=4` 80/0.
 - P0-10 step A E2E (wip `bf132ed`): gate:task P0-10 PASS (int 475, build, bundle, sast, E2E P0-10 13/0, 5 skipped: 4 fixme + AC2 WebKit); `pnpm check` unit 740.
 - P0-10 step A (wip): gate:task P0-10 PASS (unit 740, int 475, E2E P0-10 2/0); main `9cef136` CI green (43017023053).
