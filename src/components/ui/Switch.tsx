@@ -60,7 +60,7 @@ export function Switch({
           aria-hidden="true"
           data-part="track"
           data-press
-          className="rounded-pill border-line bg-surface-2 relative block h-7 w-12 overflow-hidden border"
+          className="rounded-pill border-ink-3 bg-surface-2 relative block h-7 w-12 overflow-hidden border"
         >
           <span
             className="bg-gold-gradient duration-fast absolute inset-0 origin-left transition-transform ease-out"

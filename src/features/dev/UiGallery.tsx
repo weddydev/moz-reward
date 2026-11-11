@@ -1,19 +1,27 @@
 "use client";
 
-import { Coffee, Gift, Plus, Sparkles } from "lucide-react";
+import { Bell, Coffee, Gift, MapPin, Plus, Settings, Sparkles } from "lucide-react";
 import { useState } from "react";
 import {
+  Avatar,
   Badge,
   Button,
   Card,
+  Checkbox,
   Chip,
   ChipGroup,
   type Column,
   EmptyState,
+  ErrorState,
   HeroCard,
+  Icon,
+  IconButton,
   KpiCard,
+  MilestoneTrack,
   ProgressBar,
+  RadioGroup,
   SegmentedControl,
+  Select,
   ShopCard,
   Skeleton,
   Switch,
@@ -57,6 +65,11 @@ export function UiGallery(): React.JSX.Element {
   const [tab, setTab] = useState<"pending" | "approved" | "expired">("pending");
   const [sounds, setSounds] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [offers, setOffers] = useState(true);
+  const [terms, setTerms] = useState(false);
+  const [rule, setRule] = useState<"visits" | "spend">("visits");
+  const [shopType, setShopType] = useState("");
+  const [retrying, setRetrying] = useState(false);
 
   return (
     <main id="main" className="mx-auto w-full max-w-5xl px-5 py-10">
@@ -180,7 +193,107 @@ export function UiGallery(): React.JSX.Element {
             maxLength={500}
             className="md:col-span-2"
           />
+          <Select
+            label="Shop type"
+            placeholder="Choose a shop type"
+            value={shopType}
+            onChange={(e) => {
+              setShopType(e.currentTarget.value);
+            }}
+            options={[
+              { value: "cafe", label: "Café" },
+              {
+                value: "barber",
+                label: "Barber — beard trims, hot towel shaves and walk-ins welcome",
+              },
+              { value: "grocer", label: "Grocer" },
+            ]}
+          />
+          <Select
+            label="Region"
+            defaultValue=""
+            placeholder="Choose a region"
+            error="Choose the region your shop is in."
+            options={[
+              { value: "london", label: "London" },
+              { value: "midlands", label: "Midlands" },
+            ]}
+          />
+          <Select
+            label="Disabled select"
+            disabled
+            defaultValue="cafe"
+            options={[{ value: "cafe", label: "Café" }]}
+          />
         </div>
+        <div className="grid max-w-2xl gap-4 md:grid-cols-2">
+          <div className="flex flex-col">
+            <Checkbox
+              label="Email me offers"
+              description="About once a week. Unsubscribe any time."
+              checked={offers}
+              onCheckedChange={setOffers}
+            />
+            <Checkbox
+              label="I agree to the terms"
+              error={terms ? undefined : "Tick to continue."}
+              checked={terms}
+              onCheckedChange={setTerms}
+            />
+            <Checkbox label="Disabled checkbox" disabled defaultChecked />
+          </div>
+          <RadioGroup
+            label="Earn rule"
+            name="rule"
+            value={rule}
+            onChange={setRule}
+            options={[
+              {
+                value: "visits",
+                label: "Per visit",
+                description: "One stamp each time a customer visits.",
+              },
+              { value: "spend", label: "Per £1 spent" },
+            ]}
+          />
+        </div>
+      </Section>
+
+      <Section title="Icons, icon buttons, avatars">
+        <div className="flex flex-wrap items-center gap-3">
+          <Icon icon={MapPin} />
+          <Icon icon={Bell} label="Notifications on" />
+          <IconButton icon={Bell} label="Notifications" onClick={() => toast("Notifications")} />
+          <IconButton icon={Settings} label="Settings" variant="secondary" />
+          <IconButton icon={Plus} label="Add (disabled)" disabled />
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Avatar name="Aisha Khan" size={56} labelled />
+          <Avatar name="Tom Fletcher" />
+          {/* A photo that fails to decode (no network request): falls back to initials. */}
+          <Avatar name="Priya Shah" src="data:image/png;base64,AAAA" />
+          <Avatar size={32} />
+        </div>
+      </Section>
+
+      <Section title="Milestone track">
+        <MilestoneTrack
+          label="Brew & Bloom rewards"
+          steps={[
+            { label: "Free biscuit", reached: true },
+            { label: "Free coffee", reached: true },
+            { label: "Coffee & cake for two, any size, any day", reached: false },
+            { label: "Breakfast", reached: false },
+          ]}
+        />
+        <MilestoneTrack
+          label="All reached"
+          steps={[
+            { label: "Bronze", reached: true },
+            { label: "Silver", reached: true },
+          ]}
+        />
+        <MilestoneTrack label="One milestone" steps={[{ label: "First visit", reached: false }]} />
       </Section>
 
       <Section title="Chips, segmented control, tabs, switch">
@@ -282,7 +395,7 @@ export function UiGallery(): React.JSX.Element {
         />
       </Section>
 
-      <Section title="Loading, empty, toasts">
+      <Section title="Loading, empty, error, toasts">
         <div className="flex max-w-sm flex-col gap-2">
           <Skeleton className="h-16" />
           <Skeleton className="h-4 w-2/3" rounded="pill" />
@@ -303,6 +416,16 @@ export function UiGallery(): React.JSX.Element {
             }
           />
         </Card>
+        <ErrorState
+          message="We couldn't load your rewards. Check your connection and try again."
+          retrying={retrying}
+          onRetry={() => {
+            setRetrying(true);
+            setTimeout(() => {
+              setRetrying(false);
+            }, 1500);
+          }}
+        />
         <div className="flex flex-wrap gap-3">
           <Button variant="secondary" onClick={() => toast("Saved")}>
             Info toast
