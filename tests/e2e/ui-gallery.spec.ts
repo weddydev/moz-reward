@@ -41,6 +41,11 @@ test.describe("[P0-09] UI gallery", () => {
 
   test("[P0-09] a toast appears when triggered", async ({ page }) => {
     await page.getByRole("button", { name: "Success toast" }).click();
-    await expect(page.getByText("+80 gold added")).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Notifications" }).getByText("+80 gold added"),
+    ).toBeVisible();
+    // Announced once through the polite live region, then cleared (not read twice).
+    await expect(page.getByRole("status").filter({ hasText: "+80 gold added" })).toHaveCount(1);
+    await expect(page.getByRole("status").filter({ hasText: "+80 gold added" })).toHaveCount(0);
   });
 });

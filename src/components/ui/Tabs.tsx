@@ -2,6 +2,7 @@
 
 import { type ReactNode, useId, useRef } from "react";
 import { cx } from "@/lib/cx";
+import { useHydrated } from "@/lib/use-hydrated";
 
 export type TabItem<T extends string> = { value: T; label: string; count?: number };
 
@@ -20,6 +21,7 @@ export function Tabs<T extends string>({
   children: ReactNode;
 }): React.JSX.Element {
   const base = useId();
+  const hydrated = useHydrated();
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
   const index = Math.max(
     0,
@@ -68,12 +70,14 @@ export function Tabs<T extends string>({
               aria-selected={selected}
               aria-controls={`${base}-panel`}
               tabIndex={selected ? 0 : -1}
+              // Disabled until hydrated so an early press is never lost (C-20).
+              disabled={!hydrated}
               onClick={() => {
                 onChange(t.value);
               }}
               className={cx(
-                "text-small duration-fast relative h-11 shrink-0 px-3 font-semibold transition-colors",
-                selected ? "text-ink" : "text-ink-2 [@media(hover:hover)]:hover:text-ink",
+                "text-small duration-fast relative h-11 min-w-11 shrink-0 px-3 font-semibold transition-colors",
+                selected ? "text-ink" : "text-ink-2 hover:text-ink",
               )}
             >
               {t.label}

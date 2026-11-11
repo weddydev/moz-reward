@@ -1,5 +1,9 @@
 import { cx } from "@/lib/cx";
 
+/** 0–1 as a whole percentage; below 0, NaN and ±Infinity count as empty, above 1 as full. */
+export const progressPercent = (value: number): number =>
+  Number.isFinite(value) ? Math.round(Math.min(1, Math.max(0, value)) * 100) : 0;
+
 /** 4px gold progress bar (shop cards, vault). Value 0–1. Text label lives next to it, not inside. */
 export function ProgressBar({
   value,
@@ -12,7 +16,7 @@ export function ProgressBar({
   className?: string;
   height?: number;
 }): React.JSX.Element {
-  const pct = Math.round(Math.min(1, Math.max(0, value)) * 100);
+  const pct = progressPercent(value);
   return (
     <div
       role="progressbar"

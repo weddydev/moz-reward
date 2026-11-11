@@ -44,6 +44,19 @@
   --ease-in-out: var(--ease-in-out);
 }
 
+/*
+ * Hover only where a real pointer hovers (DESIGN §7, §11): on touch screens a tap must not leave a hover style
+ * behind. This replaces Tailwind's own `hover:` variant (which checks `(hover: hover)` only), so every
+ * `hover:` class in the app gets the rule without a prefix.
+ */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
 /* Type scale (mobile / desktop ≥1024px) — DESIGN §4 */
 @utility text-display {
   font-family: var(--font-display);
@@ -130,6 +143,23 @@
 }
 @utility tabular {
   font-variant-numeric: tabular-nums;
+}
+/*
+ * Touch target of at least 44×44 CSS px (DESIGN §13) for controls drawn smaller (40px buttons, chips, the
+ * table toggle): an invisible pseudo-element centred on the control takes the hits. The element itself
+ * becomes the positioning box, so it must not clip (no overflow-hidden on the same element).
+ */
+@utility hit-44 {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    translate: -50% -50%;
+  }
 }
 
 @layer base {
@@ -220,8 +250,36 @@
     -webkit-user-select: none;
     user-select: none;
   }
-  .pressable:active:not(:disabled):not([aria-disabled="true"]) {
+  /*
+   * `[data-press]` marks the visible part of a control whose hit area is bigger than it (Switch: the row is
+   * the target, only the track scales; a transform on the button itself would shrink its row-wide ::after).
+   */
+  [data-press] {
+    transition:
+      transform var(--dur-fast) var(--ease-out),
+      opacity var(--dur-fast) ease;
+  }
+  .pressable:active:not(:disabled):not([aria-disabled="true"]),
+  :active:not(:disabled):not([aria-disabled="true"]) > [data-press] {
     transform: scale(0.97);
+  }
+  /* Reduced motion: the press still shows, as a dim instead of a scale (DESIGN §7). */
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-reduce-motion="false"])
+      .pressable:active:not(:disabled):not([aria-disabled="true"]),
+    :root:not([data-reduce-motion="false"])
+      :active:not(:disabled):not([aria-disabled="true"])
+      > [data-press] {
+      transform: none;
+      opacity: 0.8;
+    }
+  }
+  :root[data-reduce-motion="true"] .pressable:active:not(:disabled):not([aria-disabled="true"]),
+  :root[data-reduce-motion="true"]
+    :active:not(:disabled):not([aria-disabled="true"])
+    > [data-press] {
+    transform: none;
+    opacity: 0.8;
   }
 
   /* Primary button: gold gradient with a soft sheen on desktop hover (gradient position shift). */
@@ -245,26 +303,48 @@
     }
   }
 
-  /* Skeleton shimmer ≤ 1.2s loop; static under reduced motion. */
+  /*
+   * Skeleton: a flat block with a highlight band sliding across it (≤ 1.2s loop). The band moves by
+   * transform on a pseudo-element, so the loop stays on the compositor; reduced motion leaves the block flat.
+   */
   .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface-2);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
     background: linear-gradient(
       90deg,
-      var(--surface-2) 0%,
+      transparent 0%,
       color-mix(in oklab, var(--surface-2), var(--surface)) 50%,
-      var(--surface-2) 100%
+      transparent 100%
     );
-    background-size: 200% 100%;
+    transform: translateX(-100%);
     animation: moz-shimmer var(--dur-shimmer) linear infinite;
   }
   @media (prefers-reduced-motion: reduce) {
-    :root:not([data-reduce-motion="false"]) .skeleton {
-      animation: none;
-      background: var(--surface-2);
+    :root:not([data-reduce-motion="false"]) .skeleton::after {
+      display: none;
     }
   }
-  :root[data-reduce-motion="true"] .skeleton {
+  :root[data-reduce-motion="true"] .skeleton::after {
+    display: none;
+  }
+
+  /* Spinner: one turn per --dur-spin. Reduced motion: it stays visible and still (the arc shows it is busy). */
+  .spinner {
+    animation: moz-spin var(--dur-spin) linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-reduce-motion="false"]) .spinner {
+      animation: none;
+    }
+  }
+  :root[data-reduce-motion="true"] .spinner {
     animation: none;
-    background: var(--surface-2);
   }
 
   /* Foil texture overlay for hero cards and the member card (opacity ≤ .06). */
@@ -297,10 +377,10 @@
 
 @keyframes moz-shimmer {
   from {
-    background-position: 200% 0;
+    transform: translateX(-100%);
   }
   to {
-    background-position: -200% 0;
+    transform: translateX(100%);
   }
 }
 

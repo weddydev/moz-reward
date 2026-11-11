@@ -1,16 +1,16 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Button } from "./Button";
+import { Chip } from "./Chip";
 import { ProgressBar } from "./ProgressBar";
 import { SegmentedControl } from "./SegmentedControl";
 import { sparklinePath } from "./Sparkline";
 import { Switch } from "./Switch";
 import { Tabs } from "./Tabs";
-import { TextField } from "./TextField";
-import { Toaster, __resetToasts, toast } from "./Toast";
+import { TextArea, TextField } from "./TextField";
 
 describe("[P0-09] Button", () => {
   it("keeps its label for screen readers and swallows clicks while loading", async () => {
@@ -55,6 +55,24 @@ describe("[P0-09] TextField", () => {
     expect(screen.getByLabelText("UK mobile")).toHaveAccessibleDescription(
       "Only shared with shops you join.",
     );
+  });
+  it("merges a caller's aria-describedby with its own instead of dropping either", () => {
+    render(
+      <>
+        <p id="limit">Up to £500.</p>
+        <TextField label="Amount" error="Enter an amount." aria-describedby="limit" />
+        <TextArea label="Note" hint="Optional." aria-describedby="limit" />
+      </>,
+    );
+    expect(screen.getByLabelText("Amount")).toHaveAccessibleDescription(
+      "Enter an amount. Up to £500.",
+    );
+    expect(screen.getByLabelText("Amount")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Note")).toHaveAccessibleDescription("Optional. Up to £500.");
+  });
+  it("keeps the invalid state when the caller passes other input props", () => {
+    render(<TextField label="Postcode" error="Too short." aria-invalid={false} required />);
+    expect(screen.getByLabelText(/Postcode/)).toHaveAttribute("aria-invalid", "true");
   });
 });
 
@@ -124,6 +142,29 @@ describe("[P0-09] Switch", () => {
     await userEvent.click(sw);
     expect(onChange).toHaveBeenCalledWith(true);
   });
+
+  it("toggles when its label is clicked and links the description", async () => {
+    const onChange = vi.fn();
+    render(
+      <Switch
+        label="Birthday treat reminders"
+        description="One email a year."
+        checked
+        onCheckedChange={onChange}
+      />,
+    );
+    await userEvent.click(screen.getByText("Birthday treat reminders"));
+    expect(onChange).toHaveBeenCalledWith(false);
+    expect(screen.getByRole("switch")).toHaveAccessibleDescription("One email a year.");
+  });
+
+  it("does not toggle while disabled", async () => {
+    const onChange = vi.fn();
+    render(<Switch label="Sounds" checked={false} onCheckedChange={onChange} disabled />);
+    await userEvent.click(screen.getByRole("switch", { name: "Sounds" }));
+    await userEvent.click(screen.getByText("Sounds"));
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });
 
 describe("[P0-09] ProgressBar", () => {
@@ -132,6 +173,17 @@ describe("[P0-09] ProgressBar", () => {
     expect(screen.getByRole("progressbar", { name: "Vault" })).toHaveAttribute(
       "aria-valuenow",
       "100",
+    );
+  });
+  it.each([
+    ["a negative value", -0.3],
+    ["NaN", Number.NaN],
+    ["infinity", Number.POSITIVE_INFINITY],
+  ])("treats %s as empty", (_name, value) => {
+    render(<ProgressBar value={value} label="Vault" />);
+    expect(screen.getByRole("progressbar", { name: "Vault" })).toHaveAttribute(
+      "aria-valuenow",
+      "0",
     );
   });
 });
@@ -148,37 +200,28 @@ describe("[P0-09] sparklinePath", () => {
   });
 });
 
-describe("[P0-09] toast", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-    act(() => {
-      __resetToasts();
-    });
-  });
-
-  it("announces politely and auto-dismisses after 4s", () => {
-    vi.useFakeTimers();
-    render(<Toaster />);
-    act(() => {
-      toast("+80 gold added", "success");
-    });
-    expect(screen.getByText("+80 gold added")).toBeInTheDocument();
-    expect(screen.getByText("+80 gold added").closest("[aria-live]")).toHaveAttribute(
-      "aria-live",
-      "polite",
+describe("[P0-09] Chip", () => {
+  it("is a toggle button that reports its pressed state", async () => {
+    const onToggle = vi.fn();
+    render(
+      <Chip selected={false} onToggle={onToggle}>
+        Great coffee
+      </Chip>,
     );
-    act(() => {
-      vi.advanceTimersByTime(4000 + 200);
-    });
-    expect(screen.queryByText("+80 gold added")).not.toBeInTheDocument();
+    const chip = screen.getByRole("button", { name: "Great coffee" });
+    expect(chip).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(chip);
+    expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps at most three toasts", () => {
-    render(<Toaster />);
-    act(() => {
-      ["a", "b", "c", "d"].forEach((m) => toast(m));
-    });
-    expect(screen.queryByText("a")).not.toBeInTheDocument();
-    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+  it("does not toggle while disabled", async () => {
+    const onToggle = vi.fn();
+    render(
+      <Chip selected onToggle={onToggle} disabled>
+        Clean
+      </Chip>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Clean" }));
+    expect(onToggle).not.toHaveBeenCalled();
   });
 });

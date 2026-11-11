@@ -8,11 +8,12 @@ export type ButtonSize = 40 | 48 | 56;
 const VARIANT: Record<ButtonVariant, string> = {
   primary: "btn-gold text-ink",
   secondary: "pressable bg-surface text-ink border border-line shadow-1",
-  ghost: "pressable bg-transparent text-ink [@media(hover:hover)]:hover:bg-surface-2",
+  ghost: "pressable bg-transparent text-ink hover:bg-surface-2",
   destructive: "pressable bg-danger text-on-danger",
 };
 const SIZE: Record<ButtonSize, string> = {
-  40: "h-10 px-4 text-small gap-2 rounded-md",
+  // 40px drawn, 44px hit area (DESIGN §13).
+  40: "hit-44 h-10 px-4 text-small gap-2 rounded-md",
   48: "h-12 px-5 text-body gap-2 rounded-md",
   56: "h-14 px-6 text-body gap-2.5 rounded-lg",
 };

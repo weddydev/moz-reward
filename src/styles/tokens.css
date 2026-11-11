@@ -72,6 +72,7 @@
   --dur-exit: 160ms;
   --dur-sheen: 600ms;
   --dur-shimmer: 1200ms;
+  --dur-spin: 700ms;
   /* The longest any fade lasts when motion is reduced (DESIGN §7). */
   --dur-reduced: 150ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);

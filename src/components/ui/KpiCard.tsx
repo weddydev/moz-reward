@@ -17,10 +17,11 @@ export function KpiCard({
   trend?: ReadonlyArray<number>;
 }): React.JSX.Element {
   return (
-    <Card className="flex flex-col gap-2 p-4">
-      <p className="text-small text-ink-2">{label}</p>
-      <div className="flex items-end justify-between gap-3">
-        <p className="font-display tabular text-[28px] leading-none font-semibold">{value}</p>
+    <Card className="flex min-w-0 flex-col gap-2 p-4">
+      <p className="text-small text-ink-2 [overflow-wrap:anywhere]">{label}</p>
+      {/* A long value (e.g. £1,234,567.89 in a two-column grid at 320px) wraps instead of overflowing. */}
+      <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
+        <p className="text-h1 tabular min-w-0 [overflow-wrap:anywhere]">{value}</p>
         {trend && trend.length > 1 ? <Sparkline values={trend} /> : null}
       </div>
       {change ? (

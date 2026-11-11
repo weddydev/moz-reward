@@ -6,41 +6,83 @@ import { cx } from "@/lib/cx";
 
 /**
  * Toasts: call `toast("Saved")` from anywhere; render <Toaster /> once per shell.
- * Slide up 12px + fade, auto-dismiss after 4s; timers pause while the tab is hidden or the toast is hovered/focused.
+ * At most three are visible; the rest wait in order and appear as slots free (none is dropped).
+ * Slide up 12px + fade, auto-dismiss after 4s; timers pause while the tab is hidden or the toast is
+ * hovered/focused. Screen readers hear each toast once, when it appears: errors through a `role="alert"`
+ * region, the rest through a polite `role="status"` one; both are cleared after a second so a later
+ * re-render or virtual-cursor pass doesn't read them again. The visible list itself is not live.
  */
 export type ToastTone = "info" | "success" | "error";
 type ToastItem = { id: number; message: string; tone: ToastTone; leaving: boolean };
+type Snapshot = { visible: readonly ToastItem[]; polite: string; assertive: string };
 
+const MAX_VISIBLE = 3;
 const DURATION = 4000;
 const EXIT_MS = 160;
-let items: ToastItem[] = [];
+const ANNOUNCE_MS = 1000;
+
+let queue: ToastItem[] = [];
 let nextId = 1;
+const announced = new Set<number>();
+let snapshot: Snapshot = { visible: [], polite: "", assertive: "" };
+let clearAnnouncement: ReturnType<typeof setTimeout> | undefined;
 const listeners = new Set<() => void>();
-const emit = () => {
+
+function publish(): void {
+  const visible = queue.slice(0, MAX_VISIBLE);
+  const fresh = visible.filter((t) => !announced.has(t.id));
+  let { polite, assertive } = snapshot;
+  if (fresh.length > 0) {
+    for (const t of fresh) announced.add(t.id);
+    const say = (errors: boolean) =>
+      fresh
+        .filter((t) => (t.tone === "error") === errors)
+        .map((t) => t.message)
+        .join(" ");
+    polite = say(false);
+    assertive = say(true);
+    clearTimeout(clearAnnouncement);
+    clearAnnouncement = setTimeout(() => {
+      snapshot = { ...snapshot, polite: "", assertive: "" };
+      emit();
+    }, ANNOUNCE_MS);
+  }
+  snapshot = { visible, polite, assertive };
+  emit();
+}
+
+function emit(): void {
   listeners.forEach((l) => {
     l();
   });
-};
+}
 
 export function toast(message: string, tone: ToastTone = "info"): number {
   const id = nextId++;
-  items = [...items.slice(-2), { id, message, tone, leaving: false }]; // keep at most 3
-  emit();
+  queue = [...queue, { id, message, tone, leaving: false }];
+  publish();
   return id;
 }
 
+/** Starts the exit; a second call for a toast already leaving, or an unknown id, does nothing. */
 export function dismissToast(id: number): void {
-  items = items.map((t) => (t.id === id ? { ...t, leaving: true } : t));
-  emit();
+  const item = queue.find((t) => t.id === id);
+  if (!item || item.leaving) return;
+  queue = queue.map((t) => (t.id === id ? { ...t, leaving: true } : t));
+  publish();
   setTimeout(() => {
-    items = items.filter((t) => t.id !== id);
-    emit();
+    queue = queue.filter((t) => t.id !== id);
+    announced.delete(id);
+    publish();
   }, EXIT_MS);
 }
 
 /** Test helper. */
 export function __resetToasts(): void {
-  items = [];
+  queue = [];
+  announced.clear();
+  clearTimeout(clearAnnouncement);
+  snapshot = { visible: [], polite: "", assertive: "" };
   emit();
 }
 
@@ -48,63 +90,71 @@ const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => listeners.delete(l);
 };
+const getSnapshot = () => snapshot;
 
 const ICON = { info: Info, success: CircleCheck, error: CircleAlert } as const;
 
 function ToastView({ item }: { item: ToastItem }) {
-  const remaining = useRef(DURATION);
-  const startedAt = useRef(0);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const paused = useRef(false);
+  const ref = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
+    const el = ref.current;
+    let remaining = DURATION;
+    let startedAt = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let paused = false;
     const start = () => {
-      if (paused.current || document.hidden) return;
-      startedAt.current = Date.now();
-      timer.current = setTimeout(() => {
+      if (paused || document.hidden || timer !== undefined) return;
+      startedAt = Date.now();
+      timer = setTimeout(() => {
         dismissToast(item.id);
-      }, remaining.current);
+      }, remaining);
     };
     const stop = () => {
-      if (timer.current === undefined) return;
-      clearTimeout(timer.current);
-      timer.current = undefined;
-      remaining.current -= Date.now() - startedAt.current;
+      if (timer === undefined) return;
+      clearTimeout(timer);
+      timer = undefined;
+      remaining -= Date.now() - startedAt;
     };
     const onVisibility = () => {
       if (document.hidden) stop();
       else start();
     };
-    start();
-    document.addEventListener("visibilitychange", onVisibility);
-    const el = document.getElementById(`toast-${item.id}`);
     const pause = () => {
-      paused.current = true;
+      paused = true;
       stop();
     };
     const resume = () => {
-      paused.current = false;
+      paused = false;
       start();
     };
+    const onFocusOut = (e: FocusEvent) => {
+      // Focus moving between the toast's own parts keeps it paused.
+      if (e.relatedTarget instanceof Node && el?.contains(e.relatedTarget)) return;
+      resume();
+    };
+    start();
+    document.addEventListener("visibilitychange", onVisibility);
     el?.addEventListener("pointerenter", pause);
     el?.addEventListener("pointerleave", resume);
     el?.addEventListener("focusin", pause);
-    el?.addEventListener("focusout", resume);
+    el?.addEventListener("focusout", onFocusOut);
     return () => {
       stop();
       document.removeEventListener("visibilitychange", onVisibility);
       el?.removeEventListener("pointerenter", pause);
       el?.removeEventListener("pointerleave", resume);
       el?.removeEventListener("focusin", pause);
-      el?.removeEventListener("focusout", resume);
+      el?.removeEventListener("focusout", onFocusOut);
     };
   }, [item.id]);
 
   const Icon = ICON[item.tone];
   return (
     <li
-      id={`toast-${item.id}`}
+      ref={ref}
       data-leaving={item.leaving}
+      data-tone={item.tone}
       className="toast bg-ink text-small text-surface shadow-2 pointer-events-auto flex w-full items-center gap-3 rounded-md py-3 pr-2 pl-4"
     >
       <Icon
@@ -112,17 +162,20 @@ function ToastView({ item }: { item: ToastItem }) {
         size={18}
         strokeWidth={1.5}
         className={cx(
+          "shrink-0",
           item.tone === "success" && "text-gold-300",
           item.tone === "error" && "text-surface",
         )}
       />
-      <span className="flex-1">{item.message}</span>
+      <span data-part="message" className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+        {item.message}
+      </span>
       <button
         type="button"
         onClick={() => {
           dismissToast(item.id);
         }}
-        className="pressable grid size-11 place-items-center rounded-sm"
+        className="pressable grid size-11 shrink-0 place-items-center rounded-sm"
         aria-label="Dismiss"
       >
         <X aria-hidden="true" size={16} strokeWidth={1.5} />
@@ -132,22 +185,25 @@ function ToastView({ item }: { item: ToastItem }) {
 }
 
 export function Toaster(): React.JSX.Element {
-  const list = useSyncExternalStore(
-    subscribe,
-    () => items,
-    () => items,
-  );
+  const { visible, polite, assertive } = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   return (
-    <div
-      aria-live="polite"
-      aria-relevant="additions"
-      className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom)+12px)] z-50 flex justify-center px-4 lg:bottom-6"
-    >
-      <ol className="flex w-full max-w-sm flex-col gap-2">
-        {list.map((t) => (
-          <ToastView key={t.id} item={t} />
-        ))}
-      </ol>
-    </div>
+    <>
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {polite}
+      </div>
+      <div role="alert" aria-live="assertive" aria-atomic="true" className="sr-only">
+        {assertive}
+      </div>
+      <section
+        aria-label="Notifications"
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom)+12px)] z-50 flex justify-center px-4 lg:bottom-6"
+      >
+        <ol className="flex w-full max-w-sm flex-col gap-2">
+          {visible.map((t) => (
+            <ToastView key={t.id} item={t} />
+          ))}
+        </ol>
+      </section>
+    </>
   );
 }

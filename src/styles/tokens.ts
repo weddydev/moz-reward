@@ -97,6 +97,7 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
       { name: "dur-exit", use: "Leaving elements (toast dismiss)" },
       { name: "dur-sheen", use: "Primary button hover sheen" },
       { name: "dur-shimmer", use: "Skeleton shimmer loop" },
+      { name: "dur-spin", use: "One spinner turn (fast spin feels faster)" },
       { name: "dur-reduced", use: "Longest fade when motion is reduced" },
     ],
   },
