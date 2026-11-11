@@ -157,6 +157,7 @@ Suggested extra deny entries you may add yourself: `Read(./.env.*)`, `Bash(docke
 3. Settings → Projects → moz-rewards → Client Keys: copy the **DSN** (not secret, but keep it out of the repo) into GitHub secrets as `SENTRY_DSN_STAGING` (and later `SENTRY_DSN_PRODUCTION`).
 4. Alerts → Create alert → Issues → "A new issue is created" → action: email the owner. In the owner's mailbox add a forwarding rule for mail from sentry.io to the second developer.
 5. Settings → Subscription: leave on the free plan (no pay-as-you-go budget). Tell Claude "H-34 done".
+- **Don't run Sentry's setup wizard (`npx @sentry/wizard`) in the repo**: P0-13 already wires Sentry (own tunnel, scrubbing, CSP). It ran once on 11 Nov 2026 21:29 (Syedbadeshah76's laptop); its output is parked on the local, unpushed branch `local/sentry-wizard`. The org/project it used were `mozereward` / `mozrewards`: tell Claude the final slugs. It also left `.env.sentry-build-plugin` (git-ignored) holding a Sentry **auth token**: keep it out of chat; if source-map upload is wanted later, that token goes into GitHub secrets (P0-15), otherwise revoke it in Sentry → Settings → Auth Tokens.
 
 ### H-36 — Demo accounts on staging (P0-16)
 1. Choose one mailbox both developers can read (no `+` in it), e.g. a shared team address. Gmail, Google Workspace, Outlook and Fastmail all deliver `name+anything@…` to `name@…`; check yours does.

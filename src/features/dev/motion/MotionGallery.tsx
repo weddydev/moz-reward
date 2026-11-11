@@ -4,8 +4,8 @@ import { DEMO_SHOPS, DEMO_TABS } from "./demo-data";
 import { ShopThumb } from "./ShopThumb";
 
 /**
- * `/dev/motion` (P0-10): route transitions and the motion primitives, each in a labelled block. Open a card
- * (forward + morph), come back (back), or walk the tabs (direction from tab order). Reduced motion (system
+ * `/dev/motion` (P0-10): route transitions and the motion primitives, each in a labelled block. Go deeper
+ * and back (slides), open a card (morph), or walk the tabs (direction from tab order). Reduced motion (system
  * or the toggle on `/dev/ui`) turns all of it into short fades.
  */
 export function MotionGallery(): React.JSX.Element {
@@ -18,10 +18,24 @@ export function MotionGallery(): React.JSX.Element {
         animation; with reduced motion everything becomes a short fade.
       </p>
 
+      <Section title="Forward and back">
+        <p className="text-small text-ink-2 max-w-prose">
+          Going deeper, the new page fades in sliding 8px from the right; the back link reverses it.
+          Browser back and forward only fade (they have no direction).
+        </p>
+        <TransitionLink
+          href="/dev/motion/details"
+          direction="forward"
+          className="pressable bg-surface border-line text-small rounded-pill hit-44 inline-flex border px-4 py-2 font-semibold"
+        >
+          Open a detail page
+        </TransitionLink>
+      </Section>
+
       <Section title="Card to page">
         <p className="text-small text-ink-2 max-w-prose">
-          Forward: the page slides 8px left and the card&apos;s image and name morph into the page
-          header. The back link reverses the direction.
+          The card&apos;s image and name morph into the page header while the rest of the page fades
+          in. The back link morphs them back.
         </p>
         <ul className="grid gap-3 sm:grid-cols-3" data-demo="cards">
           {DEMO_SHOPS.map((shop) => (

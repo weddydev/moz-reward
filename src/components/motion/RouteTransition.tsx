@@ -1,13 +1,10 @@
-import { ViewTransition } from "react";
-import { PAGE_TRANSITION } from "@/lib/motion/route-transitions";
 import { RouteContent } from "./RouteContent";
 
 /**
- * Wrap a layout's `{children}` (the part that changes between pages; keep nav bars outside). The boundary
- * stays mounted, so a navigation is an `update` of it: typed navigations (`TransitionLink`, tab links) slide
- * per DESIGN §7, untyped ones (browser back/forward, refresh) only get the root cross-fade. React's
- * page-level `enter`/`exit` did not fire for our per-request pages (DECISIONS "Route transitions on a layout
- * boundary"). Without typed View Transitions, `RouteContent` plays the CSS fallback.
+ * Wrap a layout's `{children}` (the part that changes between pages; nav bars outside). On each navigation
+ * the arriving content fades in and slides in the direction its `TransitionLink` recorded (DESIGN §7): the
+ * live content moves, never a snapshot, so it stays tappable (DECISIONS "Pages slide as live content").
+ * May nest: the innermost one whose page changed animates, its ancestors hold still.
  */
 export function RouteTransition({
   children,
@@ -16,9 +13,5 @@ export function RouteTransition({
   children: React.ReactNode;
   className?: string;
 }): React.JSX.Element {
-  return (
-    <ViewTransition update={PAGE_TRANSITION} default="none">
-      <RouteContent {...(className ? { className } : {})}>{children}</RouteContent>
-    </ViewTransition>
-  );
+  return <RouteContent {...(className ? { className } : {})}>{children}</RouteContent>;
 }

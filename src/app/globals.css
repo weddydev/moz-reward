@@ -533,81 +533,22 @@
 }
 
 /*
- * ---- Route transitions (P0-10, DESIGN §7 "Page transitions") ----
- * React's <ViewTransition> (PageTransition) gives the page wrapper the class of the navigation's type
- * (src/lib/motion/route-transitions.ts). Forward slides 8px left with a cross-fade, back reverses, tab
- * switches move 6px in tab order. Offsets are multiplied by --motion-on and durations come from tokens, so
- * reduced motion leaves ≤ 150ms fades. Transform + opacity only. Clicks pass through to the live page while
- * a transition runs: navigation never waits for an animation.
+ * ---- Route transitions (P0-10, DESIGN §7 "Page transitions"; DECISIONS "Pages slide as live content") ----
+ * Pages slide as live content (RouteContent + enterKeyframes, WAAPI), never as a snapshot: in Chromium and
+ * WebKit nothing a view transition captures can be tapped while it runs, the root included. So the root is
+ * never captured, and view transitions only carry the card → page morphs (SharedElement). The overlay lets
+ * clicks through to the live page: navigation never waits for an animation.
  */
+:root {
+  view-transition-name: none;
+}
 ::view-transition {
   pointer-events: none;
 }
-/* Untyped navigations (browser back/forward, refresh) and shared-element morphs: the token duration. */
 ::view-transition-group(*),
 ::view-transition-old(*),
 ::view-transition-new(*) {
   animation-duration: var(--dur-base);
-}
-::view-transition-old(.nav-forward),
-::view-transition-old(.nav-back),
-::view-transition-old(.nav-tab-forward),
-::view-transition-old(.nav-tab-back) {
-  animation:
-    vt-fade-out var(--dur-exit) var(--ease-out) both,
-    vt-slide-out var(--dur-slow) var(--ease-in-out) both;
-}
-::view-transition-new(.nav-forward),
-::view-transition-new(.nav-back),
-::view-transition-new(.nav-tab-forward),
-::view-transition-new(.nav-tab-back) {
-  animation:
-    vt-fade-in var(--dur-slow) var(--ease-out) both,
-    vt-slide-in var(--dur-slow) var(--ease-in-out) both;
-}
-::view-transition-old(.nav-forward) {
-  --vt-offset: calc(-8px * var(--motion-on));
-}
-::view-transition-new(.nav-forward) {
-  --vt-offset: calc(8px * var(--motion-on));
-}
-::view-transition-old(.nav-back) {
-  --vt-offset: calc(8px * var(--motion-on));
-}
-::view-transition-new(.nav-back) {
-  --vt-offset: calc(-8px * var(--motion-on));
-}
-::view-transition-old(.nav-tab-forward) {
-  --vt-offset: calc(-6px * var(--motion-on));
-}
-::view-transition-new(.nav-tab-forward) {
-  --vt-offset: calc(6px * var(--motion-on));
-}
-::view-transition-old(.nav-tab-back) {
-  --vt-offset: calc(6px * var(--motion-on));
-}
-::view-transition-new(.nav-tab-back) {
-  --vt-offset: calc(-6px * var(--motion-on));
-}
-@keyframes vt-fade-in {
-  from {
-    opacity: 0;
-  }
-}
-@keyframes vt-fade-out {
-  to {
-    opacity: 0;
-  }
-}
-@keyframes vt-slide-in {
-  from {
-    transform: translateX(var(--vt-offset));
-  }
-}
-@keyframes vt-slide-out {
-  to {
-    transform: translateX(var(--vt-offset));
-  }
 }
 /* Shared-element morph (SharedElement): --dur-slow; reduced motion → no movement, the snapshots cross-fade. */
 ::view-transition-group(.morph) {

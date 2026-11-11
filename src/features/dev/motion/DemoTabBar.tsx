@@ -5,7 +5,7 @@ import { TransitionLink } from "@/components/motion";
 import { cx } from "@/lib/cx";
 import { DEMO_TABS, demoTabIndex } from "./demo-data";
 
-/** The tab demo's bar: outside the tab content's transition, so it stays still while content slides. */
+/** The tab demo's bar: outside the tab content's `RouteTransition`, so it stays still while content slides. */
 export function DemoTabBar(): React.JSX.Element {
   const current = demoTabIndex(usePathname().split("/").pop() ?? "");
   return (
