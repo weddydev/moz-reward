@@ -21,10 +21,8 @@ describe("[P0-09] gallery list completeness (AC 1)", () => {
 
   it("[P0-09] the gallery renders a block for every listed primitive", () => {
     const source = GALLERY + OVERLAY_DEMOS;
-    const missing = GALLERY_PRIMITIVES.filter(
-      (n) => !new RegExp(`<Demo\\s+name="${n}"`).test(source),
-    );
-    expect(missing).toEqual([]);
+    const demos = new Set([...source.matchAll(/<Demo\s+name="([A-Za-z]+)"/g)].map((m) => m[1]));
+    expect(GALLERY_PRIMITIVES.filter((n) => !demos.has(n))).toEqual([]);
   });
 });
 
