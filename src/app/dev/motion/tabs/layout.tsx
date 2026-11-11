@@ -1,3 +1,4 @@
+import { ViewTransition } from "react";
 import { RouteTransition, TransitionLink } from "@/components/motion";
 import { DemoTabBar } from "@/features/dev/motion/DemoTabBar";
 
@@ -14,7 +15,12 @@ export default function MotionTabsLayout({
       >
         ← Motion gallery
       </TransitionLink>
-      <DemoTabBar />
+      {/* Its own boundary: the bar's current-tab change would otherwise update the gallery's outer
+          RouteTransition and slide the whole page with the content (React scopes changes to the nearest
+          boundary). No animation of its own; it stays put in the root snapshot's cross-fade. */}
+      <ViewTransition default="none">
+        <DemoTabBar />
+      </ViewTransition>
       <RouteTransition className="bg-surface shadow-1 rounded-md p-6">{children}</RouteTransition>
     </main>
   );
