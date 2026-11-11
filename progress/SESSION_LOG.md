@@ -248,3 +248,9 @@ Evidence: AC1/AC2 E2E: 57 token rows with values equal to tokens.css by meaning,
 Evidence: AC5 computed styles of toast, switch thumb, segmented thumb: no transform transition, ≤ 150ms, system and toggle; "Full" keeps 120ms transform. AC6 CLS 0.000 at 320/390/1440 (also fonts blocked); fonts 1.5 s late 0.000/0.048/0.009 (DECISIONS). AC7/AC8 preferences.spec (step B) + signed-out choice → profile at sign-in → fresh browser.
 Evidence: gate:task PASS (unit 595, int 475, build, bundle, sast, E2E P0-08 35/0); tokens spec 5 projects 55/0; screenshots 320, 390 (Chromium + iPhone WebKit), 1440 inspected; CI green on `wip/P0-08` `8f241c0` (run 42967476496; first run red on one race in the new spec, fixed).
 Not verified: `e2e:visual` on macOS (no baseline yet). Left off: checkpoint, baton kept. Next: P0-09.
+
+## 2026-11-11 (12:50–13:12 IST) — P0 — P0-09 brief review, step A started, handoff (Syedbadeshah76, Windows)
+Done: P0-09 brief tightened and pushed (`0f73db7`: steps A–D, 13 numbered criteria incl. C-13 and C-20, edge cases, tests, verify). Step A: tests written first (toast queue and announcers, table loading/keyboard rows, field `aria-describedby` merge, Switch, Chip, ProgressBar), saved as `progress/wip/P0-09-step-a-tests.patch`.
+Evidence: `git apply --check` of the patch on main passes; CI green on main `2eea12e` (run 42978402482), the last code commit. No gate run: main has docs/progress commits only since then.
+Not verified: the new tests have never run (the components they describe are not built); no component changed.
+Left off: handoff (human's usage limit), baton free. Next: `git checkout -b wip/P0-09`, `git apply progress/wip/P0-09-step-a-tests.patch`, `git rm` the patch, build step A per the PROGRESS handoff note.

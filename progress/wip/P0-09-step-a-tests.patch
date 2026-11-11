@@ -1,0 +1,414 @@
+diff --git a/src/components/ui/table.test.tsx b/src/components/ui/table.test.tsx
+new file mode 100644
+index 0000000..b93b77f
+--- /dev/null
++++ b/src/components/ui/table.test.tsx
+@@ -0,0 +1,99 @@
++// @vitest-environment jsdom
++import { render, screen, within } from "@testing-library/react";
++import userEvent from "@testing-library/user-event";
++import { describe, expect, it, vi } from "vitest";
++import { type Column, Table } from "./Table";
++
++type Member = { id: string; name: string; visits: number };
++const ROWS: Member[] = [
++  { id: "K7Q-42M", name: "Aisha Khan", visits: 18 },
++  { id: "R3D-9VX", name: "Tom Fletcher", visits: 9 },
++];
++const COLUMNS: Column<Member>[] = [
++  { key: "name", header: "Name", cell: (r) => r.name },
++  { key: "visits", header: "Visits", cell: (r) => r.visits, numeric: true },
++];
++const rowKey = (r: Member): string => r.id;
++
++describe("[P0-09] Table", () => {
++  it("renders a labelled table with one row per item", () => {
++    render(<Table caption="Customers" columns={COLUMNS} rows={ROWS} rowKey={rowKey} />);
++    const table = screen.getByRole("table", { name: "Customers" });
++    expect(within(table).getAllByRole("row")).toHaveLength(3); // header + 2
++    expect(within(table).getByRole("columnheader", { name: "Visits" })).toBeInTheDocument();
++  });
++
++  it("shows the empty row when there is nothing to list", () => {
++    render(<Table caption="Customers" columns={COLUMNS} rows={[]} rowKey={rowKey} />);
++    expect(screen.getByText("Nothing here yet.")).toBeInTheDocument();
++  });
++
++  it("shows skeleton rows while loading, marks the region busy and hides the empty row", () => {
++    render(
++      <Table
++        caption="Customers"
++        columns={COLUMNS}
++        rows={[]}
++        rowKey={rowKey}
++        loading
++        loadingRows={4}
++      />,
++    );
++    expect(screen.getByRole("region", { name: "Customers" })).toHaveAttribute("aria-busy", "true");
++    expect(document.querySelectorAll('[data-part="loading-row"]')).toHaveLength(4);
++    expect(screen.queryByText("Nothing here yet.")).not.toBeInTheDocument();
++    expect(screen.getByText("Loading Customers")).toBeInTheDocument();
++  });
++
++  it("gives rows with an action a real button: Enter and Space run it once", async () => {
++    const onRowClick = vi.fn();
++    render(
++      <Table
++        caption="Customers"
++        columns={COLUMNS}
++        rows={ROWS}
++        rowKey={rowKey}
++        onRowClick={onRowClick}
++        rowLabel={(r) => `Open ${r.name}`}
++      />,
++    );
++    const open = screen.getByRole("button", { name: "Open Aisha Khan" });
++    open.focus();
++    await userEvent.keyboard("{Enter}");
++    expect(onRowClick).toHaveBeenCalledTimes(1);
++    expect(onRowClick).toHaveBeenLastCalledWith(ROWS[0]);
++    await userEvent.keyboard(" ");
++    expect(onRowClick).toHaveBeenCalledTimes(2);
++  });
++
++  it("runs the row action once when any other cell of the row is clicked", async () => {
++    const onRowClick = vi.fn();
++    render(
++      <Table
++        caption="Customers"
++        columns={COLUMNS}
++        rows={ROWS}
++        rowKey={rowKey}
++        onRowClick={onRowClick}
++        rowLabel={(r) => `Open ${r.name}`}
++      />,
++    );
++    await userEvent.click(screen.getByRole("cell", { name: "9" }));
++    expect(onRowClick).toHaveBeenCalledTimes(1);
++    expect(onRowClick).toHaveBeenLastCalledWith(ROWS[1]);
++  });
++
++  it("has no row buttons when rows have no action", () => {
++    render(<Table caption="Customers" columns={COLUMNS} rows={ROWS} rowKey={rowKey} />);
++    expect(screen.queryByRole("button", { name: /Open/ })).not.toBeInTheDocument();
++  });
++
++  it("toggles compact density with a pressed state", async () => {
++    render(<Table caption="Customers" columns={COLUMNS} rows={ROWS} rowKey={rowKey} />);
++    const toggle = screen.getByRole("button", { name: "Compact rows" });
++    expect(toggle).toHaveAttribute("aria-pressed", "false");
++    await userEvent.click(toggle);
++    expect(toggle).toHaveAttribute("aria-pressed", "true");
++    expect(screen.getByRole("table")).toHaveAttribute("data-density", "compact");
++  });
++});
+diff --git a/src/components/ui/toast.test.tsx b/src/components/ui/toast.test.tsx
+new file mode 100644
+index 0000000..4f63481
+--- /dev/null
++++ b/src/components/ui/toast.test.tsx
+@@ -0,0 +1,147 @@
++// @vitest-environment jsdom
++import { act, fireEvent, render, screen, within } from "@testing-library/react";
++import { afterEach, describe, expect, it, vi } from "vitest";
++import { Toaster, __resetToasts, dismissToast, toast } from "./Toast";
++
++const LIFE = 4000;
++const EXIT = 200; // a little over the 160ms exit
++
++/** Messages of the toasts on screen, top to bottom. */
++const visible = (): string[] =>
++  within(screen.getByRole("region", { name: "Notifications" }))
++    .queryAllByRole("listitem")
++    .map((li) => li.querySelector('[data-part="message"]')?.textContent ?? "");
++
++const advance = (ms: number): void => {
++  act(() => {
++    vi.advanceTimersByTime(ms);
++  });
++};
++
++describe("[P0-09] toast", () => {
++  afterEach(() => {
++    act(() => {
++      __resetToasts();
++    });
++    vi.useRealTimers();
++  });
++
++  it("shows a toast, announces it politely and removes it after 4s", () => {
++    vi.useFakeTimers();
++    render(<Toaster />);
++    act(() => {
++      toast("+80 gold added", "success");
++    });
++    expect(visible()).toEqual(["+80 gold added"]);
++    expect(screen.getByRole("status")).toHaveTextContent("+80 gold added");
++    expect(screen.getByRole("status")).toHaveAttribute("aria-live", "polite");
++    expect(screen.getByRole("alert")).toBeEmptyDOMElement();
++    advance(LIFE + EXIT);
++    expect(visible()).toEqual([]);
++  });
++
++  it("announces an error through the alert region, not the polite one", () => {
++    render(<Toaster />);
++    act(() => {
++      toast("Something went wrong. Please try again.", "error");
++    });
++    expect(screen.getByRole("alert")).toHaveTextContent("Something went wrong. Please try again.");
++    expect(screen.getByRole("alert")).toHaveAttribute("aria-live", "assertive");
++    expect(screen.getByRole("status")).toBeEmptyDOMElement();
++  });
++
++  it("clears the announcement after a second so it is not read twice", () => {
++    vi.useFakeTimers();
++    render(<Toaster />);
++    act(() => {
++      toast("Saved");
++    });
++    advance(1100);
++    expect(screen.getByRole("status")).toBeEmptyDOMElement();
++    expect(visible()).toEqual(["Saved"]);
++  });
++
++  it("queues beyond three: every toast appears, in order, none is dropped", () => {
++    vi.useFakeTimers();
++    render(<Toaster />);
++    act(() => {
++      ["a", "b", "c", "d", "e"].forEach((m) => toast(m));
++    });
++    expect(visible()).toEqual(["a", "b", "c"]);
++    advance(LIFE + EXIT);
++    expect(visible()).toEqual(["d", "e"]);
++    advance(LIFE + EXIT);
++    expect(visible()).toEqual([]);
++  });
++
++  it("shows the next waiting toast as soon as one is dismissed", () => {
++    vi.useFakeTimers();
++    render(<Toaster />);
++    act(() => {
++      ["a", "b", "c", "d"].forEach((m) => toast(m));
++    });
++    fireEvent.click(
++      within(screen.getAllByRole("listitem")[1] as HTMLElement).getByRole("button", {
++        name: "Dismiss",
++      }),
++    );
++    advance(EXIT);
++    expect(visible()).toEqual(["a", "c", "d"]);
++  });
++
++  it("shows the same message twice as two toasts", () => {
++    render(<Toaster />);
++    act(() => {
++      toast("Saved");
++      toast("Saved");
++    });
++    expect(visible()).toEqual(["Saved", "Saved"]);
++  });
++
++  it("ignores a second dismiss while the toast is leaving, and an unknown id", () => {
++    vi.useFakeTimers();
++    render(<Toaster />);
++    let id = 0;
++    act(() => {
++      id = toast("a");
++      toast("b");
++    });
++    act(() => {
++      dismissToast(id);
++      dismissToast(id);
++      dismissToast(9999);
++    });
++    advance(EXIT);
++    expect(visible()).toEqual(["b"]);
++  });
++
++  it("pauses the timer while the pointer is over the toast", () => {
++    vi.useFakeTimers();
++    render(<Toaster />);
++    act(() => {
++      toast("Saved");
++    });
++    const item = screen.getByRole("listitem");
++    advance(3000);
++    fireEvent.pointerEnter(item);
++    advance(10_000);
++    expect(visible()).toEqual(["Saved"]);
++    fireEvent.pointerLeave(item);
++    advance(1000 + EXIT);
++    expect(visible()).toEqual([]);
++  });
++
++  it("can be unmounted with timers pending, and keeps the waiting toasts for the next mount", () => {
++    vi.useFakeTimers();
++    const first = render(<Toaster />);
++    act(() => {
++      ["a", "b", "c", "d"].forEach((m) => toast(m));
++    });
++    first.unmount();
++    expect(() => {
++      vi.advanceTimersByTime(LIFE * 3);
++    }).not.toThrow();
++    render(<Toaster />);
++    expect(visible()).toEqual(["a", "b", "c"]);
++  });
++});
+diff --git a/src/components/ui/ui.test.tsx b/src/components/ui/ui.test.tsx
+index fdcce7e..e7a5d8d 100644
+--- a/src/components/ui/ui.test.tsx
++++ b/src/components/ui/ui.test.tsx
+@@ -1,16 +1,16 @@
+ // @vitest-environment jsdom
+-import { act, render, screen } from "@testing-library/react";
++import { render, screen } from "@testing-library/react";
+ import userEvent from "@testing-library/user-event";
+ import { useState } from "react";
+-import { afterEach, describe, expect, it, vi } from "vitest";
++import { describe, expect, it, vi } from "vitest";
+ import { Button } from "./Button";
++import { Chip } from "./Chip";
+ import { ProgressBar } from "./ProgressBar";
+ import { SegmentedControl } from "./SegmentedControl";
+ import { sparklinePath } from "./Sparkline";
+ import { Switch } from "./Switch";
+ import { Tabs } from "./Tabs";
+-import { TextField } from "./TextField";
+-import { Toaster, __resetToasts, toast } from "./Toast";
++import { TextArea, TextField } from "./TextField";
+ 
+ describe("[P0-09] Button", () => {
+   it("keeps its label for screen readers and swallows clicks while loading", async () => {
+@@ -56,6 +56,24 @@ describe("[P0-09] TextField", () => {
+       "Only shared with shops you join.",
+     );
+   });
++  it("merges a caller's aria-describedby with its own instead of dropping either", () => {
++    render(
++      <>
++        <p id="limit">Up to £500.</p>
++        <TextField label="Amount" error="Enter an amount." aria-describedby="limit" />
++        <TextArea label="Note" hint="Optional." aria-describedby="limit" />
++      </>,
++    );
++    expect(screen.getByLabelText("Amount")).toHaveAccessibleDescription(
++      "Enter an amount. Up to £500.",
++    );
++    expect(screen.getByLabelText("Amount")).toHaveAttribute("aria-invalid", "true");
++    expect(screen.getByLabelText("Note")).toHaveAccessibleDescription("Optional. Up to £500.");
++  });
++  it("keeps the invalid state when the caller passes other input props", () => {
++    render(<TextField label="Postcode" error="Too short." aria-invalid={false} required />);
++    expect(screen.getByLabelText(/Postcode/)).toHaveAttribute("aria-invalid", "true");
++  });
+ });
+ 
+ describe("[P0-09] Tabs", () => {
+@@ -124,6 +142,29 @@ describe("[P0-09] Switch", () => {
+     await userEvent.click(sw);
+     expect(onChange).toHaveBeenCalledWith(true);
+   });
++
++  it("toggles when its label is clicked and links the description", async () => {
++    const onChange = vi.fn();
++    render(
++      <Switch
++        label="Birthday treat reminders"
++        description="One email a year."
++        checked
++        onCheckedChange={onChange}
++      />,
++    );
++    await userEvent.click(screen.getByText("Birthday treat reminders"));
++    expect(onChange).toHaveBeenCalledWith(false);
++    expect(screen.getByRole("switch")).toHaveAccessibleDescription("One email a year.");
++  });
++
++  it("does not toggle while disabled", async () => {
++    const onChange = vi.fn();
++    render(<Switch label="Sounds" checked={false} onCheckedChange={onChange} disabled />);
++    await userEvent.click(screen.getByRole("switch", { name: "Sounds" }));
++    await userEvent.click(screen.getByText("Sounds"));
++    expect(onChange).not.toHaveBeenCalled();
++  });
+ });
+ 
+ describe("[P0-09] ProgressBar", () => {
+@@ -134,6 +175,17 @@ describe("[P0-09] ProgressBar", () => {
+       "100",
+     );
+   });
++  it.each([
++    ["a negative value", -0.3],
++    ["NaN", Number.NaN],
++    ["infinity", Number.POSITIVE_INFINITY],
++  ])("treats %s as empty", (_name, value) => {
++    render(<ProgressBar value={value} label="Vault" />);
++    expect(screen.getByRole("progressbar", { name: "Vault" })).toHaveAttribute(
++      "aria-valuenow",
++      "0",
++    );
++  });
+ });
+ 
+ describe("[P0-09] sparklinePath", () => {
+@@ -148,37 +200,28 @@ describe("[P0-09] sparklinePath", () => {
+   });
+ });
+ 
+-describe("[P0-09] toast", () => {
+-  afterEach(() => {
+-    vi.useRealTimers();
+-    act(() => {
+-      __resetToasts();
+-    });
+-  });
+-
+-  it("announces politely and auto-dismisses after 4s", () => {
+-    vi.useFakeTimers();
+-    render(<Toaster />);
+-    act(() => {
+-      toast("+80 gold added", "success");
+-    });
+-    expect(screen.getByText("+80 gold added")).toBeInTheDocument();
+-    expect(screen.getByText("+80 gold added").closest("[aria-live]")).toHaveAttribute(
+-      "aria-live",
+-      "polite",
++describe("[P0-09] Chip", () => {
++  it("is a toggle button that reports its pressed state", async () => {
++    const onToggle = vi.fn();
++    render(
++      <Chip selected={false} onToggle={onToggle}>
++        Great coffee
++      </Chip>,
+     );
+-    act(() => {
+-      vi.advanceTimersByTime(4000 + 200);
+-    });
+-    expect(screen.queryByText("+80 gold added")).not.toBeInTheDocument();
++    const chip = screen.getByRole("button", { name: "Great coffee" });
++    expect(chip).toHaveAttribute("aria-pressed", "false");
++    await userEvent.click(chip);
++    expect(onToggle).toHaveBeenCalledTimes(1);
+   });
+ 
+-  it("keeps at most three toasts", () => {
+-    render(<Toaster />);
+-    act(() => {
+-      ["a", "b", "c", "d"].forEach((m) => toast(m));
+-    });
+-    expect(screen.queryByText("a")).not.toBeInTheDocument();
+-    expect(screen.getAllByRole("listitem")).toHaveLength(3);
++  it("does not toggle while disabled", async () => {
++    const onToggle = vi.fn();
++    render(
++      <Chip selected onToggle={onToggle} disabled>
++        Clean
++      </Chip>,
++    );
++    await userEvent.click(screen.getByRole("button", { name: "Clean" }));
++    expect(onToggle).not.toHaveBeenCalled();
+   });
+ });

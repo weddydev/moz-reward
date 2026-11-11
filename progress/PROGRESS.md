@@ -3,11 +3,14 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by Syedbadeshah76 since 2026-11-11 08:24 IST
+Baton: free — last held by Syedbadeshah76, 2026-11-11 13:12 IST
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handed over by talha.syed, 2026-11-10 19:05 IST (macOS). P0-13 done 10 Nov.** One squashed commit on main. Remote `wip/P0-13` and `wip/P0-18` are stale (delete only with the human's OK).
+- **Handed over by Syedbadeshah76, 2026-11-11 13:12 IST (Windows), early: the human's usage limit ran out.** Finished: P0-08 (earlier today) and the **P0-09 brief review** (`0f73db7`: steps A–D, 13 numbered criteria, edge cases, tests). main has no code change since `2eea12e` (CI green, run 42978402482); the commits after it are docs/progress only, so no gate was run for this handoff.
+- **Half-done: P0-09 step A, tests only, no component changed.** The tests written first are saved as `progress/wip/P0-09-step-a-tests.patch` (not on a branch: they are red by design and the lint hook rightly refuses them). To continue: `git checkout -b wip/P0-09`, `git apply progress/wip/P0-09-step-a-tests.patch`, `git rm progress/wip/P0-09-step-a-tests.patch`, then make them pass. The patch adds `toast.test.tsx` (queue of 3, none dropped, `role="status"` / `role="alert"` announcers cleared after 1 s, visible list is `role="region"` named "Notifications" with `data-part="message"`), `table.test.tsx` (`loading` + `loadingRows`, `data-part="loading-row"`, sr-only "Loading <caption>", `onRowClick` + `rowLabel` → a real button in the first cell, toggle named "Compact rows", `data-density` on the table) and, in `ui.test.tsx`, TextField/TextArea merging a caller's `aria-describedby` (own text first), Switch label click + `disabled`, Chip `disabled`, ProgressBar NaN/negative → 0. The old toast tests in `ui.test.tsx` are removed by the patch.
+- **Step A plan (not started):** in `globals.css` override Tailwind's `hover` variant so every `hover:` sits inside `(hover: hover) and (pointer: fine)` (then drop the `[@media(hover:hover)]:` prefixes); a `hit-44` utility (invisible centred `::after`, min 44×44) for Button 40, Chip, SegmentedControl, Table toggle; Switch: the button's `::after` covers the whole row; press feedback without transform under reduced motion (opacity); Spinner as a `.spinner` class with a duration token and no rotation under reduced motion; Skeleton shimmer by `transform` on a pseudo-element; `useHydrated()` → `disabled` in Tabs, Chip, Switch, SegmentedControl, Table (C-20); ShopCard: name up to two lines, badges on the last row beside the label, label in `ink-2` (gold text is for large text only); KpiCard: `text-h1` value, wraps instead of overflowing; Table: scroll hint (`data-overflow`), `max-h` in `dvh`. Then push `wip/P0-09` and use its CI run as the full 5-project E2E (global CSS changes every page).
+- Remote `wip/P0-13` and `wip/P0-18` are stale (delete only with the human's OK). P0-13 summary (talha.syed, 10 Nov), still useful:
 - **What P0-13 is:** alerts (`src/server/ops/alerts.ts`: Redis dedup per kind, windows 5→30→60 min, ≤ 4/kind and ≤ 12/pool per day + one `alert.ceiling` notice, memory fallback; worker sends directly, web enqueues `email:ops-alert`; `ALERT_EMAILS`); health (`/api/health/{live,ready,worker}`, detail with `Authorization: Bearer $HEALTH_TOKEN`); health monitor in the worker (1-min timer, not BullMQ; `ops_snapshot` table 0012; scheduler grace 3 min after start); Sentry (`@sentry/node` web+worker, `@sentry/browser` lazy via `/api/monitoring` tunnel with placeholder DSN and its own budget; `src/lib/sentry-scrub.ts`; explicit `dataCollection`); Better Auth logger via pino; `/admin/system` (admin owner); consent-gated Umami (`NEXT_PUBLIC_UMAMI_PATH`/`_WEBSITE_ID`) + cookie notice; C-06 hint; `docs/RUNBOOK.md`; `infra/docker/daemon.json` (log rotation). DECISIONS has 8 P0-13 entries incl. the Sentry inventory and both security reviews.
 - **Tested:** gate:task PASS (unit 491, int 444, build, bundle, sast, E2E P0-13 16/0); full 5-project E2E 313/0/0 flaky (on 07c8463, before the review fixes; the fixes' E2E specs passed in gate:task); hands-on: Redis stop → ready 503 + `health.redis` email in Mailpit; worker stop → `/api/health/worker` 503 after 3 min; local restore drill + replay dry run; start-up grace and log throttle re-checked on the real worker. security-reviewer: 2 HIGH + 5 should-fix fixed, re-review 0 BLOCK/HIGH, its 2 new should-fix fixed.
 - **Not yet tested:** real Sentry account and alert rule (H-34); real Umami behind Caddy (C-36, P0-15); RUNBOOK VPS procedures (C-37); real Resend/Brevo (H-04); CI on the squashed commit (check before the next push).
@@ -20,7 +23,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Windows laptop (this session):** `.env.local` there has no `DATABASE_URL_MIGRATIONS` and no `DATABASE_URL_TEST` line (H-32 steps updated), so every command was run with those two set in the shell to the `.env.example` values. `pnpm fix` never ran on Windows (`;` in the script): fixed. Two integration tests failed on Windows only and were made robust: `worker-process` (Windows has no SIGTERM: the graceful-stop part runs on macOS/Linux only) and `redis-split` (its 12 MB fill went through the app cache client, which gives up after 250ms: the fill now uses its own connection, in batches of 100).
 - **Tested (P0-08, this session):** gate:task PASS (unit 595, int 475, build, bundle, sast, E2E P0-08 35 passed / 11 skipped by design); `tokens.spec.ts` on all five projects 55 passed / 45 skipped by design (Chromium-only CLS and forced colours, desktop-only keyboard focus); `e2e:visual` 2/0 twice; screenshots at 320, 390 (Chromium + iPhone WebKit) and 1440 inspected; focus crops inspected (Chromium, WebKit). Full 5-project E2E: CI green on `wip/P0-08` `8f241c0` (run 42967476496; the first run, 42955395243, was red on one race in the new spec, fixed). CI green on main `2eea12e` (run 42978402482, incl. image + Trivy). **Not yet tested:** `e2e:visual` on macOS.
 - **Remote branches `wip/P0-08`, `wip/P0-13`, `wip/P0-18`, `wip/p0-17-test-infra` are stale** (all squashed to main); delete only with the human's OK.
-- **Next: P0-09** UI primitives and gallery (incoming C-13, C-20). First: the P0-C brief review was done for P0-08 only; check P0-09's brief has measurable ACs, edge cases, tests and verify. P0-15 still waits on H-06/07/08/26/27.
+- **Next: P0-09 step A** (see the second and third bullets above; brief in `docs/phases/P0.md`). The existing visual baselines may include the gallery: check `pnpm e2e:visual` in step D. P0-15 still waits on H-06/07/08/26/27.
 - **Watch out:** E2E pages get a default `moz_consent=denied` cookie (fixture option `analyticsConsent`; `null` shows the notice). The web process has no worker pool, so System-page E2E data comes from the `ops-snapshot` test action. Server env names must not collide with strings in client bundles (`SENTRY_RELEASE` did → renamed `APP_RELEASE`).
 
 ## Status
@@ -28,16 +31,17 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → ~~P0-16~~; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-11, Syedbadeshah76 (P0-08 done)
+- **Last updated:** 2026-11-11, Syedbadeshah76 (handoff: P0-09 brief done, step A tests saved as a patch)
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- **P0-08 done 11 Nov** (tokens, fonts, global styles, display preferences, token page + contrast table on `/dev/ui`, visual snapshots). Next task: P0-09.
+- **P0-09 in progress** (brief reviewed 11 Nov; step A: tests written first and saved as `progress/wip/P0-09-step-a-tests.patch`, no component changed yet).
+- **P0-08 done 11 Nov** (tokens, fonts, global styles, display preferences, token page + contrast table on `/dev/ui`, visual snapshots).
 - P0-16 done 10 Nov (demo seed: 3 shops, 7 accounts, derived credentials, TOTP pre-enrolled; `pnpm db:seed [--reset]`, `pnpm demo:credentials`). P0-15 is the only P0-E task left and waits on H-06/07/08/26/27.
 
 ## Next (top 3)
 1. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); waits on H-06/07/08/26/27 (+ H-34 Sentry, H-36 demo inbox).
-2. Meanwhile **P0-C**: P0-09 UI primitives and gallery (C-13, C-20) (phase order A → B → E → C → D; P0-E closes with `/subphase-complete` once P0-15 lands).
+2. Meanwhile **P0-C**: P0-09 step A (apply the saved test patch on `wip/P0-09`, make it pass, C-13 and C-20 groundwork), then steps B (new static and form primitives), C (overlays), D (gallery, E2E, screenshots, tick).
 3. P0-10 motion primitives and page transitions.
 
 ## CARRIED (a task can't be ticked while a row targets it)
