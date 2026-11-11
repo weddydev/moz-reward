@@ -236,3 +236,8 @@ Left off: checkpoint, baton kept. Next: step B on `wip/P0-08` (preference hooks,
 Done: display preferences on `wip/P0-08` (`592d77c`): hooks, inline pre-paint script with the CSP nonce, profile sync (`savePreferences`, migration 0013), toggles on `/dev/ui`.
 Evidence: gate:task PASS (unit 594, int 475, build, bundle, sast, E2E P0-08 6/0); full 5-project E2E 313 passed / 0 failed; `preferences.spec.ts` 15/0 across the five projects.
 Left off: checkpoint, baton kept. Next: step C on `wip/P0-08` (token page, contrast table, remaining E2E, snapshots, screenshots), then squash to main and tick. Branch is merged with main: do not rebase.
+
+## 2026-11-10 (to 22:28 IST) — P0 — P0-08 step C started, handoff (talha.syed, macOS)
+Done: on `wip/P0-08` (`d722abe`): token page and contrast table on `/dev/ui` (`TokenPage.tsx`, values read with `getComputedStyle`), `Section.tsx`, thumb hooks for tests.
+Evidence: gate:task PASS on the branch (unit 594, int 475, build, bundle, sast, E2E P0-08 6/0). The new page was NOT viewed in a browser and has no E2E yet.
+Left off: handoff, baton free. Next: the step C list in the PROGRESS handoff note (tokens.spec.ts, screenshots, visual-snapshot decision, DECISIONS, full E2E, squash, tick).
