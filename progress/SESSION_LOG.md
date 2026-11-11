@@ -297,3 +297,9 @@ CI 43005714982 red (pixel7/desktop1440): /dev/ui axe before page hydration, stal
 Done: CI green on `wip/P0-09` `1d61e71` (run 43014246719); full 5-project E2E locally 503/0 (152 skipped by design); squashed to main, P0-09 ticked, C-13 and C-20 closed (AC 12/13 E2E: ui-states.spec on 5 projects).
 Evidence: ACs 1–13 walked: 1, 3–7, 9–13 ui-states/overlays E2E; 2 ui-gallery + overlays axe; 8 unit (field wiring); Verify: screenshots 320/390/1440 + phones inspected, axe, design-reviewer (HIGH/MEDIUM fixed), full E2E.
 Next: P0-10 (brief review first).
+
+## 2026-11-11 (17:30–17:55 IST) — P0 — P0-10 brief + step A part 1, handoff (talha.syed, macOS)
+Done: P0-10 brief tightened (main `d4cb149`). Step A part 1 on `wip/P0-10`: route-transition helpers (unit first), head script, RouteTransition/RouteContent/SharedElement/TransitionLink, CSS, /dev/motion demos.
+Evidence: page-level `<ViewTransition enter/exit>` never fired (instrumented startViewTransition: no call between two minimal pages); layout `update` boundary fires with `nav-forward` (old fade 160 + slide, new 380ms) → DECISIONS. Concatenated head scripts threw (guard caught it) → `HEAD_SCRIPT` joined with ";", unit test.
+Evidence: gate:task P0-10 PASS (unit 740, int 475, E2E P0-10 2/0); motion.spec Chromium + WebKit 2/0.
+Not verified: full 5-project E2E after the root layout change; tabs/back/interrupt/fallback/reduced-motion E2E. Next: see PROGRESS handoff.
