@@ -489,3 +489,6 @@ Consequence: DESIGN.md §8 signature moments are documented exceptions to the sk
 Decision: Next.js App Router + TypeScript, Drizzle + Postgres (PostGIS), Better Auth, Redis + BullMQ, SSE, Cloudflare R2, Web Push, Bubblewrap TWA for Android. No iOS App Store build.
 Why: one codebase for three portals, low running costs, free tiers available, no vendor lock-in for realtime.
 Consequence: record exact versions here after scaffolding.
+
+## 2026-11-12 — E2E: extra browser contexts via `newClientContext` (P0-10)
+A spec that opens a second context (another device, a signed-out visitor) uses `newClientContext(browser, baseURL, opts)` from `tests/e2e/support/test.ts`: its own client IP plus the same stored consent choice as the `page` fixture. Raw `browser.newContext` showed the cookie notice, which covered the sign-in button at 390×664 on Windows WebKit. Specs that copy the page's cookies (preferences, tokens) already carry it.

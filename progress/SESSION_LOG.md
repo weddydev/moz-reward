@@ -327,3 +327,9 @@ Done: full 5-project E2E on `e4dfed0`; failures re-run alone and triaged (handof
 Evidence: full E2E 599 passed / 9 failed / 152 skipped (19.6m); alone: 3 WebKit pass (load), iPhone AC2 `<HTML>` hit mid-morph, devices/rls stuck at /sign-in, gallery screenshot 22,356 CSS px × DPR > 32767.
 Evidence: motion-primitives.spec `--repeat-each=3` Chromium/WebKit/Pixel 7/iPhone 14 96/0; CI 43076645227: 232 passed, 1 flaky.
 Next: handoff items 1–4, then P0-10 step C.
+
+## 2026-11-12 (00:50–01:10 IST) — P0 — P0-10 full-E2E issues fixed, step C started, handoff (talha.syed, macOS)
+Done: the 4 issues from the previous handoff fixed on `wip/P0-10` `fea5139` (AC2 click below the fold; consent cookie in extra contexts via `newClientContext`; `shoot` CSS scale over 32767 device px; overlay screenshots one test per width). Frame-screenshot test `b04614f` (16 PNGs, not inspected).
+Evidence: measured: iPhone 14 2nd card y 686 > 664 viewport; cookie notice top 482 vs sign-in button bottom 459 in a second context. AC2 15/0 (5 projects ×3); devices+rls 70/0; overlays WebKit ×5 115/0; iPhone gallery PNG 390×21067.
+Evidence: gate:task P0-10 PASS on `b04614f` (unit 786, int 475, E2E 40/0). CI 43086119817 (`eb87d7d`) red: desktop1440 AC5 popover flake (0 animations recorded).
+Not verified: full 5-project E2E (stopped at handover, 449 passed so far); Windows re-run; CI on `b04614f`. Next: see PROGRESS handoff.
