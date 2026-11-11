@@ -19,7 +19,7 @@ async function openGallery(page: Page): Promise<void> {
   await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
 }
 
-/** Clicks a button by its text inside the page, waits one frame, and reads the animations on `selector`. */
+/** Clicks a button by its text inside the page and reads the animations it started on `selector`. */
 async function clickAndRead(page: Page, buttonText: string, selector: string): Promise<Anim[]> {
   return page.evaluate(
     async ({ buttonText, selector }) => {
@@ -28,11 +28,10 @@ async function clickAndRead(page: Page, buttonText: string, selector: string): P
       );
       if (!button) throw new Error(`no button "${buttonText}"`);
       button.click();
-      await new Promise<void>((r) =>
-        requestAnimationFrame(() => {
-          r();
-        }),
-      );
+      // React commits in a microtask; wait on microtasks only (no frame), then getAnimations() flushes style
+      // and returns the transitions that just started. A frame wait let a 150ms reduced-motion fade finish
+      // first on a slow CI runner (seen flaky on Linux Pixel 7).
+      for (let i = 0; i < 50; i++) await Promise.resolve();
       const targets = [...document.querySelectorAll<HTMLElement>(selector)];
       return targets.flatMap((el) =>
         el.getAnimations().map((a) => {
