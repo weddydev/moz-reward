@@ -7,6 +7,7 @@ import {
   connectAccount,
   watchOtherTabs,
 } from "@/lib/preferences";
+import { armSound } from "@/lib/sound";
 import { savePreferences } from "./actions";
 
 const save = async (
@@ -27,6 +28,7 @@ export function ApplyPreferences({ account }: { account: AccountState }): null {
   useEffect(() => {
     applyMotionPreference();
     document.documentElement.dataset.hydrated = "true";
+    armSound(); // audio unlocks inside the first tap or key press, never before (DESIGN §9)
     return watchOtherTabs();
   }, []);
 

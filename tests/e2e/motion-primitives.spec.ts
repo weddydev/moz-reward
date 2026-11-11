@@ -336,6 +336,7 @@ test.describe("[P0-10] motion gallery", () => {
       "Popover",
       "Stagger",
       "Press and hover",
+      "Sound and haptics",
     ]);
     await settledOn(page, "*");
     const axe = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();

@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { Popover } from "@/components/motion";
 import { BottomSheet, Button, Card, Modal, SidePanel, Switch, toast } from "@/components/ui";
+import { haptic, HAPTICS, type HapticName } from "@/lib/haptics";
 import { MOTION_PRESETS, staggerStyle } from "@/lib/motion/presets";
+import { useSoundPreference } from "@/lib/preferences";
+import { play, SOUNDS, type SoundName } from "@/lib/sound";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Section } from "../Section";
 
@@ -204,7 +207,62 @@ function PressHoverDemos(): React.JSX.Element {
   );
 }
 
-/** `/dev/motion` (P0-10 step B): the motion presets and helpers, each in a labelled section. */
+/** P0-11: every sound and haptic pattern, with the toggle they obey and what happened on the last press. */
+function SoundHapticDemos(): React.JSX.Element {
+  const hydrated = useHydrated();
+  const { on, setOn } = useSoundPreference();
+  const [last, setLast] = useState("Nothing played yet.");
+  return (
+    <Section title="Sound and haptics">
+      <p className="text-small text-ink-2 max-w-prose">
+        Sounds are synthesised in the browser (no audio files) and unlock on your first tap. Haptics
+        work on Android only; iPhone has no vibration for web pages. Both follow the toggle below.
+      </p>
+      <div className="w-64">
+        <Switch checked={on} onCheckedChange={setOn} label="Sounds and haptics" />
+      </div>
+      <div className="flex flex-wrap gap-3" data-demo="sounds">
+        {(Object.keys(SOUNDS) as SoundName[]).map((name) => (
+          <Button
+            key={name}
+            variant="secondary"
+            disabled={!hydrated}
+            onClick={() => {
+              setLast(
+                play(name) ? `Played the ${name} sound.` : `The ${name} sound stayed silent.`,
+              );
+            }}
+          >
+            {`Play ${name}`}
+          </Button>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-3" data-demo="haptics">
+        {(Object.keys(HAPTICS) as HapticName[]).map((name) => (
+          <Button
+            key={name}
+            variant="secondary"
+            disabled={!hydrated}
+            onClick={() => {
+              setLast(
+                haptic(name)
+                  ? `Vibrated: ${name}.`
+                  : `No vibration for ${name} (off, or not supported on this device).`,
+              );
+            }}
+          >
+            {`Vibrate: ${name}`}
+          </Button>
+        ))}
+      </div>
+      <p className="text-small text-ink-2" role="status" data-testid="sound-status">
+        {last}
+      </p>
+    </Section>
+  );
+}
+
+/** `/dev/motion` (P0-10 step B, P0-11): the motion presets and helpers, each in a labelled section. */
 export function MotionPrimitives(): React.JSX.Element {
   return (
     <>
@@ -212,6 +270,7 @@ export function MotionPrimitives(): React.JSX.Element {
       <PopoverDemos />
       <StaggerDemo />
       <PressHoverDemos />
+      <SoundHapticDemos />
     </>
   );
 }

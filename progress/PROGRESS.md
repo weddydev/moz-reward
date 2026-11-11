@@ -7,28 +7,29 @@ Baton: held by talha.syed since 2026-11-12 01:12 IST (macOS)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 2026-11-12 02:03 IST (macOS). P0-10 is done and squashed to `main`** (wip branch `wip/P0-10` can be deleted). Nothing half-done.
-- **What closed it:** AC5 popover flake root cause (click landed before the page segment hydrated; `openGallery` now waits for the demos); frame shots inspected (16); morph snapshots fill and crop (`SharedElement fit="cover"`); WebKit morph frame from video (WebKit screenshots paint a view transition flat: DECISIONS 12 Nov); `design-reviewer` + `review-animations`: 0 BLOCK/HIGH, 4 MEDIUM fixed (desktop cross-fade in place, slide clipped so the page never widens, Toaster outside `RouteTransition`, 44px back links), LOWs in follow-ups.
-- **Tested:** gate:task P0-10 PASS (unit 786, int 475, build, bundle, sast, E2E P0-10 46/0); motion + motion-primitives on 5 projects 109/0 (6 skipped by design); full 5-project E2E 616/0 (169 skipped by design) on the tree before the review fixes (those touch only `/dev/motion` and `RouteContent`).
-- **Not yet tested:** CI on `main` after this push (check `gh run list --limit 3`; Actions runs were sitting in "queued" for 15+ min at 02:05 IST). Windows re-run of the P0-10 specs. Edge cases without a test: tab hidden mid-transition, a destination that suspends (both rely on WAAPI/CSS only, no rAF loop).
-- **Next:** P0-11 sound and haptics (first: read its section in `docs/phases/P0.md` + DESIGN §9–10), then `/subphase-complete` for P0-C. P0-15 still waits on H-06/07/08/26/27. Nothing to install, migrate or seed.
+- **Checkpoint by talha.syed, 2026-11-12 02:18 IST (macOS). P0-10 and P0-11 are done and on `main`.** Nothing half-done. `wip/P0-10` can be deleted.
+- **P0-11:** `src/lib/sound.ts` (`armSound()` in `ApplyPreferences`, `play(name)`, `SOUNDS`), `src/lib/haptics.ts` (`haptic(name)`, `HAPTICS`), "Sound and haptics" section on `/dev/motion`, `tests/e2e/sound.spec.ts`.
+- **Tested:** gate:task P0-11 PASS (unit 818, int 475, build, bundle, sast, E2E P0-11 6/0); full 5-project E2E 646/0 (169 skipped by design) with `armSound` in the root.
+- **Not yet tested / NOT VERIFIED:** how the sounds sound and real-device haptics (H-37 🟢); Safari's autoplay console on a real iPhone (Playwright WebKit: no AudioContext before a gesture). **CI: runs have sat in "queued" with no jobs since 01:48 IST** (wip `5d7ec9d`, `c71f5da`, main `ee83173` and later): check `gh run list --limit 5` first; if still queued, check Actions minutes (`pnpm ci:usage`, H-30) before more pushes. Last green CI: 43091420964 (wip `658350e`).
+- **Next:** `/subphase-complete` for P0-C (P0-08…11): CI green first, reviews of unreviewed commits (P0-11 diff; P0-08/09/10 were reviewed at task level), MEDIUM batch, scoped QA of `/dev/ui` + `/dev/motion`. Then P0-12 (P0-D; on the security list: design check with `security-reviewer` first). P0-15 still waits on H-06/07/08/26/27.
 
 ## Status
-- **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20, P0-13, P0-21, P0-16, P0-08, P0-09, P0-10. Next: P0-15 (waits on human tasks); P0-C continues meanwhile (P0-11).
+- **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20, P0-13, P0-21, P0-16, P0-08, P0-09, P0-10, P0-11. Next: P0-C close, then P0-12 (P0-D); P0-15 waits on human tasks.
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → ~~P0-16~~; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-12 02:03 IST, talha.syed (P0-10 done, squashed to main)
+- **Last updated:** 2026-11-12 02:18 IST, talha.syed (P0-11 done; P0-C tasks complete, close pending)
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- **P0-10 done 12 Nov** (route transitions as live content, morphs, presets, popover, stagger, `/dev/motion`; review fixes; frame shots).
-- P0-09 done 11 Nov; P0-08 done 11 Nov; P0-16 done 10 Nov. P0-15 is the only P0-E task left and waits on H-06/07/08/26/27.
+- **P0-11 done 12 Nov** (sound + haptics modules, gallery demo). **P0-10 done 12 Nov.** All P0-C tasks are ticked; the sub-phase close is next.
+- P0-15 is the only P0-E task left and waits on H-06/07/08/26/27.
+- **CI queue stalled** since 01:48 IST 12 Nov (runs queued, no jobs): see handoff.
 
 ## Next (top 3)
-1. **P0-11** sound and haptics.
-2. P0-C close (`/subphase-complete`).
-3. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); waits on H-06/07/08/26/27 (+ H-34 Sentry, H-36 demo inbox).
+1. P0-C close (`/subphase-complete`), CI green first.
+2. **P0-12** app shells, navigation and route groups (C-01, C-02, C-04, C-05, C-24 land here).
+3. **P0-15**: VPS + staging; waits on H-06/07/08/26/27 (+ H-34 Sentry, H-36 demo inbox).
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
@@ -57,7 +58,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-17 | Stryker | P0 phase gate | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 
 ## Blockers
-- Human 🔴: none. H-32 verified on Windows 11 Nov (migrate + gate:task with no DB URLs in the shell). 🟠: H-34 Sentry account, H-36 demo inbox + staging demo credentials, H-31 Renovate app; by Sun 15 Nov for P0-15: H-06 Hostinger VPS, H-07 domain + Cloudflare, H-08 R2 buckets, H-26 backup key, H-27 UptimeRobot, H-04 Resend + Brevo, H-20 Turnstile, H-28 staging OAuth client, H-21 client's written risk acceptance, H-17 permissions. **Start now:** H-12 Play organisation account.
+- Human 🔴: none (CI queue stall may become one: see handoff). H-32 verified on Windows 11 Nov (migrate + gate:task with no DB URLs in the shell). 🟠: H-34 Sentry account, H-36 demo inbox + staging demo credentials, H-31 Renovate app; by Sun 15 Nov for P0-15: H-06 Hostinger VPS, H-07 domain + Cloudflare, H-08 R2 buckets, H-26 backup key, H-27 UptimeRobot, H-04 Resend + Brevo, H-20 Turnstile, H-28 staging OAuth client, H-21 client's written risk acceptance, H-17 permissions. **Start now:** H-12 Play organisation account.
 - Technical: none blocking P0-14/18/19/20/13/21. Known risk for P0-15: wal-g `wal-push` hangs against R2 without `ca-certificates` in the Postgres image (wal-g #2550) — fix planned; fallback documented.
 
 ## Map of the codebase
@@ -74,11 +75,13 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - `infra/docker-compose.dev.yml` via `pnpm services:up` — Postgres 17 + PostGIS, Redis queue instance (:6379, noeviction) + redis-cache (:6380, allkeys-lru), Mailpit (:8025), MinIO (:9000/:9001)
 - `src/server/env.ts` (fail-closed server env) / `src/lib/env.ts` (client); `.env.local` never committed
 - Motion (P0-10): `src/lib/motion/` (`route-transitions.ts`: NAV, `enterKeyframes`, `FADE_IN_PLACE_QUERY`, `vtName`, `cssTimeMs`, `viewTransitionActive`, VT downgrade; `nav-intent.ts`; `presets.ts`: `MOTION_PRESETS`, `staggerDelay`/`staggerStyle`, `transformOriginFor`, `placePopover`), `src/components/motion/` (`RouteTransition`/`RouteContent`, `TransitionLink`, `SharedElement` (`fit="cover"` for images), `Popover`; fixed UI stays outside `RouteTransition`), `/dev/motion` demos (`src/features/dev/motion/`); `src/features/dev/DevGate.tsx` (/dev 404 in production)
+- Sound and haptics (P0-11): `src/lib/sound.ts` (`armSound`, `play`, `SOUNDS`), `src/lib/haptics.ts` (`haptic`, `HAPTICS`); both obey the sound preference
 - UI: `src/styles/tokens.css` (+ `tokens.ts` list), `src/app/globals.css` (hover variant, `hit-44`, `[data-press]`, `.spinner`, `.skeleton`), `src/components/ui/` (overlays: `Overlay.tsx` + `Modal`/`SidePanel`/`BottomSheet`; gallery `src/features/dev/UiGallery.tsx`), `src/lib/use-hydrated.ts`, `src/features/auth/`
 - CI/tooling: `.github/workflows/ci.yml` + `scheduled.yml`; `scripts/gate-task.ts`, `gate-phase.ts`, `lib/gate.ts`, `pre-push.ts` (+ `.lefthook/pre-push/guard-and-gate.sh`), `osv-gate.ts`, `ci-usage.ts`, `e2e.ts`; `Dockerfile`, `tsconfig.build.json`, `renovate.json`
 - Tests: Vitest `unit` + `integration` (per-worker DBs); `tests/authz/` (matrix, harness self-test); `scripts/check-authz-coverage.ts` (AST, in `pnpm lint`); `tests/e2e/` (Playwright :3100, import `test` from `support/test.ts`); `tests/load/`, `tests/live/`, `stryker.config.mjs`
 
 ## Last verified (12 Nov 2026)
+- P0-11: gate:task P0-11 PASS (unit 818, int 475, build, bundle, sast, E2E 6/0); sound + gallery specs 5 projects 55/0; full 5-project E2E 646/0; modules ≤ 2 KB gzip (unit test). Listening: NOT VERIFIED (H-37).
 - P0-10 (squashed to main): gate:task P0-10 PASS (unit 786, int 475, build, bundle, sast, E2E 46/0); motion specs 5 projects 109/0; full 5-project E2E 616/0 (169 skipped by design); AC5 flake reproduced by delaying the page chunk (0 popovers without the hydration wait, 1 with) then 120/0 ×3; CI 43091420964 green on wip `658350e`; design review 0 BLOCK/HIGH, 4 MEDIUM fixed.
 - P0-09 (wip `1d61e71` → squashed): gate:task P0-09 PASS (unit 723, int 475, build, bundle, sast, E2E P0-09 59/0); CI green 43014246719 (pixel7 + desktop1440); full 5-project E2E locally 503 passed / 0 failed / 152 skipped by design; e2e:visual macOS 2/0; design review: 1 HIGH + 4 MEDIUM fixed, LOWs in follow-ups.
 - P0-09 step C (`0553311`, wip): gate:task PASS (unit 713, int 475, build, bundle, sast, E2E P0-09 34/0); overlays.spec 5 projects 55/0 (10 skipped by design); CI on 0553311 started at the push. CI green on `620cde6` (run 42991161938) and main `7d9a05f` (run 42990900896).

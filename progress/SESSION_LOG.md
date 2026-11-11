@@ -341,3 +341,9 @@ Evidence: WebKit `page.screenshot` vs video of the same held morph: screenshot s
 Evidence: slide overflow measured 8px (5 projects) → 0 after the clip; gate:task P0-10 PASS (unit 786, int 475, E2E 46/0); motion specs 5 projects 109/0; full E2E 616/0.
 Not verified: CI on main after the push (Actions queue slow); Windows re-run.
 
+## 2026-11-12 (→ 02:18 IST) — P0 — P0-11 sound and haptics (talha.syed, macOS)
+Done: `sound.ts` + `haptics.ts` test-first (unlock inside the first gesture, toggle, hidden tab, suspended context, blocked audio), `armSound` in `ApplyPreferences`, gallery section, E2E spec, H-37 listen check, edge cases added to the brief.
+Evidence: unit 30 tests for the two modules + size test (≤ 2 KB gzip each); E2E: AudioContext count 0 after load/hydrate/scroll, 1 after the first tap, voices per sound 2/6/1/1; toggle off across a reload → 0 contexts.
+Evidence: gate:task P0-11 PASS (unit 818, int 475, E2E 6/0); full 5-project E2E 646/0.
+Not verified: listening and real-device haptics (H-37); CI (queue stalled, no jobs started).
+

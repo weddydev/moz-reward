@@ -29,6 +29,7 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 | H-28 | 🟠 | Google OAuth: separate **staging** and **production** clients; publish the consent screen with branding before P5-04 | Staging client Sun 15 Nov 2026; branding before Fri 8 Jan 2027 | Staging/production isolation; app name and logo on the Google screen | 20 min (+ Google brand review: minutes to 3 working days) |
 | H-12 | 🟠 | Google Play Console — **organisation** developer account (avoids the 14-day closed test for new personal accounts); verification takes days | **Start now**; verified before P5-04 (~Fri 8 Jan 2027) | Android app; launch date | 20 min + Google verification |
 | H-23 | 🟠 | Solicitor: review compliance drafts (ROPA, DPIA, processor register, retention schedule) after P0-21 | Before any real customer data (launch, Fri 22 Jan 2027); DPIA ideally by Mon 30 Nov 2026 | UK GDPR / PECR / DUAA obligations | Client side |
+| H-37 | 🟢 | Listen and feel check of the four sounds and three haptic patterns on desktop Chrome, an iPhone (Safari) and an Android phone (Chrome) | Before the P1 demo (first screen that plays a sound: points credited) | Claude can prove what is synthesised and when, not how it sounds; tuning "warm, short, never gamey" needs ears (DESIGN §9) | 10 min |
 | H-09 | 🟢 | Gemini **paid** (pay-as-you-go) API key with a project spend cap | Fri 11 Dec 2026 (P3 start) | AI review help; UK apps may use only Gemini's paid services | 15 min |
 | H-24 | 🟢 | Client: pen test (optional, client-funded); support after launch | Sat 2 Jan 2027 (P5 start) | Launch readiness; see steps | 20 min with the client |
 | H-29 | 🟢 | Phase-end backup check: run `pnpm backup:verify` on your laptop (needs the backup private key from the password manager) | Every phase end, from P0 | Proves the encrypted backups can really be restored (the server never holds the private key) | 10 min / phase |
@@ -194,3 +195,12 @@ Images live in `design/reference/desktop-view/` and `mobile-view/`.
 | H-19 | Windows laptop: local PostgreSQL services stopped, port 5432 free for Docker | Syedbadeshah76 | 8 Nov 2026 |
 | H-16 | Reference images: 17 desktop + 11 mobile screenshots in `design/reference/` | Syedbadeshah76 | 8 Nov 2026 |
 | H-21 | **Answered (plan v5):** single VPS, free tiers; client written acknowledgement still open (see Open) | client | 9 Nov 2026 |
+
+### H-37 — Sound and haptics listen check (P0-11)
+1. Run `pnpm dev` and open `http://localhost:3000/dev/motion` on desktop Chrome (staging URL `/dev/motion` once P0-15 is live, for the phones).
+2. Scroll to "Sound and haptics". Press each "Play …" button: `credit` (two rising notes), `reward` (three-note arpeggio), `tick` (one short blip), `arrival` (a soft swell). They should be quiet, warm and short; nothing harsh or game-like.
+3. On the iPhone: the first tap must produce sound (ring switch on, volume up); the "Vibrate" buttons say "No vibration" (expected: iPhone has none for web pages).
+4. On the Android phone: the "Vibrate" buttons buzz (short press, double pulse for credit, longer pattern for reward).
+5. Switch "Sounds and haptics" off: every button stays silent and still. Switch it on again: they work.
+6. Tell Claude anything that sounds wrong (which sound, which device, too loud / too sharp / too long).
+
