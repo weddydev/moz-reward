@@ -266,3 +266,8 @@ Done: H-32 moved to Done (human confirmed; verify on Windows). Step A CI red on 
 Evidence: CI green 42987287808 (step A + main merge, full E2E); step B tests 26 new red → green; gate:task PASS (unit 653, int 475, E2E P0-09 6/0); gallery/tokens E2E 3 projects 46/0; screenshots 320 + 1440 inspected (unchecked outlines `line` 1.25:1 → `ink-3` 3.35:1).
 Not verified: step B CI run (started at push); AC E2E for steps A–B (step D).
 Next: `git checkout wip/P0-09`, check CI, then step C (overlays, tests first).
+
+## 2026-11-11 (14:20–14:35 IST) — tooling — `pnpm clear:check` (talha.syed, macOS)
+Done: human's standing rule: prove the session is saved before saying `/clear`. `scripts/check-clear.ts` (+ 10 unit tests), CLAUDE.md §1 rule, `/checkpoint` + `/handoff` final step.
+Evidence: unit 10/0 (each failure case seen failing); first real run correctly FAILED on the then-uncommitted files.
+Next: unchanged — `git checkout wip/P0-09`, check CI 42989846839, then P0-09 step C.

@@ -40,6 +40,7 @@
     "test:load:smoke": "tsx scripts/load-smoke.ts",
     "test:live": "vitest run --config vitest.live.config.mts",
     "test:titles": "tsx scripts/check-test-titles.ts",
+    "clear:check": "tsx scripts/check-clear.ts",
     "check:full": "pnpm typecheck && pnpm lint && pnpm test",
     "check:bundle": "tsx scripts/check-client-bundle.ts",
     "sast": "tsx scripts/sast.ts",

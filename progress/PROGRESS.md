@@ -34,7 +34,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → ~~P0-16~~; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-11 14:20 IST, talha.syed (checkpoint: P0-09 steps A+B on `wip/P0-09`)
+- **Last updated:** 2026-11-11 14:35 IST, talha.syed (checkpoint: P0-09 steps A+B on `wip/P0-09` `a3246f9`; `pnpm clear:check` rule added on main)
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now

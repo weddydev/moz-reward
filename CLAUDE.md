@@ -28,6 +28,8 @@ This file is loaded every session, so it stays short and points to the single so
 
 **Every stop says what to do with the context (human's standing rule, 10 Nov 2026):** whenever Claude stops working for any reason (task or step checkpoint, review stop, blocked on a human task, handoff, a question), the last line of the reply tells the human plainly what to do next with the session: "Now run `/clear` (or open a new chat), then `/resume`." when the work is saved and pushed, or "Don't clear yet: <what is still unsaved or needed>" when it is not. Never leave the human guessing whether clearing is safe.
 
+**Prove it before saying "clear" (human's standing rule, 11 Nov 2026):** the "Run `/clear`" line may only follow a passing `pnpm clear:check` run in the same reply, after the last commit and push (quote its verdict line). It fails on: uncommitted or stashed work; the current branch or main not pushed; PROGRESS "Last updated" or a SESSION_LOG entry on origin/main not dated today; work on a wip branch whose pushed HEAD and name aren't in PROGRESS. Before running it, also make sure by reading that the handoff names the exact next step, what is half-done, what is untested (incl. CI still running), and that finished tasks are ticked. A failing check → fix and re-run, or say "Don't clear yet: <reason>".
+
 **Pace (human's standing rule, 10 Nov 2026):** the one target is **everything done by 10 Dec 2026**. Don't track or report per-phase dates, projections or slips. Work fast and efficiently, but never by cutting scope: every acceptance criterion, edge case, security measure and test stays. Speed comes from less overhead (fewer re-reads, no repeated green suites, batched progress updates), never from lower quality.
 
 **Sub-phase close:** `/subphase-complete` (light: CI green, staging smoke, Sentry, reviews of unreviewed commits, scoped QA if screens changed). **Phase close:** `/phase-complete` (the one heavy gate + demo). **Handover:** `/handoff`. **Context heavy:** `/checkpoint`.
@@ -121,6 +123,7 @@ pnpm e2e               # Playwright against a PRODUCTION build (APP_ENV=test) �
 pnpm e2e:dev           # Playwright against next dev — fast inner loop only, never evidence
 pnpm e2e:visual        # only the @visual snapshot tests (per-OS baselines; --update-snapshots accepts a new look); also part of gate:phase
 pnpm test:titles       # warn on tests without [Pn-nn]/[Jn]; --strict exits 1
+pnpm clear:check       # safe to /clear? clean tree, branch + main pushed, handoff on origin/main current (§1)
 pnpm test:mutation     # stryker on rules modules (phase gate, changed modules)
 pnpm test:load:smoke   # k6 smoke (BASE_URL/VUS/DURATION)
 pnpm test:live         # real-provider smoke; --require-all at phase gate (missing keys = NOT VERIFIED)
