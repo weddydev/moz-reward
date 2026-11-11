@@ -7,7 +7,7 @@ Baton: held by talha.syed since 2026-11-11 13:21 IST (macOS)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 2026-11-11 14:20 IST (macOS): P0-09 steps A and B done on `wip/P0-09` (`a3246f9`, pushed; NOT on main).** Continue: `git checkout wip/P0-09 && git pull`. CI: step A (+ main merge) green, run 42987287808 (full production-build E2E); step B CI was started by the push: check `gh run list --branch wip/P0-09 --limit 1` first.
+- **Checkpoint by talha.syed, 2026-11-11 14:40 IST (macOS): P0-09 steps A and B done on `wip/P0-09` (step B `a3246f9`; branch HEAD `620cde6` = main merged in, which brings `pnpm clear:check`; pushed; NOT on main).** Continue: `git checkout wip/P0-09 && git pull`. CI: step A (+ main merge) green, run 42987287808 (full production-build E2E); step B CI was started by the push: check `gh run list --branch wip/P0-09 --limit 1` first.
 - **Step A (`a7b3193`):** Toast queue + `role=status`/`role=alert` announcers (1 s) + "Notifications" section; Table loading rows, `rowLabel` row button (`data-row-action`), "Compact rows" + `data-density`, scroll hint `data-overflow` (`overflowSides()`), `70dvh`; field `aria-describedby` merge; `progressPercent()`; Chip `disabled`; Switch row target (`::after`, track `data-press`); `@custom-variant hover` (fine pointer only); `hit-44`; reduced-motion press dim; `.spinner` + `--dur-spin`; Skeleton `::after` transform; `useHydrated` disabling (Tabs, Chip, Switch, SegmentedControl, Table); ShopCard two lines; KpiCard `text-h1`.
 - **Step B (`a3246f9`):** `Icon`, `IconButton`, `Select`, `Checkbox`, `RadioGroup`, `Avatar` (+ `initialsOf`), `MilestoneTrack`, `ErrorState`; shared `field.tsx` (`FieldWrapper`, `describedBy`, `joinIds`); unchecked/unreached outlines `ink-3`; gallery sections added (basic; full state matrix is step D).
 - **Also on main:** `4627f41` fix(observability): Sentry scrubber keeps UUIDs whole (the step A CI failure: a random request id with 10+ digits was half-redacted, ~1 in 100 runs); test first; gate:task PASS.
@@ -34,7 +34,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → ~~P0-16~~; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-11 14:35 IST, talha.syed (checkpoint: P0-09 steps A+B on `wip/P0-09` `a3246f9`; `pnpm clear:check` rule added on main)
+- **Last updated:** 2026-11-11 14:35 IST, talha.syed (checkpoint: P0-09 steps A+B on `wip/P0-09` `620cde6`; `pnpm clear:check` rule added)
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
