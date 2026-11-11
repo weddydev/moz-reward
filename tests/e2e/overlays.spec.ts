@@ -376,24 +376,30 @@ test.describe("[P0-09] bottom sheet touch paths", () => {
 });
 
 test.describe("[P0-09] overlay screenshots", () => {
-  test("[P0-09] each overlay open at 320, 390 and 1440 (touch projects at their own size)", async ({
-    page,
-    shoot,
-    isMobile,
-  }, testInfo) => {
-    // chromium + webkit cover the three widths; the touch projects and desktop1440 shoot at their own size.
-    const own = isMobile || testInfo.project.name === "desktop1440";
-    const widths = own ? [0] : [320, 390, 1440];
-    for (const width of widths) {
+  // One test per width: all three in one test took 15s on macOS WebKit and ran past the 30s test timeout
+  // under full-suite load on Windows WebKit (it surfaced as the `open` helper's waitForFunction timing out).
+  for (const width of [320, 390, 1440, 0] as const) {
+    const label = width > 0 ? String(width) : "native";
+    test(`[P0-09] each overlay open at ${width > 0 ? `${label}px` : "the touch project's own size"}`, async ({
+      page,
+      shoot,
+      isMobile,
+    }, testInfo) => {
+      // chromium + webkit cover the three widths; the touch projects and desktop1440 shoot at their own size.
+      const own = isMobile || testInfo.project.name === "desktop1440";
+      test.skip(
+        own !== (width === 0),
+        own ? "shoots at its own size" : "covered by the 320/390/1440 tests",
+      );
       if (width > 0) await page.setViewportSize({ width, height: 800 });
       await page.goto("/dev/ui");
       await expect(trigger(page, "modal")).toBeEnabled();
       for (const demo of ["modal", "tall", "panel", "sheet", "sheet-long"] as const) {
         await open(page, demo);
-        await shoot(`overlay-${demo}-${width > 0 ? String(width) : "native"}`, { fullPage: false });
+        await shoot(`overlay-${demo}-${label}`, { fullPage: false });
         await topDialog(page).getByRole("button", { name: "Close" }).click();
         await expect(page.locator("dialog")).toHaveCount(0);
       }
-    }
-  });
+    });
+  }
 });

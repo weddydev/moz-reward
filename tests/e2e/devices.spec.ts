@@ -1,4 +1,4 @@
-import { clientHeaders, expect, openSignInLink, test, uniqueEmail } from "./support/test";
+import { expect, newClientContext, openSignInLink, test, uniqueEmail } from "./support/test";
 import type { Page } from "@playwright/test";
 
 const IPHONE_UA =
@@ -37,11 +37,7 @@ test("[P0-06] customer sees their signed-in devices and signs another device out
   // 30 s on WebKit under a full parallel run. It can't be split: both devices must be signed in at once.
   test.setTimeout(60_000);
   const email = uniqueEmail("e2e-devices");
-  const phone = await browser.newContext({
-    userAgent: IPHONE_UA,
-    baseURL: baseURL!,
-    extraHTTPHeaders: clientHeaders(),
-  });
+  const phone = await newClientContext(browser, baseURL!, { userAgent: IPHONE_UA });
   const phonePage = await phone.newPage();
   await signInByEmail(phonePage, mail, email, 1);
   await signInByEmail(page, mail, email, 2);

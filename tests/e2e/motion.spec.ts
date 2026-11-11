@@ -317,8 +317,14 @@ test.describe("[P0-10] route transitions", () => {
       }, r);
     const slow = (): Promise<void> => rate(0.1);
     const normal = (): Promise<void> => rate(1);
+    // Raw coordinates must be inside the viewport (on iPhone 14, 390×664, the 2nd card starts below the fold).
+    // Scroll with a plain scrollIntoView: Playwright's scrollIntoViewIfNeeded waits for the slowed animation.
     const clickCentre = async (name: string, role: "button" | "link"): Promise<void> => {
-      const box = await page.getByRole(role, { name }).boundingBox();
+      const target = page.getByRole(role, { name });
+      await target.evaluate((el) => {
+        el.scrollIntoView({ block: "center" });
+      });
+      const box = await target.boundingBox();
       if (!box) throw new Error(`no box for ${name}`);
       await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     };

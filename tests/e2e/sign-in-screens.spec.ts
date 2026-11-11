@@ -1,4 +1,4 @@
-import { clientHeaders, expect, test, uniqueEmail } from "./support/test";
+import { expect, newClientContext, test, uniqueEmail } from "./support/test";
 
 // P0-06 "Verify": screenshots of the sign-in screens on every project (mobile + desktop), plus 320 px.
 
@@ -12,10 +12,7 @@ test("[P0-06] customer sign-in names the shop when coming from its page; screens
   // An owner's shop is active; read its code, then visit sign-in as a signed-out visitor.
   const owner = await signInAs("owner");
   expect(owner.shopCode).toMatch(/^[2-9A-HJKMNP-TV-Z]{6}$/);
-  const visitor = await browser.newContext({
-    baseURL: baseURL!,
-    extraHTTPHeaders: clientHeaders(),
-  });
+  const visitor = await newClientContext(browser, baseURL!);
   const p = await visitor.newPage();
 
   await p.goto(`/sign-in?returnTo=%2Fs%2F${owner.shopCode}`);
