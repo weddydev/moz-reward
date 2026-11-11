@@ -260,3 +260,9 @@ Done: resume (full path: pull brought P0-08 + brief); saved test patch applied o
 Evidence: `pnpm check` exit 0 (unit 624); patch tests 17 red → green; E2E (prod build) ui-gallery/tokens/preferences chromium + iphone14, gallery webkit: pass; built CSS 8/8 `:hover` inside `(hover:hover) and (pointer:fine)`; 320px screenshots inspected (found + fixed mid-word table name wrap).
 Not verified: CI 42984090179 (full 5-project E2E) still running at checkpoint; gate:task not run (at the tick).
 Next: `git checkout wip/P0-09`, check CI 42984090179, then step B (tests first).
+
+## 2026-11-11 (13:40–14:20 IST) — P0 — P0-09 step B + scrubber fix (talha.syed, macOS)
+Done: H-32 moved to Done (human confirmed; verify on Windows). Step A CI red on an unrelated flake: Sentry scrubber redacted request ids with 10+ digits → `4627f41` (test first, UUIDs skipped by digit rules). Step B on `wip/P0-09` (`a3246f9`): Icon, IconButton, Select, Checkbox, RadioGroup, Avatar, MilestoneTrack, ErrorState, shared `field.tsx`, gallery sections.
+Evidence: CI green 42987287808 (step A + main merge, full E2E); step B tests 26 new red → green; gate:task PASS (unit 653, int 475, E2E P0-09 6/0); gallery/tokens E2E 3 projects 46/0; screenshots 320 + 1440 inspected (unchecked outlines `line` 1.25:1 → `ink-3` 3.35:1).
+Not verified: step B CI run (started at push); AC E2E for steps A–B (step D).
+Next: `git checkout wip/P0-09`, check CI, then step C (overlays, tests first).
