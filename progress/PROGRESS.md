@@ -3,36 +3,33 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-12 00:51 IST (macOS)
+Baton: held by talha.syed since 2026-11-12 01:12 IST (macOS)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handoff by Syedbadeshah76, 2026-11-12 00:21 IST (Windows). P0-10 steps A + B done on `wip/P0-10` (pushed, HEAD `eb87d7d`; NOT on main; `main` is green and untouched).** Continue: `git checkout wip/P0-10 && git pull && git merge origin/main` (never `pull --rebase` on a wip branch); progress files conflict on that merge: keep main's (`git checkout --theirs progress/ && git add progress/`).
-- **Step B built (`e4dfed0`):** `src/lib/motion/presets.ts` (`MOTION_PRESETS` names the existing overlay/toast/press CSS + new `.popover`/`.stagger-item`; `staggerDelay` 30–80ms, clamped after the 8th; `transformOriginFor`; `placePopover`), `<Popover>` (portal + CSS transitions; DECISIONS), `/dev/motion` Presets / Popover / Stagger / Press and hover. AC 6 scan = `presets.test.ts` (proved: fails on an injected `color` transition). `DevGate` → `src/features/dev/DevGate.tsx` + production-404 unit test (AC 9). Overlay panel + popover now set `box-shadow` in CSS (focus on open no longer "transitions" the shadow under reduced motion; same look).
-- **Tested:** gate:task P0-10 PASS on `e4dfed0` (unit 786, int 475, build, bundle, sast, E2E 36/0). motion-primitives.spec 96/0 (`--repeat-each=3`, Chromium/WebKit/Pixel 7/iPhone 14) after `eb87d7d`. CI 43076645227 on `e4dfed0`: 232 passed, 1 flaky (AC5 popover, Linux Pixel 7: a frame wait let the 150ms fade end first) → fixed in `eb87d7d`; CI on `eb87d7d` (run 43086119817) was running at handoff: check it first.
-- **Full 5-project E2E on `e4dfed0` (Windows): 599 passed, 152 skipped, 9 failed.** Re-run alone: WebKit preferences AC8 + 2 toast tests pass (load flakes). Still failing alone, all must be resolved before the P0-10 tick:
-  1. **iPhone 14 motion AC2** (step A; product or test bug, see lead): the 2nd-card click mid-transition reached `<HTML>` (step A was verified on desktop Chromium/WebKit only). Repro: `pnpm e2e tests/e2e/motion.spec.ts --project iphone14 --grep "AC2"`. **Lead (not yet confirmed):** probably a test bug, not the product: the failing click is the 2nd card after the back navigation; iPhone 14 is 390×664 and the cards start ~600px down, so the 2nd card is likely below the fold and `clickCentre` clicks raw coordinates outside the viewport (→ `<html>`). Pixel 7 (839px tall, CI) and desktop pass. Check: in `clickCentre`, `el.scrollIntoView({ block: "center" })` via `evaluate` before `boundingBox()` (not Playwright's `scrollIntoViewIfNeeded`, which waits for the slowed animation to settle).
-  2. **iPhone 14 devices.spec + rls.spec** (P0-06/P0-20): stuck on /sign-in with the email typed, cookie banner shown (it may cover "Email me a sign-in link" at 390×664). **First check:** same command on `main` (if it fails there too it is pre-existing, not P0-10).
-  3. **WebKit + iPhone 14 ui-gallery screenshots:** "Cannot take screenshot larger than 32767 pixels": /dev/ui is 22,356 CSS px at 320 × DPR 2–3 (Windows WebKit limit; /dev/ui unchanged on this branch; P0-09's full run was on macOS). Fix idea: `shoot` uses `scale: "css"` when height × DPR > 32767 (support fixture change → full E2E).
-  4. **WebKit overlays.spec screenshots:** intermittent `waitForFunction` timeout (passed alone once, failed alone once): 20-min root-cause, else quarantine (TESTING §7).
-- **Not yet tested:** CI on `eb87d7d`; win32 visual baselines; frame screenshots (step C).
-- **Next: step C** after items 1–4: frame screenshots mid-transition at 390 Chromium + WebKit and 1440, `design-reviewer` + `review-animations`, full E2E green, squash to main, tick P0-10. Nothing to install, migrate or seed.
+- **Handoff by talha.syed, 2026-11-12 01:10 IST (macOS; human switched model mid-session). P0-10 still on `wip/P0-10` (pushed, HEAD `b04614f`; NOT on main; `main` untouched).** Continue: `git checkout wip/P0-10 && git pull && git merge origin/main` (never `pull --rebase` on a wip branch); progress files conflict on that merge: keep main's (`git checkout --theirs progress/ && git add progress/`).
+- **Done this session (`fea5139`): the 4 full-E2E issues from the last handoff.** (1) iPhone 14 motion AC2 was a test bug: 2nd card at y 686 > viewport 664 (measured) → `clickCentre` scrolls into view first; AC2 5 projects ×3 15/0. (2) devices/rls on iPhone 14: extra contexts had no consent cookie, so the cookie notice showed 23px below the sign-in button (measured on macOS; covered it on Windows) → `newClientContext`/`storeConsent` in `tests/e2e/support/test.ts`, used in rls, devices, sign-in-edges, sign-in-screens, link-confirm; macOS 70/0 ×5 (Windows not re-run). (3) `shoot` uses CSS scale when height × DPR > 32767 (iPhone 14 gallery shot now 390×21067). (4) overlays screenshot test split per width (was 15s of a 30s budget on macOS WebKit; Windows WebKit ran past it); 115/0 ×5 on WebKit engines.
+- **Step C started (`b04614f`):** `[P0-10] frame screenshots mid-transition` in motion.spec (forward, back, tab, morph held at 50%, 390 + 1440, Chromium + WebKit) → 16 PNGs in `.artifacts/screens/P0-10/frame-*`. **Not inspected yet.**
+- **FIRST: CI 43086119817 on `eb87d7d` is RED** (flaky = failure): desktop1440 `motion-primitives.spec.ts:267` AC5 reduced motion (system): "popover" recorded 0 animations, passed on retry. The `eb87d7d` fix (no frame wait) does not cover the ≤150ms reduced-motion fade, which can end before it is read. Fix: record the popover animation when it starts (like motion.spec's `Element.prototype.animate` / `transitionrun` hook) instead of sampling after open. CI 43089285819 on `b04614f` was running at handoff: check it.
+- **Tested:** gate:task P0-10 PASS on `b04614f` (unit 786, int 475, build, bundle, sast, E2E P0-10 40/0 incl. the 4 frame tests). `pnpm check` PASS after merging main.
+- **Not yet tested:** full 5-project E2E after the support-fixture change (started, stopped at handover with 449 passed and no unexpected failures seen; the ✘ lines were guard.spec self-tests, which are meant to fail): **must be re-run**. Windows re-run of items 2–4. Frame screenshots not inspected. CI on `b04614f`.
+- **Next:** fix the AC5 popover flake → full 5-project E2E (support fixture changed) → inspect the 16 frame shots → `design-reviewer` (+ `review-animations`) on the P0-10 diff → fix BLOCK/HIGH → squash to main, tick P0-10. Nothing to install, migrate or seed.
 
 ## Status
 - **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20, P0-13, P0-21, P0-16, P0-08, P0-09. Next: P0-15 (waits on human tasks); P0-C continues meanwhile (P0-10).
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → ~~P0-16~~; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-12 00:21 IST, Syedbadeshah76 (handoff: P0-10 steps A + B on wip, 4 E2E issues open)
+- **Last updated:** 2026-11-12 01:10 IST, talha.syed (handoff: P0-10 E2E issues fixed on wip `b04614f`; AC5 popover CI flake open)
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- **P0-10 in progress on `wip/P0-10`** (`eb87d7d`): steps A (live-content slide) and B (presets, popover, stagger, AC 6 scan, gallery) done; 4 full-E2E issues open (handoff), then step C.
+- **P0-10 in progress on `wip/P0-10`** (`b04614f`): steps A + B done; the 4 full-E2E issues fixed; step C started (frame shots written, not inspected). CI on `eb87d7d` red (AC5 popover flake, handoff).
 - **P0-09 done 11 Nov** (UI primitives, overlays, toasts, table, gallery state matrix; design review fixes; macOS visual baselines).
 - P0-08 done 11 Nov; P0-16 done 10 Nov. P0-15 is the only P0-E task left and waits on H-06/07/08/26/27.
 
 ## Next (top 3)
-1. **P0-10** on `wip/P0-10`: fix the 4 full-E2E issues in the handoff (iPhone AC2 first), then step C (frame screenshots, reviews, full E2E, squash, tick).
+1. **P0-10** on `wip/P0-10`: fix the AC5 reduced-motion popover flake (red CI), full 5-project E2E, inspect frame shots, design-reviewer + review-animations, squash, tick.
 2. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); waits on H-06/07/08/26/27 (+ H-34 Sentry, H-36 demo inbox).
 3. P0-11 sound and haptics, then P0-C close (`/subphase-complete`).
 
@@ -84,7 +81,8 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - CI/tooling: `.github/workflows/ci.yml` + `scheduled.yml`; `scripts/gate-task.ts`, `gate-phase.ts`, `lib/gate.ts`, `pre-push.ts` (+ `.lefthook/pre-push/guard-and-gate.sh`), `osv-gate.ts`, `ci-usage.ts`, `e2e.ts`; `Dockerfile`, `tsconfig.build.json`, `renovate.json`
 - Tests: Vitest `unit` + `integration` (per-worker DBs); `tests/authz/` (matrix, harness self-test); `scripts/check-authz-coverage.ts` (AST, in `pnpm lint`); `tests/e2e/` (Playwright :3100, import `test` from `support/test.ts`); `tests/load/`, `tests/live/`, `stryker.config.mjs`
 
-## Last verified (11 Nov 2026)
+## Last verified (12 Nov 2026)
+- P0-10 (wip `b04614f`): gate:task P0-10 PASS (unit 786, int 475, build, bundle, sast, E2E 40/0); AC2 5 projects ×3 15/0; devices+rls iPhone 14 + WebKit ×5 70/0; overlays WebKit engines ×5 115/0; gallery shots ≤ 32767px. CI 43086119817 (`eb87d7d`) red: AC5 popover flake.
 - P0-10 step B (wip `e4dfed0`): gate:task P0-10 PASS (unit 786, int 475, build, bundle, sast, E2E 36/0); full 5-project E2E 599/9 failed/152 skipped (4 issues open, handoff); motion-primitives ×3 on 4 projects 96/0 (`eb87d7d`); CI 43076645227 1 flaky (fixed).
 - P0-10 step A rework (wip `1a63e95`): gate:task P0-10 PASS (unit 761, int 475, build, bundle, sast, E2E P0-10 20/0, 0 skipped); motion.spec Chromium + WebKit `--repeat-each=4` 80/0.
 - P0-10 step A E2E (wip `bf132ed`): gate:task P0-10 PASS (int 475, build, bundle, sast, E2E P0-10 13/0, 5 skipped: 4 fixme + AC2 WebKit); `pnpm check` unit 740.
