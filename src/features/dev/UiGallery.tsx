@@ -33,6 +33,7 @@ import {
   toast,
 } from "@/components/ui";
 import { PreferenceToggles } from "@/features/preferences/PreferenceToggles";
+import { OverlayDemos } from "./OverlayDemos";
 import { Section } from "./Section";
 import { TokenPage } from "./TokenPage";
 
@@ -440,6 +441,9 @@ export function UiGallery(): React.JSX.Element {
             Error toast
           </Button>
         </div>
+      </Section>
+      <Section title="Overlays">
+        <OverlayDemos />
       </Section>
       <Toaster />
     </main>

@@ -17,6 +17,14 @@ test.describe("[P0-09] UI gallery", () => {
   }) => {
     await expect(page.getByRole("button", { name: "Collect points" })).toBeVisible();
     await expect(page.getByRole("tablist", { name: "Requests" })).toBeVisible();
+    // Scan the settled page: controls disabled until hydration fade from .55 to full opacity (120ms) once
+    // enabled, and axe measures contrast mid-fade if it runs then.
+    await expect(page.locator('[data-overlay-trigger="modal"]')).toBeEnabled();
+    await page.waitForFunction(() =>
+      document
+        .getAnimations()
+        .every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity),
+    );
 
     // No horizontal page overflow (mobile browsers would zoom the whole page out).
     const overflow = await page.evaluate(

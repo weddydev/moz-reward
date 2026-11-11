@@ -212,6 +212,12 @@
     0 0 0 4px var(--focus-ring);
 }
 
+/* An overlay panel takes focus only programmatically, on open; it is not a control, so it draws no ring. */
+.overlay-panel:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-2);
+}
+
 /*
  * Global reduced-motion safety net (DESIGN §7): nothing moves. Only colour and opacity may still transition
  * (the duration tokens cap those at 150ms), so a transform or position change lands at once; keyframe
@@ -372,6 +378,142 @@
     transform: translateY(12px);
     opacity: 0;
     transition-duration: var(--dur-exit);
+  }
+
+  /*
+   * Overlays: Modal, SidePanel, BottomSheet (P0-09 AC 3, 11; Overlay.tsx). The <dialog> is a transparent
+   * full-viewport layer holding a backdrop and the panel. Enter: @starting-style. Exit: [data-state="closing"],
+   * whose transitions Overlay.tsx waits for before closing the dialog; reopening mid-exit reverses them.
+   * Transform + opacity only, ≤ 300ms. Offsets are multiplied by --motion-on (0 when motion is reduced), so a
+   * reduced-motion overlay only fades; panels that slide stay opaque while they move.
+   */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+  .overlay[open] {
+    display: flex;
+  }
+  .overlay::backdrop {
+    background: transparent;
+  }
+  .overlay[data-state="closing"] {
+    pointer-events: none;
+  }
+  .overlay-backdrop {
+    position: absolute;
+    inset: 0;
+    background: var(--scrim);
+    transition: opacity var(--dur-base) var(--ease-out);
+    @starting-style {
+      opacity: 0;
+    }
+  }
+  .overlay-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    transition:
+      transform var(--dur-base) var(--ease-out),
+      opacity var(--dur-base) var(--ease-out);
+  }
+  .overlay-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .overlay[data-state="closing"] .overlay-backdrop,
+  .overlay[data-state="closing"] .overlay-panel {
+    opacity: 0;
+    transition-duration: var(--dur-exit);
+  }
+
+  /* Modal: centred, scales from .96 with a fade (never from 0); not anchored to its trigger. */
+  .overlay[data-kind="modal"] {
+    align-items: center;
+    justify-content: center;
+    padding: max(var(--space-16), env(safe-area-inset-top, 0px))
+      max(var(--space-16), env(safe-area-inset-right, 0px))
+      max(var(--space-16), env(safe-area-inset-bottom, 0px))
+      max(var(--space-16), env(safe-area-inset-left, 0px));
+  }
+  .overlay[data-kind="modal"] .overlay-panel {
+    width: min(100%, var(--content-max));
+    border-radius: var(--r-lg);
+    @starting-style {
+      opacity: 0;
+      transform: scale(calc(1 - 0.04 * var(--motion-on)));
+    }
+  }
+  .overlay[data-kind="modal"][data-state="closing"] .overlay-panel {
+    transform: scale(calc(1 - 0.04 * var(--motion-on)));
+  }
+
+  /* SidePanel: full height from the right, slides its own width. */
+  .overlay[data-kind="panel"] {
+    justify-content: flex-end;
+  }
+  .overlay[data-kind="panel"] .overlay-panel {
+    /* A strip of backdrop stays visible on phones, so a tap beside the panel closes it. */
+    width: min(480px, calc(100% - var(--space-40)));
+    height: 100%;
+    border-radius: var(--r-lg) 0 0 var(--r-lg);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    @starting-style {
+      opacity: calc(1 - var(--motion-on));
+      transform: translateX(calc(100% * var(--motion-on)));
+    }
+  }
+  .overlay[data-kind="panel"][data-state="closing"] .overlay-panel {
+    opacity: calc(1 - var(--motion-on));
+    transform: translateX(calc(100% * var(--motion-on)));
+  }
+
+  /* BottomSheet: rises its own height; safe-area padding below; the grip (handle + header) owns the drag. */
+  .overlay[data-kind="sheet"] {
+    align-items: flex-end;
+    justify-content: center;
+    padding-top: max(var(--space-24), env(safe-area-inset-top, 0px));
+  }
+  .overlay[data-kind="sheet"] .overlay-panel {
+    width: min(100%, var(--content-max));
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    @starting-style {
+      opacity: calc(1 - var(--motion-on));
+      transform: translateY(calc(100% * var(--motion-on)));
+    }
+  }
+  .overlay[data-kind="sheet"][data-state="closing"] .overlay-panel {
+    opacity: calc(1 - var(--motion-on));
+    transform: translateY(calc(100% * var(--motion-on)));
+  }
+  .overlay[data-kind="sheet"] .overlay-grip {
+    touch-action: none;
+    cursor: grab;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .overlay-handle {
+    display: flex;
+    justify-content: center;
+    padding-top: var(--space-8);
   }
 }
 
