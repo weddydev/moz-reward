@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 import { expect, test } from "./support/test";
 import { vtName } from "../../src/lib/motion/route-transitions";
 import type { Page } from "@playwright/test";
@@ -492,6 +494,109 @@ test.describe("[P0-10] reduced motion", () => {
           expect(new Set(a.transforms).size, a.pseudo).toBeLessThanOrEqual(1);
         }
         expect(a.duration + a.delay, a.pseudo || a.target).toBeLessThanOrEqual(150);
+      }
+    });
+  }
+});
+
+/**
+ * Verify (P0-10): frame screenshots with every route animation held at ~50%. `shoot` disables animations
+ * (it fast-forwards them), so these use `page.screenshot` with animations allowed. A paused animation is
+ * not "running", so `settled` only waits once the hold is released.
+ */
+test.describe("[P0-10] frame screenshots mid-transition", () => {
+  type Scene = { name: string; from: string; to: RegExp; go: (page: Page) => Promise<void> };
+  const scenes: Scene[] = [
+    {
+      name: "forward",
+      from: "/dev/motion",
+      to: /\/dev\/motion\/details$/,
+      go: (page) => page.getByRole("link", { name: "Open a detail page" }).click(),
+    },
+    {
+      name: "back",
+      from: "/dev/motion/details",
+      to: /\/dev\/motion$/,
+      go: (page) => page.getByRole("link", { name: "← Motion gallery" }).click(),
+    },
+    {
+      name: "tab",
+      from: "/dev/motion/tabs/wallet",
+      to: /\/tabs\/me$/,
+      go: (page) =>
+        page
+          .getByRole("navigation", { name: "Demo tabs" })
+          .getByRole("link", { name: "Me" })
+          .click(),
+    },
+    {
+      name: "morph",
+      from: "/dev/motion",
+      to: /\/shop\/brew-bloom$/,
+      go: (page) => cards(page).first().click(),
+    },
+  ];
+
+  /** Pauses each route animation (VT pseudos + page enters) at half its duration until released. */
+  const hold = (page: Page): Promise<void> =>
+    page.evaluate(() => {
+      const w = window as unknown as { __held: Set<Animation>; __holding: boolean };
+      w.__held = new Set();
+      w.__holding = true;
+      const tick = (): void => {
+        if (!w.__holding) return;
+        for (const a of document.getAnimations()) {
+          const effect = a.effect as KeyframeEffect | null;
+          const ours =
+            (effect?.pseudoElement ?? "").startsWith("::view-transition") ||
+            !!(effect?.target as HTMLElement | null)?.hasAttribute("data-route-content");
+          const total = Number(effect?.getComputedTiming().endTime ?? 0);
+          if (!ours || total <= 0 || w.__held.has(a)) continue;
+          a.pause();
+          a.currentTime = total / 2;
+          w.__held.add(a);
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  const release = (page: Page): Promise<void> =>
+    page.evaluate(() => {
+      const w = window as unknown as { __held: Set<Animation>; __holding: boolean };
+      w.__holding = false;
+      for (const a of w.__held) a.play();
+    });
+
+  for (const width of [390, 1440] as const) {
+    test(`[P0-10] verify: transitions held at ~50% at ${String(width)}px`, async ({
+      page,
+    }, testInfo) => {
+      test.skip(
+        !["chromium", "webkit"].includes(testInfo.project.name),
+        "frame shots: desktop Chromium + WebKit",
+      );
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+      const dir = path.join(".artifacts", "screens", "P0-10");
+      mkdirSync(dir, { recursive: true });
+      for (const scene of scenes) {
+        await page.goto(scene.from);
+        await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
+        await hold(page);
+        await scene.go(page);
+        await expect(page).toHaveURL(scene.to);
+        await page.waitForFunction(
+          () => (window as unknown as { __held: Set<Animation> }).__held.size > 0,
+        );
+        await page.screenshot({
+          path: path.join(
+            dir,
+            `frame-${scene.name}-${String(width)}--${testInfo.project.name}.png`,
+          ),
+          animations: "allow",
+          caret: "initial",
+        });
+        await release(page);
+        await settled(page);
       }
     });
   }
