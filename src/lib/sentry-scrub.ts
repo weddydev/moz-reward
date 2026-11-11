@@ -49,6 +49,18 @@ const BEARER = /\b(Bearer)\s+[^\s)"']+/gi;
 const PARAM_IN_TEXT = /([?&]([^=\s&#]+)=)([^&\s#)"']+)/g;
 const DIGIT_RUN = /\+?\(?\d[\d\s().-]{7,}\d/g;
 const LONG_DIGITS = /\d{10,}/g;
+/**
+ * Request ids and other UUIDs are not PII, but a random one can hold 10+ digits in a row and look like a
+ * phone or card number. The digit rules skip anything shaped exactly like a UUID (hex on both edges, so
+ * digits running on past one are still scrubbed). Capturing group: `split` keeps the UUIDs at odd indexes.
+ */
+const UUID =
+  /(?<![0-9a-f-])([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?![0-9a-f-])/i;
+
+const scrubDigits = (text: string): string =>
+  text
+    .replace(DIGIT_RUN, (run) => ((run.match(/\d/g)?.length ?? 0) >= 10 ? REDACTED : run))
+    .replace(LONG_DIGITS, REDACTED);
 
 export function scrubText(text: string): string {
   return text
@@ -57,8 +69,9 @@ export function scrubText(text: string): string {
     .replace(PARAM_IN_TEXT, (all, prefix: string, name: string) =>
       SENSITIVE_PARAM.test(name) ? `${prefix}${REDACTED}` : all,
     )
-    .replace(DIGIT_RUN, (run) => ((run.match(/\d/g)?.length ?? 0) >= 10 ? REDACTED : run))
-    .replace(LONG_DIGITS, REDACTED);
+    .split(UUID)
+    .map((part, i) => (i % 2 === 1 ? part : scrubDigits(part)))
+    .join("");
 }
 
 export function scrubUrl(url: string): string {

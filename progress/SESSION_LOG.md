@@ -254,3 +254,9 @@ Done: P0-09 brief tightened and pushed (`0f73db7`: steps A–D, 13 numbered crit
 Evidence: `git apply --check` of the patch on main passes; CI green on main `2eea12e` (run 42978402482), the last code commit. No gate run: main has docs/progress commits only since then.
 Not verified: the new tests have never run (the components they describe are not built); no component changed.
 Left off: handoff (human's usage limit), baton free. Next: `git checkout -b wip/P0-09`, `git apply progress/wip/P0-09-step-a-tests.patch`, `git rm` the patch, build step A per the PROGRESS handoff note.
+
+## 2026-11-11 (13:21–13:35 IST) — P0 — P0-09 step A (talha.syed, macOS)
+Done: resume (full path: pull brought P0-08 + brief); saved test patch applied on `wip/P0-09`; step A built (toast queue + announcers, Table loading/row button/density/scroll hint, field `aria-describedby` merge, ProgressBar, Chip, Switch row target, fine-pointer hover variant, `hit-44`, reduced-motion press/spinner/skeleton, `useHydrated` disabling, ShopCard/KpiCard). Pushed `a7b3193` to `wip/P0-09`.
+Evidence: `pnpm check` exit 0 (unit 624); patch tests 17 red → green; E2E (prod build) ui-gallery/tokens/preferences chromium + iphone14, gallery webkit: pass; built CSS 8/8 `:hover` inside `(hover:hover) and (pointer:fine)`; 320px screenshots inspected (found + fixed mid-word table name wrap).
+Not verified: CI 42984090179 (full 5-project E2E) still running at checkpoint; gate:task not run (at the tick).
+Next: `git checkout wip/P0-09`, check CI 42984090179, then step B (tests first).

@@ -25,6 +25,23 @@ describe("[P0-13] C-26: Sentry events carry no PII and no sign-in tokens", () =>
     expect(text).toContain("/sign-in/confirm?token=[redacted]");
   });
 
+  it("keeps request ids (UUIDs) whole even when a group is mostly digits, and still scrubs a phone beside one", () => {
+    // CI run 42984090179: a random request id ending in 10+ digits was half-redacted (about 1 run in 100).
+    const ids = [
+      "a0f26d5a-8e59-4944-949f-123456789012",
+      "01234567-8901-4234-8567-890123456789",
+      "A0F26D5A-8E59-4944-949F-12345678901B",
+    ];
+    for (const id of ids) {
+      expect(scrubText(`request ${id} failed`)).toBe(`request ${id} failed`);
+    }
+    const mixed = scrubText(`request ${ids[0] ?? ""} for 07700900123 / +44 7700 900123`);
+    expect(mixed).toContain(ids[0]);
+    expect(mixed).not.toMatch(/07700900123|7700 900123/);
+    // Digits running on past a UUID-shaped prefix are not a UUID: still scrubbed.
+    expect(scrubText("a0f26d5a-8e59-4944-949f-1234567890123456")).not.toContain("1234567890123456");
+  });
+
   it("removes user, cookies, headers (but the request id), body and query string; keeps tags", () => {
     const event = scrubEvent({
       message: "boom for jane@example.com",

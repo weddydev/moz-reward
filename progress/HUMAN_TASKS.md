@@ -15,7 +15,6 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 
 | ID | Priority | Task | Needed by | Why | Est. time |
 |---|---|---|---|---|---|
-| H-32 | 🔴 | **Windows laptop only now** (Mac done 10 Nov): `.env.local` there still lacks the `DATABASE_URL_MIGRATIONS` and `DATABASE_URL_TEST` lines (found 11 Nov: `pnpm db:migrate`, `pnpm e2e` and `pnpm gate:task` fail without them); add them (see steps), then `pnpm db:migrate` | Before your next `pnpm dev` / `pnpm worker` on that laptop | The app now refuses to start as the `moz` superuser (RLS would be skipped); Claude never reads or edits `.env.local` | 3 min / laptop |
 | H-35 | 🟢 | Close GitHub issue #1 "Scheduled CI failing" (fixed in `dd05afe`, re-run 42812524717 green) | Any time | Claude may not write to GitHub issues | 1 min |
 | H-34 | 🟠 | Sentry free account (one owner), one project, alert rule emailing the owner; DSN into GitHub secrets for staging | Sun 15 Nov 2026 (P0-15 staging) | Error reporting for web + worker (P0-13 builds the code; local proof uses a fake Sentry endpoint) | 15 min |
 | H-36 | 🟠 | Demo accounts on staging: choose one real inbox for `DEMO_EMAIL_BASE` (GitHub secret); after the first staging deploy, save the output of `demo:credentials` in the password manager and add the six TOTP keys to your authenticator apps | Sun 15 Nov 2026 (P0-15 staging) | The demo customer signs in by email link; staff/admin demo accounts need password + code. Credentials are never committed or pasted into chat | 15 min |
@@ -175,6 +174,7 @@ Images live in `design/reference/desktop-view/` and `mobile-view/`.
 
 | ID | Task | Done by | Date |
 |---|---|---|---|
+| H-32 | `.env.local` DB role lines on both laptops (Windows confirmed by the human 11 Nov; Claude verifies on the next Windows session: `pnpm db:migrate` without shell overrides) | human | 11 Nov 2026 |
 | H-33 | Deny rules narrowed so `.env.example` is editable (committed `ca9d3d8`) | talha.syed | 10 Nov 2026 |
 | H-22 | Loyalty-rule defaults accepted as written (DECISIONS "Plan v4 defaults"); may be revised later | talha.syed | 10 Nov 2026 |
 | H-32 (Mac) | `.env.local` DB roles updated, `pnpm db:reset`, app starts; Windows laptop still to do | talha.syed | 10 Nov 2026 |
