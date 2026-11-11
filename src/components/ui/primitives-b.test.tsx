@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Bell, MapPin } from "lucide-react";
 import { useState } from "react";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { Avatar, initialsOf } from "./Avatar";
 import { Checkbox } from "./Checkbox";
@@ -247,6 +248,10 @@ describe("[P0-09] ErrorState", () => {
     expect(button).toHaveAttribute("aria-busy", "true");
     await userEvent.click(button);
     expect(onRetry).not.toHaveBeenCalled();
+  });
+  it("server HTML has the retry button disabled until hydration (C-20)", () => {
+    const html = renderToString(<ErrorState message="Offline." onRetry={() => undefined} />);
+    expect(html).toMatch(/<button[^>]*disabled=""/);
   });
   it("has no button without a retry action", () => {
     render(<ErrorState message="This page has moved." />);

@@ -15,8 +15,8 @@ test.describe("[P0-09] UI gallery", () => {
   test("[P0-09] renders every primitive with no page overflow and no serious accessibility violations", async ({
     page,
   }) => {
-    await expect(page.getByRole("button", { name: "Collect points" })).toBeVisible();
-    await expect(page.getByRole("tablist", { name: "Requests" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Collect points" }).first()).toBeVisible();
+    await expect(page.getByRole("tablist", { name: "Requests", exact: true })).toBeVisible();
     // Scan the settled page: controls disabled until hydration fade from .55 to full opacity (120ms) once
     // enabled, and axe measures contrast mid-fade if it runs then.
     await expect(page.locator('[data-overlay-trigger="modal"]')).toBeEnabled();
@@ -43,8 +43,21 @@ test.describe("[P0-09] UI gallery", () => {
     ).toEqual([]);
   });
 
-  test("[P0-09] screenshot for visual inspection", async ({ shoot }) => {
-    await shoot("ui-gallery");
+  test("[P0-09] screenshots at 320, 390 and 1440 (touch projects at their own size)", async ({
+    page,
+    shoot,
+    isMobile,
+  }, testInfo) => {
+    test.setTimeout(60_000);
+    const own = isMobile || testInfo.project.name === "desktop1440";
+    for (const width of own ? [0] : [320, 390, 1440]) {
+      if (width > 0) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.reload();
+      }
+      await expect(page.locator('[data-overlay-trigger="modal"]')).toBeEnabled();
+      await shoot(`ui-gallery-${width > 0 ? String(width) : "native"}`);
+    }
   });
 
   test("[P0-09] a toast appears when triggered", async ({ page }) => {

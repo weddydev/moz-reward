@@ -13,9 +13,9 @@ const VARIANT: Record<ButtonVariant, string> = {
 };
 const SIZE: Record<ButtonSize, string> = {
   // 40px drawn, 44px hit area (DESIGN §13).
-  40: "hit-44 h-10 px-4 text-small gap-2 rounded-md",
-  48: "h-12 px-5 text-body gap-2 rounded-md",
-  56: "h-14 px-6 text-body gap-2.5 rounded-lg",
+  40: "hit-44 min-h-10 py-1.5 px-4 text-small gap-2 rounded-md",
+  48: "min-h-12 py-2 px-5 text-body gap-2 rounded-md",
+  56: "min-h-14 py-2.5 px-6 text-body gap-2.5 rounded-lg",
 };
 
 /** Class string for links styled as buttons (e.g. `<Link className={buttonClasses()} />`). */
@@ -31,7 +31,9 @@ export function buttonClasses({
   className?: string | undefined;
 } = {}): string {
   return cx(
-    "relative inline-flex select-none items-center justify-center font-semibold whitespace-nowrap",
+    // A long label wraps (centred) and the button grows from its minimum height; it is never cut, so the
+    // visible text always matches the accessible name (P0-09 AC 6).
+    "relative inline-flex max-w-full select-none items-center justify-center text-center font-semibold",
     "disabled:cursor-not-allowed disabled:opacity-55 aria-disabled:cursor-not-allowed aria-disabled:opacity-55",
     VARIANT[variant],
     variant === "primary" && "pressable",
@@ -80,7 +82,12 @@ export function Button({
           : onClick
       }
     >
-      <span className={cx("inline-flex items-center gap-[inherit]", loading && "opacity-0")}>
+      <span
+        className={cx(
+          "inline-flex min-w-0 items-center gap-[inherit] [overflow-wrap:break-word]",
+          loading && "opacity-0",
+        )}
+      >
         {icon}
         {children}
       </span>

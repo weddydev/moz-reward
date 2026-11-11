@@ -39,6 +39,12 @@ function isOwnRowClick(e: React.MouseEvent<HTMLTableRowElement>): boolean {
 }
 
 const PAD_Y: Record<Density, string> = { comfortable: "py-3", compact: "py-1.5" };
+/**
+ * One minimum height for data and loading rows: padding + a 24px line, which holds one line of any cell
+ * content (mixed inline content such as the row button or a mono span makes a line box taller than the
+ * 20px text line). A one-line data row and a skeleton row are then the same height: no shift (AC 9).
+ */
+const ROW_H: Record<Density, string> = { comfortable: "h-12", compact: "h-9" };
 
 /**
  * Dashboard table (DESIGN §6): sticky header inside its own scroll region, row hover (pointer devices),
@@ -148,7 +154,7 @@ export function Table<Row>({
                     key={i}
                     data-part="loading-row"
                     aria-hidden="true"
-                    className="border-line border-t"
+                    className={cx("border-line border-t", ROW_H[density])}
                   >
                     {columns.map((c) => (
                       <td key={c.key} className={cx("px-4", PAD_Y[density])}>
@@ -182,6 +188,7 @@ export function Table<Row>({
                     }
                     className={cx(
                       "border-line duration-fast hover:bg-gold-100/40 border-t transition-colors",
+                      ROW_H[density],
                       action && "cursor-pointer",
                     )}
                   >

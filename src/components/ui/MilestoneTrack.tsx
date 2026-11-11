@@ -57,7 +57,7 @@ export function MilestoneTrack({
             </span>
             <span
               className={cx(
-                "text-caption lg:text-small min-w-0 px-1 [overflow-wrap:break-word] lg:px-0 lg:pt-0.5",
+                "text-caption lg:text-small max-w-full min-w-0 px-1 [overflow-wrap:anywhere] lg:px-0 lg:pt-0.5",
                 s.reached || i === current ? "text-ink font-semibold" : "text-ink-2",
               )}
             >

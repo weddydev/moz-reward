@@ -1,12 +1,16 @@
+"use client";
+
 import { CircleAlert } from "lucide-react";
 import { cx } from "@/lib/cx";
+import { useHydrated } from "@/lib/use-hydrated";
 import { Button } from "./Button";
 import { Icon } from "./Icon";
 
 /**
  * Error state for a data-driven view (ENGINEERING §5): what went wrong in plain words and, when it can
  * help, a retry. Announced when it appears (`role="alert"`). While `retrying`, the button keeps its place
- * and focus but swallows presses (Button `loading`).
+ * and focus but swallows presses (Button `loading`). The retry is a client handler, so the button is disabled
+ * until hydrated: an early press would otherwise be lost (C-20).
  */
 export function ErrorState({
   title = "Something went wrong",
@@ -23,6 +27,7 @@ export function ErrorState({
   retrying?: boolean;
   className?: string;
 }): React.JSX.Element {
+  const hydrated = useHydrated();
   return (
     <div
       className={cx(
@@ -36,7 +41,13 @@ export function ErrorState({
         <p className="text-small text-ink-2 max-w-sm [overflow-wrap:break-word]">{message}</p>
       </div>
       {onRetry ? (
-        <Button variant="secondary" size={48} loading={retrying} onClick={onRetry}>
+        <Button
+          variant="secondary"
+          size={48}
+          loading={retrying}
+          disabled={!hydrated}
+          onClick={onRetry}
+        >
           {retryLabel}
         </Button>
       ) : null}

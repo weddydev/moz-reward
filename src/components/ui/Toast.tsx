@@ -102,9 +102,12 @@ function ToastView({ item }: { item: ToastItem }) {
     let remaining = DURATION;
     let startedAt = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let paused = false;
+    // Hover and focus pause independently: leaving one must not restart the timer while the other holds
+    // (on touch screens every tap ends with pointerleave, while focus may still be inside).
+    let hovered = false;
+    let focused = false;
     const start = () => {
-      if (paused || document.hidden || timer !== undefined) return;
+      if (hovered || focused || document.hidden || timer !== undefined) return;
       startedAt = Date.now();
       timer = setTimeout(() => {
         dismissToast(item.id);
@@ -120,31 +123,36 @@ function ToastView({ item }: { item: ToastItem }) {
       if (document.hidden) stop();
       else start();
     };
-    const pause = () => {
-      paused = true;
+    const onPointerEnter = () => {
+      hovered = true;
       stop();
     };
-    const resume = () => {
-      paused = false;
+    const onPointerLeave = () => {
+      hovered = false;
       start();
+    };
+    const onFocusIn = () => {
+      focused = true;
+      stop();
     };
     const onFocusOut = (e: FocusEvent) => {
       // Focus moving between the toast's own parts keeps it paused.
       if (e.relatedTarget instanceof Node && el?.contains(e.relatedTarget)) return;
-      resume();
+      focused = false;
+      start();
     };
     start();
     document.addEventListener("visibilitychange", onVisibility);
-    el?.addEventListener("pointerenter", pause);
-    el?.addEventListener("pointerleave", resume);
-    el?.addEventListener("focusin", pause);
+    el?.addEventListener("pointerenter", onPointerEnter);
+    el?.addEventListener("pointerleave", onPointerLeave);
+    el?.addEventListener("focusin", onFocusIn);
     el?.addEventListener("focusout", onFocusOut);
     return () => {
       stop();
       document.removeEventListener("visibilitychange", onVisibility);
-      el?.removeEventListener("pointerenter", pause);
-      el?.removeEventListener("pointerleave", resume);
-      el?.removeEventListener("focusin", pause);
+      el?.removeEventListener("pointerenter", onPointerEnter);
+      el?.removeEventListener("pointerleave", onPointerLeave);
+      el?.removeEventListener("focusin", onFocusIn);
       el?.removeEventListener("focusout", onFocusOut);
     };
   }, [item.id]);

@@ -4,7 +4,7 @@ import type { Locator, Page } from "@playwright/test";
 
 /**
  * Overlays on /dev/ui (P0-09 step C: AC 2, 3, 11). Mouse drags run in every project (touch projects too:
- * the grip takes any pointer type); the touch-only "pull the content down" path is covered in step D.
+ * the grip takes any pointer type); the touch-only paths are in "bottom sheet touch paths".
  */
 const trigger = (page: Page, demo: string): Locator =>
   page.locator(`[data-overlay-trigger="${demo}"]`);
@@ -133,6 +133,12 @@ test.describe("[P0-09] overlays", () => {
     await expect(
       page.getByRole("region", { name: "Notifications" }).getByRole("listitem"),
     ).toHaveCount(1);
+    // Scan once the toast has finished entering: mid-fade its text is measured at partial opacity.
+    await page.waitForFunction(() =>
+      document
+        .getAnimations()
+        .every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity),
+    );
     expect(await serious(page)).toEqual([]);
   });
 
@@ -220,7 +226,7 @@ test.describe("[P0-09] bottom sheet drag", () => {
     page,
     isMobile,
   }) => {
-    test.skip(isMobile, "wheel: desktop projects (touch scroll in step D)");
+    test.skip(isMobile, "wheel: desktop projects (touch scroll: the touch-path tests below)");
     // Opening scrolls the trigger into view first; measure once the sheet is open.
     await open(page, "sheet-long");
     const before = await page.evaluate(() => window.scrollY);
@@ -233,6 +239,98 @@ test.describe("[P0-09] bottom sheet drag", () => {
     await page.getByRole("button", { name: "Close" }).click();
     await expect(page.locator("dialog")).toHaveCount(0);
     expect(await page.evaluate(() => window.scrollY)).toBe(before);
+  });
+});
+
+/**
+ * AC 11 touch paths, with real touch input (CDP) on the Chromium touch project. WebKit has no touch-drag API
+ * in Playwright: the sheet's mouse drags above run there, and the real-iPhone feel is a human check.
+ */
+test.describe("[P0-09] bottom sheet touch paths", () => {
+  test.beforeEach(async ({ page, browserName, isMobile }) => {
+    test.skip(browserName !== "chromium" || !isMobile, "CDP touch: the Chromium touch project");
+    await page.goto("/dev/ui");
+    await expect(trigger(page, "sheet-long")).toBeEnabled();
+  });
+
+  type Cdp = Awaited<ReturnType<ReturnType<Page["context"]>["newCDPSession"]>>;
+  async function touchDrag(cdp: Cdp, x: number, y0: number, y1: number, steps: number) {
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x, y: y0, id: 1 }],
+    });
+    for (let i = 1; i <= steps; i++) {
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [{ x, y: y0 + ((y1 - y0) * i) / steps, id: 1 }],
+      });
+      await new Promise((r) => setTimeout(r, 16));
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  }
+  const body = (page: Page) => topDialog(page).locator('[data-part="body"]');
+  async function centre(loc: Locator): Promise<{ x: number; y: number }> {
+    const b = await loc.boundingBox();
+    if (!b) throw new Error("no box");
+    return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+  }
+
+  test("[P0-09] touch scroll at the sheet's scroll end leaves the page where it was, and after closing", async ({
+    page,
+  }) => {
+    await open(page, "sheet-long");
+    const before = await page.evaluate(() => window.scrollY);
+    expect(before).toBeGreaterThan(0);
+    await body(page).evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+    });
+    const cdp = await page.context().newCDPSession(page);
+    const c = await centre(body(page));
+    // Finger moves up = scroll further down, past the content's end.
+    for (let i = 0; i < 3; i++) {
+      await cdp.send("Input.synthesizeScrollGesture", {
+        x: c.x,
+        y: c.y,
+        yDistance: -400,
+        gestureSourceType: "touch",
+        speed: 1200,
+      });
+    }
+    expect(await page.evaluate(() => window.scrollY)).toBe(before);
+    await topDialog(page).getByRole("button", { name: "Close" }).click();
+    await expect(page.locator("dialog")).toHaveCount(0);
+    expect(await page.evaluate(() => window.scrollY)).toBe(before);
+  });
+
+  test("[P0-09] pulling down on content at its top drags the sheet and closes it", async ({
+    page,
+  }) => {
+    await open(page, "sheet-long");
+    expect(await body(page).evaluate((el) => el.scrollTop)).toBe(0);
+    const h = await panelOf(page).evaluate((el) => el.getBoundingClientRect().height);
+    const c = await centre(body(page));
+    const cdp = await page.context().newCDPSession(page);
+    await touchDrag(cdp, c.x, c.y - 40, c.y - 40 + h * 0.45, 12);
+    await expect(page.locator("dialog")).toHaveCount(0);
+  });
+
+  test("[P0-09] a drag that starts on scrolled content scrolls the content, not the sheet", async ({
+    page,
+  }) => {
+    await open(page, "sheet-long");
+    await body(page).evaluate((el) => {
+      el.scrollTop = 300;
+    });
+    const c = await centre(body(page));
+    const cdp = await page.context().newCDPSession(page);
+    await touchDrag(cdp, c.x, c.y - 60, c.y + 120, 12);
+    await page.waitForTimeout(400);
+    await expect(topDialog(page)).toHaveAttribute("data-state", "open");
+    const after = await body(page).evaluate((el) => el.scrollTop);
+    expect(after).toBeLessThan(300);
+    await expect
+      .poll(() => panelOf(page).evaluate((el) => getComputedStyle(el).transform))
+      .toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
   });
 });
 

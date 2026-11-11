@@ -277,3 +277,9 @@ Done: resume (pull --rebase rewrote wip/P0-09; restored with `reset --keep` + me
 Evidence: unit tests first (close rule 14, scroll lock 5, overlays 31) red → green; first E2E run found 4 real issues (WebKit focus return, full-width panel had no backdrop on phones, scroll body not focusable for axe, test measured scroll before click scrolled) → fixed; overlays.spec 5 projects 55/0; screenshots inspected; gate:task PASS (unit 713, int 475, E2E P0-09 34/0) after root-causing a WebKit axe mid-fade (old spec 3/8 fail, new 16/16).
 Not verified: step C CI (running); AC 11 touch paths, C-20 chunks held, other ACs' E2E (step D).
 Next: `git checkout wip/P0-09 && git pull && git merge origin/main`, check CI on 0553311, then P0-09 step D (see PROGRESS handoff).
+
+## 2026-11-11 (15:10–15:39 IST) — P0 — P0-09 step D part 1 (talha.syed, macOS)
+Done: resume (light path); gallery rebuilt per primitive with state matrix + long-text fixtures; `gallery-list.ts` + unit test; `ui-states.spec.ts` (AC 1, 3–7, 9, 10, 12, 13) and AC 11 touch paths (CDP) in `overlays.spec.ts`.
+Evidence: new tests found 5 real defects, each fixed at the root cause (Button long label, MilestoneTrack long word, Table row height 47 vs 45px, ErrorState pre-hydration retry, toast shared pause flag; the last two unit test first); AC4 check seen failing with `hit-44` removed (Sell 81×41).
+Evidence: `pnpm check` PASS (unit 720); the three P0-09 specs green on all 5 projects after fixes.
+Not verified: gate:task, screenshots inspection, e2e:visual (macOS), design-reviewer. Next: step D part 2 (PROGRESS handoff).

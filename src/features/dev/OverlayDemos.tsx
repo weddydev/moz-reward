@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BottomSheet, Button, Chip, ChipGroup, Modal, SidePanel, TextField } from "@/components/ui";
 import { useHydrated } from "@/lib/use-hydrated";
+import { Demo } from "./Section";
 
 type Demo = "modal" | "stacked" | "tall" | "text" | "panel" | "sheet" | "sheet-long";
 
@@ -13,7 +14,7 @@ const LINES = Array.from(
 const LONG_TITLE =
   "Brew & Bloom Café — Free coffee & cake reward for members who visited ten times this autumn";
 
-/** Gallery demos for Modal, SidePanel and BottomSheet (P0-09 step C; the full state matrix is step D). */
+/** Gallery demos for Modal, SidePanel and BottomSheet (P0-09). */
 export function OverlayDemos(): React.JSX.Element {
   const hydrated = useHydrated();
   const [open, setOpen] = useState<Demo | null>(null);
@@ -67,15 +68,32 @@ export function OverlayDemos(): React.JSX.Element {
 
   return (
     <>
-      <div className="flex flex-wrap gap-3">
-        {trigger("modal", "Modal")}
-        {trigger("stacked", "Modal + stacked")}
-        {trigger("tall", "Tall modal")}
-        {trigger("text", "Text-only modal")}
-        {trigger("panel", "Side panel")}
-        {trigger("sheet", "Bottom sheet")}
-        {trigger("sheet-long", "Long bottom sheet")}
-      </div>
+      <Demo
+        name="Modal"
+        note="Default with a form, stacked (Esc closes the top one only), content taller than the screen, and text only (the dialog itself takes focus)."
+      >
+        <div className="flex flex-wrap gap-3">
+          {trigger("modal", "Modal")}
+          {trigger("stacked", "Modal + stacked")}
+          {trigger("tall", "Tall modal")}
+          {trigger("text", "Text-only modal")}
+        </div>
+      </Demo>
+      <Demo
+        name="SidePanel"
+        note="Full width on phones, a 420px panel from the right on wider screens."
+      >
+        <div className="flex flex-wrap gap-3">{trigger("panel", "Side panel")}</div>
+      </Demo>
+      <Demo
+        name="BottomSheet"
+        note="Drag the grip down past 25% or flick to close; close button, Esc and backdrop tap do the same. The long one scrolls inside."
+      >
+        <div className="flex flex-wrap gap-3">
+          {trigger("sheet", "Bottom sheet")}
+          {trigger("sheet-long", "Long bottom sheet")}
+        </div>
+      </Demo>
 
       <Modal
         open={open === "modal" || open === "stacked"}

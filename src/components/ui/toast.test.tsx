@@ -131,6 +131,50 @@ describe("[P0-09] toast", () => {
     expect(visible()).toEqual([]);
   });
 
+  it("stays paused while focus is inside, even when the pointer leaves (a touch tap ends with pointerleave)", () => {
+    vi.useFakeTimers();
+    render(<Toaster />);
+    act(() => {
+      toast("Saved");
+    });
+    const item = screen.getByRole("listitem");
+    const dismiss = within(item).getByRole("button");
+    fireEvent.pointerEnter(item);
+    act(() => {
+      dismiss.focus();
+    });
+    fireEvent.pointerLeave(item);
+    advance(10_000);
+    expect(visible()).toEqual(["Saved"]);
+    act(() => {
+      dismiss.blur();
+    });
+    advance(4000 + EXIT);
+    expect(visible()).toEqual([]);
+  });
+
+  it("stays paused while hovered, even when focus leaves", () => {
+    vi.useFakeTimers();
+    render(<Toaster />);
+    act(() => {
+      toast("Saved");
+    });
+    const item = screen.getByRole("listitem");
+    const dismiss = within(item).getByRole("button");
+    act(() => {
+      dismiss.focus();
+    });
+    fireEvent.pointerEnter(item);
+    act(() => {
+      dismiss.blur();
+    });
+    advance(10_000);
+    expect(visible()).toEqual(["Saved"]);
+    fireEvent.pointerLeave(item);
+    advance(4000 + EXIT);
+    expect(visible()).toEqual([]);
+  });
+
   it("can be unmounted with timers pending, and keeps the waiting toasts for the next mount", () => {
     vi.useFakeTimers();
     const first = render(<Toaster />);
