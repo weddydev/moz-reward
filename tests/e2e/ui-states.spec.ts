@@ -336,6 +336,54 @@ test.describe("[P0-09] UI gallery states", () => {
     expect(result.manyTabsScroll).toBe(true);
     expect(result.chipRowScrolls).toBe(true);
 
+    // SegmentedControl labels sit on one line in their 40px pill and are shown in full at 320.
+    const segments = page.locator('[role="radiogroup"] > button[role="radio"]');
+    expect(await segments.count()).toBeGreaterThan(0);
+    for (const seg of await segments.all()) {
+      const fit = await seg.evaluate((el) => {
+        // Line boxes of the label text (the hit-44 ::after makes the button's own scroll size larger).
+        const range = document.createRange();
+        range.selectNodeContents((el.firstElementChild ?? el).firstChild ?? el);
+        const tops = new Set([...range.getClientRects()].map((r) => Math.round(r.top)));
+        return {
+          label: el.textContent,
+          oneLine: tops.size === 1,
+          // The label span truncates as a last resort; shown in full means it didn't need to.
+          whole:
+            (el.firstElementChild ?? el).scrollWidth <=
+            (el.firstElementChild ?? el).clientWidth + 0.5,
+        };
+      });
+      expect(fit, fit.label).toEqual({ label: fit.label, oneLine: true, whole: true });
+    }
+
+    // A table's empty-row message stays inside the visible part of its scroll region, with padding,
+    // even when the columns make the table wider than the screen.
+    const emptyCells = page.locator('[data-primitive="Table"] [role="region"] td[colspan]');
+    expect(await emptyCells.count()).toBeGreaterThan(0);
+    for (const cell of await emptyCells.all()) {
+      const box = await cell.evaluate((td) => {
+        const region = td.closest('[role="region"]');
+        // Measure the text itself (not its padded box): the union of every text node's rects.
+        const walker = document.createTreeWalker(td, NodeFilter.SHOW_TEXT);
+        let left = Infinity;
+        let right = -Infinity;
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          if (!n.textContent?.trim()) continue;
+          const range = document.createRange();
+          range.selectNodeContents(n);
+          for (const rect of range.getClientRects()) {
+            left = Math.min(left, rect.left);
+            right = Math.max(right, rect.right);
+          }
+        }
+        const r = region?.getBoundingClientRect();
+        return r && left < right ? { left: left - r.left, right: r.right - right } : null;
+      });
+      expect(box?.left).toBeGreaterThanOrEqual(16);
+      expect(box?.right).toBeGreaterThanOrEqual(16);
+    }
+
     // £1,234,567.89 in a two-column grid fits its card.
     const kpi = page.locator('[data-fixture="kpi-large"]').getByText("£1,234,567.89");
     const fits = await kpi.evaluate((el) => {
@@ -402,6 +450,18 @@ test.describe("[P0-09] UI gallery states", () => {
     const loading = table.getByRole("region", { name: "Customers (loading)" });
     const none = table.getByRole("region", { name: "Customers (none yet)" });
     const many = table.getByRole("region", { name: "All customers" });
+
+    // Columns sit at the same places whether the table is loading, empty or full: when data arrives
+    // nothing shifts sideways either. The four gallery tables share one column list.
+    const columnEdges = (region: typeof first): Promise<number[]> =>
+      region.locator("thead th").evaluateAll((ths) => {
+        const t = ths[0]?.closest("table")?.getBoundingClientRect().left ?? 0;
+        return ths.map((th) => Math.round(th.getBoundingClientRect().left - t));
+      });
+    const dataEdges = await columnEdges(first);
+    expect(dataEdges.length).toBeGreaterThan(1);
+    for (const region of [loading, none, many])
+      expect(await columnEdges(region)).toEqual(dataEdges);
 
     // Sticky header inside its own scroll region.
     await many.evaluate((el) => {

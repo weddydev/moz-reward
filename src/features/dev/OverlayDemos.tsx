@@ -81,7 +81,7 @@ export function OverlayDemos(): React.JSX.Element {
       </Demo>
       <Demo
         name="SidePanel"
-        note="Full width on phones, a 420px panel from the right on wider screens."
+        note="Slides in from the right, up to 480px wide; on phones a strip of the page stays visible (tap it to close)."
       >
         <div className="flex flex-wrap gap-3">{trigger("panel", "Side panel")}</div>
       </Demo>

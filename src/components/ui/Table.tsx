@@ -12,6 +12,12 @@ export type Column<Row> = {
   align?: "left" | "right";
   /** Numeric columns use tabular figures. */
   numeric?: boolean;
+  /**
+   * CSS width (e.g. "8rem"). When columns give widths the table uses a fixed layout, so the columns sit at
+   * the same places while loading, empty and full: nothing shifts sideways when data arrives (AC 9). The
+   * table still grows past its region (which then scrolls) when the widths add up to more.
+   */
+  width?: string;
 };
 
 export type Density = "comfortable" | "compact";
@@ -102,6 +108,7 @@ export function Table<Row>({
   }, []);
 
   const action = onRowClick;
+  const fixedLayout = columns.some((c) => c.width !== undefined);
   return (
     <div className="border-line bg-surface min-w-0 overflow-hidden rounded-md border">
       <div className="border-line flex items-center justify-between gap-3 border-b px-4 py-2">
@@ -126,11 +133,21 @@ export function Table<Row>({
           aria-busy={loading || undefined}
           tabIndex={0}
           data-overflow={overflow}
-          className="max-h-[70dvh] overflow-auto overscroll-contain"
+          className="@container max-h-[70dvh] overflow-auto overscroll-contain"
         >
           {loading ? <p className="sr-only">Loading {caption}</p> : null}
-          <table data-density={density} className="text-small w-full border-collapse">
+          <table
+            data-density={density}
+            className={cx("text-small w-full border-collapse", fixedLayout && "table-fixed")}
+          >
             <caption className="sr-only">{caption}</caption>
+            {fixedLayout ? (
+              <colgroup>
+                {columns.map((c) => (
+                  <col key={c.key} style={c.width ? { width: c.width } : undefined} />
+                ))}
+              </colgroup>
+            ) : null}
             <thead className="bg-surface-2 sticky top-0 z-10">
               <tr>
                 {columns.map((c) => (
@@ -171,8 +188,12 @@ export function Table<Row>({
                 ))
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length}>
-                    {empty ?? <p className="text-ink-2 p-6 text-center">Nothing here yet.</p>}
+                  <td colSpan={columns.length} className="p-0">
+                    {/* Pinned to the visible width of the scroll region (`100cqw`), so the message is
+                        never cut off when the columns make the table wider than the screen. */}
+                    <div className="text-ink-2 sticky left-0 w-[100cqw] p-6 text-center">
+                      {empty ?? "Nothing here yet."}
+                    </div>
                   </td>
                 </tr>
               ) : (

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Button } from "./Button";
 import { Chip } from "./Chip";
+import { KpiCard } from "./KpiCard";
 import { ProgressBar } from "./ProgressBar";
 import { SegmentedControl } from "./SegmentedControl";
 import { sparklinePath } from "./Sparkline";
@@ -223,5 +224,24 @@ describe("[P0-09] Chip", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Clean" }));
     expect(onToggle).not.toHaveBeenCalled();
+  });
+});
+
+describe("[P0-09] KpiCard", () => {
+  it("lets a long value break only after a thousands separator, never inside a digit group", () => {
+    const { container } = render(<KpiCard label="Revenue this year" value="£1,234,567.89" />);
+    const value = screen.getByText(
+      (_, el) => el?.tagName === "P" && el.textContent === "£1,234,567.89",
+    );
+    expect(value.querySelectorAll("wbr")).toHaveLength(2);
+    expect(value.innerHTML).toBe("£1,<wbr>234,<wbr>567.89");
+    expect(value.className).toContain("[word-break:keep-all]");
+    expect(value.className).not.toContain("overflow-wrap:anywhere");
+    expect(container.textContent).toContain("£1,234,567.89");
+  });
+
+  it("leaves a value without separators as plain text", () => {
+    render(<KpiCard label="Visits today" value="38" />);
+    expect(screen.getByText("38").querySelectorAll("wbr")).toHaveLength(0);
   });
 });

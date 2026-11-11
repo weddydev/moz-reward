@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-11 — P0-09 design review fixes: table column widths, KPI line breaks, "Device" label
+Decision: `Column.width` (optional CSS length) switches a Table to `table-layout: fixed` with a `<colgroup>`, so columns don't move between loading, empty and full; the empty message is pinned to the region's visible width (`@container` + `100cqw`, sticky). KpiCard values may wrap only after a thousands separator (`<wbr>` + `word-break: keep-all`), never inside a digit group. The motion preference's first option is now "Device" (was "Device setting", which wrapped in its pill at 320/390); SegmentedControl labels stay on one line (ellipsis on the label span, not the button, so `hit-44` isn't clipped).
+Why: design-reviewer MEDIUM findings (empty row clipped, "£1,234,56 / 7.89", wrapped segment, 70px column shift loading → data).
+Consequence: P1/P2 tables should give every column a `width`. Copy elsewhere (Me tab, P1) uses "Device" for "follow the device setting".
+
 ## 2026-11-11 — Gallery state matrix, long button labels, table row height, toast pause (P0-09 step D)
 Decision: `/dev/ui` gives every primitive its own `Demo` block (`data-primitive`, name typed against `src/features/dev/gallery-list.ts`); prop states (disabled, loading, error, selected, empty, edge values) are shown side by side, while hover, focus-visible and pressed stay live, not faked with forced classes. A long Button label wraps (centred) and the button grows from a minimum height (`min-h-*`, was fixed `h-*` + `nowrap`); it is never truncated. Table data and skeleton rows share one minimum height (`h-12` / compact `h-9`). Toast hover and focus pause independently.
 Why: forced-state classes would ship gallery-only CSS to every page. DESIGN is silent on long labels, and wrapping keeps the visible text equal to the accessible name. Mixed inline content (row button, mono span) made data rows 2px taller than skeleton rows (AC 9). On touch screens every tap ends with `pointerleave`, which restarted a toast's timer while focus was inside it.

@@ -70,11 +70,16 @@ const MANY_MEMBERS: Member[] = Array.from({ length: 24 }, (_, i) => ({
   last: `${String(1 + (i % 28))} Oct 2026`,
 }));
 const COLUMNS: Column<Member>[] = [
-  { key: "name", header: "Name", cell: (r) => r.name },
-  { key: "id", header: "Member ID", cell: (r) => <span className="font-mono">{r.memberId}</span> },
-  { key: "visits", header: "Visits", cell: (r) => r.visits, numeric: true },
-  { key: "spend", header: "Spend", cell: (r) => r.spend, numeric: true },
-  { key: "last", header: "Last visit", cell: (r) => r.last },
+  { key: "name", header: "Name", cell: (r) => r.name, width: "11rem" },
+  {
+    key: "id",
+    header: "Member ID",
+    cell: (r) => <span className="font-mono">{r.memberId}</span>,
+    width: "8.5rem",
+  },
+  { key: "visits", header: "Visits", cell: (r) => r.visits, numeric: true, width: "6rem" },
+  { key: "spend", header: "Spend", cell: (r) => r.spend, numeric: true, width: "7rem" },
+  { key: "last", header: "Last visit", cell: (r) => r.last, width: "9rem" },
 ];
 const openRow = (r: Member): void => {
   toast(`Open ${r.name}`);

@@ -72,11 +72,12 @@ export function SegmentedControl<T extends string>({
             onChange(o.value);
           }}
           className={cx(
-            "hit-44 rounded-pill text-small duration-fast z-10 h-10 px-3 font-semibold transition-colors",
+            "hit-44 rounded-pill text-small duration-fast z-10 h-10 min-w-0 px-3 font-semibold transition-colors",
             o.value === value ? "text-ink" : "text-ink-2",
           )}
         >
-          {o.label}
+          {/* Truncation sits on the label: overflow on the button would clip its hit-44 area. */}
+          <span className="block truncate">{o.label}</span>
         </button>
       ))}
     </div>

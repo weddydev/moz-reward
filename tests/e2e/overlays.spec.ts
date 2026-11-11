@@ -145,6 +145,38 @@ test.describe("[P0-09] overlays", () => {
   test("[P0-09] motion: transform + opacity only, ≤ 300ms; reduced motion only fades", async ({
     page,
   }) => {
+    /** Records which properties start a transition on an overlay panel from now on. */
+    const record = (): Promise<void> =>
+      page.evaluate(() => {
+        const w = window as unknown as { __started: string[]; __rec?: boolean };
+        w.__started = [];
+        if (w.__rec) return;
+        w.__rec = true;
+        document.addEventListener(
+          "transitionstart",
+          (e) => {
+            if ((e.target as Element).classList.contains("overlay-panel"))
+              w.__started.push(e.propertyName);
+          },
+          true,
+        );
+      });
+    const started = (): Promise<string[]> =>
+      page.evaluate(() => (window as unknown as { __started: string[] }).__started);
+    const settle = (): Promise<void> => page.waitForTimeout(400);
+
+    // Full motion: SidePanel and BottomSheet slide while staying opaque (no opacity transition).
+    for (const demo of ["panel", "sheet"] as const) {
+      await record();
+      await trigger(page, demo).click();
+      await settle();
+      expect(await started()).toEqual(["transform"]);
+      await record();
+      await page.getByRole("button", { name: "Close" }).click();
+      await expect(page.locator("dialog")).toHaveCount(0);
+      expect(await started()).toEqual(["transform"]);
+    }
+
     for (const demo of ["modal", "panel", "sheet"] as const) {
       await open(page, demo);
       const t = await panelOf(page).evaluate((el) => {
@@ -163,6 +195,15 @@ test.describe("[P0-09] overlays", () => {
     }
     await page.emulateMedia({ reducedMotion: "reduce" });
     for (const demo of ["modal", "panel", "sheet"] as const) {
+      // Reduced motion: every overlay fades in and out (never pops), and nothing moves.
+      await record();
+      await trigger(page, demo).click();
+      await settle();
+      expect(await started(), `${demo} opens with a fade`).toEqual(["opacity"]);
+      await record();
+      await page.getByRole("button", { name: "Close" }).click();
+      await expect(page.locator("dialog")).toHaveCount(0);
+      expect(await started(), `${demo} closes with a fade`).toEqual(["opacity"]);
       await trigger(page, demo).click();
       // While entering: no transform anywhere on the panel, only an opacity fade.
       const enter = await panelOf(page).evaluate((el) => ({

@@ -476,12 +476,12 @@
     padding-right: env(safe-area-inset-right, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
     @starting-style {
-      opacity: calc(1 - var(--motion-on));
+      opacity: var(--motion-on);
       transform: translateX(calc(100% * var(--motion-on)));
     }
   }
   .overlay[data-kind="panel"][data-state="closing"] .overlay-panel {
-    opacity: calc(1 - var(--motion-on));
+    opacity: var(--motion-on);
     transform: translateX(calc(100% * var(--motion-on)));
   }
 
@@ -496,12 +496,12 @@
     border-radius: var(--r-lg) var(--r-lg) 0 0;
     padding-bottom: env(safe-area-inset-bottom, 0px);
     @starting-style {
-      opacity: calc(1 - var(--motion-on));
+      opacity: var(--motion-on);
       transform: translateY(calc(100% * var(--motion-on)));
     }
   }
   .overlay[data-kind="sheet"][data-state="closing"] .overlay-panel {
-    opacity: calc(1 - var(--motion-on));
+    opacity: var(--motion-on);
     transform: translateY(calc(100% * var(--motion-on)));
   }
   .overlay[data-kind="sheet"] .overlay-grip {

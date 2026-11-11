@@ -284,3 +284,9 @@ Evidence: new tests found 5 real defects, each fixed at the root cause (Button l
 Evidence: `pnpm check` PASS (unit 720); the three P0-09 specs green on all 5 projects after fixes.
 Evidence: gate:task PASS on `ddeb8b3` (unit 720, int 475, E2E P0-09 59/0); first push refused by Semgrep (non-literal RegExp in a test), fixed.
 Not verified: screenshots inspection, e2e:visual (macOS), design-reviewer. Next: step D part 2 (PROGRESS handoff).
+
+## 2026-11-11 (15:50–16:40 IST) — P0 — P0-09 step D part 2 (talha.syed, macOS)
+Done: resume (light path; merged main's progress commit). Screenshots inspected (320 Chromium by me; 390/1440/phones/overlays by design-reviewer). macOS visual baselines written, inspected, committed. design-reviewer: 1 HIGH (reduced-motion overlays popped: inverted opacity) + 4 MEDIUM (table empty row clipped, KPI split mid-digit, segment label wrapped, table columns shifted) fixed, each with a check seen failing first; LOWs → PROGRESS follow-ups.
+Evidence: gate:task P0-09 PASS (unit 723, int 475, build, bundle, sast, E2E P0-09 59/0); P0-09 specs on chromium/webkit/iphone14/pixel7 116/0 + 1 AC5 timing flake (3/3 alone); e2e:visual 2/0.
+Not verified: CI full E2E on this push; real-iPhone safe areas.
+Next: CI green → squash wip/P0-09 to main, tick P0-09, drop C-13/C-20; then P0-10.

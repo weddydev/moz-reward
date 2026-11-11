@@ -23,6 +23,25 @@ describe("[P0-09] Table", () => {
     expect(within(table).getByRole("columnheader", { name: "Visits" })).toBeInTheDocument();
   });
 
+  it("uses a fixed layout with one <col> per column when columns give widths, and auto layout otherwise", () => {
+    const sized = COLUMNS.map((c, i) => ({ ...c, width: i === 0 ? "11rem" : "6rem" }));
+    const { container, unmount } = render(
+      <Table caption="Customers" columns={sized} rows={[]} rowKey={rowKey} loading />,
+    );
+    const table = container.querySelector("table");
+    expect(table?.className).toContain("table-fixed");
+    const cols = [...container.querySelectorAll("colgroup col")].map(
+      (c) => (c as HTMLElement).style.width,
+    );
+    expect(cols).toEqual(["11rem", "6rem"]);
+    unmount();
+    const plain = render(
+      <Table caption="Customers" columns={COLUMNS} rows={ROWS} rowKey={rowKey} />,
+    );
+    expect(plain.container.querySelector("table")?.className).not.toContain("table-fixed");
+    expect(plain.container.querySelector("colgroup")).toBeNull();
+  });
+
   it("shows the empty row when there is nothing to list", () => {
     render(<Table caption="Customers" columns={COLUMNS} rows={[]} rowKey={rowKey} />);
     expect(screen.getByText("Nothing here yet.")).toBeInTheDocument();
