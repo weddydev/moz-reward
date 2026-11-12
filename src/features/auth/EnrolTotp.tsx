@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import QRCode from "qrcode";
 import { useId, useState } from "react";
+import { PORTAL_HOME } from "@/features/portal/routes";
 import { authClient } from "@/lib/auth-client";
 import { safeReturnTo } from "@/lib/return-to";
 import { formString, formValue, useHydrated } from "@/lib/use-hydrated";
@@ -14,7 +15,7 @@ type Enrolment = { qr: string; secret: string; backupCodes: string[] };
 
 export function EnrolTotp(): React.JSX.Element {
   const router = useRouter();
-  const returnTo = safeReturnTo(useSearchParams().get("returnTo"), "/dashboard");
+  const returnTo = safeReturnTo(useSearchParams().get("returnTo"), PORTAL_HOME);
   const ids = { password: useId(), code: useId(), error: useId() };
   const hydrated = useHydrated();
   const [enrolment, setEnrolment] = useState<Enrolment | null>(null);

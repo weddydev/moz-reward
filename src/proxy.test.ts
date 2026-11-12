@@ -48,6 +48,14 @@ describe("[P0-05] proxy: CSP nonce, security headers, request id, /dev gate", ()
     expect(forwarded("x-request-id")).toBe(id);
   });
 
+  it("[P0-12] forwards the request path as x-pathname for the layout gate, overwriting a client value", async () => {
+    expect((await run("/dashboard/settings?x=1")).forwarded("x-pathname")).toBe(
+      "/dashboard/settings",
+    );
+    const spoofed = await run("/admin/system", { "x-pathname": "/admin" });
+    expect(spoofed.forwarded("x-pathname")).toBe("/admin/system");
+  });
+
   it("ignores a client-supplied request id without a trusted proxy (log correlation can't be forged)", async () => {
     const { res } = await run("/", { "x-request-id": "attacker-chosen-id-123" });
     expect(res.headers.get("x-request-id")).not.toBe("attacker-chosen-id-123");

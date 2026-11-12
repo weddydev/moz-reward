@@ -72,6 +72,9 @@
   /* Signature moments only (DESIGN §8 gives each its own 900–1600ms length; this is the middle). */
   --dur-hero: 1200ms;
   --dur-exit: 160ms;
+  --dur-instant: 0ms;
+  /* Hover intent: a pointer passing over (not stopping on) a hover-opened panel doesn't open it. */
+  --delay-intent: 100ms;
   --dur-sheen: 600ms;
   --dur-shimmer: 1200ms;
   --dur-spin: 700ms;
@@ -87,6 +90,7 @@
   --rail-w-open: 220px;
   --sidebar-w: 248px;
   --bottom-nav-h: 64px;
+  --scan-rise: 20px;
   --content-max: 560px;
   --content-max-desktop: 1280px;
 }

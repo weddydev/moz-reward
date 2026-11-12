@@ -42,7 +42,8 @@ test("[P0-06] customer sees their signed-in devices and signs another device out
   await signInByEmail(phonePage, mail, email, 1);
   await signInByEmail(page, mail, email, 2);
 
-  const list = page.getByRole("list");
+  // Inside the page: the portal shell has lists (navs) and a status region (toasts) of its own.
+  const list = page.getByRole("main").getByRole("list");
   await expect(list.getByRole("listitem")).toHaveCount(2);
   await expect(list.getByRole("listitem").first()).toContainText("This device");
   await expect(list).toContainText("Safari on iPhone");
@@ -50,7 +51,9 @@ test("[P0-06] customer sees their signed-in devices and signs another device out
   await shoot("devices-list");
 
   await page.getByRole("button", { name: "Sign out of Safari on iPhone" }).click();
-  await expect(page.getByRole("status")).toHaveText("Signed out of Safari on iPhone.");
+  await expect(page.getByRole("main").getByRole("status")).toHaveText(
+    "Signed out of Safari on iPhone.",
+  );
   await expect(list.getByRole("listitem")).toHaveCount(1);
   await expect(page.getByRole("heading", { name: "Signed-in devices" })).toBeFocused(); // not <body>
 

@@ -69,7 +69,9 @@ test("[P0-06] enrolled staff must enter a TOTP code, which creates an MFA-verifi
   // verifyTOTP window = 1), so use the *next* period's code, which always differs from the first.
   await codeInput.fill(totp.generate({ timestamp: Date.now() + 30_000 }));
   await page.getByRole("button", { name: "Verify" }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  // No returnTo: /portal sends the user to their default portal (C-02). This password user has no shop
+  // membership and no admin role, so that is the customer app.
+  await expect(page).toHaveURL(/\/wallet$/);
 
   const session = (await (
     await page.request.get("/api/auth/get-session")

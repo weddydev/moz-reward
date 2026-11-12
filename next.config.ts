@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   // Do not advertise the framework (SECURITY §5 baseline).
   poweredByHeader: false,
+  experimental: { authInterrupts: true },
   // SEC-10: prefetch responses still carry HSTS, nosniff, Referrer-Policy, Permissions-Policy, COOP and
   // X-Frame-Options (SECURITY §5). Two rules because `has` entries must all match.
   headers: () =>

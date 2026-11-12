@@ -1,4 +1,4 @@
-export { Popover } from "./Popover";
+export { Popover, usePopoverClose } from "./Popover";
 export { RouteTransition } from "./RouteTransition";
 export { SharedElement } from "./SharedElement";
 export { TransitionLink } from "./TransitionLink";

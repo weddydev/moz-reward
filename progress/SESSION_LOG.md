@@ -416,3 +416,9 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 ## 2026-11-13 02:55 IST — talha.syed (Mac) — P0-12 steps E and F (wip/P0-12-b)
 - E `007921c`: gate:task PASS (unit 991, int 491, sast, E2E P0-12 46/0); shells E2E on chromium + iphone14 + desktop1440 39/0; screenshots at 320, 390, 1280, 1440 inspected.
 - F `87bc69c`: gate:task PASS (unit 991, int 498, sast, E2E P0-12 56/0); C-24 integration 7/0; portal access/layouts/pages on WebKit 20/0.
+
+## 2026-11-13 04:30 IST — talha.syed (Mac) — P0-12 done (squash of wip/P0-12-b)
+- Step G + review fixes: route authz matrix 562/0 (integration), unit 998/0, `pnpm check` incl. `test:titles --strict` PASS.
+- Full 5-project E2E (production build): 826 passed, 5 failed (rls.spec unscoped list → fixed, then 5/5), 179 skipped by design; shells spec 56/0 on 5 projects; @visual baselines (6) regenerated and inspected.
+- security-reviewer: no BLOCK/HIGH, 2 MEDIUM fixed (page lint own path, blank allowlist boot); design-reviewer: 1 HIGH (rail closing behind its popover) + 4 MEDIUM fixed; LOWs in PROGRESS follow-ups.
+- C-01, C-02, C-04, C-05, C-24 closed (matrix, E2E, integration as listed in the CARRIED rows).

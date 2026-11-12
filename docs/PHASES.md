@@ -54,7 +54,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 
 **P0-D · Portal shells**
 
-- [ ] P0-12 · App shells, navigation and route groups
+- [x] P0-12 · App shells, navigation and route groups
 - [ ] P0-D closed with `/subphase-complete`
 
 - [ ] P0 closed with `/phase-complete`

@@ -15,8 +15,11 @@ import {
   makeActor,
   makeAdmin,
   makeOpsSnapshot,
+  makeShop,
+  makeStaff,
   makeUser,
   markSessionMfaVerified,
+  setStaffActive,
 } from "@/server/testing/factories";
 import { testApiAllowed } from "@/server/testing/test-api";
 
@@ -26,7 +29,19 @@ import { testApiAllowed } from "@/server/testing/test-api";
  */
 const notFound = (): Response => new Response("Not found", { status: 404 });
 
-const sessionInput = z.object({ role: z.enum(ACTOR_ROLES), shopId: z.uuid().optional() }).strict();
+/** P0-12: deactivate (or reactivate) one membership, as an owner removing a member would. */
+const staffActiveInput = z
+  .object({ userId: z.uuid(), shopId: z.uuid(), active: z.boolean() })
+  .strict();
+
+const sessionInput = z
+  .object({
+    role: z.enum(ACTOR_ROLES),
+    shopId: z.uuid().optional(),
+    /** P0-12: staff/owner actors can also be staff of this many extra new shops (shop switcher). */
+    extraShops: z.number().int().min(0).max(3).optional(),
+  })
+  .strict();
 
 type TestCookie = {
   name: string;
@@ -123,6 +138,12 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
   switch (action) {
     case "session":
       return createSession(body);
+    case "staff-active": {
+      const parsed = staffActiveInput.safeParse(body);
+      if (!parsed.success) return invalid();
+      await setStaffActive(parsed.data.userId, parsed.data.shopId, parsed.data.active);
+      return NextResponse.json({ ok: true });
+    }
     case "user": {
       const parsed = userInput.safeParse(body ?? {});
       if (!parsed.success) return invalid();
@@ -224,6 +245,12 @@ async function createSession(body: unknown): Promise<Response> {
     parsed.data.role,
     parsed.data.shopId ? { shopId: parsed.data.shopId } : {},
   );
+  const extraShopIds: string[] = [];
+  for (let i = 0; i < (parsed.data.extraShops ?? 0); i++) {
+    const shop = await makeShop({ name: `Second Shop ${String(i + 1)}` });
+    await makeStaff(shop.id, actor.user.id, "staff");
+    extraShopIds.push(shop.id);
+  }
   const helpers = ((await getAuth().$context) as unknown as { test?: TestHelpers }).test;
   if (!helpers) return NextResponse.json({ error: "test utilities unavailable" }, { status: 500 });
 
@@ -237,6 +264,7 @@ async function createSession(body: unknown): Promise<Response> {
     shopId: actor.shopId,
     shopCode: actor.shopCode,
     role: parsed.data.role,
+    extraShopIds,
   });
   for (const c of login.cookies) {
     res.cookies.set(c.name, c.value, {

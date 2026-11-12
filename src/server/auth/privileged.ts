@@ -77,3 +77,19 @@ export async function sessionPastRoleLimit(
   if (kind === "admin") return true;
   return kind === "staff" && age > STAFF_SESSION_MAX_MS;
 }
+
+/**
+ * The admin account behind an email (any admin row, active or not), or null. One query of the same shape for
+ * every email, so the admin IP allowlist check (C-24) costs the same whether the address is an admin's, a
+ * staff member's or unknown.
+ */
+export async function adminUserIdByEmail(email: string): Promise<string | null> {
+  const normalized = email.trim().toLowerCase();
+  const [row] = await poolFor(IDENTITY)
+    .select({ id: users.id })
+    .from(users)
+    .innerJoin(adminMembers, eq(adminMembers.userId, users.id))
+    .where(sql`lower(${users.email}) = ${normalized}`)
+    .limit(1);
+  return row?.id ?? null;
+}
