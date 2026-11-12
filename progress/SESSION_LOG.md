@@ -354,3 +354,9 @@ Evidence: QA: 25+ checks PASS incl. overflow 320/390/1440 both engines, 44px tar
 Not verified: E2E of the batch; CI on `wip/P0-C-close`; real-device sound and haptics (H-37).
 Next: finish the batch (E2E, full E2E), squash to main, tick P0-C, then P0-12.
 
+
+## 2026-11-12 (12:03–14:05 IST) — P0 — P0-C close: batch E2E, CI fix, re-review (Syedbadeshah76, Windows)
+Done: CI `43131670600` red root-caused (slow-page status locator matched the app live region); backdrop ignores `detail > 1`; sound.spec Web Audio-absent fallback; gate-timeout unit tests warm up in `beforeAll`; DECISIONS: Windows WebKit not evidence. `wip/P0-C-close` `deca234` pushed.
+Evidence: Windows WebKit has no `AudioContext` (probe); cold `/dev/ui` hydrate 12.6 s at 4 workers; overlay unit test red→green (3 kinds); gate:task PASS (unit 832, int 475, sast 1400 s).
+Evidence: re-review `72b668a..deca234`: APPROVE WITH FIXES, 0 BLOCK/HIGH, 1 MEDIUM (Toast re-announce) open, 4 LOW (1 to fix with the MEDIUM, 3 in follow-ups).
+Not verified: CI `43181579806` + 5-project Linux E2E `43181605309` (running at checkpoint); Toast MEDIUM fix.

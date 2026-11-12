@@ -177,7 +177,7 @@ Images live in `design/reference/desktop-view/` and `mobile-view/`.
 
 | ID | Task | Done by | Date |
 |---|---|---|---|
-| H-32 | `.env.local` DB role lines on both laptops (Windows confirmed by the human 11 Nov; Claude verifies on the next Windows session: `pnpm db:migrate` without shell overrides) | human | 11 Nov 2026 |
+| H-32 | `.env.local` DB role lines on both laptops (Windows confirmed by the human 11 Nov; verified by Claude on Windows 12 Nov 2026: `pnpm db:migrate` without shell overrides OK) | human | 11 Nov 2026 |
 | H-33 | Deny rules narrowed so `.env.example` is editable (committed `ca9d3d8`) | talha.syed | 10 Nov 2026 |
 | H-22 | Loyalty-rule defaults accepted as written (DECISIONS "Plan v4 defaults"); may be revised later | talha.syed | 10 Nov 2026 |
 | H-32 (Mac) | `.env.local` DB roles updated, `pnpm db:reset`, app starts; Windows laptop still to do | talha.syed | 10 Nov 2026 |
