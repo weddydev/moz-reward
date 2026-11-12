@@ -397,3 +397,10 @@ Human: Sentry org slug `mozereward`; alert email for MOZREWARDS-1 arrived in the
 Human: plus-addressing test passed (mail to <inbox>+moz-test@… landed in the shared Gmail Inbox).
 Human: Sentry alert widened to every new issue (`New issue → email`), test notification received.
 Handoff 2026-11-13 01:21: H-20 and H-04 steps rewritten as given to the human (staging-only Turnstile hostname, sending subdomain mail.mozrewards.com, `_STAGING` secret names → DECISIONS 13 Nov). No code changed since `b26682b` (gate PASS, CI `43285049732` green).
+
+## 2026-11-13 (01:42 → 02:00 IST) — P0 — P0-12 step C (talha.syed, Mac)
+Done: group layouts `(shop)`, `(admin)`, `(customer)` gate before the shell (`gatePortalLayout`), `PortalShell` (nav + `<main>` + `RouteTransition`, Toaster and bottom nav outside it), nav from the route table, `/admin/system` on `gateAdminRoute`, placeholder `/dashboard`, `/wallet`, `/me`. `main` merged into `wip/P0-12-b` (local `wip/P0-C-close` was superseded by `32c0513`; its rebase conflict was aborted, nothing lost).
+Evidence: `pnpm e2e portal-layouts.spec.ts system-page.spec.ts --project chromium --project iphone14` (production build): 16 passed, 0 failed (signed out → 307 + returnTo; customer on shop/admin → 403, no shell; staff nav without owner items).
+Evidence: gate:task PASS on `aebb93f` (unit 949, int 475, build, bundle, sast, E2E P0-12 10/0); pushed to `wip/P0-12-b`.
+Not verified: push CI on `aebb93f` (running); WebKit desktop, Pixel 7, 1440; shell visuals against DESIGN §5 (step E).
+Human: H-20 widget created, `TURNSTILE_SECRET_KEY_STAGING` set (gh secret list, 12 Nov 20:23 UTC); site key received; setting `NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` was blocked by the Mac's permission mode (one command left, in HUMAN_TASKS).
