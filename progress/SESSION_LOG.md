@@ -388,3 +388,6 @@ Human: H-06 done (VPS 72.61.17.208, SSH + deploy key verified by the human, `DEP
 Evidence: 5-project Linux E2E `43269125099` on `576b73e`: 675 passed, 0 failed, 0 flaky (170 skipped) → **P0-C ticked**.
 Handoff: 5-project run `43275952611` dispatched on `wip/P0-12-b` `01dcf97` (push CI `43275681180` running).
 Human + Claude: H-26 done. OpenPGP RSA 4096 backup key `1D1D1BF1F6FDA0F2EDA8FAA0D356B5CAA21C0F58` (Gpg4win 2.5.24); public key exported to `infra/backup/moz-backup-public.asc` (fingerprint verified); private key exported to a file, copied by the human into the password manager with the passphrase and revocation certificate, file deleted; encrypt/decrypt round trip OK.
+
+## 2026-11-13 — P0 — human tasks (Syedbadeshah76, Windows)
+Human: H-08 done on Backblaze B2 (`mozrewards-backups-dfd829`, EU Central, scoped key; R2 couldn't be enabled) → DECISIONS 13 Nov, C-41 (R2 or processor register before launch), H-08b (upload buckets before P2). H-27 and H-34 steps given; in progress.

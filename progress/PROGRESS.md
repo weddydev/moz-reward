@@ -14,7 +14,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **How to continue:** `git pull`; then `git checkout wip/P0-12-b && git pull` and build step C.
 - **Tested:** see "Last verified". **Not yet tested:** a 5-project run with the proxy `x-pathname` change; the quarantined pixel7 motion test (C-40); P0-12 beyond unit tests; real-device sound and haptics (H-37); iPhone WebKit scroll lock and touch-scroll (QA NOT VERIFIED); staging (none until P0-15).
 - **Nothing to do first:** no new env vars, migrations or seeds. (`wip/P0-12-b` makes a malformed `ADMIN_IP_ALLOWLIST` fail the boot; unset is fine.)
-- **Human side (12 Nov):** VPS ready (H-06 done: IP 72.61.17.208, both SSH keys + deploy key work, `DEPLOY_SSH_KEY` set; root password login still on until the P0-15 hardening script turns it off); domain **mozrewards.com** on Cloudflare, DNS empty (H-07 done); R2 now only the backups bucket (H-08 split; R2 can't be enabled now, Backblaze B2 offered); backup key done (H-26, fingerprint `1D1D1BF1F6FDA0F2EDA8FAA0D356B5CAA21C0F58`, public key `infra/backup/moz-backup-public.asc`). Staging host will be `staging.mozrewards.com`.
+- **Human side (12 Nov):** VPS ready (H-06 done: IP 72.61.17.208, both SSH keys + deploy key work, `DEPLOY_SSH_KEY` set; root password login still on until the P0-15 hardening script turns it off); domain **mozrewards.com** on Cloudflare, DNS empty (H-07 done); backups bucket on Backblaze B2 `mozrewards-backups-dfd829` (H-08 done; R2 couldn't be enabled; DECISIONS 13 Nov); backup key done (H-26, fingerprint `1D1D1BF1F6FDA0F2EDA8FAA0D356B5CAA21C0F58`, public key `infra/backup/moz-backup-public.asc`). Staging host will be `staging.mozrewards.com`.
 - **Low memory on this Windows laptop:** with VS Code + Chrome open, free virtual memory fell to ~1.3 GB and a pre-push gate crashed a Vitest worker (0xC0000409): not a code failure, re-run. Docker Desktop also stopped once: start it (`%LOCALAPPDATA%\Programs\DockerDesktop\Docker Desktop.exe`), then `pnpm services:up`; the gitleaks hook needs it. `pnpm sast` takes 10–23 min here.
 - **Linux WebKit locally:** serve the `.next-e2e` build on :3100 with `--hostname 0.0.0.0` and the `e2eServerEnv()` variables; in `mcr.microsoft.com/playwright:v1.65.0-noble` copy `git ls-files`, `npm i -g pnpm`, `pnpm install --frozen-lockfile --ignore-scripts`, then `E2E_BASE_URL=http://host.docker.internal:3100 pnpm exec playwright test <spec> --project webkit`. Don't run it, or any build, beside `gate:task`.
 - **CI state:** four push runs stuck `queued` since the 12 Nov Actions outage can't be cancelled: ignore them. Each 5-project run costs ~35–44 Actions minutes (five today). A git worktree can't commit (gitleaks hook).
@@ -24,13 +24,13 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → ~~P0-16~~; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-12 23:33 IST, Syedbadeshah76 (handoff: P0-C ticked; P0-12 steps A–B on wip/P0-12-b 01dcf97)
-- **Staging and production:** one Hostinger VPS 72.61.17.208 (ready, not hardened; P0-15 needs H-08 backups bucket, H-27) — not provisioned yet
+- **Last updated:** 2026-11-13 00:27 IST, Syedbadeshah76 (H-06/07/08/26 done; P0-C ticked; P0-12 steps A–B on wip/P0-12-b 01dcf97)
+- **Staging and production:** one Hostinger VPS 72.61.17.208 (ready, not hardened; P0-15 needs H-27; backups on B2) — not provisioned yet
 
 ## Now
 - **P0-C closed** (`576b73e`; 5-project run `43269125099` 675/0/0 flaky). C-40 quarantine open (P0 phase gate).
 - **P0-12 on `wip/P0-12-b` `01dcf97`:** steps A–B done (allowlist, route table, page + layout gates, active-shop cookie, proxy `x-pathname`); step C (group layouts) next.
-- P0-15 is the only P0-E task left: VPS (H-06) and domain (H-07) ready; waits on H-08 (backups bucket), H-27.
+- P0-15 is the only P0-E task left: VPS (H-06) and domain (H-07) ready; backups bucket ready (B2); waits on H-27 (+ H-34, H-36, H-20, H-04 for the full staging sign-in).
 
 ## Next (top 3)
 1. **Check the 5-project run `43275952611` on `wip/P0-12-b`** (proxy `x-pathname` change; dispatched at handoff) and push CI `43275681180`; red or flaky is fixed first.
@@ -63,11 +63,12 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-38 | P0-16 | P0-15 | Staging release runs `db:seed` as moz_worker with `DEMO_EMAIL_BASE` (exit 0 incl. the TOTP check); weekly `db:seed --reset` + RUNBOOK line; slim image can run `db:seed` / `demo:credentials`; demo owner password alone → challenge, enable 401 on staging | deploy log + staging curl |
 | C-39 | P0-10 review | first P1 task that puts a menu, select or popover inside a Modal/SidePanel/BottomSheet | `Popover` portals to `<body>`, so inside a `showModal()` dialog it renders under the top layer and is inert: portal into the open dialog (or the top layer) and re-check placement | E2E: popover opened inside a modal is visible and clickable |
 | C-40 | P0-C flaky (CI 43206412851) | P0 phase gate | Pixel 7 "[P0-09] motion" quarantined (`test.fixme` on pixel7): closing a panel once recorded two `transform` transitionstarts; find the cause, fix, remove the fixme | 5-project run with the test active, 0 flaky |
+| C-41 | H-08 (13 Nov) | P5 launch readiness | Backups leave Backblaze B2 for R2, or Backblaze is added to the processor register / ROPA and reviewed by the solicitor (H-23) before any real customer data is backed up | DECISIONS + processor register |
 | C-17 | Stryker | P0 phase gate | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 
 ## Blockers
 - Human 🔴: none.
-- 🟠 (needed by Sun 15 Nov for P0-15): H-08 backups bucket (R2 can't be enabled now → Backblaze B2 stopgap offered, human to decide), H-27 UptimeRobot, H-04 Resend + Brevo, H-20 Turnstile, H-28 staging OAuth, H-34 Sentry, H-36 demo inbox, H-31 Renovate app, H-21 client's written risk acceptance, H-17 permissions. **Start now:** H-12 Play organisation account. **H-37** (🟠, before P1-06): iPhone + Android listen and vibrate check.
+- 🟠 (needed by Sun 15 Nov for P0-15): H-27 UptimeRobot, H-04 Resend + Brevo, H-20 Turnstile, H-28 staging OAuth, H-34 Sentry, H-36 demo inbox, H-31 Renovate app, H-21 client's written risk acceptance, H-17 permissions. **Start now:** H-12 Play organisation account. **H-37** (🟠, before P1-06): iPhone + Android listen and vibrate check.
 - Technical: C-40 (quarantined test) blocks the P0 phase gate. CI queue stalled during the Actions outage (see handoff). Known risk for P0-15: wal-g `wal-push` hangs against R2 without `ca-certificates` in the Postgres image (wal-g #2550).
 
 ## Map of the codebase
