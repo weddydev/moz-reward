@@ -412,3 +412,7 @@ Evidence: gate:task PASS on `7878fdf` (unit 987, int 475, build, bundle, sast, E
 Not verified: push CI on `7878fdf` and `aebb93f` (running); Pixel 7 and desktop1440; `global-error.tsx`.
 Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret list`); H-31 Renovate app done on the human's word (no Renovate PR or issue yet).
 
+
+## 2026-11-13 02:55 IST — talha.syed (Mac) — P0-12 steps E and F (wip/P0-12-b)
+- E `007921c`: gate:task PASS (unit 991, int 491, sast, E2E P0-12 46/0); shells E2E on chromium + iphone14 + desktop1440 39/0; screenshots at 320, 390, 1280, 1440 inspected.
+- F `87bc69c`: gate:task PASS (unit 991, int 498, sast, E2E P0-12 56/0); C-24 integration 7/0; portal access/layouts/pages on WebKit 20/0.
