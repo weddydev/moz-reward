@@ -368,3 +368,10 @@ Evidence: 5-project Linux E2E `43194053878` on `4a8851e`: 675 passed, 0 failed, 
 Evidence: gate:task PASS on `5e68c4b` and `4a8851e` (unit 834, int 475, build, bundle, sast); push CI `43185895789` and `43194017373` green.
 Evidence: review of `deca234..883e0b9` (code-reviewer): APPROVE WITH FIXES, 0 BLOCK/HIGH, 2 MEDIUM fixed (Toast per-region burst, test red→green, unit 16/0; AC5 accepts only the transition heading to the pressed value), LOW 4 and 5 fixed, LOW 3 and 6 in follow-ups. After the fixes: Linux WebKit + iPhone 14, 2 workers ×3: 12/0. code-review done 72b668a, code-review done deca234, code-review done 883e0b9.
 Not verified: 5-project Linux E2E on the squashed `main` commit (dispatched after the push); the P0-C line in PHASES is ticked only when it is green.
+
+## 2026-11-12 (→ 17:30 IST) — P0 — P0-C close on main (not ticked), P0-12 step A on wip, handoff (Syedbadeshah76, Windows)
+Done: P0-C close squashed to `main` `32c0513` (gate:task PASS: unit 836, int 475, build, bundle, sast, E2E 39/0). P0-12 step A on `wip/P0-12` `faabf3b`: admin IP allowlist (parser, env, policy), portal route table, `safeReturnTo` page-only, `authInterrupts` + 403 stub. Security design check of the P0-12 plan folded into the brief.
+Evidence: push CI on `main` `43206390543` green; 5-project Linux E2E `43206412851` on `32c0513`: 674 passed, 0 failed, **2 flaky** (WebKit "toast open: axe clean": contrast on the toast message; Pixel 7 overlay motion: two `transform` starts on close) → P0-C not ticked.
+Evidence: 403 probe on a production build: layout `forbidden()` → 403 but the page's content is in the response; page `forbidden()` → 403 without `loading.tsx` above, 200 with it (DECISIONS).
+Evidence: `wip/P0-12` unit: allowlist 46, env 21, authz 31, routes 11, return-to 34, all green; gate:task PASS on `faabf3b` (first push refused: an integration test timed out under a parallel build; 3/0 alone).
+Not verified: the two flaky tests' causes; a 5-project run with 0 flaky; P0-12 beyond step A.

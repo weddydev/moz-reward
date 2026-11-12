@@ -13,6 +13,16 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-12 — P0-12: where the portal gate sits, and the admin route roles
+Decision: `forbidden()` (`experimental.authInterrupts`) renders the 403 page. The route-group layout runs the full gate so a page load gets a real 403, **and every page calls the gate itself**. Roles PRODUCT §2 leaves open: QR & NFC owner + support; Fraud monitor owner + support + moderator.
+Why: measured on a production build (12 Nov): a layout that throws `forbidden()` answers 403, but the page below it renders in parallel and its content is in that response; a page that throws answers 403 only with no `loading.tsx` above it (200 once streaming has started).
+Consequence / revisit when: a page without its own gate leaks into a 403 response, so the authz-coverage lint must require a gate call in every portal `page.tsx`. Revisit the two role choices if the client says otherwise.
+
+## 2026-11-12 — E2E timing on Linux WebKit: wait for events, not for frames or fixed times
+Decision: tests that time motion wait for `transitionend` / animation state, and time "started" with timers; no fixed sleeps and no wall clock measured from frames.
+Why: Linux WebKit (the CI evidence for WebKit and iPhone) paints late: `transitionstart` came 390–1380 ms after `transitionrun` on a just-opened dialog, and a press was first painted at 323 ms for a 120 ms transition. macOS WebKit never showed it.
+Consequence / revisit when: reproduce locally in `mcr.microsoft.com/playwright:v1.65.0-noble` against the production build (PROGRESS handoff). Never run a build or install beside `gate:task`: the load timed out an integration test (12 Nov).
+
 ## 2026-11-12 — Playwright's Windows WebKit is not E2E evidence; WebKit/iPhone evidence comes from Linux CI or the Mac
 Decision: on the Windows laptop, `webkit` and `iphone14` results are not evidence. WebKit evidence comes from the 5-project Linux run (`gh workflow run scheduled.yml --ref <branch> -f suite=e2e`) or a Mac run. Chromium projects on Windows count as usual. A test that needs a browser feature the build lacks (Web Audio) checks the fallback and skips the rest with a reason.
 Why: measured 12 Nov 2026: that build has no `AudioContext`, and cold `/dev/ui` takes up to 12.6 s to hydrate with 4 workers. Even at 2 workers, different timing tests fail on every run, none in the code under test, so its failures can't tell app bugs from machine limits.
