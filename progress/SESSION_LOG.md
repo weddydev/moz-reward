@@ -375,3 +375,8 @@ Evidence: push CI on `main` `43206390543` green; 5-project Linux E2E `4320641285
 Evidence: 403 probe on a production build: layout `forbidden()` → 403 but the page's content is in the response; page `forbidden()` → 403 without `loading.tsx` above, 200 with it (DECISIONS).
 Evidence: `wip/P0-12` unit: allowlist 46, env 21, authz 31, routes 11, return-to 34, all green; gate:task PASS on `faabf3b` (first push refused: an integration test timed out under a parallel build; 3/0 alone).
 Not verified: the two flaky tests' causes; a 5-project run with 0 flaky; P0-12 beyond step A.
+
+## 2026-11-12 (17:40 → IST) — P0 — P0-C flaky tests (Syedbadeshah76, Windows)
+Done: WebKit "toast open: axe clean": root cause = the toast's 4 s auto-dismiss firing during a slow axe scan (in-test or the guard's); the test now focuses the toast (pauses the timer), scans, dismisses it and waits for it to go. Pixel 7 "[P0-09] motion": two `transform` starts on close; not reproduced (20/20 alone, 60/60 on 4 workers, Windows), no restart path found in Overlay.tsx / use-sheet-drag.ts / overlay CSS → quarantined on pixel7 (C-40, blocks the P0 phase gate); the assertion now prints the panel's transition event log.
+Evidence: `pnpm e2e overlays.spec.ts -g "toast open|motion: transform" --repeat-each 3` (5 projects, production build): 27 passed, 3 skipped (pixel7 quarantine), 0 failed.
+Not verified: a 5-project Linux run with 0 flaky (dispatched after the push).
