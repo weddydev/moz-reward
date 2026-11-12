@@ -39,7 +39,9 @@ async function serious(page: Page): Promise<string[]> {
 test.describe("[P0-09] overlays", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/dev/ui");
-    await expect(trigger(page, "modal")).toBeEnabled();
+    // Triggers are disabled until hydration. Cold WebKit on a Windows laptop, four workers in parallel, took
+    // up to 12.6 s to hydrate /dev/ui (measured 12 Nov 2026): this waits for it, it doesn't time it.
+    await expect(trigger(page, "modal")).toBeEnabled({ timeout: 20_000 });
   });
 
   for (const demo of ["modal", "panel", "sheet"] as const) {

@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 describe("[P0-20] one pool per database role, per process", () => {
+  // The first import loads the driver, schema and env (cold, over 5 s on a busy laptop during the full
+  // unit run): do it once in setup, so each test's timeout covers only its own checks.
+  beforeAll(async () => {
+    await import("./client");
+  }, 60_000);
+
   it("the web process has no system (BYPASSRLS) pool, and no pool is opened for it", async () => {
     const { dbAs, dbProcess } = await import("./client");
     expect(dbProcess()).toBe("web");

@@ -460,7 +460,10 @@ test.describe("[P0-10] route transitions", () => {
     await page.getByRole("link", { name: "Open a slow page" }).click();
     await expect(page).toHaveURL(/\/dev\/motion\/slow$/);
     // The loading state is what slides in (live, from the first frame).
-    await expect(page.getByRole("status")).toHaveText("Loading the slow page");
+    // Scoped to the page: the app-wide live region is a second, empty `role=status`.
+    await expect(page.locator("[data-route-content]").getByRole("status")).toHaveText(
+      "Loading the slow page",
+    );
     expectOneEnter(await contentAnimations(page), "8px");
     await expect(page.getByRole("heading", { name: "Slow page" })).toBeVisible();
     await settled(page);

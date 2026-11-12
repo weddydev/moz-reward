@@ -38,6 +38,19 @@ async function watchAudio(page: Page): Promise<void> {
 const audio = (page: Page): Promise<Audio> =>
   page.evaluate(() => (window as unknown as { __audio: Audio }).__audio);
 
+/**
+ * Playwright's Windows WebKit build ships without Web Audio (`AudioContext` is undefined; Safari, Mac and
+ * Linux WebKit and Chromium have it). There, a tap must stay silent without touching audio or throwing,
+ * which is checked here; the playback assertions after it are skipped. Call it right after a tap that
+ * would play.
+ */
+async function skipPlaybackWithoutWebAudio(page: Page): Promise<void> {
+  if (await page.evaluate(() => typeof AudioContext !== "undefined")) return;
+  await expect(page.getByTestId("sound-status")).toContainText("stayed silent");
+  expect(await audio(page)).toEqual({ made: 0, resumed: 0, started: 0 });
+  test.skip(true, "this browser build has no Web Audio: silent fallback checked, playback not");
+}
+
 async function openGallery(page: Page): Promise<void> {
   await page.goto("/dev/motion");
   await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
@@ -56,6 +69,7 @@ test.describe("[P0-11] sound and haptics", () => {
 
     const status = page.getByTestId("sound-status");
     await page.getByRole("button", { name: "Play credit" }).click();
+    await skipPlaybackWithoutWebAudio(page);
     await expect(status).toHaveText("Played the credit sound.");
     // A sound asked for inside the unlocking tap starts as soon as the context is awake.
     await expect.poll(async () => (await audio(page)).started).toBe(2);
@@ -102,6 +116,7 @@ test.describe("[P0-11] sound and haptics", () => {
     await toggle.click();
     await expect(toggle).toBeChecked();
     await page.getByRole("button", { name: "Play tick" }).click();
+    await skipPlaybackWithoutWebAudio(page);
     await expect(status).toHaveText("Played the tick sound.");
     await expect.poll(async () => (await audio(page)).started).toBe(1);
     expect((await audio(page)).made).toBe(1);

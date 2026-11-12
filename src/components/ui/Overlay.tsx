@@ -222,9 +222,12 @@ export function Overlay({
         ref={backdropRef}
         className="overlay-backdrop"
         aria-hidden="true"
-        onClick={() => {
+        onClick={(e) => {
           // The second click of a double-click on the trigger lands here, on the backdrop that has just
-          // appeared under the pointer: only a press made once the overlay has been up a moment closes it.
+          // appeared under the pointer: only a single press made once the overlay has been up a moment
+          // closes it. `detail > 1` catches a double-click a busy page delivers late; the time guard
+          // catches a quick double tap, which can report `detail` 1.
+          if (e.detail > 1) return;
           if (performance.now() - openedAt.current >= BACKDROP_GUARD_MS) requestClose();
         }}
       />
