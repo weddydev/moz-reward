@@ -2,12 +2,11 @@ import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { and, eq } from "drizzle-orm";
 
-import { headers } from "next/headers";
 import { getSession } from "@/server/auth/session";
 import { adminMembers, shopStaff } from "@/server/db/schema";
 import { env } from "@/server/env";
 import { poolFor } from "@/server/repos/_base";
-import { clientIp } from "@/server/security/request";
+import { currentAdminAccess } from "@/server/security/admin-access";
 import { authScope } from "./scope";
 import type { Principal } from "./policies";
 
@@ -58,11 +57,7 @@ export function runAsPrincipal<T>(principal: Principal | null, fn: () => Promise
  * "unknown", which a configured allowlist refuses.
  */
 async function requestClientIp(): Promise<string> {
-  try {
-    return clientIp(await headers());
-  } catch {
-    return "unknown";
-  }
+  return (await currentAdminAccess()).ip;
 }
 
 /** Current request's principal, or null when signed out. */

@@ -8,7 +8,7 @@ import { raiseAlert } from "@/server/ops/alerts";
  * email, deduplicated per kind (one email per 5 minutes with a count of the rest): src/server/ops/alerts.ts
  * (P0-13, C-22). Callers never pass personal data: hashed keys, ids and counts only.
  */
-export type SecurityAlertEvent = "auth.lockout";
+export type SecurityAlertEvent = "auth.lockout" | "auth.admin_ip_denied";
 
 export function securityAlert(event: SecurityAlertEvent, detail: Record<string, unknown>): void {
   log().warn({ alert: event, category: "security", ...detail }, `security alert: ${event}`);

@@ -15,6 +15,8 @@ export const ALERT_KINDS = [
   "health.backup",
   "quota.email",
   "quota.sentry",
+  /** C-24: an admin account was refused from an address outside ADMIN_IP_ALLOWLIST. */
+  "auth.admin_ip_denied",
   /** Sent once a day at most: the daily alert ceiling was reached; later alerts are in the log only. */
   "alert.ceiling",
 ] as const;

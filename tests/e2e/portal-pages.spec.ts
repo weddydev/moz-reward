@@ -14,13 +14,6 @@ import type { Page } from "@playwright/test";
 const FORBIDDEN = "You don't have access to this page";
 const NOT_FOUND = "We can't find that page";
 
-/**
- * WebKit only: these tests load page after page with `goto`, which cancels the nav links' prefetches that
- * are still in flight, and WebKit reports each cancelled fetch as an uncaught "…?_rsc=… due to access
- * control checks" error. Nothing failed for the user. (Moves into the shared guard with step E.)
- */
-const CANCELLED_PREFETCH = /^pageerror: .*[?&]_rsc=\S* due to access control checks\.$/;
-
 async function expectPages(page: Page, routes: readonly PortalRoute[]): Promise<void> {
   for (const route of routes) {
     const res = await page.goto(route.path);
@@ -34,8 +27,6 @@ async function expectPages(page: Page, routes: readonly PortalRoute[]): Promise<
 }
 
 test.describe("[P0-12] portal pages", () => {
-  test.use({ guardAllow: [CANCELLED_PREFETCH] });
-
   test("a shop owner can open every shop route and sees its title", async ({ page, signInAs }) => {
     await signInAs("owner");
     await expectPages(page, SHOP_ROUTES);

@@ -333,3 +333,15 @@ export function defaultPortalPath(roles: {
   if (roles.shopRoles.length > 0) return PORTAL_ROOT.shop;
   return PORTAL_ROOT.customer;
 }
+
+/** The path that sends a signed-in user to their default portal (`src/app/portal/route.ts`). */
+export const PORTAL_HOME = "/portal";
+
+/**
+ * Paths whose responses are per-user and must never be stored by a browser or proxy cache: every portal route
+ * and anything under it, plus `/portal`. The proxy sets `Cache-Control: private, no-store` on them.
+ */
+export function isPortalPath(pathname: string): boolean {
+  if (pathname === PORTAL_HOME) return true;
+  return PORTAL_ROUTES.some((r) => pathname === r.path || pathname.startsWith(`${r.path}/`));
+}

@@ -154,12 +154,14 @@ export async function finishStaffLogin(input: {
   ip: string;
   reservation: Reservation;
   outcome: AttemptOutcome;
+  /** Why a correct-looking attempt was turned into a failure (C-24 admin IP allowlist), for the audit row. */
+  deniedBy?: string | undefined;
 }): Promise<void> {
   const { reservation, outcome } = input;
   if (outcome === "succeeded") return clearAttempts(reservation.keys);
   if (outcome === "aborted") return releaseAttempt(reservation);
   const [accountCount, sourceCount] = reservation.counts;
-  auditFailure(() => privilegedUserByEmail(input.email), input.ip, "password");
+  auditFailure(() => privilegedUserByEmail(input.email), input.ip, "password", input.deniedBy);
   const { lockAfter } = STAFF_LOGIN.password;
   // Exactly one request reaches each threshold (the counts were reserved atomically): one alert per lockout.
   if (accountCount === lockAfter) {
@@ -304,6 +306,7 @@ function auditFailure(
   lookup: () => Promise<{ id: string; kind: "admin" | "staff" } | null>,
   ip: string,
   factor: LockoutReason,
+  reason?: string,
 ): void {
   const work = async (): Promise<void> => {
     try {
@@ -315,7 +318,7 @@ function auditFailure(
         action: "auth.sign_in_failed",
         entity: "user",
         entityId: user.id,
-        meta: { factor, role: user.kind },
+        meta: reason ? { factor, role: user.kind, reason } : { factor, role: user.kind },
         ip,
       });
     } catch (err) {

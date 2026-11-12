@@ -6,6 +6,7 @@ import {
   type AdminRoute,
   type AdminRouteRole,
   type CustomerRoute,
+  defaultPortalPath,
   type Portal,
   type PortalRoute,
   routeByPath,
@@ -21,6 +22,7 @@ import {
 } from "@/server/authz";
 import { currentPrincipal } from "@/server/authz/principal";
 import { env } from "@/server/env";
+import { currentAdminAccess } from "@/server/security/admin-access";
 import { activeShopCookie } from "./active-shop";
 import { decideRouteGate, layoutRoute, type RouteGateDecision } from "./decide";
 
@@ -68,7 +70,7 @@ async function decide(
     principal,
     shopCookie,
     now: new Date(),
-    allowlist: env().ADMIN_IP_ALLOWLIST,
+    allowlist: (await currentAdminAccess()).allowlist,
   });
   if (d.kind === "redirect") redirect(d.to);
   if (d.kind === "forbidden") forbidden();
@@ -128,4 +130,25 @@ export async function gatePortalLayout(portal: Portal): Promise<{
   const route = layoutRoute(portal, pathname);
   if (!route) return { principal: await requestPrincipal() };
   return decide(route, {});
+}
+
+/**
+ * Where a signed-in staff member or admin opening a sign-in page should go instead (C-05), or null to show
+ * the form: their default portal, only when that portal's gate would let this session in. A session without
+ * MFA or past its role's limit sees the form (redirecting it would bounce straight back here).
+ */
+export async function signedInStaffDestination(): Promise<string | null> {
+  const principal = await requestPrincipal();
+  if (!principal || (!principal.adminRole && principal.shopRoles.length === 0)) return null;
+  const path = defaultPortalPath(principal);
+  const route = routeByPath(path);
+  if (!route) return null;
+  const d = decideRouteGate({
+    route,
+    principal,
+    shopCookie: await readShopCookie(),
+    now: new Date(),
+    allowlist: (await currentAdminAccess()).allowlist,
+  });
+  return d.kind === "allow" ? path : null;
 }

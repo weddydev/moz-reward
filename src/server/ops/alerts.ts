@@ -243,7 +243,7 @@ export function createAlerter(deps: {
           slot.held = 0;
         }
         if (held <= 0) continue;
-        const category: AlertCategory = kind === "auth.lockout" ? "security" : "ops";
+        const category: AlertCategory = kind.startsWith("auth.") ? "security" : "ops";
         const ok = await deliverBudgeted({
           kind,
           category,

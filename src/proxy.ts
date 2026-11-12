@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
+import { isPortalPath } from "@/features/portal/routes";
 import { env } from "@/server/env";
 import { securityHeaders } from "@/server/security/headers";
 
@@ -11,6 +12,7 @@ import { securityHeaders } from "@/server/security/headers";
  *   for log correlation and returned to the client.
  * - `/dev/*` answers a real 404 in production (a page-level notFound() would stream a 200).
  * - `x-pathname`: the request path, forwarded for the portal layout gate (P0-12).
+ * - `Cache-Control: private, no-store` on portal paths (P0-12).
  */
 const REQUEST_ID = /^[A-Za-z0-9-]{8,64}$/;
 
@@ -47,6 +49,8 @@ export function proxy(request: NextRequest): NextResponse {
   }
   for (const [name, value] of Object.entries(headers)) response.headers.set(name, value);
   response.headers.set("x-request-id", id);
+  // Portal pages are per-user (P0-12): never stored, whatever the framework would default to.
+  if (isPortalPath(pathname)) response.headers.set("Cache-Control", "private, no-store");
   return response;
 }
 

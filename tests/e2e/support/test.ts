@@ -215,6 +215,14 @@ const HYDRATION = /hydrat/i;
 const RESOURCE_ECHO = /^Failed to load resource: the server responded with a status of \d{3}/;
 
 /** Wires listeners that collect every uncaught error, console.error, hydration warning and failed request. */
+/**
+ * WebKit only: a page load (`goto`, a full navigation) cancels the nav links' prefetches still in flight, and
+ * WebKit reports each cancelled fetch as an uncaught "…?_rsc=… due to access control checks" error. Nothing
+ * failed for the user, and every portal page has a nav full of prefetched links (P0-12), so the guard ignores
+ * exactly this message on WebKit. (Browser Sentry drops it too: PROGRESS follow-up.)
+ */
+const WEBKIT_CANCELLED_PREFETCH = /^pageerror: .*[?&]_rsc=\S* due to access control checks\.$/;
+
 function watch(page: Page, problems: GuardProblem[]): void {
   page.on("pageerror", (err) => problems.push({ kind: "pageerror", text: err.message }));
   page.on("console", (msg) => {
@@ -266,15 +274,17 @@ export const test = base.extend<Fixtures & Options>({
   },
 
   guard: [
-    async ({ page, guardAllow, baseURL }, provide, testInfo) => {
+    async ({ page, guardAllow, baseURL, browserName }, provide, testInfo) => {
       const problems: GuardProblem[] = [];
       watch(page, problems);
       await provide({ problems });
       // Only when the body itself passed (not `=== expectedStatus`: a `test.fail()` self-test expects
       // "failed", and its axe check is exactly what must run).
       if (testInfo.status === "passed") problems.push(...(await axeProblems(page, baseURL)));
+      const allowed =
+        browserName === "webkit" ? [...guardAllow, WEBKIT_CANCELLED_PREFETCH] : guardAllow;
       const unexpected = problems.filter(
-        (p) => !guardAllow.some((re) => re.test(`${p.kind}: ${p.text}`)),
+        (p) => !allowed.some((re) => re.test(`${p.kind}: ${p.text}`)),
       );
       if (unexpected.length > 0) {
         await testInfo.attach("console-network-guard", {

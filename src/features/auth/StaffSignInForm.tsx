@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useId, useRef, useState } from "react";
 import { Turnstile } from "@/components/security/Turnstile";
+import { PORTAL_HOME } from "@/features/portal/routes";
 import { authClient } from "@/lib/auth-client";
 import { safeReturnTo } from "@/lib/return-to";
 import { TURNSTILE_HEADER, TURNSTILE_REQUIRED_CODE } from "@/lib/turnstile";
@@ -31,7 +32,7 @@ function serverMessage(
 export function StaffSignInForm(): React.JSX.Element {
   const router = useRouter();
   const params = useSearchParams();
-  const returnTo = safeReturnTo(params.get("returnTo"), "/dashboard");
+  const returnTo = safeReturnTo(params.get("returnTo"), PORTAL_HOME);
   const ids = { email: useId(), password: useId(), code: useId(), error: useId() };
   const [step, setStep] = useState<"password" | "code">("password");
   const [useBackup, setUseBackup] = useState(false);
@@ -153,8 +154,8 @@ export function StaffSignInForm(): React.JSX.Element {
       );
       return;
     }
-    router.push(returnTo);
-    router.refresh();
+    // A full page load: the portal layouts read the new session, and `/portal` is a redirect, not a page.
+    window.location.assign(returnTo);
   }
 
   const errorEl = error ? (

@@ -11,8 +11,13 @@ export const testApiEnabled = (): boolean => env().APP_ENV === "test";
  * token gets the same 404 as a disabled API, so the route never confirms it exists.
  */
 export function testApiAllowed(req: Request): boolean {
+  return testTokenPresent(req.headers);
+}
+
+/** Same check on bare headers (request-scoped test overrides read them outside a route handler). */
+export function testTokenPresent(headers: Headers): boolean {
   if (!testApiEnabled()) return false;
-  const given = Buffer.from(req.headers.get(TEST_API_HEADER) ?? "");
+  const given = Buffer.from(headers.get(TEST_API_HEADER) ?? "");
   const expected = Buffer.from(testApiToken(env().AUTH_SECRET));
   return given.length === expected.length && timingSafeEqual(given, expected);
 }

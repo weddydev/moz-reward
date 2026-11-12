@@ -15,8 +15,18 @@ import * as schema from "@/server/db/schema";
 import { env } from "@/server/env";
 import { checkBreachedPassword } from "@/server/integrations/breach";
 import { log } from "@/server/log";
+import { activeShopCookie } from "@/server/portal/active-shop";
 import { clientIp } from "@/server/security/request";
 import { recordAudit } from "@/server/services/audit";
+import {
+  ADMIN_IP_DENIED_REASON,
+  adminIpDenied,
+  auditAdminSessionDenied,
+  offList,
+  offListAdminSession,
+  offListAdminSignIn,
+  unmatchablePassword,
+} from "./admin-ip";
 import { authCookieOptions } from "./cookies";
 import { betterAuthIpOptions } from "./ip";
 import { betterAuthLogger } from "./logger";
@@ -62,7 +72,13 @@ const TWO_FACTOR_COOKIE = "two_factor";
  * its reservation simply stays counted (fail safe).
  */
 type PendingAttempt =
-  | { kind: "password"; email: string; ip: string; reservation: Reservation }
+  | {
+      kind: "password";
+      email: string;
+      ip: string;
+      reservation: Reservation;
+      deniedBy?: string | undefined;
+    }
   | { kind: "second-factor"; userId: string; ip: string; reservation: Reservation };
 const pendingAttempts = new WeakMap<Request, PendingAttempt>();
 
@@ -92,6 +108,13 @@ const PASSWORD_SET_PATHS: Record<string, "password" | "newPassword"> = {
   "/change-password": "newPassword",
   "/reset-password": "newPassword",
 };
+
+/** The request headers a database hook runs under, or null (server-side calls without a request). */
+function hookHeaders(
+  ctx: { request?: Request | undefined; headers?: Headers | undefined } | null | undefined,
+): Headers | null {
+  return ctx?.request?.headers ?? ctx?.headers ?? null;
+}
 
 const bodyEmail = (body: unknown): string => {
   const email = (body as { email?: unknown } | undefined)?.email;
@@ -189,6 +212,13 @@ function createAuth() {
                   "Staff and admin accounts sign in with a password and two-step verification.",
               });
             }
+            // C-24: no admin session from outside the admin IP allowlist (covers passkey sign-in).
+            const offListAdmin = await offListAdminSession(session.userId, hookHeaders(ctx));
+            if (offListAdmin) {
+              adminIpDenied(session.userId, offListAdmin.ip, "session");
+              await auditAdminSessionDenied(session.userId, offListAdmin.ip);
+              throw new APIError("UNAUTHORIZED", { message: "Invalid email or password" });
+            }
             // A second-factor path counts only in the sign-in challenge, which runs with no session yet.
             // The same endpoint during enrolment runs inside a (password-only) session; counting that would let
             // someone holding just the password enrol their own app and get an MFA session (audit security #5).
@@ -237,6 +267,12 @@ function createAuth() {
               message: "For your security, please sign in again with two-step verification.",
             });
           }
+          // C-24: a signed-in admin from outside the allowlist can't use the account endpoints either.
+          const off = current && kind === "admin" ? offList(ctx.request?.headers ?? null) : null;
+          if (current && off) {
+            adminIpDenied(current.user.id, off.ip, "account");
+            throw new APIError("FORBIDDEN", { message: "You don't have access to this." });
+          }
         }
         if (ctx.path === "/update-user") {
           // Only a display name may change here (P0-19): bounded, no other field (email, image, roles…).
@@ -275,13 +311,21 @@ function createAuth() {
             turnstileToken: ctx.request.headers.get(TURNSTILE_HEADER),
           });
           if (!guard.ok) throw guardError(guard);
+          // C-24: an admin email from outside the allowlist fails exactly like a wrong password.
+          const offListAdmin = await offListAdminSignIn(email, ctx.request.headers);
           if (guard.reservation) {
             pendingAttempts.set(ctx.request, {
               kind: "password",
               email,
               ip,
               reservation: guard.reservation,
+              deniedBy: offListAdmin ? ADMIN_IP_DENIED_REASON : undefined,
             });
+          }
+          if (offListAdmin) {
+            adminIpDenied(offListAdmin.userId, offListAdmin.ip, "password");
+            const body = (ctx.body ?? {}) as Record<string, unknown>;
+            return { context: { body: { ...body, password: unmatchablePassword() } } };
           }
           return;
         }
@@ -345,6 +389,11 @@ function createAuth() {
         }
       }),
       after: createAuthMiddleware(async (ctx) => {
+        // P0-12: the shop portal's active-shop choice goes with the session.
+        if (ctx.path === "/sign-out") {
+          const shop = activeShopCookie(env().APP_URL);
+          ctx.setCookie(shop.name, "", { ...shop.options, maxAge: 0 });
+        }
         // Settle the attempt the `before` hook reserved first (none when it refused the request itself), so
         // nothing below can leave it unsettled.
         const pending = ctx.request ? pendingAttempts.get(ctx.request) : undefined;
