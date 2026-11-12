@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-12 — P0-12: layout gate reads `x-pathname` only to pick a table route; active-shop fallback order
+Decision: the proxy forwards the request path as `x-pathname` (overwriting any client value); `gatePortalLayout` maps it through the route table (`layoutRoute` → `activeRoute`) and gates that table route, using the table's literal path as `returnTo`. Missing header (prefetches skip the proxy) or another portal's path → the portal root for shop/admin, no layout gate for the customer portal. Without a valid cookie the active shop is the first membership with owner before staff, then by shop id.
+Why: a deny in the layout lands above the loading boundary (real 403/307 per route), and a header can never become a redirect target; a spoofed header on a prefetch at worst picks a broader table route, and every page gate still decides with its own literal path.
+Consequence / revisit when: a page added without its own gate is caught by the coverage lint (P0-12 step E), not by the layout.
+
 ## 2026-11-12 — P0-12: where the portal gate sits, and the admin route roles
 Decision: `forbidden()` (`experimental.authInterrupts`) renders the 403 page. The route-group layout runs the full gate so a page load gets a real 403, **and every page calls the gate itself**. Roles PRODUCT §2 leaves open: QR & NFC owner + support; Fraud monitor owner + support + moderator.
 Why: measured on a production build (12 Nov): a layout that throws `forbidden()` answers 403, but the page below it renders in parallel and its content is in that response; a page that throws answers 403 only with no `loading.tsx` above it (200 once streaming has started).
