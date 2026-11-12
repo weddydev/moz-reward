@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseAdminAllowlist } from "@/server/security/admin-allowlist";
 import {
   ADMIN_SESSION_MAX_MS,
   type Principal,
@@ -113,6 +114,58 @@ describe("[P0-07] decideAdminRole", () => {
     const old = { ...admin, sessionCreatedAt: new Date(NOW.getTime() - ADMIN_SESSION_MAX_MS - 1) };
     expect(decideAdminRole(old, ["support"], NOW)).toMatchObject({ reason: "session_expired" });
   });
+  describe("[P0-12] C-24 IP allowlist", () => {
+    const parsed = parseAdminAllowlist("203.0.113.7,2001:db8:1::/48");
+    if (!parsed.ok || !parsed.list) throw new Error("test allowlist");
+    const allowlist = parsed.list;
+    const admin = (clientIp?: string): Principal =>
+      principal({ adminRole: "owner", ...(clientIp === undefined ? {} : { clientIp }) });
+
+    it("allows a listed address (IPv4, mapped IPv4, IPv6 range)", () => {
+      for (const ip of ["203.0.113.7", "::ffff:203.0.113.7", "2001:db8:1::5"])
+        expect(decideAdminRole(admin(ip), ["owner"], NOW, allowlist), ip).toMatchObject({
+          ok: true,
+        });
+    });
+    it("denies every other address as forbidden, also when the address is missing or unreadable", () => {
+      for (const ip of ["203.0.113.8", "2001:db8:2::5", "local", "unknown", "", undefined])
+        expect(decideAdminRole(admin(ip), ["owner"], NOW, allowlist), String(ip)).toEqual({
+          ok: false,
+          reason: "forbidden",
+        });
+    });
+    it("an off-list admin is forbidden before MFA or session age are looked at (no redirect to enrol)", () => {
+      const p = { ...admin("203.0.113.8"), mfaVerified: false, sessionCreatedAt: new Date(0) };
+      expect(decideAdminRole(p, ["owner"], NOW, allowlist)).toEqual({
+        ok: false,
+        reason: "forbidden",
+      });
+    });
+    it("a listed address still needs the role, MFA and a fresh session", () => {
+      const p = admin("203.0.113.7");
+      expect(decideAdminRole(p, ["finance"], NOW, allowlist)).toMatchObject({
+        reason: "forbidden",
+      });
+      expect(
+        decideAdminRole({ ...p, mfaVerified: false }, ["owner"], NOW, allowlist),
+      ).toMatchObject({
+        reason: "mfa_required",
+      });
+    });
+    it("without a list the address is not looked at", () => {
+      expect(decideAdminRole(admin(), ["owner"], NOW, null)).toMatchObject({ ok: true });
+      expect(decideAdminRole(admin("local"), ["owner"], NOW)).toMatchObject({ ok: true });
+    });
+    it("the list never applies to shop roles or customers", () => {
+      const staff = principal({
+        clientIp: "203.0.113.8",
+        shopRoles: [{ shopId: SHOP_A, role: "staff", perAwardLimit: null }],
+      });
+      expect(decideShopRole(staff, SHOP_A, ["staff"], NOW)).toMatchObject({ ok: true });
+      expect(decideCustomer(staff)).toMatchObject({ ok: true });
+    });
+  });
+
   it("allows a matching admin role", () => {
     expect(decideAdminRole(principal({ adminRole: "finance" }), ["finance"], NOW)).toEqual({
       ok: true,

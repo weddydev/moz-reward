@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { formatEnvError } from "@/lib/env";
+import { parseAdminAllowlist } from "@/server/security/admin-allowlist";
 
 /**
  * Server-only environment (P0-02), validated at startup (`src/instrumentation.ts`, worker entry) and cached.
@@ -65,7 +66,17 @@ export const serverEnvSchema = z
     AUTH_SECRET: z.string().min(32, "must be at least 32 characters"),
     GOOGLE_CLIENT_ID: optional,
     GOOGLE_CLIENT_SECRET: optional,
-    ADMIN_IP_ALLOWLIST: optional,
+    /**
+     * Admin IP allowlist (P0-12, C-24): comma-separated addresses and CIDR ranges. Unset = no restriction;
+     * a value that doesn't parse completely fails the boot. Parsed here, so `env().ADMIN_IP_ALLOWLIST` is the
+     * matcher (or null), never the raw text.
+     */
+    ADMIN_IP_ALLOWLIST: optional.transform((raw, ctx) => {
+      const parsed = parseAdminAllowlist(raw);
+      if (parsed.ok) return parsed.list;
+      ctx.addIssue({ code: "custom", message: parsed.error });
+      return z.NEVER;
+    }),
     /** Which proxy sets the client IP header (SECURITY §6): none (local/test), caddy, cloudflare. */
     TRUSTED_PROXY: z.enum(["none", "caddy", "cloudflare"]).default("none"),
 

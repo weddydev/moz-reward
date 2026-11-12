@@ -1,4 +1,5 @@
 import "server-only";
+import { type AdminAllowlist, adminAddressAllowed } from "@/server/security/admin-allowlist";
 /**
  * Pure authorisation decisions (no I/O) so every role × action combination is unit-testable.
  * Deny by default. SECURITY.md §3.
@@ -17,6 +18,11 @@ export type Principal = {
   shopRoles: ReadonlyArray<{ shopId: string; role: ShopRole; perAwardLimit: number | null }>;
   /** Active admin role, or null. */
   adminRole: AdminRole | null;
+  /**
+   * The request's client address (`clientIp`: an IP, or the "local" / "unknown" placeholders); absent for
+   * synthetic principals. Only the admin IP allowlist reads it (C-24), and it refuses a missing one.
+   */
+  clientIp?: string;
 };
 
 export type DenyReason =
@@ -68,13 +74,20 @@ export function decideStaffAwardLimit(
   return limit !== null && points > limit ? deny("over_limit") : base;
 }
 
+/**
+ * `allowlist` is the admin IP allowlist (C-24, `env().ADMIN_IP_ALLOWLIST`; null = none). It is decided here,
+ * on the principal's own client address, so no caller can check the role and forget the address. An off-list
+ * admin is plain "forbidden", before MFA and session age: they get the 403 page, not a path to enrol.
+ */
 export function decideAdminRole(
   p: Principal | null,
   roles: ReadonlyArray<AdminRole>,
   now: Date = new Date(),
+  allowlist: AdminAllowlist | null = null,
 ): Decision<{ userId: string; role: AdminRole }> {
   if (!p) return deny("unauthenticated");
   if (!p.adminRole || !roles.includes(p.adminRole)) return deny("forbidden");
+  if (!adminAddressAllowed(allowlist, p.clientIp ?? "")) return deny("forbidden");
   if (!p.mfaVerified) return deny("mfa_required");
   if (now.getTime() - p.sessionCreatedAt.getTime() > ADMIN_SESSION_MAX_MS) {
     return deny("session_expired");

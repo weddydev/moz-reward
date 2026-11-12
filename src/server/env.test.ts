@@ -109,6 +109,26 @@ describe("[P0-02] server env", () => {
     expect(parseServerEnv(base).ALERT_EMAILS).toEqual([]);
   });
 
+  it("[P0-12] C-24 ADMIN_IP_ALLOWLIST: unset = no list; a bad entry fails the boot without echoing it", () => {
+    expect(parseServerEnv(base).ADMIN_IP_ALLOWLIST).toBeNull();
+    expect(parseServerEnv({ ...base, ADMIN_IP_ALLOWLIST: "" }).ADMIN_IP_ALLOWLIST).toBeNull();
+    const list = parseServerEnv({
+      ...base,
+      ADMIN_IP_ALLOWLIST: "203.0.113.7, 2001:db8::/32",
+    }).ADMIN_IP_ALLOWLIST;
+    expect(list?.check({ address: "203.0.113.7", family: "ipv4" })).toBe(true);
+    expect(list?.check({ address: "203.0.113.8", family: "ipv4" })).toBe(false);
+    for (const bad of [" ", ",", "203.0.113.7,office-vpn", "0.0.0.0/0", "::/0"]) {
+      const run = () => parseServerEnv({ ...base, ADMIN_IP_ALLOWLIST: bad });
+      expect(run, bad).toThrow(/- ADMIN_IP_ALLOWLIST: entry \d+ /);
+      try {
+        run();
+      } catch (e) {
+        expect(String(e)).not.toContain("office-vpn");
+      }
+    }
+  });
+
   it("[P0-05] refuses TRUSTED_PROXY=none on staging/production (client IPs would all share one bucket)", () => {
     expect(() => parseServerEnv({ ...prod, TRUSTED_PROXY: "none" })).toThrow(/TRUSTED_PROXY/);
     expect(() => parseServerEnv({ ...prod, APP_ENV: "staging", TRUSTED_PROXY: "none" })).toThrow(

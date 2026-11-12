@@ -1,4 +1,5 @@
 import "server-only";
+import { env } from "@/server/env";
 import { AppError, type AppErrorCode } from "@/server/errors";
 import {
   type AdminRole,
@@ -96,5 +97,6 @@ export async function requireAdminRole(
   principal?: Principal | null,
 ): Promise<AdminScope> {
   const p = principal === undefined ? await currentPrincipal() : principal;
-  return mintAdminScope(unwrap(decideAdminRole(p, roles)));
+  // C-24: the allowlist is part of the decision, on the principal's own client address.
+  return mintAdminScope(unwrap(decideAdminRole(p, roles, new Date(), env().ADMIN_IP_ALLOWLIST)));
 }
