@@ -393,3 +393,4 @@ Human + Claude: H-26 done. OpenPGP RSA 4096 backup key `1D1D1BF1F6FDA0F2EDA8FAA0
 Human: H-08 done on Backblaze B2 (`mozrewards-backups-dfd829`, EU Central, scoped key; R2 couldn't be enabled) → DECISIONS 13 Nov, C-41 (R2 or processor register before launch), H-08b (upload buckets before P2). H-27 and H-34 steps given; in progress.
 Evidence: `wip/P0-12-b` `01dcf97`: 5-project E2E `43275952611` green (proxy x-pathname), push CI `43275681180` green.
 Human: `SENTRY_DSN_STAGING` and `DEMO_EMAIL_BASE_STAGING` set (gh secret list: 3 secrets). H-34 open items: alert scope, subscription, wizard token, org slug. H-36 steps 1–3 done.
+Human: Sentry org slug `mozereward`; alert email for MOZREWARDS-1 arrived in the shared Gmail inbox (screenshot).
