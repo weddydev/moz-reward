@@ -1,5 +1,13 @@
 import "server-only";
-import type { PortalRoute, ShopRouteRole, AdminRouteRole } from "@/features/portal/routes";
+import {
+  activeRoute,
+  type AdminRouteRole,
+  type Portal,
+  PORTAL_ROOT,
+  type PortalRoute,
+  routeByPath,
+  type ShopRouteRole,
+} from "@/features/portal/routes";
 import { safeReturnTo } from "@/lib/return-to";
 import {
   type Decision,
@@ -93,4 +101,18 @@ export function decideRouteGate(input: {
       return { kind: "allow", principal: p, role: d.value.role };
     }
   }
+}
+/**
+ * The route a portal's group layout gates (P0-12). The proxy forwards the request path as `x-pathname`
+ * (overwriting any client value); the layout gates the **table route** that path belongs to, so a deny lands
+ * above the loading boundary as a real 403 / 307, and the path used (incl. `returnTo`) is the table's literal,
+ * never the header's text. A missing header (prefetches skip the proxy) or a path outside this portal falls
+ * back to the portal root (every role of the portal) for shop and admin, and to no layout gate for the
+ * customer portal, whose public pages share the layout. The page gate is the control in every case.
+ */
+export function layoutRoute(portal: Portal, pathname: string | null): PortalRoute | null {
+  const hit = pathname ? activeRoute(pathname) : null;
+  if (hit?.portal === portal) return hit;
+  if (portal === "customer") return null;
+  return routeByPath(PORTAL_ROOT[portal]) ?? null;
 }

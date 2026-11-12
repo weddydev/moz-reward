@@ -10,6 +10,7 @@ import { securityHeaders } from "@/server/security/headers";
  * - `x-request-id`: generated here (or kept from the trusted proxy when well-formed), forwarded to the app
  *   for log correlation and returned to the client.
  * - `/dev/*` answers a real 404 in production (a page-level notFound() would stream a 200).
+ * - `x-pathname`: the request path, forwarded for the portal layout gate (P0-12).
  */
 const REQUEST_ID = /^[A-Za-z0-9-]{8,64}$/;
 
@@ -39,6 +40,9 @@ export function proxy(request: NextRequest): NextResponse {
     forwarded.set("x-nonce", nonce);
     forwarded.set("content-security-policy", headers["Content-Security-Policy"] ?? "");
     forwarded.set("x-request-id", id);
+    // The page path for the group layout gate (src/server/portal/gate.ts): set here, so a client value is
+    // overwritten. The layout only uses it to pick a route from the table (never as a returnTo).
+    forwarded.set("x-pathname", pathname);
     response = NextResponse.next({ request: { headers: forwarded } });
   }
   for (const [name, value] of Object.entries(headers)) response.headers.set(name, value);

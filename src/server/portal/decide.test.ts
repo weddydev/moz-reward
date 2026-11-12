@@ -6,7 +6,7 @@ import {
   STAFF_SESSION_MAX_MS,
 } from "@/server/authz/policies";
 import { parseAdminAllowlist } from "@/server/security/admin-allowlist";
-import { decideRouteGate, pickActiveShop } from "./decide";
+import { decideRouteGate, layoutRoute, pickActiveShop } from "./decide";
 
 const NOW = new Date("2026-11-12T12:00:00Z");
 const SHOP_A = "0b8a9c2e-1d3f-4a5b-8c6d-7e8f9a0b1c2d";
@@ -203,5 +203,27 @@ describe("[P0-12] decideRouteGate: admin routes", () => {
     expect(
       decide("/admin", principal({ adminRole: "owner", clientIp: "unknown" }), { allowlist }),
     ).toEqual({ kind: "forbidden" });
+  });
+});
+describe("[P0-12] layoutRoute", () => {
+  it("gates the table route the path belongs to (deeper paths → their parent item)", () => {
+    expect(layoutRoute("shop", "/dashboard/settings")?.path).toBe("/dashboard/settings");
+    expect(layoutRoute("shop", "/dashboard/customers/42")?.path).toBe("/dashboard/customers");
+    expect(layoutRoute("admin", "/admin/system")?.path).toBe("/admin/system");
+  });
+  it("missing header, unknown path or another portal's path → the portal root", () => {
+    expect(layoutRoute("shop", null)?.path).toBe("/dashboard");
+    expect(layoutRoute("shop", "/dashboard/nope")?.path).toBe("/dashboard");
+    expect(layoutRoute("admin", "/dashboard/settings")?.path).toBe("/admin");
+  });
+  it("customer layout: its own routes, else no layout gate (public pages share it)", () => {
+    expect(layoutRoute("customer", "/wallet")?.path).toBe("/wallet");
+    expect(layoutRoute("customer", "/offers")?.path).toBe("/offers");
+    expect(layoutRoute("customer", null)).toBeNull();
+    expect(layoutRoute("customer", "/admin")).toBeNull();
+  });
+  it("the returnTo of a layout deny is the table path, never the raw header", () => {
+    const r = layoutRoute("shop", "/dashboard/customers/%2F%2Fevil.example");
+    expect(r?.path).toBe("/dashboard/customers");
   });
 });

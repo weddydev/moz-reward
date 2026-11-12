@@ -1,11 +1,12 @@
 import "server-only";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { forbidden, redirect } from "next/navigation";
 import { cache } from "react";
 import {
   type AdminRoute,
   type AdminRouteRole,
   type CustomerRoute,
+  type Portal,
   type PortalRoute,
   routeByPath,
   type ShopRoute,
@@ -21,7 +22,7 @@ import {
 import { currentPrincipal } from "@/server/authz/principal";
 import { env } from "@/server/env";
 import { activeShopCookie } from "./active-shop";
-import { decideRouteGate, type RouteGateDecision } from "./decide";
+import { decideRouteGate, layoutRoute, type RouteGateDecision } from "./decide";
 
 /**
  * Page gates (P0-12): the group layout **and** every page under it call one, with the page's own path as a
@@ -106,4 +107,25 @@ export async function gateAdminRoute(
   }
   const scope = await requireAdminRole(route.roles, d.principal);
   return { principal: d.principal, role: d.role, scope };
+}
+
+/**
+ * Group layout gate: `(shop)/layout.tsx`, `(admin)/layout.tsx` and `(customer)/layout.tsx` call it before
+ * rendering any shell, so a portal-level deny renders no portal shell or nav. Returns what the shell needs
+ * (the principal and, for shop/admin, the role and active shop). Pages still call their own gate.
+ */
+export async function gatePortalLayout(portal: Portal): Promise<{
+  principal: Principal | null;
+  shopId?: string;
+  role?: ShopRouteRole | AdminRouteRole;
+}> {
+  let pathname: string | null = null;
+  try {
+    pathname = (await headers()).get("x-pathname");
+  } catch {
+    pathname = null;
+  }
+  const route = layoutRoute(portal, pathname);
+  if (!route) return { principal: await requestPrincipal() };
+  return decide(route, {});
 }
