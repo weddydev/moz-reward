@@ -89,6 +89,22 @@ test.describe("[P0-09] overlays", () => {
     });
   }
 
+  for (const demo of ["modal", "panel", "sheet"] as const) {
+    test(`[P0-09] ${demo}: a double-click on its trigger opens it once and it stays open`, async ({
+      page,
+    }) => {
+      // The second click of a double-click lands on the backdrop that has just appeared under the pointer.
+      await trigger(page, demo).dblclick();
+      await expect(topDialog(page)).toHaveAttribute("data-state", "open");
+      await page.waitForTimeout(500); // past any close the second click could have started
+      await expect(page.locator("dialog")).toHaveCount(1);
+      await expect(topDialog(page)).toHaveAttribute("data-state", "open");
+      // A deliberate tap on the backdrop afterwards still closes it.
+      await page.mouse.click(2, 2);
+      await expect(page.locator("dialog")).toHaveCount(0);
+    });
+  }
+
   test("[P0-09] stacked: Esc closes the top one only, then the first", async ({
     page,
     isMobile,

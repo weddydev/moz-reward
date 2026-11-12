@@ -387,6 +387,127 @@ test.describe("[P0-10] route transitions", () => {
     expect(after.overflow, "the slide's clip is taken off again").toBe("");
   });
 
+  test("[P0-10] edge: a second slide started while the first still runs keeps the page from widening", async ({
+    page,
+  }) => {
+    await phoneSize(page);
+    await page.goto("/dev/motion/details");
+    await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
+    // Hold the first enter (the back slide) so the second navigation certainly interrupts it.
+    await page.evaluate(() => {
+      const w = window as unknown as { __first: Animation | null };
+      w.__first = null;
+      const tick = (): void => {
+        const found = document
+          .getAnimations()
+          .find((a) =>
+            ((a.effect as KeyframeEffect | null)?.target as HTMLElement | null)?.hasAttribute(
+              "data-route-content",
+            ),
+          );
+        if (found) {
+          found.pause();
+          w.__first = found;
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    await page.getByRole("link", { name: "← Motion gallery" }).click();
+    await expect(page).toHaveURL(/\/dev\/motion$/);
+    await page.waitForFunction(
+      () => !!(window as unknown as { __first: Animation | null }).__first,
+    );
+    await page.evaluate(() => {
+      const w = window as unknown as { __overflowX: number };
+      w.__overflowX = 0;
+      const until = performance.now() + 1500;
+      const tick = (): void => {
+        const root = document.documentElement;
+        w.__overflowX = Math.max(w.__overflowX, root.scrollWidth - root.clientWidth);
+        if (performance.now() < until) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    await page.getByRole("link", { name: "Open a detail page" }).click();
+    await expect(page).toHaveURL(/\/dev\/motion\/details$/);
+    await expect
+      .poll(() =>
+        page.evaluate(() => (window as unknown as { __first: Animation }).__first.playState),
+      )
+      .toBe("idle"); // the held first slide was cancelled
+    await settled(page);
+    expect(
+      await page.evaluate(() => (window as unknown as { __overflowX: number }).__overflowX),
+      "horizontal overflow during the second slide",
+    ).toBe(0);
+    // And the clip is taken off again when it ends.
+    expect(
+      await page.evaluate(() => [
+        document.body.style.overflowX,
+        document.documentElement.style.overflowX,
+      ]),
+    ).toEqual(["", ""]);
+  });
+
+  test("[P0-10] edge: a destination that suspends enters with its loading state; the content then takes its place", async ({
+    page,
+  }) => {
+    await phoneSize(page);
+    await openGallery(page);
+    await record(page);
+    await page.getByRole("link", { name: "Open a slow page" }).click();
+    await expect(page).toHaveURL(/\/dev\/motion\/slow$/);
+    // The loading state is what slides in (live, from the first frame).
+    await expect(page.getByRole("status")).toHaveText("Loading the slow page");
+    expectOneEnter(await contentAnimations(page), "8px");
+    await expect(page.getByRole("heading", { name: "Slow page" })).toBeVisible();
+    await settled(page);
+    // The content replaced the loading state in place: still one enter, nothing left moving or clipped.
+    expect(await contentAnimations(page)).toHaveLength(1);
+    expect(
+      await page.evaluate(() => {
+        const el = document.querySelector<HTMLElement>("[data-route-content]");
+        return el ? [getComputedStyle(el).transform, getComputedStyle(el).opacity] : [];
+      }),
+    ).toEqual(["none", "1"]);
+    await page.getByRole("button", { name: "Tap me" }).click();
+    await expect(page.getByTestId("tap-count")).toHaveText("1 tap");
+  });
+
+  test("[P0-10] edge: the tab going to the background mid-slide leaves the page at rest when it ends", async ({
+    page,
+  }) => {
+    await phoneSize(page);
+    await openGallery(page);
+    await page.getByRole("link", { name: "Open a detail page" }).click();
+    await expect(page).toHaveURL(/\/dev\/motion\/details$/);
+    // Nothing in the route transition listens to visibility or drives frames itself (WAAPI only), so a
+    // hidden tab cannot strand it. Headless browsers never really hide a tab: report it hidden instead.
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => "hidden",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await settled(page);
+    expect(
+      await page.evaluate(() => {
+        const el = document.querySelector<HTMLElement>("[data-route-content]");
+        return [
+          el ? getComputedStyle(el).transform : "",
+          el ? getComputedStyle(el).opacity : "",
+          document.body.style.overflowX,
+        ];
+      }),
+    ).toEqual(["none", "1", ""]);
+    await page.getByRole("button", { name: "Tap me" }).click();
+    await expect(page.getByTestId("tap-count")).toHaveText("1 tap");
+  });
+
   test("[P0-10] edge: a search-param change on the same page animates nothing; focus and scroll are Next's", async ({
     page,
   }) => {

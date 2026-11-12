@@ -39,10 +39,16 @@ function publish(): void {
         .filter((t) => (t.tone === "error") === errors)
         .map((t) => t.message)
         .join(" ");
-    polite = say(false);
-    assertive = say(true);
+    // Add to an announcement that is still up (toasts fired in the same moment): replacing it would drop
+    // the earlier ones before a screen reader ever saw them.
+    const pending = clearAnnouncement !== undefined;
+    const join = (now: string, more: string): string =>
+      [pending ? now : "", more].filter(Boolean).join(" ");
+    polite = join(polite, say(false));
+    assertive = join(assertive, say(true));
     clearTimeout(clearAnnouncement);
     clearAnnouncement = setTimeout(() => {
+      clearAnnouncement = undefined;
       snapshot = { ...snapshot, polite: "", assertive: "" };
       emit();
     }, ANNOUNCE_MS);

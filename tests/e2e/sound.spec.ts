@@ -57,7 +57,9 @@ test.describe("[P0-11] sound and haptics", () => {
     const status = page.getByTestId("sound-status");
     await page.getByRole("button", { name: "Play credit" }).click();
     await expect(status).toHaveText("Played the credit sound.");
-    expect(await audio(page)).toMatchObject({ made: 1, started: 2 });
+    // A sound asked for inside the unlocking tap starts as soon as the context is awake.
+    await expect.poll(async () => (await audio(page)).started).toBe(2);
+    expect((await audio(page)).made).toBe(1);
 
     for (const [name, voices] of [
       ["reward", 6],
@@ -67,7 +69,7 @@ test.describe("[P0-11] sound and haptics", () => {
       const before = (await audio(page)).started;
       await page.getByRole("button", { name: `Play ${name}` }).click();
       await expect(status).toHaveText(`Played the ${name} sound.`);
-      expect((await audio(page)).started - before).toBe(voices);
+      await expect.poll(async () => (await audio(page)).started - before).toBe(voices);
     }
     expect((await audio(page)).made, "one AudioContext for the page").toBe(1);
   });
@@ -101,7 +103,8 @@ test.describe("[P0-11] sound and haptics", () => {
     await expect(toggle).toBeChecked();
     await page.getByRole("button", { name: "Play tick" }).click();
     await expect(status).toHaveText("Played the tick sound.");
-    expect(await audio(page)).toMatchObject({ made: 1, started: 1 });
+    await expect.poll(async () => (await audio(page)).started).toBe(1);
+    expect((await audio(page)).made).toBe(1);
   });
 
   test("[P0-11] haptics: the design's pattern where the device vibrates, a quiet no-op elsewhere", async ({

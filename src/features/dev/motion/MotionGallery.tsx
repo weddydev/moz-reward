@@ -14,7 +14,7 @@ export function MotionGallery(): React.JSX.Element {
     <main id="main" className="mx-auto w-full max-w-5xl px-5 py-10">
       <p className="text-small text-gold-700 font-semibold">Dev only</p>
       <h1 className="text-display">Motion gallery</h1>
-      <p className="text-ink-2 mt-2 max-w-prose">
+      <p className="text-ink-2 mt-2 mb-8 max-w-prose">
         Page transitions and motion primitives (DESIGN.md §7). Navigation never waits for an
         animation; with reduced motion everything becomes a short fade.
       </p>
@@ -22,7 +22,8 @@ export function MotionGallery(): React.JSX.Element {
       <Section title="Forward and back">
         <p className="text-small text-ink-2 max-w-prose">
           Going deeper, the new page fades in sliding 8px from the right; the back link reverses it.
-          Browser back and forward only fade (they have no direction).
+          Browser back and forward only fade (they have no direction). The slow page shows its
+          loading state first.
         </p>
         <TransitionLink
           href="/dev/motion/details"
@@ -30,6 +31,14 @@ export function MotionGallery(): React.JSX.Element {
           className="pressable bg-surface border-line text-small rounded-pill hit-44 inline-flex self-start border px-4 py-2 font-semibold"
         >
           Open a detail page
+        </TransitionLink>
+        <TransitionLink
+          href="/dev/motion/slow"
+          direction="forward"
+          prefetch={false}
+          className="pressable bg-surface border-line text-small rounded-pill hit-44 inline-flex self-start border px-4 py-2 font-semibold"
+        >
+          Open a slow page
         </TransitionLink>
       </Section>
 

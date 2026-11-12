@@ -216,7 +216,10 @@ export function connectAccount(account: AccountState, save: PreferenceSaver): Pr
 function changed(): Promise<void> {
   notify();
   if (saver) return push();
-  writeKey(STORAGE_KEYS.sync, null);
+  // No profile connected right now. A device that follows a profile (marker set) may simply not have heard
+  // from the server yet, or the profile could not be read: keep the change as "pending", so the next load
+  // sends it instead of taking the profile's older value back. Signed out, the marker is already clear.
+  if (readSync()) writeKey(STORAGE_KEYS.sync, "pending");
   return Promise.resolve();
 }
 

@@ -88,6 +88,7 @@ export function Table<Row>({
   const [density, setDensity] = useState<Density>("comfortable");
   const [overflow, setOverflow] = useState<Overflow>("none");
   const scroller = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
   const compact = density === "compact";
 
   useEffect(() => {
@@ -101,8 +102,9 @@ export function Table<Row>({
     const observer =
       typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(measure);
     observer?.observe(el);
-    const table = el.firstElementChild;
-    if (table) observer?.observe(table);
+    // The <table> itself (not the first child, which is the "Loading" note while loading): rows replacing
+    // the skeletons can make it wider without the region changing size.
+    if (tableRef.current) observer?.observe(tableRef.current);
     return () => {
       el.removeEventListener("scroll", measure);
       observer?.disconnect();
@@ -139,6 +141,7 @@ export function Table<Row>({
         >
           {loading ? <p className="sr-only">Loading {caption}</p> : null}
           <table
+            ref={tableRef}
             data-density={density}
             className={cx("text-small w-full border-collapse", fixedLayout && "table-fixed")}
           >

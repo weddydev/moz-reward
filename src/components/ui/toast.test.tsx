@@ -50,6 +50,27 @@ describe("[P0-09] toast", () => {
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
+  it("announces every toast fired in the same moment, errors and others in their own regions", () => {
+    vi.useFakeTimers();
+    render(<Toaster />);
+    act(() => {
+      toast("Toast 1");
+      toast("Toast 2");
+      toast("Could not save", "error");
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("Toast 1 Toast 2");
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not save");
+    advance(1100);
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    expect(screen.getByRole("alert")).toBeEmptyDOMElement();
+    // A later toast (the earlier ones have gone) is announced alone.
+    advance(5000);
+    act(() => {
+      toast("Toast 3");
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(/^Toast 3$/);
+  });
+
   it("clears the announcement after a second so it is not read twice", () => {
     vi.useFakeTimers();
     render(<Toaster />);

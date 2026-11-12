@@ -47,6 +47,28 @@ describe("[P0-09] Table", () => {
     expect(screen.getByText("Nothing here yet.")).toBeInTheDocument();
   });
 
+  it("watches the <table> itself for size changes, also when it mounts loading (rows arriving can widen it)", () => {
+    const observed: Element[] = [];
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe(el: Element): void {
+          observed.push(el);
+        }
+        disconnect(): void {
+          observed.length = 0;
+        }
+      },
+    );
+    try {
+      render(<Table caption="Customers" columns={COLUMNS} rows={[]} rowKey={rowKey} loading />);
+      expect(observed.map((el) => el.tagName)).toContain("TABLE");
+      expect(observed.map((el) => el.tagName)).not.toContain("P");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("shows skeleton rows while loading, marks the region busy and hides the empty row", () => {
     render(
       <Table

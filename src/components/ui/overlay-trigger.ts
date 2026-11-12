@@ -1,7 +1,9 @@
 /**
  * Which control opened an overlay, so focus can return to it (P0-09 AC 3). Usually the focused element, but
  * Safari does not focus a button on a mouse click or tap, so the control clicked just now is preferred: a
- * capture-phase click listener (installed once, on first use) remembers it for a second.
+ * capture-phase click listener remembers it for a second. It is installed when this module loads in the
+ * browser, not when the first overlay mounts: an overlay that is only mounted by the click that opens it
+ * (`{selected && <SidePanel open … />}`) would otherwise miss that very click.
  */
 const FOCUSABLE = "button, a[href], input, select, textarea, summary, [tabindex]";
 const RECENT_MS = 1000;
@@ -29,3 +31,5 @@ export function currentTrigger(): HTMLElement | null {
   const focused = active instanceof HTMLElement && active !== document.body ? active : null;
   return recent ?? focused;
 }
+
+trackTriggers();

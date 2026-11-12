@@ -181,8 +181,8 @@ Trigger: every time the Gold Vault card or Vault page becomes visible (Intersect
   - `credit`: two notes rising a fifth (e.g. E5 → B5), 180ms total.
   - `reward`: three-note major arpeggio (C6, E6, G6) with a gentle shimmer (detuned partial), 420ms.
   - `tick`: single soft 1.2 kHz blip, 40ms (dashboard new request, button confirmations sparingly).
-  - `arrival`: very soft low-high swell, 300ms (Gilded Gate, only if already unlocked).
-- Audio context is created/resumed on the first user gesture (required on iOS Safari). Never attempt to autoplay before that.
+  - `arrival`: very soft low-high swell, 300ms (Gilded Gate, only if already unlocked). The one exception to the 5ms attack: a swell rises slowly (about 120ms).
+- Audio context is created/resumed on the first user gesture (required on iOS Safari). Never attempt to autoplay before that. A touch counts as a gesture only when it ends (`pointerup`, `touchend`, `click`; also `keydown`), never on touch-down, and nothing is ever scheduled on a suspended context.
 - Sound toggle in Me (default on) and in dashboard settings. Respect the toggle everywhere.
 - Push notifications use the device's system sound (web push cannot set custom sounds).
 - Structure: `src/lib/sound.ts` with `play(name)`; ≤ 2 KB.
