@@ -40,12 +40,13 @@ test("[P0-20] under RLS roles, sign-in works and each user's device list shows o
   await signIn(otherPage, mail, uniqueEmail("e2e-rls-b"));
   await signIn(page, mail, uniqueEmail("e2e-rls-a"));
 
-  const mine = page.getByRole("list").getByRole("listitem");
+  // Inside the page: the portal shell's navs are lists too.
+  const mine = page.getByRole("main").getByRole("list").getByRole("listitem");
   await expect(mine).toHaveCount(1);
   await expect(mine.first()).toContainText("This device");
-  await expect(page.getByRole("list")).not.toContainText("Firefox on Windows");
+  await expect(page.getByRole("main").getByRole("list")).not.toContainText("Firefox on Windows");
 
-  const theirs = otherPage.getByRole("list").getByRole("listitem");
+  const theirs = otherPage.getByRole("main").getByRole("list").getByRole("listitem");
   await expect(theirs).toHaveCount(1);
   await expect(theirs.first()).toContainText("Firefox on Windows");
   await other.close();
