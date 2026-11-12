@@ -228,7 +228,7 @@ export function Toaster(): React.JSX.Element {
       </div>
       <section
         aria-label="Notifications"
-        className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom)+12px)] z-50 flex justify-center px-4 lg:bottom-6"
+        className="pointer-events-none fixed inset-x-0 bottom-(--fixed-bottom) z-50 flex justify-center px-4 lg:bottom-6"
       >
         <ol className="flex w-full max-w-sm flex-col gap-2">
           {visible.map((t) => (

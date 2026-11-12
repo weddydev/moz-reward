@@ -132,6 +132,7 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
       { name: "rail-w-open", use: "Desktop rail, open" },
       { name: "sidebar-w", use: "Dashboard and admin sidebar" },
       { name: "bottom-nav-h", use: "Mobile bottom navigation" },
+      { name: "scan-rise", use: "Raised Scan button above the bottom nav" },
       { name: "content-max", use: "Mobile content column" },
       { name: "content-max-desktop", use: "Desktop content width" },
     ],

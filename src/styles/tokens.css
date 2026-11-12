@@ -87,6 +87,7 @@
   --rail-w-open: 220px;
   --sidebar-w: 248px;
   --bottom-nav-h: 64px;
+  --scan-rise: 20px;
   --content-max: 560px;
   --content-max-desktop: 1280px;
 }

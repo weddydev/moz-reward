@@ -1,6 +1,7 @@
 import { PortalShell } from "@/features/portal/PortalShell";
 import { navFor } from "@/features/portal/routes";
 import { gatePortalLayout } from "@/server/portal/gate";
+import { shellChrome } from "@/server/portal/shell";
 
 /**
  * Shop portal layout (P0-12). The gate runs before anything renders: a deny is a redirect or the 403 page
@@ -11,9 +12,10 @@ export default async function ShopLayout({
 }: {
   children: React.ReactNode;
 }): Promise<React.JSX.Element> {
-  const { role } = await gatePortalLayout("shop");
+  const gate = await gatePortalLayout("shop");
+  const chrome = await shellChrome("shop", gate);
   return (
-    <PortalShell portal="shop" nav={navFor("shop", role ?? null)}>
+    <PortalShell nav={navFor("shop", gate.role ?? null)} chrome={chrome}>
       {children}
     </PortalShell>
   );

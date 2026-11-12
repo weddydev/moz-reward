@@ -48,14 +48,14 @@ describe("[P0-12] portal route table", () => {
     ]);
   });
 
-  it("customer: Wallet, Offers, Scan, Market, Me and Notifications; only Offers and Market are public", () => {
+  it("customer: Wallet, Offers, Scan, Market, Notifications, Me (DESIGN §5 rail order); only Offers and Market are public", () => {
     expect(CUSTOMER_ROUTES.map((r) => r.path)).toEqual([
       "/wallet",
       "/offers",
       "/scan",
       "/market",
-      "/me",
       "/notifications",
+      "/me",
     ]);
     expect(CUSTOMER_ROUTES.filter((r) => r.access === "public").map((r) => r.path)).toEqual([
       "/offers",
@@ -125,7 +125,8 @@ describe("[P0-12] portal route table", () => {
         .map((r) => r.mobileLabel ?? r.label);
     expect(mobile("customer", null)).toEqual(["Wallet", "Offers", "Scan", "Market", "Me"]);
     expect(mobile("shop", "owner")).toEqual(["Home", "Requests", "Scan", "Customers"]);
-    expect(mobile("admin", "owner")).toEqual(["Overview", "Applications", "Shops", "Moderation"]);
+    // DESIGN §5 items; "Apps" and "Moderate" are the short labels that fit a 64px slot at 320px (DECISIONS).
+    expect(mobile("admin", "owner")).toEqual(["Overview", "Apps", "Shops", "Moderate"]);
   });
 
   it("activeRoute: the longest matching route; a portal root only matches itself", () => {

@@ -21,6 +21,8 @@ type Base = {
   mobileLabel?: string;
   /** "mobile-only": not in the desktop sidebar or rail. */
   nav?: "mobile-only";
+  /** The raised centre button of the mobile bottom nav (Scan, DESIGN §5). */
+  raised?: true;
 };
 export type CustomerRoute = Base & {
   portal: "customer";
@@ -59,6 +61,7 @@ export const CUSTOMER_ROUTES: readonly CustomerRoute[] = [
     access: "signed-in",
     mobile: true,
     nav: "mobile-only",
+    raised: true,
   },
   {
     portal: "customer",
@@ -70,18 +73,18 @@ export const CUSTOMER_ROUTES: readonly CustomerRoute[] = [
   },
   {
     portal: "customer",
+    path: "/notifications",
+    label: "Notifications",
+    icon: "Bell",
+    access: "signed-in",
+  },
+  {
+    portal: "customer",
     path: "/me",
     label: "Me",
     icon: "CircleUser",
     access: "signed-in",
     mobile: true,
-  },
-  {
-    portal: "customer",
-    path: "/notifications",
-    label: "Notifications",
-    icon: "Bell",
-    access: "signed-in",
   },
 ];
 
@@ -111,6 +114,7 @@ export const SHOP_ROUTES: readonly ShopRoute[] = [
     roles: SHOP_ALL,
     mobile: true,
     nav: "mobile-only",
+    raised: true,
   },
   {
     portal: "shop",
@@ -187,6 +191,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
     portal: "admin",
     path: "/admin/applications",
     label: "Applications",
+    mobileLabel: "Apps",
     icon: "FileCheck",
     roles: ["owner", "support"],
     mobile: true,
@@ -224,6 +229,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
     portal: "admin",
     path: "/admin/moderation",
     label: "Moderation",
+    mobileLabel: "Moderate",
     icon: "ShieldCheck",
     roles: ["owner", "moderator"],
     mobile: true,
