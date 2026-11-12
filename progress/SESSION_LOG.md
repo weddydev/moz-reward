@@ -395,3 +395,4 @@ Evidence: `wip/P0-12-b` `01dcf97`: 5-project E2E `43275952611` green (proxy x-pa
 Human: `SENTRY_DSN_STAGING` and `DEMO_EMAIL_BASE_STAGING` set (gh secret list: 3 secrets). H-34 open items: alert scope, subscription, wizard token, org slug. H-36 steps 1–3 done.
 Human: Sentry org slug `mozereward`; alert email for MOZREWARDS-1 arrived in the shared Gmail inbox (screenshot).
 Human: plus-addressing test passed (mail to <inbox>+moz-test@… landed in the shared Gmail Inbox).
+Human: Sentry alert widened to every new issue (`New issue → email`), test notification received.
