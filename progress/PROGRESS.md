@@ -3,33 +3,36 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-12 01:12 IST (macOS)
+Baton: free — last held by talha.syed, 2026-11-12 06:33 IST (macOS)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 2026-11-12 02:18 IST (macOS). P0-10 and P0-11 are done and on `main`.** Nothing half-done. `wip/P0-10` can be deleted.
-- **P0-11:** `src/lib/sound.ts` (`armSound()` in `ApplyPreferences`, `play(name)`, `SOUNDS`), `src/lib/haptics.ts` (`haptic(name)`, `HAPTICS`), "Sound and haptics" section on `/dev/motion`, `tests/e2e/sound.spec.ts`.
-- **Tested:** gate:task P0-11 PASS (unit 818, int 475, build, bundle, sast, E2E P0-11 6/0); full 5-project E2E 646/0 (169 skipped by design) with `armSound` in the root.
-- **Not yet tested / NOT VERIFIED:** how the sounds sound and real-device haptics (H-37 🟢); Safari's autoplay console on a real iPhone (Playwright WebKit: no AudioContext before a gesture). **CI: runs have sat in "queued" with no jobs since 01:48 IST** (wip `5d7ec9d`, `c71f5da`, main `ee83173` and later): check `gh run list --limit 5` first; if still queued, check Actions minutes (`pnpm ci:usage`, H-30) before more pushes. Last green CI: 43091420964 (wip `658350e`).
-- **Next:** `/subphase-complete` for P0-C (P0-08…11): CI green first, reviews of unreviewed commits (P0-11 diff; P0-08/09/10 were reviewed at task level), MEDIUM batch, scoped QA of `/dev/ui` + `/dev/motion`. Then P0-12 (P0-D; on the security list: design check with `security-reviewer` first). P0-15 still waits on H-06/07/08/26/27.
+- **Handoff by talha.syed, 2026-11-12 06:33 IST (macOS).** The P0-C sub-phase close is **not** done. P0-08, 09, 10 and 11 are ticked and on `main`; P0-C close (`/subphase-complete`) is pending.
+- **Finished on `main`:** P0-10 (`ee83173`, squashed), P0-11 (`72b668a`), with the design re-review and the code review (APPROVE WITH FIXES, 0 BLOCK) done at task level.
+- **Half-done, pushed to branch `wip/P0-C-close` (HEAD `85335e9`, NOT on main):** the review and QA fix batch (`85335e9`): sound unlock on pointerup/touchend/click (not touch-down) and never scheduling on a suspended context; the slide clip kept on a quick second navigation; overlays ignore the tail of a double-click on their trigger (300 ms backdrop guard); every toast fired in the same moment is announced; a preference changed while the profile is unreachable stays pending; Table observes the `<table>`; overlay trigger tracking installed at module load; the slow demo page with its loading state; stagger chips disabled before hydration; gallery intro spacing; Escape/Shift/Control/Alt/Meta are not audio gestures.
+- **How to continue:** (1) `git fetch && git checkout wip/P0-C-close && git pull`; (2) `pnpm install --frozen-lockfile && pnpm db:migrate` (migration 0013, preferences, is on main); (3) `pnpm e2e tests/e2e/overlays.spec.ts tests/e2e/motion.spec.ts tests/e2e/sound.spec.ts tests/e2e/motion-primitives.spec.ts --reporter=line`: the new double-click, slow-page, second-slide and toast tests have **not** been run in E2E yet; fix any failure at its root; (4) full `pnpm e2e` (the trigger tracker, Overlay and Toast change every page); (5) add the SESSION_LOG line `code-review done 72b668a` and the P0-C close entry; `git checkout main && git merge --squash wip/P0-C-close`, commit, tick the P0-C line in PHASES.md, push; (6) then start P0-12.
+- **Tested:** on `wip/P0-C-close` `85335e9`: `pnpm test:unit` 832/0; `gate:task` PASS (unit 818 in the gate run, int 475, build, bundle, sast, E2E P0-11 6/0). Earlier on `main` `72b668a`: full 5-project E2E 646 passed / 0 failed / 169 skipped by design; `gate:task P0-11` PASS. CI `43129226265` (workflow_dispatch on `72b668a`): **success**.
+- **Not yet tested:** the E2E of the fix batch (above); CI on `wip/P0-C-close`; real-device sound and haptics (H-37); the QA checks on iPhone WebKit for background scroll lock and touch-scroll (NOT VERIFIED by QA); staging (none until P0-15).
+- **CI state:** the Actions major outage (12 Nov, ~00:30–01:50 UTC) left push runs `43098330001` (`72b668a`), `43096958119` (`ee83173`), `43096702111` and `43095228870` (wip) queued with no jobs. They cannot be cancelled. If they are still queued, ignore them and use the workflow_dispatch run as evidence; do not push a second time just to re-trigger.
+- **Next person must do first:** nothing new in `.env.local`; run `pnpm install --frozen-lockfile` and `pnpm db:migrate`. No seed changes.
 
 ## Status
-- **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20, P0-13, P0-21, P0-16, P0-08, P0-09, P0-10, P0-11. Next: P0-C close, then P0-12 (P0-D); P0-15 waits on human tasks.
+- **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20, P0-13, P0-21, P0-16, P0-08, P0-09, P0-10, P0-11. Next: P0-C close (on `wip/P0-C-close`), then P0-12 (P0-D); P0-15 waits on human tasks.
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → ~~P0-16~~; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-12 02:18 IST, talha.syed (P0-11 done; P0-C tasks complete, close pending)
+- **Last updated:** 2026-11-12 06:33 IST, talha.syed (P0-10 and P0-11 on main; P0-C close pending on wip/P0-C-close)
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- **P0-11 done 12 Nov** (sound + haptics modules, gallery demo). **P0-10 done 12 Nov.** All P0-C tasks are ticked; the sub-phase close is next.
+- **P0-C close in progress on `wip/P0-C-close`** (`85335e9`, pushed): code review done on `72b668a` (APPROVE WITH FIXES, 0 BLOCK; HIGH and MEDIUM fixed, one MEDIUM documented as a CARRIED row); design re-review done; exploratory QA done (one MAJOR and one MINOR fixed in the batch; the rest in follow-ups). E2E of the batch not yet run.
+- P0-10 and P0-11 done on `main`. CI on `main` `72b668a`: success (`43129226265`).
 - P0-15 is the only P0-E task left and waits on H-06/07/08/26/27.
-- **CI queue stalled** since 01:48 IST 12 Nov (runs queued, no jobs): see handoff.
 
 ## Next (top 3)
-1. P0-C close (`/subphase-complete`), CI green first.
-2. **P0-12** app shells, navigation and route groups (C-01, C-02, C-04, C-05, C-24 land here).
-3. **P0-15**: VPS + staging; waits on H-06/07/08/26/27 (+ H-34 Sentry, H-36 demo inbox).
+1. **Finish the P0-C close** on `wip/P0-C-close`: E2E of the batch (new tests first), full `pnpm e2e`, SESSION_LOG `code-review done 72b668a`, squash to main, tick P0-C in PHASES, push.
+2. **P0-12** app shells, navigation and route groups (CARRIED C-01, C-02, C-04, C-05, C-24 land here; security-reviewer design check first: P0-12 is on the security list; Popover-in-overlay C-39 is not needed until P1).
+3. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); waits on H-06/07/08/26/27 (+ H-34 Sentry, H-36 demo inbox).
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
@@ -55,11 +58,13 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-36 | P0-13 review | P0-15 | Caddy proxies only `/u/script.js` + `/u/api/send` to Umami; dashboard on its own host behind auth | staging curl `/u/` → 404 |
 | C-37 | P0-13 AC4 | P0-15 | RUNBOOK §4 deploy, §5 rollback, §9 key rotation, §12 disk, §13 Tunnel walked once on staging | deploy/rollback logs + SESSION_LOG |
 | C-38 | P0-16 | P0-15 | Staging release runs `db:seed` as moz_worker with `DEMO_EMAIL_BASE` (exit 0 incl. the TOTP check); weekly `db:seed --reset` + RUNBOOK line; slim image can run `db:seed` / `demo:credentials`; demo owner password alone → challenge, enable 401 on staging | deploy log + staging curl |
+| C-39 | P0-10 review | first P1 task that puts a menu, select or popover inside a Modal/SidePanel/BottomSheet | `Popover` portals to `<body>`, so inside a `showModal()` dialog it renders under the top layer and is inert: portal into the open dialog (or the top layer) and re-check placement | E2E: popover opened inside a modal is visible and clickable |
 | C-17 | Stryker | P0 phase gate | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 
 ## Blockers
-- Human 🔴: none (CI queue stall may become one: see handoff). H-32 verified on Windows 11 Nov (migrate + gate:task with no DB URLs in the shell). 🟠: H-34 Sentry account, H-36 demo inbox + staging demo credentials, H-31 Renovate app; by Sun 15 Nov for P0-15: H-06 Hostinger VPS, H-07 domain + Cloudflare, H-08 R2 buckets, H-26 backup key, H-27 UptimeRobot, H-04 Resend + Brevo, H-20 Turnstile, H-28 staging OAuth client, H-21 client's written risk acceptance, H-17 permissions. **Start now:** H-12 Play organisation account.
-- Technical: none blocking P0-14/18/19/20/13/21. Known risk for P0-15: wal-g `wal-push` hangs against R2 without `ca-certificates` in the Postgres image (wal-g #2550) — fix planned; fallback documented.
+- Human 🔴: none.
+- 🟠 (needed by Sun 15 Nov for P0-15): H-06 Hostinger VPS, H-07 domain + Cloudflare, H-08 R2 buckets, H-26 backup key, H-27 UptimeRobot, H-04 Resend + Brevo, H-20 Turnstile, H-28 staging OAuth, H-34 Sentry, H-36 demo inbox, H-31 Renovate app, H-21 client's written risk acceptance, H-17 permissions. **Start now:** H-12 Play organisation account. **H-37** (🟠, before P1-06): iPhone + Android listen and vibrate check.
+- Technical: CI queue stalled during the Actions outage (see handoff). Known risk for P0-15: wal-g `wal-push` hangs against R2 without `ca-certificates` in the Postgres image (wal-g #2550).
 
 ## Map of the codebase
 - `src/app/` — Next.js 16 App Router (`proxy.ts`, not middleware); `/sign-in`, `/staff/sign-in`, `/staff/security`, `/me/security`, `/sign-in/link-expired`; `src/app/dev/` (404 in production); `src/app/api/test/[action]/route.ts` test-only API (404 unless `APP_ENV=test`)
@@ -81,25 +86,18 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - Tests: Vitest `unit` + `integration` (per-worker DBs); `tests/authz/` (matrix, harness self-test); `scripts/check-authz-coverage.ts` (AST, in `pnpm lint`); `tests/e2e/` (Playwright :3100, import `test` from `support/test.ts`); `tests/load/`, `tests/live/`, `stryker.config.mjs`
 
 ## Last verified (12 Nov 2026)
-- P0-11: gate:task P0-11 PASS (unit 818, int 475, build, bundle, sast, E2E 6/0); sound + gallery specs 5 projects 55/0; full 5-project E2E 646/0; modules ≤ 2 KB gzip (unit test). Listening: NOT VERIFIED (H-37).
-- P0-10 (squashed to main): gate:task P0-10 PASS (unit 786, int 475, build, bundle, sast, E2E 46/0); motion specs 5 projects 109/0; full 5-project E2E 616/0 (169 skipped by design); AC5 flake reproduced by delaying the page chunk (0 popovers without the hydration wait, 1 with) then 120/0 ×3; CI 43091420964 green on wip `658350e`; design review 0 BLOCK/HIGH, 4 MEDIUM fixed.
-- P0-09 (wip `1d61e71` → squashed): gate:task P0-09 PASS (unit 723, int 475, build, bundle, sast, E2E P0-09 59/0); CI green 43014246719 (pixel7 + desktop1440); full 5-project E2E locally 503 passed / 0 failed / 152 skipped by design; e2e:visual macOS 2/0; design review: 1 HIGH + 4 MEDIUM fixed, LOWs in follow-ups.
-- P0-09 step C (`0553311`, wip): gate:task PASS (unit 713, int 475, build, bundle, sast, E2E P0-09 34/0); overlays.spec 5 projects 55/0 (10 skipped by design); CI on 0553311 started at the push. CI green on `620cde6` (run 42991161938) and main `7d9a05f` (run 42990900896).
-- P0-08: gate:task PASS (unit 595, int 475, build, bundle, sast, E2E P0-08 35/0, 11 skipped by design); tokens spec on 5 projects 55/0; CLS on `/dev/ui` 0.000 at 320/390/1440 (normal and fonts blocked), fonts 1.5 s late 0.000 / 0.048 / 0.009; contrast 24 pairs, 0 failing; CI green on `wip/P0-08` `8f241c0` (run 42967476496).
-- P0-16: gate:task PASS (unit 511, int 457, build, bundle, sast; no E2E specs: no screens); `pnpm db:reset && pnpm db:seed` twice → identical counts and checksums; `--reset` and `demo:credentials` run locally. Staging: NOT VERIFIED (C-38).
-- P0-13: gate:task PASS (unit 491, int 444, E2E P0-13 16/0); full 5-project E2E 313/0 (07c8463); AC2 by hand (Redis stop → 503 + alert mail); security re-review 0 BLOCK/HIGH.
-- P0-20 re-review (0011): gate:task PASS (unit 462, int 406, build, bundle, sast, E2E P0-20 2/0). Full E2E after 0010: Chromium 69 + WebKit 51 pass, 0 fail (18 skipped by design).
-- P0-20 (`9130581`): gate:task PASS (unit 462, int 401, E2E P0-20 2/0); CI 42785082564 green; e0fc442 CI green 42783610640; full E2E 272 + 5/5.
-- P0-18 (`wip/P0-18` `cffc65b` → squashed to main): gate:task PASS (unit 448, int 357, build, bundle, sast); full E2E locally 268/0; real worker smoke (outbox → Mailpit, SIGTERM exit 0). CI: step C green 42771794684; step D red 42772627338 (axe flake, fixed), review fixes red 42774087662 (Semgrep, fixed); final branch run 42775110214 green.
-- main `a1fc0c5` (P0-19): CI green 42761722399 incl. image + Trivy; full E2E Chromium+WebKit 116/0.
-- Earlier: mutation 90.1% · `test:live`: storage ✅, email NOT VERIFIED (H-04).
-- Staging: none yet.
+- `main` `72b668a` (P0-11): gate:task P0-11 PASS (unit 818, int 475, build, bundle, sast, E2E 6/0); full 5-project E2E 646/0 (169 skipped by design); CI workflow_dispatch `43129226265`: success.
+- `wip/P0-C-close` `85335e9`: unit 832/0; gate:task PASS (the push). E2E of the batch NOT VERIFIED (next step).
+- `main` `ee83173` (P0-10): gate:task P0-10 PASS (E2E 46/0); motion specs 109/0 on 5 projects; full E2E 616/0; AC5 popover flake fixed at the cause (120/0 ×3 after).
+- P0-09 and P0-08: see SESSION_LOG (12 Nov).
+- Mutation 90.1% · `test:live`: storage ✅, email NOT VERIFIED (H-04). Staging: none yet.
 
-## Follow-ups (LOW, not fixed)
-- P0-10 review: morph box radius is `--r-md`, the page header is `--r-lg` (corner pops at the end); mid-morph the thumb passes over page text (a 60–80ms content-fade delay would hide it); Popover: Tab out of the last control leaves the document instead of returning to the trigger, and `place()` runs on every scroll event (wrap in one rAF); `hasTypedViewTransitions` is used by tests only. `motion.spec` waits on `<html data-hydrated>` only (the page segment can hydrate later: same cause as the AC5 flake; add a page-level wait if it ever flakes).
-- P0-09 review: sheet spring-back is the 220ms CSS ease-out, not DESIGN §7's spring (380/32) and ignores release velocity (`use-sheet-drag.ts`); try `--ease-drawer` in P0-10. KPI cards at 1440: one sparkline wraps under its value while neighbours sit inline. Remaining toasts jump up when one leaves (160ms, cosmetic). Gallery only: vertical MilestoneTracks at 1440 have no gap; Avatar captions on different baselines; `--r-lg` swatch looks like pill.
-- Safari streamed-content check on customer pages (from step C).
-- Safe-area padding (modal, panel, sheet, toasts) only checkable on a real iPhone (Playwright reports insets 0).
+## Follow-ups (LOW, not fixed; owner task in brackets)
+- [P0-12] `/dev/motion/shop/nope` returns HTTP 200 with the default white 404 (no `src/app/not-found.tsx`): real shop pages would soft-404. Add not-found per route group (C-04).
+- [P0-12] Popover tab-out of its last control leaves the document (should return to the trigger); `place()` runs on every scroll event (wrap in rAF); morph box radius `--r-md` vs header `--r-lg`; a 60–80ms content-fade delay during the morph would keep text readable.
+- [P1] `hasTypedViewTransitions` is used by tests only (remove or use). Avatar: broken image before hydration shows the broken icon (check `naturalWidth` on mount). Toast: keyboard dismiss drops focus to body; `toast()` with no Toaster queues silently; `EXIT_MS` duplicates `--dur-exit`. Tabs/SegmentedControl: ids from values with spaces; unmatched value leaves all tabs `tabIndex=-1`. `use-sheet-drag`: Esc mid-drag leaves inline `transition: none`. Preferences: sign-out keeps the previous customer's values on the device (add a DECISIONS line or clear). Audio: `arrival` uses a 120ms attack (DESIGN §9 now notes it).
+- [P0-C close] Reduced-motion watcher on the morph (fade-only enter) and the `role=status` text repeat (same text pressed twice is not re-read).
+- Safari streamed-content check on customer pages. Safe-area padding only checkable on a real iPhone.
 
 ## Open questions / assumptions
 - Launch-tier numbers await the client's written confirmation (H-21). Loyalty defaults pending H-22.

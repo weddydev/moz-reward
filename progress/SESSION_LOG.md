@@ -347,3 +347,10 @@ Evidence: unit 30 tests for the two modules + size test (≤ 2 KB gzip each); E2
 Evidence: gate:task P0-11 PASS (unit 818, int 475, E2E 6/0); full 5-project E2E 646/0.
 Not verified: listening and real-device haptics (H-37); CI (queue stalled, no jobs started).
 
+## 2026-11-12 (06:33–handoff) — P0 — P0-C close started; handoff (talha.syed, macOS)
+Done: code review of `2eea12e`…`72b668a` (code-reviewer: APPROVE WITH FIXES, 0 BLOCK, 1 HIGH + 6 MEDIUM fixed, M5 → C-39, LOWs in follow-ups); design re-review of the P0-10 fixes and P0-11 (HIGH: touch-down unlock, second-slide clip; both fixed); exploratory QA of `/dev/ui` + `/dev/motion` (MAJOR double-click closes overlay: fixed; toast announcements: fixed; minors/cosmetics fixed or in follow-ups). Fix batch pushed to `wip/P0-C-close` `85335e9`; main untouched since `72b668a`.
+Evidence: CI workflow_dispatch `43129226265` on `72b668a` success; `gate:task` PASS on `85335e9`; unit 832/0 on the batch.
+Evidence: QA: 25+ checks PASS incl. overflow 320/390/1440 both engines, 44px targets, focus in/out, sheet drag on pixel7, toast queue, slow-network CLS 0; the iPhone background scroll lock and touch scroll NOT VERIFIED.
+Not verified: E2E of the batch; CI on `wip/P0-C-close`; real-device sound and haptics (H-37).
+Next: finish the batch (E2E, full E2E), squash to main, tick P0-C, then P0-12.
+
