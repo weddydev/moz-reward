@@ -18,13 +18,20 @@ test("[P0-13] signed out: /admin/system sends you to staff sign-in and back", as
   await expect(page).toHaveURL(/\/staff\/sign-in\?returnTo=%2Fadmin%2Fsystem$/);
 });
 
-test("[P0-13] an admin who is not the owner sees no system data", async ({ page, signInAs }) => {
+test("[P0-13] an admin who is not the owner gets the 403 page and no system data", async ({
+  page,
+  signInAs,
+}) => {
   await signInAs("admin_support");
-  await page.goto("/admin/system");
+  const res = await page.goto("/admin/system");
+  expect(res?.status()).toBe(403);
   await expect(
-    page.getByText("You don't have access to this page. It is for the admin owner."),
+    page.getByRole("heading", { name: "You don't have access to this page" }),
   ).toBeVisible();
+  // A portal-level deny renders no shell, no nav and none of the page (P0-12).
+  await expect(page.locator("[data-portal]")).toHaveCount(0);
   await expect(page.getByText("Emails sent today")).toHaveCount(0);
+  expect(await res?.text()).not.toContain("Emails sent today");
 });
 
 test("[P0-13] AC3: the admin owner sees status, queues, outbox, backups and quotas", async ({
