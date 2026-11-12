@@ -4,8 +4,8 @@ import { gatePortalLayout } from "@/server/portal/gate";
 import { shellChrome } from "@/server/portal/shell";
 
 /**
- * Customer portal layout (P0-12). The gate runs before anything renders: a deny is a redirect or the 403 page
- * with no shell or nav. Layouts don't re-render on navigation, so every page calls its own gate as well.
+ * Customer portal layout (P0-12). The gate runs before anything renders: a signed-in page sends visitors to
+ * sign in with no shell or nav (customer routes never answer 403). Layouts don't re-render on navigation, so every page calls its own gate as well.
  */
 export default async function CustomerLayout({
   children,

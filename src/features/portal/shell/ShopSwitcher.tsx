@@ -16,10 +16,25 @@ import type { ShellShop } from "./types";
  * included) in its answer, then the client goes to `/dashboard`. No full page load: it would cut that answer
  * off mid-stream.
  */
-function useSwitch(onSwitched?: () => void): {
-  busy: string | null;
-  choose: (shopId: string) => void;
-} {
+/** Other tabs of the shop portal refresh when the active shop changes (`ActiveShopSync`). */
+export const ACTIVE_SHOP_CHANNEL = "moz-active-shop";
+
+function announceSwitch(): void {
+  try {
+    const channel = new BroadcastChannel(ACTIVE_SHOP_CHANNEL);
+    channel.postMessage("changed");
+    channel.close();
+  } catch {
+    // No BroadcastChannel (very old browser): other tabs catch up on their next navigation.
+  }
+}
+
+const OFFLINE_MESSAGE = "We couldn't switch shop. Check your connection and try again.";
+
+function useSwitch(
+  onSwitched: (() => void) | undefined,
+  showError: (message: string) => void,
+): { busy: string | null; choose: (shopId: string) => void } {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   return {
@@ -29,18 +44,19 @@ function useSwitch(onSwitched?: () => void): {
       switchShop({ shopId })
         .then((r) => {
           if (r.ok) {
+            announceSwitch();
             router.push(r.data.to);
             setBusy(null);
             onSwitched?.();
             return;
           }
           setBusy(null);
-          toast(r.error.message, "error");
+          showError(r.error.message);
         })
         .catch(() => {
           // Offline, or the request never reached the server: say so and let them try again.
           setBusy(null);
-          toast("We couldn't switch shop. Check your connection and try again.", "error");
+          showError(OFFLINE_MESSAGE);
         });
     },
   };
@@ -49,7 +65,12 @@ function useSwitch(onSwitched?: () => void): {
 function ShopLine({ shop }: { shop: ShellShop }): React.JSX.Element {
   return (
     <span className="flex min-w-0 flex-1 flex-col text-left">
-      <span className="text-small truncate font-semibold">{shop.name}</span>
+      <span
+        className="text-small line-clamp-2 font-semibold [overflow-wrap:anywhere]"
+        title={shop.name}
+      >
+        {shop.name}
+      </span>
       {shop.town ? <span className="text-caption text-ink-2 truncate">{shop.town}</span> : null}
     </span>
   );
@@ -60,50 +81,69 @@ export function ShopSwitchList({
   shops,
   activeShopId,
   onSwitched,
+  inlineErrors = false,
 }: {
   shops: readonly ShellShop[];
   activeShopId: string | null;
   /** Called once the switch succeeded (closes the popover or sheet around the list). */
   onSwitched?: () => void;
+  /**
+   * Show errors under the list instead of as a toast: inside a modal sheet (top layer) a toast would sit
+   * behind it, out of sight.
+   */
+  inlineErrors?: boolean;
 }): React.JSX.Element {
   const hydrated = useHydrated();
   // Inside the sidebar's popover: close it after a switch.
   const closePopover = usePopoverClose();
-  const { busy, choose } = useSwitch(onSwitched ?? closePopover ?? undefined);
+  const [error, setError] = useState<string | null>(null);
+  const { busy, choose } = useSwitch(onSwitched ?? closePopover ?? undefined, (message) => {
+    if (inlineErrors) setError(message);
+    else toast(message, "error");
+  });
   return (
-    <ul aria-label="Your shops" className="flex flex-col gap-1">
-      {shops.map((s) => {
-        const current = s.id === activeShopId;
-        return (
-          <li key={s.id}>
-            <button
-              type="button"
-              disabled={!hydrated}
-              // Busy: aria-disabled, not disabled, so keyboard focus stays in the list (Esc still closes it).
-              aria-disabled={busy !== null || undefined}
-              aria-busy={busy === s.id || undefined}
-              aria-current={current ? "true" : undefined}
-              onClick={() => {
-                if (!current && busy === null) choose(s.id);
-              }}
-              className={cx(
-                "pressable flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2",
-                current ? "bg-gold-100" : "hover:bg-surface-2",
-              )}
-            >
-              <Icon icon={Store} />
-              <ShopLine shop={s} />
-              {current ? <Icon icon={Check} label="Current shop" /> : null}
-              {busy === s.id ? (
-                <span role="status" className="spinner">
-                  <span className="sr-only">Switching</span>
-                </span>
-              ) : null}
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="flex flex-col gap-2">
+      <ul aria-label="Your shops" className="flex flex-col gap-1">
+        {shops.map((s) => {
+          const current = s.id === activeShopId;
+          return (
+            <li key={s.id}>
+              <button
+                type="button"
+                disabled={!hydrated}
+                // Busy: aria-disabled, not disabled, so keyboard focus stays in the list (Esc still closes it).
+                aria-disabled={busy !== null || undefined}
+                aria-busy={busy === s.id || undefined}
+                aria-current={current ? "true" : undefined}
+                onClick={() => {
+                  if (current || busy !== null) return;
+                  setError(null);
+                  choose(s.id);
+                }}
+                className={cx(
+                  "pressable flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2",
+                  current ? "bg-gold-100" : "hover:bg-surface-2",
+                )}
+              >
+                <Icon icon={Store} />
+                <ShopLine shop={s} />
+                {current ? <Icon icon={Check} label="Current shop" /> : null}
+                {busy === s.id ? (
+                  <span role="status" className="spinner">
+                    <span className="sr-only">Switching</span>
+                  </span>
+                ) : null}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {error ? (
+        <p role="alert" className="text-small text-danger px-3">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

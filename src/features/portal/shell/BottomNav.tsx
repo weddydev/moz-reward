@@ -51,8 +51,14 @@ export function BottomNav({
   chrome: ShellProps;
 }): React.JSX.Element {
   const hydrated = useHydrated();
-  const [moreOpen, setMoreOpen] = useState(false);
-  const active = activeRoute(usePathname())?.path ?? null;
+  const pathname = usePathname();
+  // Open for the page it was opened on: a navigation underneath (Back, a link) closes it.
+  const [moreOpenOn, setMoreOpenOn] = useState<string | null>(null);
+  const moreOpen = moreOpenOn === pathname;
+  const setMoreOpen = (open: boolean): void => {
+    setMoreOpenOn(open ? pathname : null);
+  };
+  const active = activeRoute(pathname)?.path ?? null;
   const bar = items.filter((r) => r.mobile);
   const rest = items.filter((r) => !r.mobile);
   const hasMore = chrome.portal !== "customer";
@@ -90,7 +96,9 @@ export function BottomNav({
                       <Icon icon={navIcon(r.icon)} />
                     </Pill>
                   )}
-                  <span className="max-w-full truncate">{label}</span>
+                  <span data-nav-label className="max-w-full truncate tracking-tight">
+                    {label}
+                  </span>
                 </TransitionLink>
               </li>
             );
@@ -110,7 +118,9 @@ export function BottomNav({
                 <Pill active={moreActive}>
                   <Icon icon={Ellipsis} />
                 </Pill>
-                <span>More</span>
+                <span data-nav-label className="tracking-tight">
+                  More
+                </span>
               </button>
             </li>
           ) : null}
@@ -154,6 +164,7 @@ export function BottomNav({
                   onSwitched={() => {
                     setMoreOpen(false);
                   }}
+                  inlineErrors
                 />
               </section>
             ) : null}

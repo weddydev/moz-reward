@@ -4,7 +4,7 @@ import "server-only";
  * (`/api/test/*`, APP_ENV=test only). Every factory builds exactly what it is asked for, with
  * unique, obviously fake data (never real personal data).
  */
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { withUniqueCode } from "@/lib/codes";
 import { newId } from "@/lib/id";
 import { hashPassword } from "@/server/auth/password";
@@ -198,18 +198,6 @@ export async function makeActor(
  * auth.ts keeps forcing mfaVerified=false for any non-MFA path, so production can never be tricked into it;
  * only the 404-gated test API calls this.
  */
-/** Deactivates or reactivates one staff membership (P0-12 E2E: a member removed while signed in). */
-export async function setStaffActive(
-  userId: string,
-  shopId: string,
-  active: boolean,
-): Promise<void> {
-  await db()
-    .update(shopStaff)
-    .set({ active })
-    .where(and(eq(shopStaff.userId, userId), eq(shopStaff.shopId, shopId)));
-}
-
 export async function markSessionMfaVerified(token: string): Promise<void> {
   await db().update(sessions).set({ mfaVerified: true }).where(eq(sessions.token, token));
 }

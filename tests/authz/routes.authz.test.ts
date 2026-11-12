@@ -1,14 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { PORTAL_ROUTES, type PortalRoute } from "@/features/portal/routes";
+import { defaultPortalPath } from "@/features/portal/routes";
 import {
   ADMIN_SESSION_MAX_MS,
   type Principal,
   STAFF_SESSION_MAX_MS,
 } from "@/server/authz/policies";
+import { loadPrincipal } from "@/server/authz/principal";
 import type * as EnvModule from "@/server/env";
 import { gateAdminRoute, gateCustomerRoute, gateShopRoute } from "@/server/portal/gate";
 import { parseAdminAllowlist } from "@/server/security/admin-allowlist";
 import { type World, world } from "./harness";
+import { makeAdmin, makeUser } from "../fixtures/factories";
 
 /**
  * Route authz matrix (P0-12, C-01, C-24): every route in the table (`src/features/portal/routes.ts`) × every
@@ -18,8 +21,10 @@ import { type World, world } from "./harness";
  * path: together, no page without a matrix row.
  *
  * Expectations are written from the spec (PRODUCT §2 + the P0-12 role matrix), not from the gate's code:
- * signed out → sign in (never 403); no membership → 403; role → 403; MFA missing → /staff/security; past the
- * 12 h / 2 h limit → sign in again; admin outside ADMIN_IP_ALLOWLIST → 403.
+ * signed out → sign in (never 403); no membership → 403; then the role: a route the role may never open is
+ * 403 whatever the session's state (a stale staff session on an owner-only page too), and only for a role
+ * that may open it: MFA missing → /staff/security, past the 12 h / 2 h limit → sign in again; admin outside
+ * ADMIN_IP_ALLOWLIST → 403 (DECISIONS 13 Nov 2026).
  */
 const allowlist = vi.hoisted(() => ({ value: undefined as string | undefined }));
 vi.mock("@/server/env", async (importOriginal) => {
@@ -59,7 +64,7 @@ const hoursAgo = (ms: number): Date => new Date(Date.now() - ms - 60_000);
 
 type Column = {
   name: string;
-  principal: (w: World) => Principal | null;
+  principal: (w: World) => Principal | null | Promise<Principal | null>;
   shopCookie?: (w: World) => string;
   /** ADMIN_IP_ALLOWLIST for this column. */
   list?: string;
@@ -70,6 +75,15 @@ const p = (w: World, role: keyof World["principals"]): Principal => {
   if (!found) throw new Error(`world has no ${role}`);
   return found;
 };
+
+/** A deactivated admin (edge case): the principal carries no admin role, so they are a customer only. */
+let inactiveAdmin: Promise<Principal | null> | undefined;
+const deactivatedAdmin = (): Promise<Principal | null> =>
+  (inactiveAdmin ??= (async () => {
+    const user = await makeUser();
+    await makeAdmin(user.id, "owner", { active: false });
+    return loadPrincipal({ userId: user.id, mfaVerified: true, sessionCreatedAt: new Date() });
+  })());
 
 const COLUMNS: Column[] = [
   { name: "signed out", principal: () => null },
@@ -113,6 +127,7 @@ const COLUMNS: Column[] = [
       sessionCreatedAt: hoursAgo(ADMIN_SESSION_MAX_MS),
     }),
   },
+  { name: "admin owner, deactivated", principal: () => deactivatedAdmin() },
   {
     name: "admin owner, off-list",
     principal: (w) => ({ ...p(w, "admin_owner"), clientIp: "198.51.100.7" }),
@@ -183,7 +198,7 @@ describe("[P0-12] authz: portal route matrix (C-01, C-24)", () => {
           allowlist.value = col.list;
           try {
             const ctx = {
-              principal: col.principal(w),
+              principal: await col.principal(w),
               ...(col.shopCookie ? { shopCookie: col.shopCookie(w) } : {}),
             };
             const got = await outcome(gateFor(route, ctx));
@@ -211,4 +226,10 @@ describe("[P0-12] authz: portal route matrix (C-01, C-24)", () => {
       }
     });
   }
+
+  it("a deactivated admin has no admin role: lands in the customer app", async () => {
+    const p = await deactivatedAdmin();
+    expect(p?.adminRole).toBeNull();
+    expect(defaultPortalPath(p ?? { adminRole: null, shopRoles: [] })).toBe("/wallet");
+  });
 });

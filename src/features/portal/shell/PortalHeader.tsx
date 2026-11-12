@@ -40,7 +40,7 @@ export function PortalHeader({ chrome }: { chrome: ShellProps }): React.JSX.Elem
                 <PortalSwitcher portals={chrome.portals} current="customer" compact />
               </>
             ) : (
-              <a href="/sign-in" className={buttonClasses({ variant: "secondary", size: 40 })}>
+              <a href="/sign-in" className={buttonClasses({ variant: "secondary", size: 48 })}>
                 <Icon icon={LogIn} size={18} />
                 Sign in
               </a>
@@ -62,7 +62,8 @@ export function PortalHeader({ chrome }: { chrome: ShellProps }): React.JSX.Elem
     >
       <div className="flex min-h-14 items-center justify-between gap-3 px-4 lg:min-h-0 lg:px-0">
         <div className="flex min-w-0 items-center gap-2 lg:hidden">
-          <Wordmark />
+          {/* Below 360px the crown alone, so the shop's name has room. */}
+          <Wordmark labelClassName="max-[359px]:sr-only" />
           {shop ? (
             <span className="text-small text-ink-2 truncate font-semibold" data-active-shop>
               {shop.name}

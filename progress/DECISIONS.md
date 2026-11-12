@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-13 — P0-D close: customer sub-path 404s, role before session age
+Decision: unknown paths under the customer portal's other items (`/me/x`, `/offers/x`, `/market/x`, `/notifications/x`, `/scan/x`) get the root designed 404 (a real 404, no shell), not a gated catch-all; only `/wallet/[...rest]` has one, as the portal root. Shop and admin gates check the role before MFA and session age, so a route a role may never open answers 403 even for a stale session (no sign-in round trip that ends in 403 anyway); the brief's "session first" holds for signed-out requests.
+Why: code-review MEDIUM/LOW at the P0-D close; a customer sub-path reveals nothing behind a 404, and the role-first order matches the action policies (`decideShopRole`).
+Consequence / revisit when: a customer area that grows sub-pages gets hidden table rows (like `/me/security`) and, if needed, its own gated catch-all.
+
 ## 2026-11-13 — P0-12 review fixes: hidden routes, blank allowlist, page lint, rail toggle
 Decision: (1) `/me/security` (P0-06 devices page) moves into the customer portal as a route with `nav: "hidden"`: gated as itself and in the matrix, never a nav item, its parent (Me) shows as active. (2) A set-but-blank `ADMIN_IP_ALLOWLIST` fails the boot on staging/production; locally and in tests it stays "unset" (`.env.local` files were made from `.env.example`). (3) The authz-coverage lint now requires every portal `page.tsx` to `await` its portal's gate with **its own** table path at the top of its default export (`[...rest]` → the portal root) and refuses pages at portal URLs outside their route group. (4) The customer rail gets a "Show labels" toggle for touch screens and tablets (no hover); it also stays open while its own popover is open. (5) Customer pages carry their own Fraunces h1; the phone header carries brand and actions (reference: Notification Inbox), not the page title. (6) `pnpm check` now runs `test:titles:strict` (CI's `test:titles --strict`), so gate:task and the pre-push hook catch untagged tests too.
 Why: security-reviewer MEDIUMs (lint path matching, blank list), design-reviewer HIGH (rail closing behind its popover) and MEDIUMs (labels unreachable without hover, title row rhythm, 44px wordmark link).

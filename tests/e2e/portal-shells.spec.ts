@@ -1,5 +1,5 @@
 import { expect, test } from "./support/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 /**
  * P0-12 step E: the portal shells of DESIGN §5 (production build). Desktop projects check the rail and the
@@ -7,16 +7,16 @@ import type { Page } from "@playwright/test";
  */
 const isPhone = (page: Page): boolean => (page.viewportSize()?.width ?? 1280) < 768;
 
-/** The element's box once it has stopped moving (enter animations finished). */
-async function settledBox(page: Page, locator: ReturnType<Page["locator"]>) {
-  let last = await locator.boundingBox();
-  for (let i = 0; i < 20; i++) {
-    await page.waitForTimeout(100);
-    const next = await locator.boundingBox();
-    if (next && last && Math.abs(next.y - last.y) < 0.5) return next;
-    last = next;
-  }
-  return last;
+/** The element's box once its animations have finished (no fixed sleeps). */
+async function settledBox(locator: Locator) {
+  await expect
+    .poll(() =>
+      locator.evaluate(
+        (el) => el.getAnimations({ subtree: true }).filter((a) => a.playState === "running").length,
+      ),
+    )
+    .toBe(0);
+  return locator.boundingBox();
 }
 
 test.describe("[P0-12] portal shells", () => {
@@ -195,11 +195,7 @@ test.describe("[P0-12] portal shells at 320px", () => {
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
       expect(overflow).toBe(0);
-      for (const label of await page
-        .locator(
-          '[data-portal-nav="bottom"] li span.truncate, [data-portal-nav="bottom"] li button span:last-child',
-        )
-        .all()) {
+      for (const label of await page.locator('[data-portal-nav="bottom"] [data-nav-label]').all()) {
         // A truncated label would be cut with an ellipsis: its content fits its box.
         expect(await label.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
       }
@@ -315,9 +311,9 @@ test.describe("[P0-12] shop switcher, toasts across navigation, per-item deny", 
     await page.reload();
     await openSwitcher();
     await other().click();
-    const toastEl = page.locator(".toast", { hasText: /too many/i });
+    const toastEl = page.locator("[data-tone]", { hasText: /too many/i });
     await expect(toastEl).toBeVisible();
-    const before = await settledBox(page, toastEl);
+    const before = await settledBox(toastEl);
     // The switcher stays open after an error (to try again); focus stays in it, so Esc closes it.
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog", { name: "Switch shop" })).toHaveCount(0);
@@ -328,7 +324,7 @@ test.describe("[P0-12] shop switcher, toasts across navigation, per-item deny", 
     await expect(page).toHaveURL(/\/dashboard\/requests$/);
     await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
     await expect(toastEl).toBeVisible();
-    const after = await settledBox(page, toastEl);
+    const after = await settledBox(toastEl);
     const vh = page.viewportSize()?.height ?? 0;
     expect(Math.abs((after?.y ?? 0) - (before?.y ?? -100))).toBeLessThanOrEqual(1);
     expect((after?.y ?? 0) + (after?.height ?? 0)).toBeGreaterThan(vh - 120);
@@ -400,4 +396,74 @@ test.describe("[P0-12] portal shell visual snapshots", { tag: "@visual" }, () =>
       });
     }
   }
+});
+
+test.describe("[P0-12] P0-D QA fixes", () => {
+  test("a second tab follows a shop switch without a reload", async ({ page, signInAs }) => {
+    test.skip(isPhone(page), "desktop sidebar shows the shop card");
+    await signInAs("staff", { extraShops: 1 });
+    await page.goto("/dashboard");
+    const other = await page.context().newPage();
+    await other.goto("/dashboard");
+    const card = (p: Page) => p.locator("[data-shop-switcher]");
+    const before = (await card(other).textContent()) ?? "";
+    await card(page)
+      .getByRole("button", { name: /Switch shop/ })
+      .click();
+    await page
+      .getByRole("list", { name: "Your shops" })
+      .locator("button:not([aria-current])")
+      .click();
+    await expect(card(page)).not.toHaveText(before);
+    // The other tab refreshes on its own: its card names the same shop as the first tab's.
+    await expect(card(other)).toHaveText((await card(page).textContent()) ?? "");
+    await other.close();
+  });
+
+  test("phones: Back with More open closes the sheet", async ({ page, signInAs }) => {
+    test.skip(!isPhone(page), "the More sheet is the phone pattern");
+    await signInAs("staff");
+    await page.goto("/dashboard");
+    const bar = page.locator('[data-portal-nav="bottom"]');
+    await bar.getByRole("link", { name: "Requests" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/requests$/);
+    await bar.getByRole("button", { name: "More" }).click();
+    await expect(page.getByRole("dialog", { name: "More" })).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole("dialog", { name: "More" })).toBeHidden();
+  });
+
+  test.describe("offline", () => {
+    // The switch request fails on purpose: browsers report the failed fetch (one pattern: Playwright reads a
+    // two-item array in `test.use` as [value, options]).
+    test.use({
+      guardAllow: [
+        /^(requestfailed: (POST|GET) |console: Failed to load resource|console: TypeError: (Failed to fetch|Load failed)|pageerror: (Failed to fetch|Load failed))/,
+      ],
+    });
+
+    test("phones: a failed switch says so inside the More sheet (a toast would sit behind it)", async ({
+      page,
+      signInAs,
+    }) => {
+      test.skip(!isPhone(page), "the More sheet is the phone pattern");
+      await signInAs("staff", { extraShops: 1 });
+      await page.goto("/dashboard");
+      await page
+        .locator('[data-portal-nav="bottom"]')
+        .getByRole("button", { name: "More" })
+        .click();
+      const sheet = page.getByRole("dialog", { name: "More" });
+      await page.context().setOffline(true);
+      await sheet
+        .getByRole("list", { name: "Your shops" })
+        .locator("button:not([aria-current])")
+        .click();
+      await expect(sheet.getByRole("alert")).toHaveText(/couldn't switch shop/);
+      // Inside the sheet, not as a toast hidden behind it.
+      await expect(page.locator("[data-tone]")).toHaveCount(0);
+      await page.context().setOffline(false);
+    });
+  });
 });

@@ -19,7 +19,6 @@ import {
   makeStaff,
   makeUser,
   markSessionMfaVerified,
-  setStaffActive,
 } from "@/server/testing/factories";
 import { testApiAllowed } from "@/server/testing/test-api";
 
@@ -28,11 +27,6 @@ import { testApiAllowed } from "@/server/testing/test-api";
  * as any role without driving the UI. Returns 404 in every other environment (proved by a test).
  */
 const notFound = (): Response => new Response("Not found", { status: 404 });
-
-/** P0-12: deactivate (or reactivate) one membership, as an owner removing a member would. */
-const staffActiveInput = z
-  .object({ userId: z.uuid(), shopId: z.uuid(), active: z.boolean() })
-  .strict();
 
 const sessionInput = z
   .object({
@@ -138,12 +132,6 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
   switch (action) {
     case "session":
       return createSession(body);
-    case "staff-active": {
-      const parsed = staffActiveInput.safeParse(body);
-      if (!parsed.success) return invalid();
-      await setStaffActive(parsed.data.userId, parsed.data.shopId, parsed.data.active);
-      return NextResponse.json({ ok: true });
-    }
     case "user": {
       const parsed = userInput.safeParse(body ?? {});
       if (!parsed.success) return invalid();

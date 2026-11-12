@@ -1,6 +1,7 @@
 import { RouteTransition } from "@/components/motion";
 import { Toaster } from "@/components/ui";
 import { cx } from "@/lib/cx";
+import { ActiveShopSync } from "./shell/ActiveShopSync";
 import { BottomNav } from "./shell/BottomNav";
 import { CustomerRail } from "./shell/CustomerRail";
 import { PortalHeader } from "./shell/PortalHeader";
@@ -52,6 +53,7 @@ export function PortalShell({
         </main>
       </div>
       <BottomNav items={nav} chrome={chrome} />
+      {chrome.portal === "shop" ? <ActiveShopSync /> : null}
       <Toaster />
     </div>
   );
