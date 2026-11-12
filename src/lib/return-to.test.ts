@@ -35,3 +35,29 @@ describe("[P0-06] safeReturnTo", () => {
     expect(safeReturnTo("//x", "/dashboard")).toBe("/dashboard");
   });
 });
+
+describe("[P0-12] safeReturnTo: pages only (SECURITY §4 allowlist)", () => {
+  it.each([
+    ["/api/auth/sign-out"],
+    ["/api"],
+    ["/api?x=1"],
+    ["/API/auth/sign-out"],
+    ["/_next/static/chunks/a.js"],
+    ["/_next"],
+    ["/dev/ui"],
+    ["/dev"],
+    // Dot-segments that normalise into a refused prefix.
+    ["/wallet/../api/auth/sign-out"],
+    ["/./dev/ui"],
+  ])("refuses the non-page target %s", (input) => {
+    expect(safeReturnTo(input)).toBe("/wallet");
+    expect(safeReturnTo(input, "/dashboard")).toBe("/dashboard");
+  });
+
+  it.each([["/apiary"], ["/developers"], ["/devices"], ["/_nextgen"], ["/dashboard/api"]])(
+    "keeps a page whose name only starts like one: %s",
+    (input) => {
+      expect(safeReturnTo(input)).toBe(input);
+    },
+  );
+});
