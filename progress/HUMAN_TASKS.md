@@ -19,7 +19,6 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 | H-34 | 🟠 | Sentry free account (one owner), one project, alert rule emailing the owner; DSN into GitHub secrets for staging | Sun 15 Nov 2026 (P0-15 staging) | Error reporting for web + worker (P0-13 builds the code; local proof uses a fake Sentry endpoint) | 15 min |
 | H-31 | 🟠 | Install the **Renovate** GitHub App on the `moz-reward` repo only (free) | Sun 15 Nov 2026 (P0-E close) | `renovate.json` (P0-14) does nothing until the app is installed; weekly dependency PRs | 5 min |
 | H-36 | 🟠 | Demo accounts on staging: choose one real inbox for `DEMO_EMAIL_BASE` (GitHub secret); after the first staging deploy, save the output of `demo:credentials` in the password manager and add the six TOTP keys to your authenticator apps | Sun 15 Nov 2026 (P0-15 staging) | The demo customer signs in by email link; staff/admin demo accounts need password + code. Credentials are never committed or pasted into chat | 15 min |
-| H-06 | 🟠 | Hostinger KVM 4 **bought** (12 Nov). Still to do: both developers' SSH keys on it, the GitHub deploy key (steps 2–3), then give Claude the IP | Sun 15 Nov 2026 (P0-15) | Hosts production **and** staging (plan v5) | 15 min |
 | H-08 | 🟠 | Cloudflare R2: **backups bucket now** (`moz-rewards-backups` + one bucket-scoped token); the two upload buckets (`moz-rewards`, `moz-rewards-staging`) wait until P2 (human asked 12 Nov; S3 settings are optional at boot) | Backups: Sun 15 Nov 2026 (P0-15); uploads: before P2 | Encrypted backups + restore drill (P0-15 AC 4–5); uploads (P2) | 5 min now + 10 min before P2 |
 | H-26 | 🟠 | Generate the backup encryption key pair (**OpenPGP**, one pair for dumps and WAL); private key to the password manager only; give Claude the **public** key | Sun 15 Nov 2026 (P0-15) | Backups are encrypted before upload; the private key never sits on the VPS | 10 min |
 | H-27 | 🟠 | UptimeRobot free account; mobile app on both phones; both emails as alert contacts | Sun 15 Nov 2026 (P0-15) | Uptime alerts to both developers | 10 min |
@@ -176,6 +175,7 @@ Images live in `design/reference/desktop-view/` and `mobile-view/`.
 
 | ID | Task | Done by | Date |
 |---|---|---|---|
+| H-06 | Hostinger KVM 4 (UK, Ubuntu 24.04), IP **72.61.17.208**; both developers' SSH keys added in hPanel, root key login tested; deploy key `~/.ssh/moz_deploy` on the VPS (key login tested) and in GitHub secret `DEPLOY_SSH_KEY` (+ password manager). Hardening script is Claude's (P0-15) | Syedbadeshah76 | 12 Nov 2026 |
 | H-07 | Domain **mozrewards.com** on Cloudflare (zone active, DNS empty; both developers share one Cloudflare login, so no member invite; 2FA recovery in the shared password manager). Staging host `staging.mozrewards.com` | Syedbadeshah76 | 12 Nov 2026 |
 | H-32 | `.env.local` DB role lines on both laptops (Windows confirmed by the human 11 Nov; verified by Claude on Windows 12 Nov 2026: `pnpm db:migrate` without shell overrides OK) | human | 11 Nov 2026 |
 | H-33 | Deny rules narrowed so `.env.example` is editable (committed `ca9d3d8`) | talha.syed | 10 Nov 2026 |

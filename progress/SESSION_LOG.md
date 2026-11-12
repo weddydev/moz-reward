@@ -384,3 +384,4 @@ Evidence: 5-project Linux E2E `43221794416` on `6ad688a`: 674 passed, 0 failed, 
 Evidence: P0-12 on `wip/P0-12-b` (rebased; force-push refused → new name): gates + layout gate, unit portal 29/0 + proxy 7/0; CI `43226256972` green on `341433e`. A pre-push gate crashed once on low memory (Vitest worker 0xC0000409, 1.3 GB free virtual memory): not a code failure.
 Human: VPS bought (H-06 in progress), domain mozrewards.com on Cloudflare (H-07 done), H-08 split (backups bucket now, upload buckets before P2).
 Handoff: 5-project run `43269125099` on `576b73e` running at handoff; `wip/P0-12-b` `01dcf97` pushed with the handoff.
+Human: H-06 done (VPS 72.61.17.208, SSH + deploy key verified by the human, `DEPLOY_SSH_KEY` set). R2 can't be enabled now: Backblaze B2 offered as the backups stopgap (human deciding). New standing rule in CLAUDE.md §3 "Do it yourself". `wip/P0-12-b` `01dcf97` pushed (gate:task PASS: unit 945, int 475, sast).

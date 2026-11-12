@@ -14,7 +14,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **How to continue:** `git pull`; check `43269125099` and tick P0-C if clean; then `git checkout wip/P0-12-b && git pull` and build step C.
 - **Tested:** see "Last verified". **Not yet tested:** the 5-project run on `576b73e` (running); a 5-project run with the proxy `x-pathname` change; the quarantined pixel7 motion test (C-40); P0-12 beyond unit tests; real-device sound and haptics (H-37); iPhone WebKit scroll lock and touch-scroll (QA NOT VERIFIED); staging (none until P0-15).
 - **Nothing to do first:** no new env vars, migrations or seeds. (`wip/P0-12-b` makes a malformed `ADMIN_IP_ALLOWLIST` fail the boot; unset is fine.)
-- **Human side (12 Nov):** VPS bought (H-06: IP, SSH keys, deploy key still to come); domain **mozrewards.com** on Cloudflare, DNS empty (H-07 done); R2 now only the backups bucket (H-08 split). Staging host will be `staging.mozrewards.com`.
+- **Human side (12 Nov):** VPS ready (H-06 done: IP 72.61.17.208, both SSH keys + deploy key work, `DEPLOY_SSH_KEY` set; root password login still on until the P0-15 hardening script turns it off); domain **mozrewards.com** on Cloudflare, DNS empty (H-07 done); R2 now only the backups bucket (H-08 split). Staging host will be `staging.mozrewards.com`.
 - **Low memory on this Windows laptop:** with VS Code + Chrome open, free virtual memory fell to ~1.3 GB and a pre-push gate crashed a Vitest worker (0xC0000409): not a code failure, re-run. Docker Desktop also stopped once: start it (`%LOCALAPPDATA%\Programs\DockerDesktop\Docker Desktop.exe`), then `pnpm services:up`; the gitleaks hook needs it. `pnpm sast` takes 10–23 min here.
 - **Linux WebKit locally:** serve the `.next-e2e` build on :3100 with `--hostname 0.0.0.0` and the `e2eServerEnv()` variables; in `mcr.microsoft.com/playwright:v1.65.0-noble` copy `git ls-files`, `npm i -g pnpm`, `pnpm install --frozen-lockfile --ignore-scripts`, then `E2E_BASE_URL=http://host.docker.internal:3100 pnpm exec playwright test <spec> --project webkit`. Don't run it, or any build, beside `gate:task`.
 - **CI state:** four push runs stuck `queued` since the 12 Nov Actions outage can't be cancelled: ignore them. Each 5-project run costs ~35–44 Actions minutes (five today). A git worktree can't commit (gitleaks hook).
@@ -24,18 +24,18 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → ~~P0-16~~; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-12 22:55 IST, Syedbadeshah76 (handoff: P0-C fixes on main, 5-project run 43269125099 running; P0-12 steps A–B on wip/P0-12-b 01dcf97)
-- **Staging and production:** one Hostinger VPS (bought; P0-15 needs its IP + deploy key, H-08 backups bucket, H-26, H-27) — not provisioned yet
+- **Last updated:** 2026-11-12 23:33 IST, Syedbadeshah76 (handoff: P0-C fixes on main, 5-project run 43269125099 running; P0-12 steps A–B on wip/P0-12-b 01dcf97)
+- **Staging and production:** one Hostinger VPS 72.61.17.208 (ready, not hardened; P0-15 needs H-08 backups bucket, H-26, H-27) — not provisioned yet
 
 ## Now
 - **P0-C close on `main` `576b73e`, not ticked:** all three flaky tests dealt with (2 fixed, pixel7 motion quarantined C-40); 5-project run `43269125099` running.
 - **P0-12 on `wip/P0-12-b` `01dcf97`:** steps A–B done (allowlist, route table, page + layout gates, active-shop cookie, proxy `x-pathname`); step C (group layouts) next.
-- P0-15 is the only P0-E task left: VPS and domain ready on the human side; waits on the VPS IP + deploy key, H-08 (backups bucket), H-26, H-27.
+- P0-15 is the only P0-E task left: VPS (H-06) and domain (H-07) ready; waits on H-08 (backups bucket), H-26, H-27.
 
 ## Next (top 3)
 1. **Tick P0-C** if `43269125099` is clean; 5-project run on `wip/P0-12-b` for the proxy change.
 2. **P0-12 steps C–E** (CARRIED C-01, C-02, C-04, C-05, C-24 land here; plan in the handoff note; `security-reviewer` on the diff; C-39 not needed until P1).
-3. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); hardening script as soon as the VPS IP arrives.
+3. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); hardening script can start now (VPS ready).
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
@@ -67,7 +67,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 
 ## Blockers
 - Human 🔴: none.
-- 🟠 (needed by Sun 15 Nov for P0-15): H-06 VPS (bought; IP + SSH/deploy keys to come), H-08 R2 backups bucket, H-26 backup key, H-27 UptimeRobot, H-04 Resend + Brevo, H-20 Turnstile, H-28 staging OAuth, H-34 Sentry, H-36 demo inbox, H-31 Renovate app, H-21 client's written risk acceptance, H-17 permissions. **Start now:** H-12 Play organisation account. **H-37** (🟠, before P1-06): iPhone + Android listen and vibrate check.
+- 🟠 (needed by Sun 15 Nov for P0-15): H-08 backups bucket (R2 can't be enabled now → Backblaze B2 stopgap offered, human to decide), H-26 backup key, H-27 UptimeRobot, H-04 Resend + Brevo, H-20 Turnstile, H-28 staging OAuth, H-34 Sentry, H-36 demo inbox, H-31 Renovate app, H-21 client's written risk acceptance, H-17 permissions. **Start now:** H-12 Play organisation account. **H-37** (🟠, before P1-06): iPhone + Android listen and vibrate check.
 - Technical: P0-C tick waits for a 5-project run with 0 flaky; C-40 (quarantined test) blocks the P0 phase gate. CI queue stalled during the Actions outage (see handoff). Known risk for P0-15: wal-g `wal-push` hangs against R2 without `ca-certificates` in the Postgres image (wal-g #2550).
 
 ## Map of the codebase
