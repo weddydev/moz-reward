@@ -404,3 +404,11 @@ Evidence: `pnpm e2e portal-layouts.spec.ts system-page.spec.ts --project chromiu
 Evidence: gate:task PASS on `aebb93f` (unit 949, int 475, build, bundle, sast, E2E P0-12 10/0); pushed to `wip/P0-12-b`.
 Not verified: push CI on `aebb93f` (running); WebKit desktop, Pixel 7, 1440; shell visuals against DESIGN §5 (step E).
 Human: H-20 widget created, `TURNSTILE_SECRET_KEY_STAGING` set (gh secret list, 12 Nov 20:23 UTC); site key received; setting `NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` was blocked by the Mac's permission mode (one command left, in HUMAN_TASKS).
+
+## 2026-11-13 (02:03 → 02:10 IST) — P0 — P0-12 step D (talha.syed, Mac)
+Done: a page for every route-table entry under `(pages)` (29 new placeholders), per-group `loading`/`error`/`not-found`, gated catch-alls (real 404 in the shell), designed 403, root not-found/error/global-error. `wip/P0-12-b` `7878fdf`; `main` unchanged in code.
+Evidence: `pnpm e2e portal-pages.spec.ts portal-layouts.spec.ts system-page.spec.ts --project chromium --project webkit --project iphone14` (production build): 54 passed, 0 failed (first run: `/wallet/nope` 200 under `loading.tsx` → moved the customer pages into `(pages)` → 404).
+Evidence: gate:task PASS on `7878fdf` (unit 987, int 475, build, bundle, sast, E2E P0-12 30/0); screenshots inspected (403, not-found ×2, error at 320/390/1440).
+Not verified: push CI on `7878fdf` and `aebb93f` (running); Pixel 7 and desktop1440; `global-error.tsx`.
+Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret list`); H-31 Renovate app done on the human's word (no Renovate PR or issue yet).
+
