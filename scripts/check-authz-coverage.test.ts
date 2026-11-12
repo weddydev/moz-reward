@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { exportedEndpoints, matrixNames, routePath, uncovered } from "./check-authz-coverage";
+import {
+  exportedEndpoints,
+  matrixNames,
+  portalPageProblem,
+  routePath,
+  uncovered,
+} from "./check-authz-coverage";
 
 describe("[P0-07] authz coverage script", () => {
   it("finds exported actions, ignoring comments, strings and non-exported ones", () => {
@@ -72,5 +78,43 @@ describe("[P0-07] authz coverage script", () => {
 
   it("the repository has no uncovered endpoints", () => {
     expect(uncovered(process.cwd())).toEqual([]);
+  });
+});
+
+describe("[P0-12] portal pages call their portal's gate with a table path", () => {
+  const page = (body: string): string =>
+    `export default async function P() { ${body} return null; }`;
+
+  it("passes a page that gates with its own route, and ignores files outside the portal groups", () => {
+    expect(
+      portalPageProblem(
+        "src/app/(shop)/(pages)/dashboard/page.tsx",
+        page(`await gateShopRoute("/dashboard");`),
+      ),
+    ).toBeNull();
+    expect(portalPageProblem("src/app/(public)/sign-in/page.tsx", page(""))).toBeNull();
+    expect(
+      portalPageProblem("src/app/(shop)/layout.tsx", "export default function L() {}"),
+    ).toBeNull();
+  });
+
+  it("flags a page with no gate, the wrong portal's gate, a non-literal or an unknown path", () => {
+    const f = "src/app/(admin)/(pages)/admin/team/page.tsx";
+    expect(portalPageProblem(f, page(""))).toMatch(/must call gateAdminRoute/);
+    expect(portalPageProblem(f, page(`await gateShopRoute("/dashboard");`))).toMatch(
+      /calls gateShopRoute/,
+    );
+    expect(portalPageProblem(f, page(`await gateAdminRoute(path);`))).toMatch(/literal path/);
+    expect(portalPageProblem(f, page(`await gateAdminRoute("/admin/nope");`))).toMatch(
+      /not a route of the admin portal/,
+    );
+    // A gate named only in a comment or a string doesn't count.
+    expect(
+      portalPageProblem(f, `// gateAdminRoute("/admin")\nconst s = 'gateAdminRoute("/admin")';`),
+    ).toMatch(/must call/);
+  });
+
+  it("every portal page in this repository passes", () => {
+    expect(uncovered(process.cwd()).filter((e) => e.name === "portal page")).toEqual([]);
   });
 });

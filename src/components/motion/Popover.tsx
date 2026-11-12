@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useId,
   useLayoutEffect,
@@ -15,11 +17,19 @@ import { originCss, placePopover, transformOriginFor } from "@/lib/motion/preset
 
 type Phase = "closed" | "open" | "closing";
 
+const PopoverCloseContext = createContext<(() => void) | null>(null);
+
+/** Inside a Popover's content: closes it and returns focus to the trigger. Null outside a Popover. */
+export function usePopoverClose(): (() => void) | null {
+  return useContext(PopoverCloseContext);
+}
+
 export type PopoverProps = {
   /** What the trigger button shows. */
   label: ReactNode;
   /** The popover's accessible name. */
   title: string;
+  /** Content. It can close the popover with `usePopoverClose()` (e.g. after a choice was applied). */
   children: ReactNode;
   triggerClassName?: string;
   className?: string;
@@ -51,6 +61,10 @@ export function Popover({
     setPhase((p) => (p === "open" ? "closing" : p));
     if (refocus) triggerRef.current?.focus({ preventScroll: true });
   }, []);
+  /** Passed to function children: close and return focus to the trigger. */
+  const closeFromContent = useCallback(() => {
+    close(true);
+  }, [close]);
 
   const place = useCallback(() => {
     const trigger = triggerRef.current;
@@ -157,7 +171,7 @@ export function Popover({
               onKeyDown={onKeyDown}
               onBlur={onBlur}
             >
-              {children}
+              <PopoverCloseContext value={closeFromContent}>{children}</PopoverCloseContext>
             </div>,
             document.body,
           )}

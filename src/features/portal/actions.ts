@@ -9,8 +9,9 @@ import { activeShopCookie } from "@/server/portal/active-shop";
 
 /**
  * Switch the shop the shop portal shows (P0-12 design): the caller must hold an active role in that shop.
- * The cookie only records the choice; every request re-checks it against the principal's memberships. The
- * client then does a full navigation to the fixed `/dashboard`, so the layout re-reads the active shop.
+ * The cookie only records the choice; every request re-checks it against the principal's memberships.
+ * Setting a cookie makes Next re-render the tree (layouts included) in the answer; the client then goes to
+ * the fixed `/dashboard`.
  */
 export const switchShop = defineAction({
   name: "portal.switchShop",

@@ -148,7 +148,13 @@ export function BottomNav({
             {chrome.portal === "shop" && chrome.shops.length > 1 ? (
               <section className="flex flex-col gap-2">
                 <h3 className="text-caption text-ink-2 px-3 font-semibold">Your shops</h3>
-                <ShopSwitchList shops={chrome.shops} activeShopId={chrome.activeShopId} />
+                <ShopSwitchList
+                  shops={chrome.shops}
+                  activeShopId={chrome.activeShopId}
+                  onSwitched={() => {
+                    setMoreOpen(false);
+                  }}
+                />
               </section>
             ) : null}
             {chrome.portals.length > 1 ? (

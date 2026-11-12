@@ -1,8 +1,9 @@
 "use client";
 
 import { Check, ChevronsUpDown, Store } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Popover } from "@/components/motion";
+import { Popover, usePopoverClose } from "@/components/motion";
 import { Icon, toast } from "@/components/ui";
 import { cx } from "@/lib/cx";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -11,23 +12,36 @@ import type { ShellShop } from "./types";
 
 /**
  * Pick the shop the dashboard shows (P0-12, staff of several shops). The server action checks the
- * membership and sets the cookie; then a full navigation to `/dashboard`, so the layout and every page
- * re-read the active shop (a client navigation would keep the old layout).
+ * membership and sets the cookie; an action that sets a cookie makes Next re-render the whole tree (layouts
+ * included) in its answer, then the client goes to `/dashboard`. No full page load: it would cut that answer
+ * off mid-stream.
  */
-function useSwitch(): { busy: string | null; choose: (shopId: string) => void } {
+function useSwitch(onSwitched?: () => void): {
+  busy: string | null;
+  choose: (shopId: string) => void;
+} {
+  const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   return {
     busy,
     choose: (shopId) => {
       setBusy(shopId);
-      void switchShop({ shopId }).then((r) => {
-        if (r.ok) {
-          window.location.assign(r.data.to);
-          return;
-        }
-        setBusy(null);
-        toast(r.error.message, "error");
-      });
+      switchShop({ shopId })
+        .then((r) => {
+          if (r.ok) {
+            router.push(r.data.to);
+            setBusy(null);
+            onSwitched?.();
+            return;
+          }
+          setBusy(null);
+          toast(r.error.message, "error");
+        })
+        .catch(() => {
+          // Offline, or the request never reached the server: say so and let them try again.
+          setBusy(null);
+          toast("We couldn't switch shop. Check your connection and try again.", "error");
+        });
     },
   };
 }
@@ -45,12 +59,17 @@ function ShopLine({ shop }: { shop: ShellShop }): React.JSX.Element {
 export function ShopSwitchList({
   shops,
   activeShopId,
+  onSwitched,
 }: {
   shops: readonly ShellShop[];
   activeShopId: string | null;
+  /** Called once the switch succeeded (closes the popover or sheet around the list). */
+  onSwitched?: () => void;
 }): React.JSX.Element {
   const hydrated = useHydrated();
-  const { busy, choose } = useSwitch();
+  // Inside the sidebar's popover: close it after a switch.
+  const closePopover = usePopoverClose();
+  const { busy, choose } = useSwitch(onSwitched ?? closePopover ?? undefined);
   return (
     <ul aria-label="Your shops" className="flex flex-col gap-1">
       {shops.map((s) => {
@@ -59,10 +78,12 @@ export function ShopSwitchList({
           <li key={s.id}>
             <button
               type="button"
-              disabled={!hydrated || busy !== null}
+              disabled={!hydrated}
+              // Busy: aria-disabled, not disabled, so keyboard focus stays in the list (Esc still closes it).
+              aria-disabled={busy !== null || undefined}
               aria-current={current ? "true" : undefined}
               onClick={() => {
-                if (!current) choose(s.id);
+                if (!current && busy === null) choose(s.id);
               }}
               className={cx(
                 "pressable flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2",

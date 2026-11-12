@@ -115,6 +115,8 @@ type SignedIn = {
   shopId: string | null;
   shopCode: string | null;
   role: ActorRole;
+  /** Shops the actor was also made staff of (`extraShops`). */
+  extraShopIds: string[];
 };
 type CreatedUser = { userId: string; email: string; password: string; totpSecret?: string };
 
@@ -177,7 +179,7 @@ type Fixtures = {
   /** This test's client address, sent as X-Forwarded-For on every page and API request. */
   clientIp: string;
   guard: { problems: GuardProblem[] };
-  signInAs: (role: ActorRole, opts?: { shopId?: string }) => Promise<SignedIn>;
+  signInAs: (role: ActorRole, opts?: { shopId?: string; extraShops?: number }) => Promise<SignedIn>;
   /** A password user with no session, via `/api/test/user` (for flows that sign in through the UI). */
   createUser: (
     label?: string,

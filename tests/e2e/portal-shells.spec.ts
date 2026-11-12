@@ -7,6 +7,18 @@ import type { Page } from "@playwright/test";
  */
 const isPhone = (page: Page): boolean => (page.viewportSize()?.width ?? 1280) < 768;
 
+/** The element's box once it has stopped moving (enter animations finished). */
+async function settledBox(page: Page, locator: ReturnType<Page["locator"]>) {
+  let last = await locator.boundingBox();
+  for (let i = 0; i < 20; i++) {
+    await page.waitForTimeout(100);
+    const next = await locator.boundingBox();
+    if (next && last && Math.abs(next.y - last.y) < 0.5) return next;
+    last = next;
+  }
+  return last;
+}
+
 async function shot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: test.info().outputPath(`${name}.png`), fullPage: false });
 }
@@ -195,4 +207,164 @@ test.describe("[P0-12] portal shells, consent undecided", () => {
     if (!content) throw new Error("no content box");
     expect(content.y + content.height).toBeLessThanOrEqual(raised.y + 1);
   });
+});
+
+test.describe("[P0-12] shop switcher, toasts across navigation, per-item deny", () => {
+  test("staff of two shops switch shop: the dashboard reloads on the chosen shop", async ({
+    page,
+    signInAs,
+  }) => {
+    await signInAs("staff", { extraShops: 1 });
+    await page.goto("/dashboard");
+    const current = async (): Promise<string> =>
+      isPhone(page)
+        ? ((await page.locator("[data-active-shop]").textContent()) ?? "")
+        : ((await page.locator("[data-shop-switcher] button").first().textContent()) ?? "");
+    const before = await current();
+    if (isPhone(page)) {
+      await page
+        .locator('[data-portal-nav="bottom"]')
+        .getByRole("button", { name: "More" })
+        .click();
+      const list = page
+        .getByRole("dialog", { name: "More" })
+        .getByRole("list", { name: "Your shops" });
+      await list.locator("button:not([aria-current])").click();
+    } else {
+      await page
+        .locator("[data-shop-switcher]")
+        .getByRole("button", { name: /Switch shop/ })
+        .click();
+      await page
+        .getByRole("list", { name: "Your shops" })
+        .locator("button:not([aria-current])")
+        .click();
+    }
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect.poll(current).not.toBe(before);
+  });
+
+  test("a toast shown before a navigation stays at the bottom of the screen after it", async ({
+    page,
+    signInAs,
+  }) => {
+    test.skip(isPhone(page), "desktop: the shop card popover; phones use the same Toaster");
+    await signInAs("staff", { extraShops: 1 });
+    await page.goto("/dashboard");
+    const openSwitcher = () =>
+      page
+        .locator("[data-shop-switcher]")
+        .getByRole("button", { name: /Switch shop/ })
+        .click();
+    const other = () =>
+      page.getByRole("list", { name: "Your shops" }).locator("button:not([aria-current])");
+    // One real switch, to learn the action request…
+    const sent = page.waitForRequest((r) => r.method() === "POST" && !!r.headers()["next-action"]);
+    await openSwitcher();
+    await other().click();
+    const req = await sent;
+    await expect(page.locator("[data-shop-switcher]")).toContainText("Second Shop 1");
+    // A successful switch closes the switcher.
+    await expect(page.getByRole("dialog", { name: "Switch shop" })).toHaveCount(0);
+    // …then use up the action's rate limit (30 a minute per user) the way a script would.
+    const api = page.context().request;
+    for (let i = 0; i < 30; i++) {
+      await api.post(req.url(), {
+        headers: {
+          "next-action": req.headers()["next-action"] ?? "",
+          "content-type": "text/plain;charset=UTF-8",
+          accept: "text/x-component",
+        },
+        data: req.postData() ?? "",
+      });
+    }
+    // A later visit: the next switch from the page is refused, and the switcher says so in a toast.
+    await page.reload();
+    await openSwitcher();
+    await other().click();
+    const toastEl = page.locator(".toast", { hasText: /too many/i });
+    await expect(toastEl).toBeVisible();
+    const before = await settledBox(page, toastEl);
+    // The switcher stays open after an error (to try again); focus stays in it, so Esc closes it.
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog", { name: "Switch shop" })).toHaveCount(0);
+    await page
+      .locator('[data-portal-nav="side"]')
+      .getByRole("link", { name: "Requests" })
+      .click({ timeout: 5000 });
+    await expect(page).toHaveURL(/\/dashboard\/requests$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
+    await expect(toastEl).toBeVisible();
+    const after = await settledBox(page, toastEl);
+    const vh = page.viewportSize()?.height ?? 0;
+    expect(Math.abs((after?.y ?? 0) - (before?.y ?? -100))).toBeLessThanOrEqual(1);
+    expect((after?.y ?? 0) + (after?.height ?? 0)).toBeGreaterThan(vh - 120);
+  });
+
+  test("per-item deny on a client navigation: no page content in the answer", async ({
+    page,
+    signInAs,
+  }) => {
+    await signInAs("staff");
+    await page.goto("/dashboard");
+    // Capture the headers of a real client navigation (RSC request with the router state)…
+    const nav = page.waitForRequest(
+      (r) =>
+        r.url().includes("/dashboard/requests") &&
+        r.headers()["rsc"] === "1" &&
+        !r.headers()["next-router-prefetch"],
+    );
+    const link = isPhone(page)
+      ? page.locator('[data-portal-nav="bottom"]').getByRole("link", { name: "Requests" })
+      : page.locator('[data-portal-nav="side"]').getByRole("link", { name: "Requests" });
+    await link.click();
+    const headers = (await nav).headers();
+    // …and replay it for an owner-only page.
+    const res = await page.context().request.get("/dashboard/settings?_rsc=e2e", {
+      headers: {
+        rsc: "1",
+        "next-router-state-tree": headers["next-router-state-tree"] ?? "",
+        ...(headers["next-url"] ? { "next-url": headers["next-url"] } : {}),
+      },
+    });
+    expect([200, 403]).toContain(res.status());
+    const body = await res.text();
+    // A full load is a real 403 (the layout gate); a client navigation re-renders only the page segment, under
+    // its loading boundary: 200 carrying the 403 signal and none of the page (DECISIONS 13 Nov 2026).
+    expect(body).toContain("NEXT_HTTP_ERROR_FALLBACK;403");
+    expect(body).not.toContain("Your shop profile, opening hours and plan will show here.");
+  });
+});
+
+/**
+ * Visual snapshots of each shell (mobile 390 and desktop 1440). Tagged @visual: left out of ordinary runs and
+ * CI, included when VISUAL=1 (`pnpm gate:phase`, `pnpm e2e:visual`). Per-OS baselines beside this spec.
+ * Shop names come from the test factory, so the shop card text is masked (it differs per run).
+ */
+test.describe("[P0-12] portal shell visual snapshots", { tag: "@visual" }, () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "one browser holds the baseline");
+  });
+
+  for (const [role, path] of [
+    ["customer", "/wallet"],
+    ["owner", "/dashboard"],
+    ["admin_owner", "/admin"],
+  ] as const) {
+    for (const width of [390, 1440] as const) {
+      test(`${role} shell looks as approved at ${String(width)}px`, async ({ page, signInAs }) => {
+        await page.setViewportSize({ width, height: 844 });
+        await signInAs(role);
+        await page.goto(path);
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await page.evaluate(() => document.fonts.ready);
+        await expect(page).toHaveScreenshot(`shell-${role}-${String(width)}.png`, {
+          animations: "disabled",
+          caret: "hide",
+          maxDiffPixelRatio: 0.002,
+          mask: [page.locator("[data-shop-switcher]"), page.locator("[data-active-shop]")],
+        });
+      });
+    }
+  }
 });

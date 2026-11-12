@@ -4,10 +4,17 @@
  * `src/app/**\/route.ts`) must have an `authzMatrix("<name>", …)` entry in `tests/authz/*.authz.test.ts`.
  * Route entries are named "<METHOD> <path>", e.g. `authzMatrix("POST /api/uploads", …)`.
  * Parsed with the TypeScript AST, so comments, strings and re-exports can't fool it.
+ *
+ * Portal pages (P0-12): every `page.tsx` under `src/app/(customer)`, `(shop)` or `(admin)` must call its
+ * portal's gate (`gateCustomerRoute` / `gateShopRoute` / `gateAdminRoute`) with a literal path from the route
+ * table. `tests/authz/routes.authz.test.ts` runs the matrix over the whole table, and
+ * `src/features/portal/pages.test.ts` keeps the pages on disk and the table in step, so a page can't exist
+ * without a gate and a matrix entry.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
+import { PORTAL_ROUTES, type Portal } from "../src/features/portal/routes";
 import { isDirectRun } from "../src/lib/is-direct-run";
 
 const HTTP_METHODS = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]);
@@ -128,6 +135,50 @@ export function exportedEndpoints(file: string, source: string): Entry[] {
   return [...out, ...inlineServerActions(sf, file)];
 }
 
+const PORTAL_GATE: Record<Portal, string> = {
+  customer: "gateCustomerRoute",
+  shop: "gateShopRoute",
+  admin: "gateAdminRoute",
+};
+const PORTAL_PAGE = /^src\/app\/\((customer|shop|admin)\)\/(?:.*\/)?page\.tsx$/;
+
+/**
+ * Problems with one portal page: no gate call, the wrong portal's gate, or a path that is not a literal from
+ * the route table. Null for files that are not portal pages, or pages that pass.
+ */
+export function portalPageProblem(file: string, source: string): string | null {
+  const m = PORTAL_PAGE.exec(file.replace(/\\/g, "/"));
+  if (!m) return null;
+  const portal = m[1] as Portal;
+  const gate = PORTAL_GATE[portal];
+  const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+  const found: string[] = [];
+  const seen: { wrongGate: string | null } = { wrongGate: null };
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+      const name = node.expression.text;
+      if (Object.values(PORTAL_GATE).includes(name)) {
+        if (name !== gate) seen.wrongGate = name;
+        const arg = node.arguments[0];
+        found.push(arg && ts.isStringLiteralLike(arg) ? arg.text : "");
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
+  if (seen.wrongGate) return `calls ${seen.wrongGate}; a ${portal} page calls ${gate}`;
+  if (found.length === 0)
+    return `a ${portal} portal page must call ${gate}("<path>") before rendering`;
+  const table = new Set(PORTAL_ROUTES.filter((r) => r.portal === portal).map((r) => r.path));
+  const bad = found.find((p) => !table.has(p as `/${string}`));
+  if (bad !== undefined) {
+    return bad === ""
+      ? `${gate} needs a literal path (it is the returnTo and picks the roles)`
+      : `${gate}("${bad}"): not a route of the ${portal} portal in src/features/portal/routes.ts`;
+  }
+  return null;
+}
+
 /** Names given to `authzMatrix("…", …)` calls in matrix files. */
 export function matrixNames(source: string): Set<string> {
   const sf = ts.createSourceFile("m.ts", source, ts.ScriptTarget.Latest, true);
@@ -169,7 +220,11 @@ export function uncovered(root: string): Entry[] {
     for (const n of matrixNames(readFileSync(path.join(root, "tests", "authz", f), "utf8")))
       matrix.add(n);
   }
-  return endpoints.filter((e) => e.problem !== undefined || !matrix.has(e.name));
+  const pages: Entry[] = walk(path.join(root, "src", "app")).flatMap((f) => {
+    const problem = portalPageProblem(rel(f), readFileSync(f, "utf8"));
+    return problem ? [{ name: "portal page", file: rel(f), problem }] : [];
+  });
+  return [...endpoints.filter((e) => e.problem !== undefined || !matrix.has(e.name)), ...pages];
 }
 
 function main(): void {
