@@ -380,3 +380,20 @@ Not verified: the two flaky tests' causes; a 5-project run with 0 flaky; P0-12 b
 Done: WebKit "toast open: axe clean": root cause = the toast's 4 s auto-dismiss firing during a slow axe scan (in-test or the guard's); the test now focuses the toast (pauses the timer), scans, dismisses it and waits for it to go. Pixel 7 "[P0-09] motion": two `transform` starts on close; not reproduced (20/20 alone, 60/60 on 4 workers, Windows), no restart path found in Overlay.tsx / use-sheet-drag.ts / overlay CSS → quarantined on pixel7 (C-40, blocks the P0 phase gate); the assertion now prints the panel's transition event log.
 Evidence: `pnpm e2e overlays.spec.ts -g "toast open|motion: transform" --repeat-each 3` (5 projects, production build): 27 passed, 3 skipped (pixel7 quarantine), 0 failed.
 Not verified: a 5-project Linux run with 0 flaky (dispatched after the push).
+Evidence: 5-project Linux E2E `43221794416` on `6ad688a`: 674 passed, 0 failed, 1 flaky (new: chromium routes-axe /dev/motion, contrast on hydration-disabled buttons; the toast and pixel7 motion tests clean). Cause: /dev/motion never marked `data-hydrating`. Fix: `Section hydrating` prop; unit red→green 2/2; routes-axe motion 18/0 (Chromium + WebKit ×3, production build).
+Evidence: P0-12 on `wip/P0-12-b` (rebased; force-push refused → new name): gates + layout gate, unit portal 29/0 + proxy 7/0; CI `43226256972` green on `341433e`. A pre-push gate crashed once on low memory (Vitest worker 0xC0000409, 1.3 GB free virtual memory): not a code failure.
+Human: VPS bought (H-06 in progress), domain mozrewards.com on Cloudflare (H-07 done), H-08 split (backups bucket now, upload buckets before P2).
+Handoff: 5-project run `43269125099` on `576b73e` running at handoff; `wip/P0-12-b` `01dcf97` pushed with the handoff.
+Human: H-06 done (VPS 72.61.17.208, SSH + deploy key verified by the human, `DEPLOY_SSH_KEY` set). R2 can't be enabled now: Backblaze B2 offered as the backups stopgap (human deciding). New standing rule in CLAUDE.md §3 "Do it yourself". `wip/P0-12-b` `01dcf97` pushed (gate:task PASS: unit 945, int 475, sast).
+Evidence: 5-project Linux E2E `43269125099` on `576b73e`: 675 passed, 0 failed, 0 flaky (170 skipped) → **P0-C ticked**.
+Handoff: 5-project run `43275952611` dispatched on `wip/P0-12-b` `01dcf97` (push CI `43275681180` running).
+Human + Claude: H-26 done. OpenPGP RSA 4096 backup key `1D1D1BF1F6FDA0F2EDA8FAA0D356B5CAA21C0F58` (Gpg4win 2.5.24); public key exported to `infra/backup/moz-backup-public.asc` (fingerprint verified); private key exported to a file, copied by the human into the password manager with the passphrase and revocation certificate, file deleted; encrypt/decrypt round trip OK.
+
+## 2026-11-13 — P0 — human tasks (Syedbadeshah76, Windows)
+Human: H-08 done on Backblaze B2 (`mozrewards-backups-dfd829`, EU Central, scoped key; R2 couldn't be enabled) → DECISIONS 13 Nov, C-41 (R2 or processor register before launch), H-08b (upload buckets before P2). H-27 and H-34 steps given; in progress.
+Evidence: `wip/P0-12-b` `01dcf97`: 5-project E2E `43275952611` green (proxy x-pathname), push CI `43275681180` green.
+Human: `SENTRY_DSN_STAGING` and `DEMO_EMAIL_BASE_STAGING` set (gh secret list: 3 secrets). H-34 open items: alert scope, subscription, wizard token, org slug. H-36 steps 1–3 done.
+Human: Sentry org slug `mozereward`; alert email for MOZREWARDS-1 arrived in the shared Gmail inbox (screenshot).
+Human: plus-addressing test passed (mail to <inbox>+moz-test@… landed in the shared Gmail Inbox).
+Human: Sentry alert widened to every new issue (`New issue → email`), test notification received.
+Handoff 2026-11-13 01:21: H-20 and H-04 steps rewritten as given to the human (staging-only Turnstile hostname, sending subdomain mail.mozrewards.com, `_STAGING` secret names → DECISIONS 13 Nov). No code changed since `b26682b` (gate PASS, CI `43285049732` green).

@@ -13,6 +13,21 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-13 — Staging secrets carry a `_STAGING` suffix; sending subdomain `mail.mozrewards.com`
+Decision: GitHub secrets for staging are named `<APP_ENV_NAME>_STAGING` (`SENTRY_DSN_STAGING`, `DEMO_EMAIL_BASE_STAGING`, `TURNSTILE_SECRET_KEY_STAGING`, `EMAIL_API_KEY_STAGING`, `EMAIL_FALLBACK_API_KEY_STAGING`, …); production later uses `_PRODUCTION`. The P0-15 deploy job maps each to the app's own name in the staging env file. `DEPLOY_SSH_KEY` is shared. Email goes out from `mail.mozrewards.com` (Resend + Brevo on the same subdomain); the Turnstile staging widget lists only `staging.mozrewards.com`.
+Why: one repository holds both environments' secrets (GitHub Free has no environment-scoped secrets on private repos); a subdomain keeps sending reputation apart from the site; no real key works on localhost.
+Consequence / revisit when: P0-15 writes the mapping; if the repo moves to a plan with environments, the suffix can become an environment scope.
+
+## 2026-11-13 — Backups go to Backblaze B2 for now (R2 couldn't be enabled)
+Decision: the encrypted dumps and the wal-g WAL archive use the S3-compatible Backblaze B2 bucket `mozrewards-backups-dfd829` (EU Central) with a bucket-scoped key, free tier (10 GB), all daily caps at $0, lifecycle "keep only the last version". The app and wal-g only see S3 settings (endpoint, region, keys, bucket), so moving to R2 later is a secrets change plus a one-off copy.
+Why: the human can't enable R2 now; P0-15's restore drill and point-in-time restore must be proved off the VPS before launch, not during it. Staging holds only seeded demo data.
+Consequence / revisit when: before launch, move to R2 or add Backblaze to the processor register for the solicitor (C-41, H-23); the R2-specific 70% alert becomes a B2 one (10 GB) in P0-15; a reached $0 cap refuses uploads, which the health monitor reports as a missing dump.
+
+## 2026-11-12 — P0-12: layout gate reads `x-pathname` only to pick a table route; active-shop fallback order
+Decision: the proxy forwards the request path as `x-pathname` (overwriting any client value); `gatePortalLayout` maps it through the route table (`layoutRoute` → `activeRoute`) and gates that table route, using the table's literal path as `returnTo`. Missing header (prefetches skip the proxy) or another portal's path → the portal root for shop/admin, no layout gate for the customer portal. Without a valid cookie the active shop is the first membership with owner before staff, then by shop id.
+Why: a deny in the layout lands above the loading boundary (real 403/307 per route), and a header can never become a redirect target; a spoofed header on a prefetch at worst picks a broader table route, and every page gate still decides with its own literal path.
+Consequence / revisit when: a page added without its own gate is caught by the coverage lint (P0-12 step E), not by the layout.
+
 ## 2026-11-12 — P0-12: where the portal gate sits, and the admin route roles
 Decision: `forbidden()` (`experimental.authInterrupts`) renders the 403 page. The route-group layout runs the full gate so a page load gets a real 403, **and every page calls the gate itself**. Roles PRODUCT §2 leaves open: QR & NFC owner + support; Fraud monitor owner + support + moderator.
 Why: measured on a production build (12 Nov): a layout that throws `forbidden()` answers 403, but the page below it renders in parallel and its content is in that response; a page that throws answers 403 only with no `loading.tsx` above it (200 once streaming has started).

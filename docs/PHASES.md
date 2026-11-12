@@ -50,7 +50,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 - [x] P0-09 · UI primitives and gallery
 - [x] P0-10 · Motion primitives and page transitions
 - [x] P0-11 · Sound and haptics
-- [ ] P0-C closed with `/subphase-complete`
+- [x] P0-C closed with `/subphase-complete`
 
 **P0-D · Portal shells**
 

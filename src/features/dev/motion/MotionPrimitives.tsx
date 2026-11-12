@@ -22,7 +22,7 @@ function PresetDemos(): React.JSX.Element {
   };
   const rows = Object.entries(MOTION_PRESETS);
   return (
-    <Section title="Presets">
+    <Section title="Presets" hydrating={!hydrated}>
       <p className="text-small text-ink-2 max-w-prose">
         Named in <code>src/lib/motion/presets.ts</code>; the CSS lives once in globals.css.
         Transform and opacity only, everyday motion under 300ms, exits faster than entrances.
@@ -125,7 +125,7 @@ function StaggerDemo(): React.JSX.Element {
   const [clicked, setClicked] = useState<number | null>(null);
   const hydrated = useHydrated();
   return (
-    <Section title="Stagger">
+    <Section title="Stagger" hydrating={!hydrated}>
       <p className="text-small text-ink-2 max-w-prose">
         Items enter 50ms apart (30–80ms allowed); after the 8th they all share its delay, so a long
         list is never slow. Every item can be read and tapped from the first frame.
@@ -215,7 +215,7 @@ function SoundHapticDemos(): React.JSX.Element {
   const { on, setOn } = useSoundPreference();
   const [last, setLast] = useState("Nothing played yet.");
   return (
-    <Section title="Sound and haptics">
+    <Section title="Sound and haptics" hydrating={!hydrated}>
       <p className="text-small text-ink-2 max-w-prose">
         Sounds are synthesised in the browser (no audio files) and unlock on your first tap. Haptics
         work on Android only; iPhone has no vibration for web pages. Both follow the toggle below.

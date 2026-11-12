@@ -1,17 +1,28 @@
 import type { GalleryPrimitive } from "./gallery-list";
 import type { ReactNode } from "react";
 
-/** One titled block of a developer gallery page. */
+/**
+ * One titled block of a developer gallery page. `hydrating`: the block holds controls that stay disabled until
+ * it hydrates (C-20). It marks itself `data-hydrating` until then, because the page can hydrate after the root
+ * layout marks <html data-hydrated>, and the E2E guard waits for no [data-hydrating] before its axe scan (CI
+ * 43221794416: /dev/motion scanned mid-fade from the disabled look).
+ */
 export function Section({
   title,
+  hydrating = false,
   children,
 }: {
   title: string;
+  hydrating?: boolean;
   children: ReactNode;
 }): React.JSX.Element {
   const id = `s-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   return (
-    <section className="border-line flex flex-col gap-4 border-t py-8" aria-labelledby={id}>
+    <section
+      className="border-line flex flex-col gap-4 border-t py-8"
+      aria-labelledby={id}
+      data-hydrating={hydrating ? "" : undefined}
+    >
       <h2 id={id} className="text-h2">
         {title}
       </h2>
