@@ -26,6 +26,8 @@ let nextId = 1;
 const announced = new Set<number>();
 let snapshot: Snapshot = { visible: [], polite: "", assertive: "" };
 let clearAnnouncement: ReturnType<typeof setTimeout> | undefined;
+/** Set while toasts are arriving in the same moment (until the next timer tick). */
+let burst: ReturnType<typeof setTimeout> | undefined;
 const listeners = new Set<() => void>();
 
 function publish(): void {
@@ -39,13 +41,20 @@ function publish(): void {
         .filter((t) => (t.tone === "error") === errors)
         .map((t) => t.message)
         .join(" ");
-    // Add to an announcement that is still up (toasts fired in the same moment): replacing it would drop
-    // the earlier ones before a screen reader ever saw them.
-    const pending = clearAnnouncement !== undefined;
-    const join = (now: string, more: string): string =>
-      [pending ? now : "", more].filter(Boolean).join(" ");
-    polite = join(polite, say(false));
-    assertive = join(assertive, say(true));
+    // Toasts fired in the same moment (one burst) are joined: replacing the text would drop the earlier
+    // ones before a screen reader ever saw them. A toast that arrives later replaces the text instead:
+    // the region is atomic, so adding to it would read the earlier toast a second time. A region with
+    // nothing new is left untouched.
+    const joining = burst !== undefined;
+    const next = (now: string, more: string): string => {
+      if (more === "") return now;
+      return joining && now !== "" ? `${now} ${more}` : more;
+    };
+    polite = next(polite, say(false));
+    assertive = next(assertive, say(true));
+    burst ??= setTimeout(() => {
+      burst = undefined;
+    }, 0);
     clearTimeout(clearAnnouncement);
     clearAnnouncement = setTimeout(() => {
       clearAnnouncement = undefined;
@@ -88,6 +97,9 @@ export function __resetToasts(): void {
   queue = [];
   announced.clear();
   clearTimeout(clearAnnouncement);
+  clearAnnouncement = undefined;
+  clearTimeout(burst);
+  burst = undefined;
   snapshot = { visible: [], polite: "", assertive: "" };
   emit();
 }

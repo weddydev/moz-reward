@@ -71,6 +71,43 @@ describe("[P0-09] toast", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/^Toast 3$/);
   });
 
+  it("announces a toast that follows another within the second on its own (the first is not read twice)", () => {
+    vi.useFakeTimers();
+    render(<Toaster />);
+    act(() => {
+      toast("Toast A");
+    });
+    advance(300);
+    act(() => {
+      toast("Toast B");
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(/^Toast B$/);
+    // An error arriving next leaves the polite region untouched and is announced alone.
+    advance(300);
+    act(() => {
+      toast("Could not save", "error");
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(/^Could not save$/);
+    expect(screen.getByRole("status")).toHaveTextContent(/^Toast B$/);
+    // The one-second clear counts from the last announcement.
+    advance(900);
+    expect(screen.getByRole("alert")).toHaveTextContent(/^Could not save$/);
+    advance(200);
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    expect(screen.getByRole("alert")).toBeEmptyDOMElement();
+  });
+
+  it("a reset mid-announcement leaves no stale state: the next toast is announced alone", () => {
+    vi.useFakeTimers();
+    render(<Toaster />);
+    act(() => {
+      toast("Before reset");
+      __resetToasts();
+      toast("After reset");
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(/^After reset$/);
+  });
+
   it("clears the announcement after a second so it is not read twice", () => {
     vi.useFakeTimers();
     render(<Toaster />);
