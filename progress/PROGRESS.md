@@ -7,33 +7,31 @@ Baton: held by Syedbadeshah76 since 2026-11-12 12:03 (Windows)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by Syedbadeshah76, 2026-11-12 14:05 IST (Windows).** The baton is still mine (the human is switching this session's model on the same laptop). The P0-C close is **not** done. Everything is pushed.
-- **Done this session, on `wip/P0-C-close` (HEAD `deca234`, pushed, NOT on main):** CI `43131670600` (red on `85335e9`) root-caused: the slow-page test's `getByRole("status")` also matched the app-wide live region, so it is now scoped to `[data-route-content]`. The overlay backdrop now also ignores a click with `detail > 1` (a double-click delivered late; unit test red→green). `sound.spec` checks the silent fallback and skips playback when the browser has no `AudioContext`. `overlays.spec` waits up to 20 s for hydration. Two unit tests (`eslint-scope-rules`, `db/client`) do their cold import in `beforeAll`: they had timed out the gate twice on a busy laptop. DECISIONS: Windows WebKit is not E2E evidence.
-- **Re-review of the fix diff `72b668a..deca234`** (code-reviewer): **APPROVE WITH FIXES, 0 BLOCK/HIGH.**
-  - **MEDIUM, to fix before the close (test first):** `src/components/ui/Toast.tsx:44-48`. `pending` stays true for the whole 1 s announcement window. A toast 300 ms after another makes the atomic region read "A B", so A is read twice. Fix: join only within one synchronous burst (flag reset by `queueMicrotask`), or use keyed children with `aria-atomic=false` and `aria-relevant=additions`. Test: toast A, advance 300 ms, toast B → status is exactly "B".
-  - **LOW in the same file, fix while there:** `__resetToasts` should set `clearAnnouncement = undefined`. The other LOWs are in Follow-ups.
-- **How to continue:** (1) `git checkout wip/P0-C-close && git pull`; (2) check CI `43181579806` (push, Chromium) and `43181605309` (Linux, all 5 projects, the WebKit/iPhone evidence), and fix any red at the root; (3) fix the Toast MEDIUM (test first), run `pnpm fix`, then push (the gate runs in pre-push); (4) after green CI: add SESSION_LOG lines `code-review done 72b668a` and `code-review done deca234` plus the P0-C close entry; `git checkout main && git merge --squash wip/P0-C-close`, commit, tick the P0-C line in PHASES.md, push; (5) then P0-12.
-- **Tested:** `deca234`: gate:task PASS (unit 832/0, int 475/0, build, bundle, sast). Local E2E of the four batch specs: Chromium projects green, slow-page fix verified. Windows WebKit runs failed on load and timing only (DECISIONS 12 Nov) and are not used as evidence. H-32 Windows check: `pnpm db:migrate` without shell overrides OK.
-- **Not yet tested:** the two CI runs above (in progress at 14:05 IST); the Toast fix; real-device sound and haptics (H-37); iPhone WebKit background scroll lock and touch-scroll (QA NOT VERIFIED); staging (none until P0-15).
-- **CI state:** the four push runs stuck `queued` since the 12 Nov Actions outage (`43098330001`, `43096958119`, `43096702111`, `43095228870`) cannot be cancelled. Ignore them. Actions usage: 852 of 2000 min (43%).
-- **Windows notes:** Docker Desktop is a per-user install (`%LOCALAPPDATA%\Programs\DockerDesktop\Docker Desktop.exe`), and the gitleaks hook needs it running. `pnpm sast` takes ~23 min on this laptop because Semgrep scans the repo through the Windows bind mount.
+- **Checkpoint by Syedbadeshah76, 2026-11-12 (Windows).** The baton is still mine. The P0-C close is squashed to `main` and pushed, but the **P0-C line in PHASES is not ticked yet**: it waits for one green 5-project Linux E2E on `main`.
+- **Done this session:** Toast MEDIUM (a toast after another is announced alone; joining is per region and per burst). Four Linux WebKit E2E problems fixed at the cause, all test-side: Linux WebKit paints frames late (a just-opened dialog's `transitionstart` came 390–1380 ms after `transitionrun`), so the overlay-motion test waits for `transitionend` (90 s limit), the axe guard waits on animation frames (3 s cap), and AC5 times the start of the press with timers; only macOS Safari skips links on Tab. Review of `deca234..883e0b9`: APPROVE WITH FIXES, both MEDIUM fixed.
+- **How to reproduce Linux WebKit locally (Windows/macOS):** serve the `.next-e2e` build on :3100 with `--hostname 0.0.0.0` and the `e2eServerEnv()` variables, then in `mcr.microsoft.com/playwright:v1.65.0-noble`: copy `git ls-files`, `pnpm install --frozen-lockfile --ignore-scripts`, `E2E_BASE_URL=http://host.docker.internal:3100 pnpm exec playwright test <spec> --project webkit`. Chromium in that setup fails the console guard (COOP on a non-localhost origin): use `pnpm e2e` for Chromium. Timing tests can fail there under load; re-run alone before believing them.
+- **How to continue:** (1) check the 5-project run on `main` (`gh run list --workflow Scheduled --limit 1`): green → tick "P0-C closed" in PHASES.md with a SESSION_LOG line and push; red or flaky → fix at the cause first. (2) **P0-12**: the design, edge cases and tests agreed in the security design check are in `docs/phases/P0.md` (P0-12, "Design"); no code exists yet. First experiment: where the gate must sit for `forbidden()` to send a real 403 (`experimental.authInterrupts`; a `loading.tsx` above the gate turns it into a 200).
+- **Tested:** see "Last verified". **Not yet tested:** the 5-project Linux E2E on `main`; real-device sound and haptics (H-37); iPhone WebKit background scroll lock and touch-scroll (QA NOT VERIFIED); staging (none until P0-15).
+- **CI state:** the four push runs stuck `queued` since the 12 Nov Actions outage (`43098330001`, `43096958119`, `43096702111`, `43095228870`) cannot be cancelled. Ignore them. Each 5-project run costs ~35 Actions minutes.
+- **Windows notes:** Docker Desktop is a per-user install (`%LOCALAPPDATA%ProgramsDockerDesktopDocker Desktop.exe`), and the gitleaks hook needs it running. `pnpm sast` takes 10–23 min on this laptop because Semgrep scans the repo through the Windows bind mount.
 
 ## Status
-- **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20, P0-13, P0-21, P0-16, P0-08, P0-09, P0-10, P0-11. Next: P0-C close (on `wip/P0-C-close`), then P0-12 (P0-D); P0-15 waits on human tasks.
+- **Phase:** P0. Done: P0-01…07, P0-14, P0-17, P0-19, P0-18, P0-20, P0-13, P0-21, P0-16, P0-08, P0-09, P0-10, P0-11. Next: tick P0-C once the 5-project run on `main` is green, then P0-12 (P0-D); P0-15 waits on human tasks.
 - **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → ~~P0-16~~; then P0-C (P0-08…11), then P0-D (P0-12).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-12 14:05 IST, Syedbadeshah76 (P0-C close on wip/P0-C-close `deca234`: CI running, Toast MEDIUM to fix)
+- **Last updated:** 2026-11-12, Syedbadeshah76 (P0-C close squashed to main; tick waits for the 5-project run; P0-12 design in the brief)
 - **Staging and production:** one Hostinger VPS (P0-15; needs H-06, H-07, H-08, H-26, H-27) — not provisioned yet
 
 ## Now
-- **P0-C close in progress on `wip/P0-C-close`** (`deca234`, pushed): code review on `72b668a` done; the fix batch and E2E fixes were re-reviewed (APPROVE WITH FIXES, 0 BLOCK/HIGH, one Toast MEDIUM open); design re-review and exploratory QA done; gate:task PASS. CI `43181579806` and the 5-project Linux E2E `43181605309` are running.
+- **P0-C close squashed to `main`**: code, design and QA reviews done, review fixes in, gate:task PASS. The tick waits for a green 5-project Linux E2E on `main`.
+- **P0-12 not started in code**: brief extended with the design from the security design check (3 HIGH, 7 MEDIUM folded in).
 - P0-10 and P0-11 done on `main`. CI on `main` `72b668a`: success (`43129226265`).
 - P0-15 is the only P0-E task left and waits on H-06/07/08/26/27.
 
 ## Next (top 3)
-1. **Finish the P0-C close** on `wip/P0-C-close`: CI results, Toast MEDIUM (test first), SESSION_LOG review lines, squash to main, tick P0-C in PHASES, push.
-2. **P0-12** app shells, navigation and route groups (CARRIED C-01, C-02, C-04, C-05, C-24 land here; security-reviewer design check first: P0-12 is on the security list; Popover-in-overlay C-39 is not needed until P1).
+1. **Tick P0-C** when the 5-project Linux E2E on `main` is green (flaky counts as red).
+2. **P0-12** app shells, navigation and route groups (CARRIED C-01, C-02, C-04, C-05, C-24 land here; security design check done 12 Nov, design in the brief; task-level `security-reviewer` on the diff still to come; Popover-in-overlay C-39 is not needed until P1).
 3. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); waits on H-06/07/08/26/27 (+ H-34 Sentry, H-36 demo inbox).
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -89,7 +87,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 
 ## Last verified (12 Nov 2026)
 - `main` `72b668a` (P0-11): gate:task P0-11 PASS (unit 818, int 475, build, bundle, sast, E2E 6/0); full 5-project E2E 646/0 (169 skipped by design); CI workflow_dispatch `43129226265`: success.
-- `wip/P0-C-close` `85335e9`: unit 832/0; gate:task PASS (the push). E2E of the batch NOT VERIFIED (next step).
+- P0-C close: gate:task PASS on `4a8851e` (unit 834, int 475, build, bundle, sast); push CI `43194017373` green; 5-project Linux E2E `43194053878` on `4a8851e`: 675 passed, 0 failed, 1 flaky (AC5, fixed after). After the last fixes: Linux WebKit + iPhone 14 in the Playwright image 12/0; Chromium 3/0; unit toast 16/0. 5-project run on `main`: NOT VERIFIED yet.
 - `main` `ee83173` (P0-10): gate:task P0-10 PASS (E2E 46/0); motion specs 109/0 on 5 projects; full E2E 616/0; AC5 popover flake fixed at the cause (120/0 ×3 after).
 - P0-09 and P0-08: see SESSION_LOG (12 Nov).
 - Mutation 90.1% · `test:live`: storage ✅, email NOT VERIFIED (H-04). Staging: none yet.
@@ -100,6 +98,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - [P0-12] `/dev/motion/shop/nope` returns HTTP 200 with the default white 404 (no `src/app/not-found.tsx`): real shop pages would soft-404. Add not-found per route group (C-04).
 - [P0-12] Popover tab-out of its last control leaves the document (should return to the trigger); `place()` runs on every scroll event (wrap in rAF); morph box radius `--r-md` vs header `--r-lg`; a 60–80ms content-fade delay during the morph would keep text readable.
 - [P1] `hasTypedViewTransitions` is used by tests only (remove or use). Avatar: broken image before hydration shows the broken icon (check `naturalWidth` on mount). Toast: keyboard dismiss drops focus to body; `toast()` with no Toaster queues silently; `EXIT_MS` duplicates `--dur-exit`. Tabs/SegmentedControl: ids from values with spaces; unmatched value leaves all tabs `tabIndex=-1`. `use-sheet-drag`: Esc mid-drag leaves inline `transition: none`. Preferences: sign-out keeps the previous customer's values on the device (add a DECISIONS line or clear). Audio: `arrival` uses a 120ms attack (DESIGN §9 now notes it).
+- [P1] Toast: the same message twice within a second outside a burst leaves the status text unchanged, so the second is not announced (alternate a trailing U+00A0, or accept in DECISIONS); a later error replaces an earlier one still being spoken (normal for `role=alert`).
 - [P0-C close] Reduced-motion watcher on the morph (fade-only enter) and the `role=status` text repeat (same text pressed twice is not re-read).
 - Safari streamed-content check on customer pages. Safe-area padding only checkable on a real iPhone.
 

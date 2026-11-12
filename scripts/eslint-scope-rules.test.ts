@@ -1,5 +1,5 @@
 import { ESLint } from "eslint";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 /**
  * [P0-20] C-12: the scope import allowlists in eslint.config.mjs. Lints source text as if it lived at a real
@@ -20,6 +20,12 @@ const DB = `import { dbAs } from "@/server/db/client";\nexport const d = dbAs;\n
 const OWNER = `import { testOwnerDb } from "@/server/db/client";\nexport const d = testOwnerDb;\n`;
 
 describe("[P0-20] scope import allowlists (C-12)", { timeout: 60_000 }, () => {
+  // The first lint builds the TypeScript program for the whole project (cold, over 60 s on a busy laptop
+  // during the full unit run): do it once in setup, so each test's timeout covers only its own lints.
+  beforeAll(async () => {
+    await eslint.lintText("export {};\n", { filePath: "src/server/repos/shops.ts" });
+  }, 240_000);
+
   it("refuses systemScope in request code and repositories, allows it in jobs and the listed handler", async () => {
     expect(await restricted("src/server/repos/shops.ts", SYSTEM)).toEqual([
       expect.stringMatching(/systemScope \(BYPASSRLS, worker only\)/),

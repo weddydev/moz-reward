@@ -40,6 +40,8 @@ export type OverlayProps = {
 };
 
 type Phase = "closed" | "open" | "closing";
+/** A backdrop press this soon after opening is the tail of a double-click on the trigger, not a dismissal. */
+const BACKDROP_GUARD_MS = 300;
 
 /**
  * The one overlay engine behind Modal, SidePanel and BottomSheet (P0-09 AC 2, 3, 11). A modal `<dialog>` in a
@@ -70,6 +72,7 @@ export function Overlay({
   const returnFocus = useRef<HTMLElement | null>(null);
   const releaseScroll = useRef<(() => void) | null>(null);
   const onCloseRef = useRef(onClose);
+  const openedAt = useRef(0);
   const hydrated = useHydrated();
   const titleId = useId();
   const descriptionId = useId();
@@ -108,6 +111,7 @@ export function Overlay({
       // Remember the trigger before showModal() moves focus.
       returnFocus.current = currentTrigger();
       dialog.showModal();
+      openedAt.current = performance.now();
     }
     releaseScroll.current ??= lockScroll();
     panel.style.transform = "";
@@ -218,7 +222,14 @@ export function Overlay({
         ref={backdropRef}
         className="overlay-backdrop"
         aria-hidden="true"
-        onClick={requestClose}
+        onClick={(e) => {
+          // The second click of a double-click on the trigger lands here, on the backdrop that has just
+          // appeared under the pointer: only a single press made once the overlay has been up a moment
+          // closes it. `detail > 1` catches a double-click a busy page delivers late; the time guard
+          // catches a quick double tap, which can report `detail` 1.
+          if (e.detail > 1) return;
+          if (performance.now() - openedAt.current >= BACKDROP_GUARD_MS) requestClose();
+        }}
       />
       <div
         ref={panelRef}

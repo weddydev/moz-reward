@@ -2,7 +2,7 @@ import { readSoundPreference } from "./preferences";
 
 /**
  * UI sounds (DESIGN §9), synthesised with Web Audio: no files. `armSound()` (root layout, once) waits for
- * the first tap or key press and creates/resumes the AudioContext inside it, as iOS Safari requires; nothing
+ * the first tap, click or key press and creates/resumes the AudioContext inside it, as iOS Safari requires; nothing
  * touches audio before that, so there is no autoplay warning. `play(name)` is then safe to call from
  * anywhere (a server event, an animation): it stays silent when sounds are off, the tab is hidden or audio
  * was never unlocked, and returns whether it played.
@@ -39,28 +39,40 @@ export const SOUNDS: Readonly<Record<SoundName, readonly Voice[]>> = {
   arrival: [{ f: 196, to: 392, at: 0, dur: 0.3, peak: 0.07, attack: 0.12 }],
 };
 
-const GESTURES = ["pointerdown", "keydown", "touchend"] as const;
+// Events that count as a user gesture for audio. Not pointerdown/touchstart: a touch only activates when
+// it ends, so a context resumed on touch-down stays suspended on iOS.
+const GESTURES = ["pointerup", "touchend", "click", "keydown"] as const;
 const SILENT = 0.0001; // exponential ramps can't reach 0
+/** A sound asked for while the context wakes is dropped if the wake takes longer than this. */
+const LATE_MS = 500;
 
 let ctx: AudioContext | null = null;
 let armed = false;
-let resuming = false;
+/** Settles when a `resume()` asked for inside a gesture has finished (either way). */
+let waking: Promise<void> | null = null;
 
-function unlock(): void {
+/** Keys that are not a user gesture for audio (HTML user activation leaves them out). */
+const NOT_A_GESTURE = new Set(["Escape", "Shift", "Control", "Alt", "Meta"]);
+
+function unlock(event: Event): void {
+  if ("key" in event && NOT_A_GESTURE.has(String(event.key))) return;
   if (!readSoundPreference()) return; // keep listening: the toggle's own tap unlocks later
   try {
-    ctx ??= new AudioContext();
-    if (ctx.state !== "running") {
-      resuming = true;
-      const done = (): void => {
-        resuming = false;
-      };
-      ctx.resume().then(done, done);
+    const audio = (ctx ??= new AudioContext());
+    if (audio.state === "running") {
+      disarm();
+      return;
     }
+    // Stay armed until it really runs: a refused resume is tried again on the next gesture.
+    const settle = (): void => {
+      if (waking === mine) waking = null; // a later gesture may have started a newer one
+      if (audio.state === "running") disarm();
+    };
+    const mine: Promise<void> = audio.resume().then(settle, settle);
+    waking = mine;
   } catch {
-    return; // audio blocked: stay silent, try again on the next gesture
+    // Audio blocked: stay silent, try again on the next gesture.
   }
-  disarm();
 }
 
 function disarm(): void {
@@ -72,22 +84,18 @@ function disarm(): void {
 export function armSound(): void {
   if (armed || typeof window === "undefined" || typeof AudioContext === "undefined") return;
   armed = true;
-  for (const type of GESTURES)
+  for (const type of GESTURES) {
     window.addEventListener(type, unlock, { capture: true, passive: true });
+  }
 }
 
-export function play(name: SoundName): boolean {
-  if (!ctx || !readSoundPreference() || document.hidden) return false;
-  if (ctx.state !== "running" && !resuming) {
-    armSound(); // the browser suspended it (e.g. after a spell in the background): next gesture resumes
-    return false;
-  }
-  const t0 = ctx.currentTime;
+function schedule(audio: AudioContext, name: SoundName): void {
+  const t0 = audio.currentTime;
   for (const v of SOUNDS[name]) {
     const start = t0 + v.at;
     const end = start + v.dur;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
     osc.type = v.type ?? "sine";
     osc.frequency.setValueAtTime(v.f, start);
     if (v.to) osc.frequency.exponentialRampToValueAtTime(v.to, end);
@@ -96,10 +104,32 @@ export function play(name: SoundName): boolean {
     gain.gain.linearRampToValueAtTime(v.peak, start + (v.attack ?? 0.005));
     gain.gain.exponentialRampToValueAtTime(SILENT, end);
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(audio.destination);
     osc.start(start);
     osc.stop(end);
   }
+}
+
+/**
+ * Plays a sound now. Nothing is ever scheduled on a suspended context (it would all sound at once, late,
+ * when the context next starts). Returns false when it stays silent; true when it plays now, or will as
+ * soon as the context finishes waking inside the tap that unlocked it.
+ */
+export function play(name: SoundName): boolean {
+  const audio = ctx;
+  if (!audio || !readSoundPreference() || document.hidden) return false;
+  if (audio.state === "running") {
+    schedule(audio, name);
+    return true;
+  }
+  armSound(); // suspended (never woken, or put to sleep in the background): the next gesture resumes it
+  if (!waking) return false;
+  // Asked inside the unlocking tap itself: sound as soon as the context wakes, or not at all.
+  const asked = Date.now();
+  void waking.then(() => {
+    const fresh = Date.now() - asked < LATE_MS;
+    if (fresh && audio.state === "running" && readSoundPreference()) schedule(audio, name);
+  });
   return true;
 }
 
@@ -107,5 +137,5 @@ export function play(name: SoundName): boolean {
 export function resetSoundForTest(): void {
   if (typeof window !== "undefined") disarm();
   ctx = null;
-  resuming = false;
+  waking = null;
 }

@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-12 — Playwright's Windows WebKit is not E2E evidence; WebKit/iPhone evidence comes from Linux CI or the Mac
+Decision: on the Windows laptop, `webkit` and `iphone14` results are not evidence. WebKit evidence comes from the 5-project Linux run (`gh workflow run scheduled.yml --ref <branch> -f suite=e2e`) or a Mac run. Chromium projects on Windows count as usual. A test that needs a browser feature the build lacks (Web Audio) checks the fallback and skips the rest with a reason.
+Why: measured 12 Nov 2026: that build has no `AudioContext`, and cold `/dev/ui` takes up to 12.6 s to hydrate with 4 workers. Even at 2 workers, different timing tests fail on every run, none in the code under test, so its failures can't tell app bugs from machine limits.
+Consequence / revisit when: a Windows session that changes WebKit-relevant code dispatches the Linux run before the tick. Revisit if Playwright's Windows WebKit gains parity.
+
 ## 2026-11-12 — Pages cross-fade in place from 1024px up; fixed UI lives outside `RouteTransition` (P0-10 review)
 Decision: `RouteContent` slides only below 1024px (`FADE_IN_PLACE_QUERY`); wider, the arriving content only fades. While a slide runs, the content's parent gets `overflow-x: clip` (plus `<html>` when the parent is `<body>`). The Toaster and any other `position: fixed` UI is mounted outside `RouteTransition`.
 Why: DESIGN §7 "Desktop: panel content cross-fades in place" (the step A build slid everywhere). Measured: the 8px start offset made the page 8px wider than the screen for the length of the slide. A transform makes the content the containing block of fixed descendants, so a toast inside it would jump.

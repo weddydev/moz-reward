@@ -139,7 +139,7 @@ export function UiGallery(): React.JSX.Element {
     >
       <p className="text-small text-gold-700 font-semibold">Dev only</p>
       <h1 className="text-display">UI gallery</h1>
-      <p className="text-ink-2 mt-2 max-w-prose">
+      <p className="text-ink-2 mt-2 mb-8 max-w-prose">
         Every token (DESIGN.md §3, §7) and every primitive and state from DESIGN.md §6. Hover (mouse
         or trackpad only), focus and press are live on every control.
       </p>

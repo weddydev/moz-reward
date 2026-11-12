@@ -142,6 +142,15 @@ describe.each(Object.keys(KINDS) as Kind[])("[P0-09] %s overlay", (kind) => {
     openWith();
     const backdrop = document.querySelector(".overlay-backdrop");
     expect(backdrop?.getAttribute("aria-hidden")).toBe("true");
+    // A press right after opening is the tail of a double-click on the trigger: ignored.
+    if (backdrop) fireEvent.click(backdrop);
+    await settle();
+    expect(dialogs()).toHaveLength(1);
+    await new Promise((resolve) => setTimeout(resolve, 320));
+    // The second click of a double-click is ignored however late a busy page delivers it.
+    if (backdrop) fireEvent.click(backdrop, { detail: 2 });
+    await settle();
+    expect(dialogs()).toHaveLength(1);
     if (backdrop) fireEvent.click(backdrop);
     await settle();
     expect(dialogs()).toHaveLength(0);

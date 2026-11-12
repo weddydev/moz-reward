@@ -47,7 +47,9 @@ test.describe("[P0-09] UI gallery states", () => {
     test.setTimeout(90_000);
     await gallery(page);
     // Safari's Tab skips links unless "Press Tab to highlight each item" is on (Option+Tab reaches them).
-    const skipLinks = browserName === "webkit";
+    // That is the macOS build only: WebKit on Linux (CI) and Windows tabs to links like the other browsers
+    // (measured 12 Nov 2026: the first Tab lands on "Skip to content"; CI 43181605309).
+    const skipLinks = browserName === "webkit" && process.platform === "darwin";
     const expected = await page.evaluate((skipLinks) => {
       const radioPicked = new Set<string>();
       const all = [
@@ -218,10 +220,12 @@ test.describe("[P0-09] UI gallery states", () => {
         const box = await el.boundingBox();
         if (!box) continue;
         // Timed inside the page. The press must be driven by CSS from pointerdown: the transition that
-        // carries it (transform, or opacity under reduced motion) has delay + duration ≤ 150ms. That is read
-        // from the running CSSTransition, so a busy runner's late frames can't fail it (two flakes at 162 and
-        // 214ms with 5 browsers in parallel); the wall clock from pointerdown to the first frame that shows
-        // the press only has to stay under 300ms, which still catches a press deferred by script.
+        // carries it (transform, or opacity under reduced motion) has delay + duration ≤ 150ms, read from the
+        // running CSSTransition. "Not deferred by script" is timed with timers, not frames: the press has
+        // begun when that transition exists (or the style is already there), and that must happen within
+        // 300ms of pointerdown. Frames only confirm the pressed look is reached. Linux WebKit can go 300ms+
+        // without painting a frame (CI 43194053878: "seen at 323ms" with a 120ms transition), so a frame
+        // clock measured the runner, not the press.
         await page.evaluate(
           ({ i, reduced }) => {
             const w = window as unknown as { __press?: unknown };
@@ -233,18 +237,7 @@ test.describe("[P0-09] UI gallery states", () => {
               (e) => {
                 const down = e.timeStamp;
                 let planned: number | null = null;
-                const check = (now: number) => {
-                  const t = visible
-                    ?.getAnimations()
-                    .find(
-                      (a) =>
-                        (a as CSSTransition).transitionProperty ===
-                        (reduced ? "opacity" : "transform"),
-                    );
-                  if (t && planned === null) {
-                    const timing = t.effect?.getComputedTiming();
-                    planned = (timing?.delay ?? 0) + Number(timing?.duration ?? 0);
-                  }
+                const look = (): { ok: boolean; transform: string; opacity: string } => {
                   const cs = visible ? getComputedStyle(visible) : null;
                   const transform = cs?.transform ?? "none";
                   const opacity = cs?.opacity ?? "1";
@@ -254,11 +247,45 @@ test.describe("[P0-09] UI gallery states", () => {
                   const ok = reduced
                     ? transform === "none" && Number.parseFloat(opacity) < 1
                     : Math.abs(scale - 0.97) < 0.002;
-                  const ms = now - down;
-                  if (ok || ms > 400) w.__press = { ok, ms, planned, transform, opacity };
-                  else requestAnimationFrame(check);
+                  return { ok, transform, opacity };
                 };
-                requestAnimationFrame(check);
+                // The press transition itself: on the right property and heading to the pressed value (its
+                // last keyframe), so another transition on that property (a hover, say) can't stand in for it.
+                const toPressed = (a: Animation): boolean => {
+                  const last = (a.effect as KeyframeEffect | null)?.getKeyframes().at(-1);
+                  if (!last) return false;
+                  if (reduced) return Number.parseFloat(String(last.opacity)) < 1;
+                  const m = /(?:scale|matrix)\(\s*([\d.]+)/.exec(String(last.transform));
+                  return !!m && Math.abs(Number.parseFloat(m[1] ?? "") - 0.97) < 0.002;
+                };
+                const transition = (): Animation | undefined =>
+                  visible
+                    ?.getAnimations()
+                    .find(
+                      (a) =>
+                        (a as CSSTransition).transitionProperty ===
+                          (reduced ? "opacity" : "transform") && toPressed(a),
+                    );
+                const confirm = (ms: number): void => {
+                  const check = (): void => {
+                    const seen = look();
+                    if (seen.ok || performance.now() - down > 3000)
+                      w.__press = { ...seen, ms, planned };
+                    else requestAnimationFrame(check);
+                  };
+                  check();
+                };
+                const begin = (): void => {
+                  const t = transition();
+                  const ms = performance.now() - down;
+                  if (t) {
+                    const timing = t.effect?.getComputedTiming();
+                    planned = (timing?.delay ?? 0) + Number(timing?.duration ?? 0);
+                  }
+                  if (t || look().ok || ms > 400) confirm(ms);
+                  else setTimeout(begin, 0);
+                };
+                setTimeout(begin, 0);
               },
               { once: true, capture: true },
             );

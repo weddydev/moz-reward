@@ -33,8 +33,14 @@ class FakeContext {
   destination = { isDestination: true };
   oscillators: FakeOsc[] = [];
   gains: FakeGain[] = [];
+  /** Set to hold `resume()` open, like a browser that is still waking the audio hardware. */
+  static hold: Promise<void> | null = null;
   resume = vi.fn(() => {
-    this.state = "running";
+    const wake = (): void => {
+      this.state = "running";
+    };
+    if (FakeContext.hold) return FakeContext.hold.then(wake);
+    wake();
     return Promise.resolve();
   });
   constructor() {
@@ -73,7 +79,7 @@ class FakeContext {
   }
 }
 
-const gesture = (type = "pointerdown"): void => {
+const gesture = (type = "pointerup"): void => {
   window.dispatchEvent(new Event(type));
 };
 const only = (): FakeContext => {
@@ -87,6 +93,7 @@ const hidden = (value: boolean): void => {
 beforeEach(() => {
   contexts = [];
   FakeContext.startState = "suspended";
+  FakeContext.hold = null;
   vi.stubGlobal("AudioContext", FakeContext);
   window.localStorage.clear();
   resetPreferencesForTest();
@@ -115,10 +122,45 @@ describe("[P0-11] sound: nothing before a gesture", () => {
     expect(ctx.oscillators).toHaveLength(1);
   });
 
-  it.each(["pointerdown", "keydown", "touchend"])("unlocks on %s", (type) => {
+  it.each(["pointerup", "touchend", "click", "keydown"])("unlocks on %s", (type) => {
     armSound();
     gesture(type);
     expect(contexts).toHaveLength(1);
+  });
+
+  it("does not try on pointerdown or touchstart: a touch only counts as a gesture when it ends", () => {
+    armSound();
+    gesture("pointerdown");
+    gesture("touchstart");
+    expect(contexts).toHaveLength(0);
+  });
+
+  it.each(["Escape", "Shift", "Control", "Alt", "Meta"])(
+    "ignores the %s key: it is not a user gesture for audio",
+    (key) => {
+      armSound();
+      window.dispatchEvent(new KeyboardEvent("keydown", { key }));
+      expect(contexts).toHaveLength(0);
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+      expect(contexts).toHaveLength(1);
+    },
+  );
+
+  it("keeps listening until the context really runs (a refused resume is retried on the next gesture)", async () => {
+    armSound();
+    FakeContext.hold = Promise.reject(new Error("no user activation"));
+    FakeContext.hold.catch(() => undefined);
+    gesture();
+    const ctx = only();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(ctx.state).toBe("suspended");
+    expect(play("credit")).toBe(false);
+    FakeContext.hold = null;
+    gesture("touchend");
+    expect(ctx.resume).toHaveBeenCalledTimes(2);
+    expect(play("credit")).toBe(true);
+    expect(ctx.oscillators).toHaveLength(2);
   });
 
   it("stops listening once the context runs: one context however many gestures", () => {
@@ -130,18 +172,49 @@ describe("[P0-11] sound: nothing before a gesture", () => {
     expect(only().resume).toHaveBeenCalledTimes(1);
   });
 
-  it("plays at once inside the unlocking gesture, while the resume is still settling", () => {
+  it("a play inside the unlocking gesture sounds as soon as the context wakes, never on a sleeping one", async () => {
+    let wake: () => void = () => undefined;
+    FakeContext.hold = new Promise<void>((resolve) => {
+      wake = resolve;
+    });
     armSound();
     gesture();
     const ctx = only();
-    ctx.state = "suspended"; // a real resume() flips the state a moment later
+    expect(ctx.state).toBe("suspended");
     expect(play("tick")).toBe(true);
+    expect(ctx.oscillators, "nothing is scheduled on a suspended context").toHaveLength(0);
+    wake();
+    await vi.waitFor(() => {
+      expect(ctx.oscillators).toHaveLength(1);
+    });
+  });
+
+  it("a wake that takes too long drops the sound instead of playing it late", async () => {
+    vi.useFakeTimers();
+    try {
+      let wake: () => void = () => undefined;
+      FakeContext.hold = new Promise<void>((resolve) => {
+        wake = resolve;
+      });
+      armSound();
+      gesture();
+      const ctx = only();
+      expect(play("credit")).toBe(true);
+      vi.setSystemTime(Date.now() + 2000);
+      wake();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(ctx.state).toBe("running");
+      expect(ctx.oscillators).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("a context the browser left suspended is resumed on the next gesture, and nothing plays meanwhile", async () => {
     armSound();
     gesture();
     const ctx = only();
+    await Promise.resolve();
     await Promise.resolve(); // the resume settled
     ctx.state = "suspended"; // e.g. iOS suspended it again after the tab was in the background
     expect(play("credit")).toBe(false);

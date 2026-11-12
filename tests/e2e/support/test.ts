@@ -65,18 +65,32 @@ async function axeProblems(page: Page, baseURL: string | undefined): Promise<Gua
     .catch(() => undefined);
   // Measure the settled page: a scan during a transition (e.g. a button fading from its pre-hydration
   // disabled opacity to 1) reads blended colours and reports false contrast failures. Finite animations only
-  // (spinners loop forever), capped at 1 s.
+  // (spinners loop forever). Checked from animation frames, not from `finished` promises raced with a timer:
+  // WebKit advances an animation's computed style only when it renders a frame, and Linux WebKit can go
+  // without one for over a second while idle, so the timer ended the wait with items still at their start
+  // opacity (CI 43181605309, stagger list). Capped at 3 s (a hidden page gets no frames).
   await page
-    .evaluate(() =>
-      Promise.race([
-        Promise.all(
-          document
-            .getAnimations()
-            .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
-            .map((a) => a.finished.catch(() => undefined)),
-        ),
-        new Promise((resolve) => setTimeout(resolve, 1000)),
-      ]),
+    .evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          const done = (): void => {
+            clearTimeout(cap);
+            resolve();
+          };
+          const cap = setTimeout(done, 3000);
+          const check = (): void => {
+            const busy = document
+              .getAnimations()
+              .some(
+                (a) =>
+                  a.effect?.getComputedTiming().iterations !== Infinity &&
+                  (a.playState === "running" || a.pending),
+              );
+            if (busy) requestAnimationFrame(check);
+            else done();
+          };
+          requestAnimationFrame(check);
+        }),
     )
     .catch(() => undefined);
   const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();

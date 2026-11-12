@@ -310,6 +310,25 @@ describe("[P0-08] profile sync", () => {
     expect(readMotionPreference()).toBe("full"); // kept on the device
   });
 
+  it("a change made while the profile can't be reached is kept and sent on the next load", async () => {
+    // The device follows a profile that says "reduce".
+    const save = saved();
+    await connectAccount({ reduceMotion: true, soundOn: null }, save);
+    expect(localStorage.getItem(STORAGE_KEYS.sync)).toBe("synced");
+    // Next page load: the profile can't be read (or ApplyPreferences has not mounted yet): no saver.
+    resetPreferencesForTest();
+    await connectAccount("unknown", save);
+    await setMotionPreference("full");
+    expect(save).not.toHaveBeenCalled();
+    expect(localStorage.getItem(STORAGE_KEYS.sync)).toBe("pending");
+    // The load after that: the device's newer choice wins over the profile's old one and is sent.
+    resetPreferencesForTest();
+    await connectAccount({ reduceMotion: true, soundOn: null }, save);
+    expect(readMotionPreference()).toBe("full");
+    expect(save).toHaveBeenCalledExactlyOnceWith({ reduceMotion: false, soundOn: null });
+    expect(localStorage.getItem(STORAGE_KEYS.sync)).toBe("synced");
+  });
+
   it("profile unreadable: nothing changes", async () => {
     await setMotionPreference("reduce");
     localStorage.setItem(STORAGE_KEYS.sync, "pending");

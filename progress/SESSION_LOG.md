@@ -360,3 +360,11 @@ Done: CI `43131670600` red root-caused (slow-page status locator matched the app
 Evidence: Windows WebKit has no `AudioContext` (probe); cold `/dev/ui` hydrate 12.6 s at 4 workers; overlay unit test red→green (3 kinds); gate:task PASS (unit 832, int 475, sast 1400 s).
 Evidence: re-review `72b668a..deca234`: APPROVE WITH FIXES, 0 BLOCK/HIGH, 1 MEDIUM (Toast re-announce) open, 4 LOW (1 to fix with the MEDIUM, 3 in follow-ups).
 Not verified: CI `43181579806` + 5-project Linux E2E `43181605309` (running at checkpoint); Toast MEDIUM fix.
+
+## 2026-11-12 (14:05→ IST) — P0 — P0-C close: Toast MEDIUM, Linux WebKit E2E failures, squash to main (Syedbadeshah76, Windows)
+Done: Toast MEDIUM fixed test first (a toast after another is announced alone; joined only within one burst); 5-project Linux E2E `43181605309` on `deca234` red (3 failed, 1 flaky), all test-side and fixed at the cause; P0-12 brief extended after the security design check (3 HIGH, 7 MEDIUM folded into the design).
+Evidence: Linux WebKit in the Playwright 1.65 image against the production build: `transitionstart` 390–1380 ms after `transitionrun` on a just-opened dialog; first Tab lands on "Skip to content"; three specs after the fix 66 passed (2 timing tests failed under container load, 18/0 alone ×2).
+Evidence: 5-project Linux E2E `43194053878` on `4a8851e`: 675 passed, 0 failed, 1 flaky (AC5 press "seen at 323ms" for a 120 ms transition) → start timed with timers, frames only confirm: Linux WebKit 8/8, Chromium + 1440 4/4.
+Evidence: gate:task PASS on `5e68c4b` and `4a8851e` (unit 834, int 475, build, bundle, sast); push CI `43185895789` and `43194017373` green.
+Evidence: review of `deca234..883e0b9` (code-reviewer): APPROVE WITH FIXES, 0 BLOCK/HIGH, 2 MEDIUM fixed (Toast per-region burst, test red→green, unit 16/0; AC5 accepts only the transition heading to the pressed value), LOW 4 and 5 fixed, LOW 3 and 6 in follow-ups. After the fixes: Linux WebKit + iPhone 14, 2 workers ×3: 12/0. code-review done 72b668a, code-review done deca234, code-review done 883e0b9.
+Not verified: 5-project Linux E2E on the squashed `main` commit (dispatched after the push); the P0-C line in PHASES is ticked only when it is green.

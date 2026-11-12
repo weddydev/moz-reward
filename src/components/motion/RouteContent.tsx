@@ -72,19 +72,24 @@ export function RouteContent({
       : [];
     const before = boxes.map((box) => box.style.overflowX);
     for (const box of boxes) box.style.overflowX = "clip";
+    // Once only: cleanup calls it at once, and the cancelled animation's rejected `finished` calls it again
+    // a microtask later, by which time the next slide may have put its own clip on the same parent.
+    let released = false;
     const unclip = (): void => {
+      if (released) return;
+      released = true;
       boxes.forEach((box, i) => {
-        if (box.style.overflowX === "clip") box.style.overflowX = before[i] ?? "";
+        box.style.overflowX = before[i] ?? "";
       });
     };
     animation.finished.then(unclip, unclip);
-    // Reduced motion switched on mid-slide (the Me toggle, or the system setting): land at once.
+    // Reduced motion switched on mid-enter (the Me toggle, or the system setting): land at once.
     const landIfReduced = (): void => {
       const on = getComputedStyle(document.documentElement).getPropertyValue("--motion-on");
       if (on.trim() === "0") animation.finish();
     };
     const system = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const toggle = parent ? new MutationObserver(landIfReduced) : null;
+    const toggle = motionOn ? new MutationObserver(landIfReduced) : null;
     if (toggle) {
       toggle.observe(document.documentElement, {
         attributes: true,

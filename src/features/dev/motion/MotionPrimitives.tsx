@@ -123,6 +123,7 @@ function StaggerDemo(): React.JSX.Element {
   const [count, setCount] = useState<(typeof SIZES)[number]>(8);
   const [run, setRun] = useState(0);
   const [clicked, setClicked] = useState<number | null>(null);
+  const hydrated = useHydrated();
   return (
     <Section title="Stagger">
       <p className="text-small text-ink-2 max-w-prose">
@@ -135,6 +136,7 @@ function StaggerDemo(): React.JSX.Element {
             key={n}
             type="button"
             className={chip}
+            disabled={!hydrated}
             aria-pressed={count === n}
             onClick={() => {
               setCount(n);

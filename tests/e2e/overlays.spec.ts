@@ -39,7 +39,9 @@ async function serious(page: Page): Promise<string[]> {
 test.describe("[P0-09] overlays", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/dev/ui");
-    await expect(trigger(page, "modal")).toBeEnabled();
+    // Triggers are disabled until hydration. Cold WebKit on a Windows laptop, four workers in parallel, took
+    // up to 12.6 s to hydrate /dev/ui (measured 12 Nov 2026): this waits for it, it doesn't time it.
+    await expect(trigger(page, "modal")).toBeEnabled({ timeout: 20_000 });
   });
 
   for (const demo of ["modal", "panel", "sheet"] as const) {
@@ -86,6 +88,22 @@ test.describe("[P0-09] overlays", () => {
       await page.mouse.click(2, 2);
       await expect(page.locator("dialog")).toHaveCount(0);
       expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe("");
+    });
+  }
+
+  for (const demo of ["modal", "panel", "sheet"] as const) {
+    test(`[P0-09] ${demo}: a double-click on its trigger opens it once and it stays open`, async ({
+      page,
+    }) => {
+      // The second click of a double-click lands on the backdrop that has just appeared under the pointer.
+      await trigger(page, demo).dblclick();
+      await expect(topDialog(page)).toHaveAttribute("data-state", "open");
+      await page.waitForTimeout(500); // past any close the second click could have started
+      await expect(page.locator("dialog")).toHaveCount(1);
+      await expect(topDialog(page)).toHaveAttribute("data-state", "open");
+      // A deliberate tap on the backdrop afterwards still closes it.
+      await page.mouse.click(2, 2);
+      await expect(page.locator("dialog")).toHaveCount(0);
     });
   }
 
@@ -145,25 +163,48 @@ test.describe("[P0-09] overlays", () => {
   test("[P0-09] motion: transform + opacity only, ≤ 300ms; reduced motion only fades", async ({
     page,
   }) => {
+    // Nine open/close rounds, each waiting for real transitions: ~24 s alone on Linux WebKit, where every
+    // dialog's first frame is late (measured 12 Nov 2026), and past the default 30 s beside another worker.
+    test.setTimeout(90_000);
     /** Records which properties start a transition on an overlay panel from now on. */
     const record = (): Promise<void> =>
       page.evaluate(() => {
-        const w = window as unknown as { __started: string[]; __rec?: boolean };
+        const w = window as unknown as { __started: string[]; __ended: boolean; __rec?: boolean };
         w.__started = [];
+        w.__ended = false;
         if (w.__rec) return;
         w.__rec = true;
+        const onPanel = (e: Event): boolean =>
+          (e.target as Element).classList.contains("overlay-panel");
         document.addEventListener(
           "transitionstart",
           (e) => {
-            if ((e.target as Element).classList.contains("overlay-panel"))
-              w.__started.push(e.propertyName);
+            if (onPanel(e)) w.__started.push(e.propertyName);
           },
           true,
         );
+        for (const type of ["transitionend", "transitioncancel"])
+          document.addEventListener(
+            type,
+            (e) => {
+              if (onPanel(e)) w.__ended = true;
+            },
+            true,
+          );
       });
     const started = (): Promise<string[]> =>
       page.evaluate(() => (window as unknown as { __started: string[] }).__started);
-    const settle = (): Promise<void> => page.waitForTimeout(400);
+    // Wait for the panel's transition to end, not for a fixed time: Linux WebKit paints the first frame of a
+    // just-opened dialog late (measured 12 Nov 2026: `transitionstart` 390–1380 ms after `transitionrun`,
+    // CI 43181605309), so a 400 ms wait read the list before the event had fired.
+    const settle = async (): Promise<void> => {
+      // 5 s: a panel that pops with no transition fails here, naming the cause, not as a test timeout.
+      await page.waitForFunction(
+        () => (window as unknown as { __ended: boolean }).__ended,
+        undefined,
+        { timeout: 5000 },
+      );
+    };
 
     // Full motion: SidePanel and BottomSheet slide while staying opaque (no opacity transition).
     for (const demo of ["panel", "sheet"] as const) {

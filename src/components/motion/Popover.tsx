@@ -31,6 +31,9 @@ export type PopoverProps = {
  * `transformOriginFor` (the `.popover` preset: scale .95 + fade, `--dur-base`, never from 0). Closing plays
  * the exit, then unmounts; re-opening mid-exit reverses it from where it is (CSS transitions). Esc closes and
  * returns focus to the trigger; a press outside or focus leaving closes it.
+ *
+ * Not for use inside a Modal, SidePanel or BottomSheet yet: those are `showModal()` dialogs in the top
+ * layer, and this panel is portalled to `<body>`, so it would sit underneath and be inert (CARRIED C-39).
  */
 export function Popover({
   label,

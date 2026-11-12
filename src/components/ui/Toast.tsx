@@ -26,6 +26,10 @@ let nextId = 1;
 const announced = new Set<number>();
 let snapshot: Snapshot = { visible: [], polite: "", assertive: "" };
 let clearAnnouncement: ReturnType<typeof setTimeout> | undefined;
+/** Set while toasts are arriving in the same moment (until the next timer tick). */
+let burst: ReturnType<typeof setTimeout> | undefined;
+/** Which regions got text in the current burst: only those may be added to. */
+let burstWrote = { polite: false, assertive: false };
 const listeners = new Set<() => void>();
 
 function publish(): void {
@@ -39,10 +43,26 @@ function publish(): void {
         .filter((t) => (t.tone === "error") === errors)
         .map((t) => t.message)
         .join(" ");
-    polite = say(false);
-    assertive = say(true);
+    // Toasts fired in the same moment (one burst) are joined: replacing the text would drop the earlier
+    // ones before a screen reader ever saw them. A toast that arrives later replaces the text instead:
+    // the region is atomic, so adding to it would read the earlier toast a second time. A region with
+    // nothing new is left untouched, and it is tracked per region: an error that opens a burst must not
+    // make the polite region's older text look like part of it.
+    const next = (region: "polite" | "assertive", now: string, more: string): string => {
+      if (more === "") return now;
+      const joined = burstWrote[region] && now !== "" ? `${now} ${more}` : more;
+      burstWrote[region] = true;
+      return joined;
+    };
+    polite = next("polite", polite, say(false));
+    assertive = next("assertive", assertive, say(true));
+    burst ??= setTimeout(() => {
+      burst = undefined;
+      burstWrote = { polite: false, assertive: false };
+    }, 0);
     clearTimeout(clearAnnouncement);
     clearAnnouncement = setTimeout(() => {
+      clearAnnouncement = undefined;
       snapshot = { ...snapshot, polite: "", assertive: "" };
       emit();
     }, ANNOUNCE_MS);
@@ -82,6 +102,10 @@ export function __resetToasts(): void {
   queue = [];
   announced.clear();
   clearTimeout(clearAnnouncement);
+  clearAnnouncement = undefined;
+  clearTimeout(burst);
+  burst = undefined;
+  burstWrote = { polite: false, assertive: false };
   snapshot = { visible: [], polite: "", assertive: "" };
   emit();
 }
