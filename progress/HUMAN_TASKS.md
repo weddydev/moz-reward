@@ -21,8 +21,8 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 | H-36 | 🟠 | Demo accounts: **steps 1–3 done** (12 Nov: shared inbox chosen, `DEMO_EMAIL_BASE_STAGING` set). Inbox is Gmail; plus addressing verified 13 Nov (`<inbox>+moz-test@…` landed in the Inbox). After the first staging deploy: steps 3–5 (run `demo:credentials` yourself, save the output in the password manager, add the six TOTP keys) | After the first P0-15 deploy | The demo customer signs in by email link; staff/admin demo accounts need password + code. Credentials are never committed or pasted into chat | 10 min |
 | H-08b | 🟢 | Upload buckets for P2 (`moz-rewards`, `moz-rewards-staging`) on R2 once R2 can be enabled, or on B2 like the backups (decide then); bucket-scoped read/write keys | Before P2 (uploads) | S3 settings are optional at boot until uploads exist | 10 min |
 | H-27 | 🟠 | UptimeRobot free account; mobile app on both phones; both emails as alert contacts | Sun 15 Nov 2026 (P0-15) | Uptime alerts to both developers | 10 min |
-| H-04 | 🟠 | Email: Resend (primary) + Brevo (failover), domain verification for both | Sun 15 Nov 2026 (staging sign-in) | Sign-in links, invites; failover when Resend's 100/day is reached | 30 min (+ DNS wait) |
-| H-20 | 🟠 | Cloudflare Turnstile keys (after H-07) | Sun 15 Nov 2026 | Bot protection on sign-in; staging fails closed without a real secret | 5 min |
+| H-04 | 🟠 | Email: Resend (primary) + Brevo (failover) on the sending subdomain `mail.mozrewards.com`, DNS records in Cloudflare (DNS only), keys → `EMAIL_API_KEY_STAGING` / `EMAIL_FALLBACK_API_KEY_STAGING` yourself. Brevo reviews new accounts (up to ~1 day): start early | Sun 15 Nov 2026 (staging sign-in) | Sign-in links, invites; failover when Resend's 100/day is reached | 30 min (+ DNS wait, + Brevo review) |
+| H-20 | 🟠 | Cloudflare Turnstile widget `Moz Rewards staging` (hostname `staging.mozrewards.com` only, Managed); secret key → `TURNSTILE_SECRET_KEY_STAGING` yourself; site key (public) to Claude | Sun 15 Nov 2026 | Bot protection on sign-in; staging refuses to boot without a real secret | 5 min |
 | H-28 | 🟠 | Google OAuth: separate **staging** and **production** clients; publish the consent screen with branding before P5-04 | Staging client Sun 15 Nov 2026; branding before Fri 8 Jan 2027 | Staging/production isolation; app name and logo on the Google screen | 20 min (+ Google brand review: minutes to 3 working days) |
 | H-12 | 🟠 | Google Play Console — **organisation** developer account (avoids the 14-day closed test for new personal accounts); verification takes days | **Start now**; verified before P5-04 (~Fri 8 Jan 2027) | Android app; launch date | 20 min + Google verification |
 | H-23 | 🟠 | Solicitor: review compliance drafts (ROPA, DPIA, processor register, retention schedule) after P0-21 | Before any real customer data (launch, Fri 22 Jan 2027); DPIA ideally by Mon 30 Nov 2026 | UK GDPR / PECR / DUAA obligations | Client side |
@@ -75,14 +75,16 @@ wal-g (the continuous WAL archiver) supports OpenPGP but not `age`, so one OpenP
 3. Tell Claude "H-27 done"; Claude lists the monitors to add (staging now, production at launch).
 
 ### H-04 — Email (Resend primary, Brevo failover)
-1. resend.com → sign up (free: 100/day, 3,000/month) → Domains → add `mail.<domain>` → add its DNS records in Cloudflare (DNS only) → wait for "Verified".
-2. brevo.com → sign up (free: 300/day after approval) → add and authenticate the same sending domain.
-3. Create API keys in both. Dev keys may go in `.env.local`; **staging/production keys go into GitHub secrets yourself** (`gh secret set EMAIL_API_KEY` for Resend, `gh secret set EMAIL_FALLBACK_API_KEY` for Brevo; Claude sets `EMAIL_PROVIDER=resend`, `EMAIL_FALLBACK_PROVIDER=brevo`) and the password manager. Staging/production refuse to start without the fallback.
-4. Tell Claude "H-04 done".
+Sending subdomain **`mail.mozrewards.com`**; sender `Moz Rewards <hello@mail.mozrewards.com>`. Every record in Cloudflare is **DNS only** (grey cloud).
+1. **Resend** (resend.com, shared Gmail, 2FA): Domains → Add `mail.mozrewards.com`, region Ireland (eu-west-1) → DNS via "Auto configure with Cloudflare" if offered, else copy each record (MX + SPF TXT on `send.mail`, DKIM TXT on `resend._domainkey.mail`) → Verify. API Keys → `moz-staging`, Sending access, that domain → password manager.
+2. **Brevo** (brevo.com, shared Gmail, 2FA; company details: Moz Rewards, mozrewards.com, UK address; account review up to ~1 day): Senders, Domains → Add `mail.mozrewards.com` → authenticate (automatic with Cloudflare if offered, else brevo-code TXT, two DKIM CNAMEs, DMARC TXT on `_dmarc`) → Senders → `hello@mail.mozrewards.com`. SMTP & API → API key `moz-staging` → password manager. If "Authorised IPs" blocking is on, leave it: Claude asks for the VPS IP to be added at the first staging send.
+3. **Stop and show Claude** if Cloudflare reports an existing record with the same name, or two `v=spf1` TXT records would sit on one name.
+4. `gh secret set EMAIL_API_KEY_STAGING` (Resend `re_…`) and `gh secret set EMAIL_FALLBACK_API_KEY_STAGING` (Brevo `xkeysib-…`) at the hidden prompts. Tell Claude "H-04 done" with screenshots of both Domains pages showing Verified. Claude sets the non-secret settings (`EMAIL_PROVIDER=resend`, `EMAIL_FALLBACK_PROVIDER=brevo`, `EMAIL_FROM`) and runs `pnpm test:live` on staging.
 
 ### H-20 — Turnstile keys (needs the Cloudflare account from H-07)
-1. Cloudflare → Turnstile → Add widget → name "Moz Rewards" → hostnames `localhost`, `staging.<domain>` (production domain later) → mode **Managed** → Create.
-2. Site key and secret key → GitHub secrets yourself (`gh secret set TURNSTILE_SECRET_KEY`; the site key is public: `NEXT_PUBLIC_TURNSTILE_SITE_KEY`) and the password manager. Don't use Cloudflare's public test keys outside local/test.
+1. dash.cloudflare.com → **Turnstile** (account level) → **Add widget** → name `Moz Rewards staging` → hostname **`staging.mozrewards.com` only** (no `localhost`: local/test run without a real key; production gets its own widget at launch) → mode **Managed**, pre-clearance **No** → Create.
+2. Secret key → `gh secret set TURNSTILE_SECRET_KEY_STAGING` (paste at the hidden prompt) and the password manager note "Moz Rewards Turnstile (staging)". Never in chat.
+3. Site key (public by design) → paste it to Claude, who sets `NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` and checks `gh secret list`.
 
 ### H-28 — Google OAuth for staging and production
 Sign-in-only apps (scopes `openid email profile`) are exempt from Google's "Testing" limits (no 100-user cap, no 7-day expiry); publishing is needed only to show the app name and logo.

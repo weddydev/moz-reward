@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-13 — Staging secrets carry a `_STAGING` suffix; sending subdomain `mail.mozrewards.com`
+Decision: GitHub secrets for staging are named `<APP_ENV_NAME>_STAGING` (`SENTRY_DSN_STAGING`, `DEMO_EMAIL_BASE_STAGING`, `TURNSTILE_SECRET_KEY_STAGING`, `EMAIL_API_KEY_STAGING`, `EMAIL_FALLBACK_API_KEY_STAGING`, …); production later uses `_PRODUCTION`. The P0-15 deploy job maps each to the app's own name in the staging env file. `DEPLOY_SSH_KEY` is shared. Email goes out from `mail.mozrewards.com` (Resend + Brevo on the same subdomain); the Turnstile staging widget lists only `staging.mozrewards.com`.
+Why: one repository holds both environments' secrets (GitHub Free has no environment-scoped secrets on private repos); a subdomain keeps sending reputation apart from the site; no real key works on localhost.
+Consequence / revisit when: P0-15 writes the mapping; if the repo moves to a plan with environments, the suffix can become an environment scope.
+
 ## 2026-11-13 — Backups go to Backblaze B2 for now (R2 couldn't be enabled)
 Decision: the encrypted dumps and the wal-g WAL archive use the S3-compatible Backblaze B2 bucket `mozrewards-backups-dfd829` (EU Central) with a bucket-scoped key, free tier (10 GB), all daily caps at $0, lifecycle "keep only the last version". The app and wal-g only see S3 settings (endpoint, region, keys, bucket), so moving to R2 later is a secrets change plus a one-off copy.
 Why: the human can't enable R2 now; P0-15's restore drill and point-in-time restore must be proved off the VPS before launch, not during it. Staging holds only seeded demo data.

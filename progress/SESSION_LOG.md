@@ -396,3 +396,4 @@ Human: `SENTRY_DSN_STAGING` and `DEMO_EMAIL_BASE_STAGING` set (gh secret list: 3
 Human: Sentry org slug `mozereward`; alert email for MOZREWARDS-1 arrived in the shared Gmail inbox (screenshot).
 Human: plus-addressing test passed (mail to <inbox>+moz-test@… landed in the shared Gmail Inbox).
 Human: Sentry alert widened to every new issue (`New issue → email`), test notification received.
+Handoff 2026-11-13 01:21: H-20 and H-04 steps rewritten as given to the human (staging-only Turnstile hostname, sending subdomain mail.mozrewards.com, `_STAGING` secret names → DECISIONS 13 Nov). No code changed since `b26682b` (gate PASS, CI `43285049732` green).
