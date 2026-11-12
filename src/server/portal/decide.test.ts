@@ -208,6 +208,9 @@ describe("[P0-12] decideRouteGate: admin routes", () => {
 describe("[P0-12] layoutRoute", () => {
   it("gates the table route the path belongs to (deeper paths → their parent item)", () => {
     expect(layoutRoute("shop", "/dashboard/settings")?.path).toBe("/dashboard/settings");
+    // A page hidden from the nav is still gated as itself (its returnTo is its own path).
+    expect(layoutRoute("customer", "/me/security")?.path).toBe("/me/security");
+    expect(layoutRoute("customer", "/me/security/")?.path).toBe("/me/security");
     expect(layoutRoute("shop", "/dashboard/customers/42")?.path).toBe("/dashboard/customers");
     expect(layoutRoute("admin", "/admin/system")?.path).toBe("/admin/system");
   });

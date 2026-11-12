@@ -19,12 +19,9 @@ async function settledBox(page: Page, locator: ReturnType<Page["locator"]>) {
   return last;
 }
 
-async function shot(page: Page, name: string): Promise<void> {
-  await page.screenshot({ path: test.info().outputPath(`${name}.png`), fullPage: false });
-}
-
 test.describe("[P0-12] portal shells", () => {
   test("customer: rail on desktop, bottom nav with a raised Scan on phones", async ({
+    shoot,
     page,
     signInAs,
   }) => {
@@ -58,7 +55,39 @@ test.describe("[P0-12] portal shells", () => {
       const main = await page.locator("main").boundingBox();
       expect(main?.x).toBe(72);
     }
-    await shot(page, "customer-wallet");
+    await shoot("customer-wallet");
+  });
+
+  test("customer rail: opens for its own popover and with the labels toggle; Esc closes", async ({
+    page,
+    signInAs,
+  }) => {
+    test.skip(isPhone(page), "the rail is a tablet/desktop pattern");
+    await signInAs("staff"); // staff have two portals, so the rail shows the role switcher
+    await page.goto("/wallet");
+    const rail = page.locator('[data-portal-nav="side"]');
+    const isOpen = () => rail.evaluate((el) => getComputedStyle(el).clipPath.includes("-40px"));
+    expect(await isOpen()).toBe(false);
+    // The role switcher's popover lives in <body>; the rail must stay open behind it.
+    await rail.getByRole("button", { name: "Switch portal" }).click();
+    await expect(page.getByRole("dialog", { name: "Switch portal" })).toBeVisible();
+    await page.mouse.move(900, 400);
+    await expect.poll(isOpen).toBe(true);
+    await page.keyboard.press("Escape");
+    // Touch and tablet: the toggle opens the labels until Esc.
+    await page.mouse.move(900, 400);
+    await rail.getByRole("button", { name: "Show labels" }).click();
+    await expect(rail.getByRole("button", { name: "Hide labels" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    await page.mouse.move(900, 400);
+    await expect.poll(isOpen).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(rail.getByRole("button", { name: "Show labels" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
   });
 
   test("a visitor on a public page gets Sign in instead of account actions", async ({ page }) => {
@@ -73,6 +102,7 @@ test.describe("[P0-12] portal shells", () => {
   });
 
   test("shop staff: sidebar with shop card and plan state, or bottom nav with More", async ({
+    shoot,
     page,
     signInAs,
   }) => {
@@ -90,7 +120,7 @@ test.describe("[P0-12] portal shells", () => {
       await expect(sheet.getByRole("link", { name: "Staff" })).toHaveCount(0);
       await expect(sheet.getByRole("link", { name: "Settings" })).toHaveCount(0);
       await expect(sheet.getByRole("link", { name: "Customer app" })).toBeVisible();
-      await shot(page, "shop-more");
+      await shoot("shop-more");
       await sheet.getByRole("link", { name: "Feedback" }).click();
       await expect(page).toHaveURL(/\/dashboard\/feedback$/);
       await expect(sheet).toBeHidden();
@@ -104,7 +134,7 @@ test.describe("[P0-12] portal shells", () => {
       await expect(page.getByRole("link", { name: "Scan member QR" })).toBeVisible();
       await side.getByRole("button", { name: "Switch portal" }).click();
       await expect(page.getByRole("link", { name: "Customer app" })).toBeVisible();
-      await shot(page, "shop-desktop");
+      await shoot("shop-desktop");
     }
   });
 
@@ -119,6 +149,7 @@ test.describe("[P0-12] portal shells", () => {
   });
 
   test("admin: sidebar with every page the role may open; phones get the admin bottom nav", async ({
+    shoot,
     page,
     signInAs,
   }) => {
@@ -140,7 +171,7 @@ test.describe("[P0-12] portal shells", () => {
       ]);
       await expect(side).toContainText("Admin · Moderator");
     }
-    await shot(page, "admin-overview");
+    await shoot("admin-overview");
   });
 });
 
@@ -153,6 +184,7 @@ test.describe("[P0-12] portal shells at 320px", () => {
     ["admin_owner", "/admin"],
   ] as const) {
     test(`${role}: no sideways scroll, every bottom-nav label readable`, async ({
+      shoot,
       page,
       signInAs,
     }) => {
@@ -171,7 +203,7 @@ test.describe("[P0-12] portal shells at 320px", () => {
         // A truncated label would be cut with an ellipsis: its content fits its box.
         expect(await label.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
       }
-      await shot(page, `${role}-320`);
+      await shoot(`${role}-320`);
     });
   }
 });
@@ -181,6 +213,7 @@ test.describe("[P0-12] portal shells, consent undecided", () => {
   test.use({ analyticsConsent: null });
 
   test("phones: nothing hides under the bottom nav; the cookie notice and toasts clear it", async ({
+    shoot,
     page,
     signInAs,
   }) => {
@@ -197,7 +230,7 @@ test.describe("[P0-12] portal shells, consent undecided", () => {
     // The raised button rises above the bar; the notice sits above both.
     expect(raised.y).toBeLessThan(barBox.y);
     expect(noticeBox.y + noticeBox.height).toBeLessThanOrEqual(raised.y);
-    await shot(page, "customer-cookie-notice");
+    await shoot("customer-cookie-notice");
     await notice.getByRole("button", { name: "No thanks" }).click();
     // Scrolled to the end, the last of the page content ends above the raised button.
     await page.evaluate(() => {

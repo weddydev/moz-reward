@@ -129,6 +129,18 @@ describe("[P0-02] server env", () => {
     }
   });
 
+  it("[P0-12] C-24: a set-but-blank ADMIN_IP_ALLOWLIST fails the boot on staging/production, not locally", () => {
+    for (const APP_ENV of ["production", "staging"]) {
+      expect(() =>
+        parseServerEnv({ ...prod, APP_ENV, TRUSTED_PROXY: "caddy", ADMIN_IP_ALLOWLIST: "" }),
+      ).toThrow(/- ADMIN_IP_ALLOWLIST: set but empty/);
+      expect(
+        parseServerEnv({ ...prod, APP_ENV, TRUSTED_PROXY: "caddy" }).ADMIN_IP_ALLOWLIST,
+      ).toBeNull();
+    }
+    expect(parseServerEnv({ ...base, ADMIN_IP_ALLOWLIST: "" }).ADMIN_IP_ALLOWLIST).toBeNull();
+  });
+
   it("[P0-05] refuses TRUSTED_PROXY=none on staging/production (client IPs would all share one bucket)", () => {
     expect(() => parseServerEnv({ ...prod, TRUSTED_PROXY: "none" })).toThrow(/TRUSTED_PROXY/);
     expect(() => parseServerEnv({ ...prod, APP_ENV: "staging", TRUSTED_PROXY: "none" })).toThrow(

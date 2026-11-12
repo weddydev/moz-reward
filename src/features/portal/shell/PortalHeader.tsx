@@ -23,7 +23,7 @@ export function PortalHeader({ chrome }: { chrome: ShellProps }): React.JSX.Elem
     return (
       <header className="pt-safe pl-safe pr-safe md:hidden">
         <div className="mx-auto flex h-14 max-w-(--content-max) items-center justify-between gap-2 px-4">
-          <TransitionLink href="/wallet" className="rounded-md">
+          <TransitionLink href="/wallet" className="inline-flex min-h-11 items-center rounded-md">
             <Wordmark />
           </TransitionLink>
           <div className="flex items-center gap-1">
@@ -52,8 +52,15 @@ export function PortalHeader({ chrome }: { chrome: ShellProps }): React.JSX.Elem
   }
   const shop = chrome.shops.find((s) => s.id === chrome.activeShopId) ?? null;
   return (
-    <header className={cx("pt-safe pl-safe pr-safe", chrome.portal === "admin" && "lg:hidden")}>
-      <div className="flex min-h-14 items-center justify-between gap-3 px-4 lg:justify-end lg:px-8 lg:pt-4">
+    <header
+      className={cx(
+        "pt-safe pl-safe pr-safe",
+        // Desktop: no row of its own, so page titles start at the same height in every portal; the shop's
+        // primary action sits over the right of the title row (reference: dashboard).
+        chrome.portal === "admin" ? "lg:hidden" : "lg:absolute lg:top-6 lg:right-8 lg:z-10",
+      )}
+    >
+      <div className="flex min-h-14 items-center justify-between gap-3 px-4 lg:min-h-0 lg:px-0">
         <div className="flex min-w-0 items-center gap-2 lg:hidden">
           <Wordmark />
           {shop ? (

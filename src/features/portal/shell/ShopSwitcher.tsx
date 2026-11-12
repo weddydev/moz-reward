@@ -81,6 +81,7 @@ export function ShopSwitchList({
               disabled={!hydrated}
               // Busy: aria-disabled, not disabled, so keyboard focus stays in the list (Esc still closes it).
               aria-disabled={busy !== null || undefined}
+              aria-busy={busy === s.id || undefined}
               aria-current={current ? "true" : undefined}
               onClick={() => {
                 if (!current && busy === null) choose(s.id);
@@ -93,7 +94,11 @@ export function ShopSwitchList({
               <Icon icon={Store} />
               <ShopLine shop={s} />
               {current ? <Icon icon={Check} label="Current shop" /> : null}
-              {busy === s.id ? <span className="spinner" aria-label="Switching" /> : null}
+              {busy === s.id ? (
+                <span role="status" className="spinner">
+                  <span className="sr-only">Switching</span>
+                </span>
+              ) : null}
             </button>
           </li>
         );

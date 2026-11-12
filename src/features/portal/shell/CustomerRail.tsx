@@ -1,7 +1,8 @@
 "use client";
 
-import { LogIn } from "lucide-react";
+import { LogIn, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useEffect, useId, useState } from "react";
 import { TransitionLink } from "@/components/motion";
 import { Icon } from "@/components/ui";
 import { cx } from "@/lib/cx";
@@ -23,6 +24,7 @@ const itemClass = (active: boolean): string =>
  * hover, and at any width while a keyboard focus is inside it. The panel is always 220px wide and clipped to
  * 72px, so opening animates `clip-path` and a transform (no layout), and it overlays the page instead of
  * pushing it. Logo, Wallet, Offers, Market, Notifications, Me; Install at the bottom (P5-03 fills the slot).
+ * Touch screens and tablets can't hover: the "Show labels" toggle opens it (Esc or choosing a page closes it).
  * Below 768px the bottom nav takes over.
  */
 export function CustomerRail({
@@ -33,11 +35,36 @@ export function CustomerRail({
   chrome: ShellProps;
 }): React.JSX.Element {
   const active = activeRoute(usePathname())?.path ?? null;
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  // Esc closes the labels wherever focus is (Safari doesn't focus a pressed button).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
   return (
     <div className="hidden w-(--rail-w) shrink-0 md:block">
-      <nav aria-label={NAV_LABEL.customer} data-portal-nav="side" className="rail">
+      <nav
+        id={id}
+        aria-label={NAV_LABEL.customer}
+        data-portal-nav="side"
+        data-open={open || undefined}
+        className="rail"
+        onClick={(e) => {
+          if (e.target instanceof Element && e.target.closest("a")) setOpen(false);
+        }}
+      >
         <span aria-hidden className="rail-edge" />
-        <TransitionLink href="/wallet" className="rounded-md px-4 py-1">
+        <TransitionLink
+          href="/wallet"
+          className="inline-flex min-h-11 items-center rounded-md px-4"
+        >
           <Wordmark labelClassName="rail-label" />
         </TransitionLink>
         <ul className="flex flex-1 flex-col gap-1 px-2">
@@ -58,6 +85,18 @@ export function CustomerRail({
         </ul>
         <div className="flex flex-col gap-1 px-2">
           <div data-slot="install-chip" />
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={id}
+            onClick={() => {
+              setOpen((v) => !v);
+            }}
+            className={itemClass(false)}
+          >
+            <Icon icon={open ? PanelLeftClose : PanelLeftOpen} />
+            <span className="rail-label">{open ? "Hide labels" : "Show labels"}</span>
+          </button>
           {chrome.signedIn ? (
             <PortalSwitcher portals={chrome.portals} current="customer" compact className="px-2" />
           ) : (

@@ -19,7 +19,7 @@
     "e2e": "tsx scripts/e2e.ts",
     "e2e:dev": "tsx scripts/e2e.ts --dev",
     "e2e:visual": "tsx scripts/e2e.ts --visual",
-    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:unit",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:titles --strict && pnpm test:unit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/server/db/migrate.ts",
     "db:rls-bench": "tsx scripts/rls-bench.ts",

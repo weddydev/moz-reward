@@ -21,4 +21,7 @@ export function stubDeployedEnv(appEnv: "staging" | "production"): void {
   vi.stubEnv("REDIS_URL", "rediss://:test-only@redis.invalid:6380");
   vi.stubEnv("REDIS_CACHE_URL", "rediss://:test-only@redis-cache.invalid:6380");
   vi.stubEnv("REDIS_KEY_PREFIX", `${appEnv}:`);
+  // A deployment without an admin IP allowlist (a developer's .env.local may carry a blank one, which a
+  // deployed environment refuses).
+  vi.stubEnv("ADMIN_IP_ALLOWLIST", undefined);
 }

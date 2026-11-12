@@ -665,8 +665,12 @@
 /* ---- Portal shells (P0-12, DESIGN §5) ---- */
 @layer components {
   /*
-   * Customer rail: a 220px panel clipped to the 72px rail. Opening animates clip-path and the edge line's
-   * transform only (no layout), < 300ms; reduced motion drops both transitions (safety net above).
+   * Customer rail: a 220px panel clipped to the 72px rail. Opening animates clip-path, the edge line's
+   * transform and a shadow layer's opacity only (no layout, no repaint), < 300ms; reduced motion drops the
+   * movement (safety net above). Open while: hovered (fine pointer, from 1024px, after 100ms so a pointer
+   * sweeping past doesn't flash it), a keyboard focus is inside, its own popover is open (the popover lives
+   * in <body>, outside :hover), or the labels toggle is on (touch and tablet: `data-open`). Closing is
+   * immediate.
    */
   .rail {
     position: fixed;
@@ -680,9 +684,17 @@
     padding-block: 16px;
     background: var(--surface);
     clip-path: inset(0 calc(var(--rail-w-open) - var(--rail-w)) 0 0);
-    transition:
-      clip-path var(--dur-base) var(--ease-out),
-      box-shadow var(--dur-base) var(--ease-out);
+    transition: clip-path var(--dur-base) var(--ease-out);
+  }
+  .rail::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    box-shadow: var(--shadow-2);
+    opacity: 0;
+    transition: opacity var(--dur-base) var(--ease-out);
   }
   .rail-edge {
     position: absolute;
@@ -693,41 +705,55 @@
     transform: translateX(calc(var(--rail-w) - 1px));
     transition: transform var(--dur-base) var(--ease-out);
   }
-  /* Collapsed, an item is a 56px pill centred in the rail; opened, it spans the panel. */
+  /*
+   * Collapsed, an item is a 56px pill centred in the rail; opened, it spans the panel. Closing, the width
+   * changes only once the clip has closed (step after --dur-base), so the active pill doesn't jump.
+   */
   .rail .rail-item {
     width: 56px;
-  }
-  .rail:has(:focus-visible) .rail-item {
-    width: auto;
+    transition: width var(--dur-instant) linear var(--dur-base);
   }
   .rail .rail-label {
     opacity: 0;
     white-space: nowrap;
     transition: opacity var(--dur-fast) ease;
   }
-  .rail:has(:focus-visible) {
+  :is(.rail:has(:focus-visible), .rail:has([aria-expanded="true"]), .rail[data-open]) {
     clip-path: inset(0 -40px 0 0);
-    box-shadow: var(--shadow-2);
   }
-  .rail:has(:focus-visible) .rail-edge {
+  :is(.rail:has(:focus-visible), .rail:has([aria-expanded="true"]), .rail[data-open])::after {
+    opacity: 1;
+  }
+  :is(.rail:has(:focus-visible), .rail:has([aria-expanded="true"]), .rail[data-open]) .rail-edge {
     transform: translateX(calc(var(--rail-w-open) - 1px));
   }
-  .rail:has(:focus-visible) .rail-label {
+  :is(.rail:has(:focus-visible), .rail:has([aria-expanded="true"]), .rail[data-open]) .rail-label {
     opacity: 1;
+  }
+  :is(.rail:has(:focus-visible), .rail:has([aria-expanded="true"]), .rail[data-open]) .rail-item {
+    width: auto;
+    transition-delay: var(--dur-instant);
   }
   @media (hover: hover) and (pointer: fine) and (min-width: 1024px) {
     .rail:hover {
       clip-path: inset(0 -40px 0 0);
-      box-shadow: var(--shadow-2);
+      transition-delay: var(--delay-intent);
+    }
+    .rail:hover::after {
+      opacity: 1;
+      transition-delay: var(--delay-intent);
     }
     .rail:hover .rail-edge {
       transform: translateX(calc(var(--rail-w-open) - 1px));
+      transition-delay: var(--delay-intent);
     }
     .rail:hover .rail-label {
       opacity: 1;
+      transition-delay: var(--delay-intent);
     }
     .rail:hover .rail-item {
       width: auto;
+      transition-delay: var(--delay-intent);
     }
   }
 
@@ -737,8 +763,8 @@
     place-items: center;
     width: 56px;
     height: 56px;
-    /* Takes the 32px of an icon pill in the row, so its label lines up; the rest rises above. */
-    margin-block: -24px 0;
+    /* Takes the 32px of an icon pill in the row, so its label lines up; the rest rises above the bar. */
+    margin-block: calc(32px - 56px) 0;
     border-radius: var(--r-pill);
     background-image: var(--gold-gradient);
     box-shadow: var(--shadow-gold);

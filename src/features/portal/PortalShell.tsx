@@ -38,7 +38,7 @@ export function PortalShell({
       ) : (
         <SideNav items={nav} chrome={chrome} />
       )}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col">
         <PortalHeader chrome={chrome} />
         {/* Bottom padding below the bar's breakpoint: bar + raised Scan + home indicator, so nothing hides under it. */}
         <main

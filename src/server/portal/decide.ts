@@ -111,7 +111,9 @@ export function decideRouteGate(input: {
  * customer portal, whose public pages share the layout. The page gate is the control in every case.
  */
 export function layoutRoute(portal: Portal, pathname: string | null): PortalRoute | null {
-  const hit = pathname ? activeRoute(pathname) : null;
+  // An exact table path first (incl. pages hidden from the nav), else the nav item it belongs to.
+  const path = pathname && pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  const hit = path ? (routeByPath(path) ?? activeRoute(path)) : null;
   if (hit?.portal === portal) return hit;
   if (portal === "customer") return null;
   return routeByPath(PORTAL_ROOT[portal]) ?? null;

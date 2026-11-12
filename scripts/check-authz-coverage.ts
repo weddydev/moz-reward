@@ -140,41 +140,105 @@ const PORTAL_GATE: Record<Portal, string> = {
   shop: "gateShopRoute",
   admin: "gateAdminRoute",
 };
-const PORTAL_PAGE = /^src\/app\/\((customer|shop|admin)\)\/(?:.*\/)?page\.tsx$/;
+const PORTAL_GROUP = /^src\/app\/\((customer|shop|admin)\)\//;
+const GATE_NAMES = new Set(Object.values(PORTAL_GATE));
+
+/** URL of an App Router page file: route groups dropped, `page.tsx` dropped. */
+export function pagePath(file: string): string {
+  const segments = file
+    .replace(/\\/g, "/")
+    .replace(/^src\/app/, "")
+    .replace(/\/page\.tsx?$/, "")
+    .split("/")
+    .filter((seg) => seg && !/^\(.*\)$/.test(seg));
+  return `/${segments.join("/")}`;
+}
+
+/** The function a module default-exports (`export default function …` or `export default name`). */
+function defaultExportedFunction(sf: ts.SourceFile): ts.FunctionLikeDeclaration | null {
+  const byName = new Map<string, ts.FunctionLikeDeclaration>();
+  let exported: ts.FunctionLikeDeclaration | null = null;
+  let exportedName: string | null = null;
+  for (const st of sf.statements) {
+    if (ts.isFunctionDeclaration(st)) {
+      const mods = ts.getModifiers(st) ?? [];
+      if (
+        mods.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) &&
+        mods.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)
+      ) {
+        exported = st;
+      }
+      if (st.name) byName.set(st.name.text, st);
+    }
+    if (ts.isExportAssignment(st) && ts.isIdentifier(st.expression))
+      exportedName = st.expression.text;
+  }
+  return exported ?? (exportedName ? (byName.get(exportedName) ?? null) : null);
+}
+
+/** `await gateX("…")` calls that are statements of the function body itself (not nested in a branch). */
+function topLevelGateCalls(fn: ts.FunctionLikeDeclaration): Array<{ name: string; path: string }> {
+  const out: Array<{ name: string; path: string }> = [];
+  if (!fn.body || !ts.isBlock(fn.body)) return out;
+  for (const st of fn.body.statements) {
+    const exprs: ts.Expression[] = [];
+    if (ts.isExpressionStatement(st)) exprs.push(st.expression);
+    if (ts.isVariableStatement(st)) {
+      for (const d of st.declarationList.declarations) if (d.initializer) exprs.push(d.initializer);
+    }
+    for (const e of exprs) {
+      if (!ts.isAwaitExpression(e) || !ts.isCallExpression(e.expression)) continue;
+      const callee = e.expression.expression;
+      if (!ts.isIdentifier(callee) || !GATE_NAMES.has(callee.text)) continue;
+      const arg = e.expression.arguments[0];
+      out.push({ name: callee.text, path: arg && ts.isStringLiteralLike(arg) ? arg.text : "" });
+    }
+  }
+  return out;
+}
 
 /**
- * Problems with one portal page: no gate call, the wrong portal's gate, or a path that is not a literal from
- * the route table. Null for files that are not portal pages, or pages that pass.
+ * Problems with one page file, or null. A page in a portal group must, at the top of its default export,
+ * `await` its portal's gate with **its own** path (a `[...rest]` catch-all: the portal root), and that path
+ * must be in the route table. A page outside the portal groups must not live at a portal URL (it would get no
+ * layout gate).
  */
 export function portalPageProblem(file: string, source: string): string | null {
-  const m = PORTAL_PAGE.exec(file.replace(/\\/g, "/"));
-  if (!m) return null;
-  const portal = m[1] as Portal;
+  const norm = file.replace(/\\/g, "/");
+  if (!/^src\/app\/(?:.*\/)?page\.tsx?$/.test(norm)) return null;
+  let url = pagePath(norm);
+  const group = PORTAL_GROUP.exec(norm);
+  if (!group) {
+    const clash = PORTAL_ROUTES.find((r) => url === r.path || url.startsWith(`${r.path}/`));
+    return clash
+      ? `${url} is a ${clash.portal} portal URL outside the (${clash.portal}) route group: it would get no layout gate`
+      : null;
+  }
+  const portal = group[1] as Portal;
   const gate = PORTAL_GATE[portal];
+  if (url.endsWith("/[...rest]")) url = url.slice(0, -"/[...rest]".length);
+  if (!PORTAL_ROUTES.some((r) => r.portal === portal && r.path === url)) {
+    return `${url} is not a route of the ${portal} portal in src/features/portal/routes.ts`;
+  }
   const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
-  const found: string[] = [];
-  const seen: { wrongGate: string | null } = { wrongGate: null };
+  const wrong = new Set<string>();
   const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
-      const name = node.expression.text;
-      if (Object.values(PORTAL_GATE).includes(name)) {
-        if (name !== gate) seen.wrongGate = name;
-        const arg = node.arguments[0];
-        found.push(arg && ts.isStringLiteralLike(arg) ? arg.text : "");
-      }
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      GATE_NAMES.has(node.expression.text) &&
+      node.expression.text !== gate
+    ) {
+      wrong.add(node.expression.text);
     }
     ts.forEachChild(node, visit);
   };
   visit(sf);
-  if (seen.wrongGate) return `calls ${seen.wrongGate}; a ${portal} page calls ${gate}`;
-  if (found.length === 0)
-    return `a ${portal} portal page must call ${gate}("<path>") before rendering`;
-  const table = new Set(PORTAL_ROUTES.filter((r) => r.portal === portal).map((r) => r.path));
-  const bad = found.find((p) => !table.has(p as `/${string}`));
-  if (bad !== undefined) {
-    return bad === ""
-      ? `${gate} needs a literal path (it is the returnTo and picks the roles)`
-      : `${gate}("${bad}"): not a route of the ${portal} portal in src/features/portal/routes.ts`;
+  if (wrong.size > 0) return `calls ${[...wrong].join(", ")}; a ${portal} page calls ${gate}`;
+  const fn = defaultExportedFunction(sf);
+  const calls = fn ? topLevelGateCalls(fn) : [];
+  if (!calls.some((c) => c.name === gate && c.path === url)) {
+    return `must \`await ${gate}("${url}")\` at the top of its default export, before rendering (its own path: the returnTo and the roles)`;
   }
   return null;
 }

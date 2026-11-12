@@ -19,8 +19,11 @@ type Base = {
   mobile?: true;
   /** Bottom-nav label when it differs from the sidebar label. */
   mobileLabel?: string;
-  /** "mobile-only": not in the desktop sidebar or rail. */
-  nav?: "mobile-only";
+  /**
+   * "mobile-only": not in the desktop sidebar or rail. "hidden": a page inside another item's area (e.g. Me →
+   * devices): gated and in the matrix like any route, never a nav item; its parent item shows as active.
+   */
+  nav?: "mobile-only" | "hidden";
   /** The raised centre button of the mobile bottom nav (Scan, DESIGN §5). */
   raised?: true;
 };
@@ -85,6 +88,14 @@ export const CUSTOMER_ROUTES: readonly CustomerRoute[] = [
     icon: "CircleUser",
     access: "signed-in",
     mobile: true,
+  },
+  {
+    portal: "customer",
+    path: "/me/security",
+    label: "Your devices",
+    icon: "CircleUser",
+    access: "signed-in",
+    nav: "hidden",
   },
 ];
 
@@ -298,7 +309,7 @@ export function navFor(
   role: ShopRouteRole | AdminRouteRole | null,
 ): readonly PortalRoute[] {
   return PORTAL_ROUTES.filter((r) => {
-    if (r.portal !== portal) return false;
+    if (r.portal !== portal || r.nav === "hidden") return false;
     if (r.portal === "customer") return true;
     return role !== null && (r.roles as readonly string[]).includes(role);
   });
@@ -314,6 +325,7 @@ export function activeRoute(pathname: string): PortalRoute | null {
   const roots: readonly string[] = Object.values(PORTAL_ROOT);
   let best: PortalRoute | null = null;
   for (const r of PORTAL_ROUTES) {
+    if (r.nav === "hidden") continue;
     const exact = r.path === path;
     const parent = !roots.includes(r.path) && path.startsWith(`${r.path}/`);
     if ((exact || parent) && (!best || r.path.length > best.path.length)) best = r;

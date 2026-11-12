@@ -68,7 +68,8 @@ export const serverEnvSchema = z
     GOOGLE_CLIENT_SECRET: optional,
     /**
      * Admin IP allowlist (P0-12, C-24): comma-separated addresses and CIDR ranges. Unset = no restriction;
-     * a value that doesn't parse completely fails the boot. Parsed here, so `env().ADMIN_IP_ALLOWLIST` is the
+     * a value that doesn't parse completely fails the boot, and so does a blank one on staging/production
+     * (`parseServerEnv`). Parsed here, so `env().ADMIN_IP_ALLOWLIST` is the
      * matcher (or null), never the raw text.
      */
     ADMIN_IP_ALLOWLIST: optional.transform((raw, ctx) => {
@@ -333,8 +334,27 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
 /** Pure parse for tests and startup checks. Throws with variable names only. */
 export function parseServerEnv(source: Record<string, string | undefined>): ServerEnv {
   const parsed = serverEnvSchema.safeParse(source);
-  if (parsed.success) return parsed.data;
-  throw formatEnvError("server", parsed.error, source);
+  if (!parsed.success) throw formatEnvError("server", parsed.error, source);
+  // C-24: on staging and production a set-but-blank allowlist is a mistake (an unfilled deploy template), not
+  // "no restriction": refuse to boot. Local and test keep `ADMIN_IP_ALLOWLIST=` from .env.example as unset.
+  if (
+    source.ADMIN_IP_ALLOWLIST === "" &&
+    (parsed.data.APP_ENV === "staging" || parsed.data.APP_ENV === "production")
+  ) {
+    throw formatEnvError(
+      "server",
+      new z.ZodError([
+        {
+          code: "custom",
+          path: ["ADMIN_IP_ALLOWLIST"],
+          message: "set but empty: remove the variable for no restriction, or list the addresses",
+          input: "",
+        },
+      ]),
+      source,
+    );
+  }
+  return parsed.data;
 }
 
 let cached: ServerEnv | undefined;

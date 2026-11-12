@@ -96,6 +96,11 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
       { name: "dur-slow", use: "Page transitions, card to page" },
       { name: "dur-hero", use: "Signature moments only (900–1600ms each)" },
       { name: "dur-exit", use: "Leaving elements (toast dismiss)" },
+      { name: "dur-instant", use: "A step change at the end of a transition (rail item width)" },
+      {
+        name: "delay-intent",
+        use: "Hover intent before a hover-opened panel opens (customer rail)",
+      },
       { name: "dur-sheen", use: "Primary button hover sheen" },
       { name: "dur-shimmer", use: "Skeleton shimmer loop" },
       { name: "dur-spin", use: "One spinner turn (fast spin feels faster)" },

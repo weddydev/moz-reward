@@ -81,40 +81,84 @@ describe("[P0-07] authz coverage script", () => {
   });
 });
 
-describe("[P0-12] portal pages call their portal's gate with a table path", () => {
+describe("[P0-12] portal pages call their portal's gate with their own path", () => {
   const page = (body: string): string =>
     `export default async function P() { ${body} return null; }`;
+  const team = "src/app/(admin)/(pages)/admin/team/page.tsx";
 
-  it("passes a page that gates with its own route, and ignores files outside the portal groups", () => {
+  it("passes a page that awaits its own route's gate; a catch-all gates its portal root", () => {
     expect(
       portalPageProblem(
         "src/app/(shop)/(pages)/dashboard/page.tsx",
         page(`await gateShopRoute("/dashboard");`),
       ),
     ).toBeNull();
+    expect(
+      portalPageProblem(team, page(`const { scope } = await gateAdminRoute("/admin/team");`)),
+    ).toBeNull();
+    expect(
+      portalPageProblem(
+        "src/app/(admin)/admin/[...rest]/page.tsx",
+        page(`await gateAdminRoute("/admin");`),
+      ),
+    ).toBeNull();
+    expect(
+      portalPageProblem(
+        team,
+        `async function Team() { await gateAdminRoute("/admin/team"); return null; }\nexport default Team;`,
+      ),
+    ).toBeNull();
+  });
+
+  it("ignores pages and files outside the portal URLs", () => {
     expect(portalPageProblem("src/app/(public)/sign-in/page.tsx", page(""))).toBeNull();
+    expect(portalPageProblem("src/app/portal/page.tsx", page(""))).toBeNull();
     expect(
       portalPageProblem("src/app/(shop)/layout.tsx", "export default function L() {}"),
     ).toBeNull();
   });
 
-  it("flags a page with no gate, the wrong portal's gate, a non-literal or an unknown path", () => {
-    const f = "src/app/(admin)/(pages)/admin/team/page.tsx";
-    expect(portalPageProblem(f, page(""))).toMatch(/must call gateAdminRoute/);
-    expect(portalPageProblem(f, page(`await gateShopRoute("/dashboard");`))).toMatch(
+  it("flags no gate, the wrong gate, another route's path, a nested or un-awaited call, a non-literal", () => {
+    expect(portalPageProblem(team, page(""))).toMatch(
+      /must `await gateAdminRoute\("\/admin\/team"\)`/,
+    );
+    expect(portalPageProblem(team, page(`await gateShopRoute("/dashboard");`))).toMatch(
       /calls gateShopRoute/,
     );
-    expect(portalPageProblem(f, page(`await gateAdminRoute(path);`))).toMatch(/literal path/);
-    expect(portalPageProblem(f, page(`await gateAdminRoute("/admin/nope");`))).toMatch(
-      /not a route of the admin portal/,
+    // A page under an owner-only area gating with a broader route of the same portal.
+    expect(portalPageProblem(team, page(`await gateAdminRoute("/admin");`))).toMatch(/must `await/);
+    expect(
+      portalPageProblem(team, page(`if (false) { await gateAdminRoute("/admin/team"); }`)),
+    ).toMatch(/must `await/);
+    expect(portalPageProblem(team, page(`void gateAdminRoute("/admin/team");`))).toMatch(
+      /must `await/,
     );
+    expect(portalPageProblem(team, page(`await gateAdminRoute(path);`))).toMatch(/must `await/);
     // A gate named only in a comment or a string doesn't count.
     expect(
-      portalPageProblem(f, `// gateAdminRoute("/admin")\nconst s = 'gateAdminRoute("/admin")';`),
-    ).toMatch(/must call/);
+      portalPageProblem(
+        team,
+        `// gateAdminRoute("/admin/team")\nconst s = 'gateAdminRoute("/admin/team")';`,
+      ),
+    ).toMatch(/must `await/);
   });
 
-  it("every portal page in this repository passes", () => {
+  it("flags a portal page that isn't in the table, and a portal URL outside its route group", () => {
+    expect(
+      portalPageProblem(
+        "src/app/(shop)/(pages)/dashboard/staff/invite/page.tsx",
+        page(`await gateShopRoute("/dashboard");`),
+      ),
+    ).toMatch(/not a route of the shop portal/);
+    expect(portalPageProblem("src/app/dashboard/extra/page.tsx", page(""))).toMatch(
+      /outside the \(shop\) route group/,
+    );
+    expect(portalPageProblem("src/app/(public)/admin/page.tsx", page(""))).toMatch(
+      /outside the \(admin\) route group/,
+    );
+  });
+
+  it("every page in this repository passes", () => {
     expect(uncovered(process.cwd()).filter((e) => e.name === "portal page")).toEqual([]);
   });
 });

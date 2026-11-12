@@ -48,7 +48,10 @@ describe("[P0-12] portal route table", () => {
     ]);
   });
 
-  it("customer: Wallet, Offers, Scan, Market, Notifications, Me (DESIGN §5 rail order); only Offers and Market are public", () => {
+  it("customer: Wallet, Offers, Scan, Market, Notifications, Me (DESIGN §5 rail order) + hidden Me pages; only Offers and Market are public", () => {
+    // Hidden pages are gated routes but never nav items; their parent item shows as active.
+    expect(navFor("customer", null).map((r) => r.path)).not.toContain("/me/security");
+    expect(activeRoute("/me/security")?.path).toBe("/me");
     expect(CUSTOMER_ROUTES.map((r) => r.path)).toEqual([
       "/wallet",
       "/offers",
@@ -56,6 +59,7 @@ describe("[P0-12] portal route table", () => {
       "/market",
       "/notifications",
       "/me",
+      "/me/security",
     ]);
     expect(CUSTOMER_ROUTES.filter((r) => r.access === "public").map((r) => r.path)).toEqual([
       "/offers",
