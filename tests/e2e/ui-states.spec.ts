@@ -47,7 +47,9 @@ test.describe("[P0-09] UI gallery states", () => {
     test.setTimeout(90_000);
     await gallery(page);
     // Safari's Tab skips links unless "Press Tab to highlight each item" is on (Option+Tab reaches them).
-    const skipLinks = browserName === "webkit";
+    // That is the macOS build only: WebKit on Linux (CI) and Windows tabs to links like the other browsers
+    // (measured 12 Nov 2026: the first Tab lands on "Skip to content"; CI 43181605309).
+    const skipLinks = browserName === "webkit" && process.platform === "darwin";
     const expected = await page.evaluate((skipLinks) => {
       const radioPicked = new Set<string>();
       const all = [

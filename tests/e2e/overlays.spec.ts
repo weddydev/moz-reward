@@ -166,22 +166,37 @@ test.describe("[P0-09] overlays", () => {
     /** Records which properties start a transition on an overlay panel from now on. */
     const record = (): Promise<void> =>
       page.evaluate(() => {
-        const w = window as unknown as { __started: string[]; __rec?: boolean };
+        const w = window as unknown as { __started: string[]; __ended: boolean; __rec?: boolean };
         w.__started = [];
+        w.__ended = false;
         if (w.__rec) return;
         w.__rec = true;
+        const onPanel = (e: Event): boolean =>
+          (e.target as Element).classList.contains("overlay-panel");
         document.addEventListener(
           "transitionstart",
           (e) => {
-            if ((e.target as Element).classList.contains("overlay-panel"))
-              w.__started.push(e.propertyName);
+            if (onPanel(e)) w.__started.push(e.propertyName);
           },
           true,
         );
+        for (const type of ["transitionend", "transitioncancel"])
+          document.addEventListener(
+            type,
+            (e) => {
+              if (onPanel(e)) w.__ended = true;
+            },
+            true,
+          );
       });
     const started = (): Promise<string[]> =>
       page.evaluate(() => (window as unknown as { __started: string[] }).__started);
-    const settle = (): Promise<void> => page.waitForTimeout(400);
+    // Wait for the panel's transition to end, not for a fixed time: Linux WebKit paints the first frame of a
+    // just-opened dialog late (measured 12 Nov 2026: `transitionstart` 390–1380 ms after `transitionrun`,
+    // CI 43181605309), so a 400 ms wait read the list before the event had fired.
+    const settle = async (): Promise<void> => {
+      await page.waitForFunction(() => (window as unknown as { __ended: boolean }).__ended);
+    };
 
     // Full motion: SidePanel and BottomSheet slide while staying opaque (no opacity transition).
     for (const demo of ["panel", "sheet"] as const) {
