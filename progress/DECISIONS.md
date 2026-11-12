@@ -13,6 +13,11 @@ Consequence / revisit when: …
 
 ---
 
+## 2026-11-13 — P0-12: pages live in `(pages)`, the catch-all beside it; 404 before streaming
+Decision: each portal group holds its pages in a nested `(pages)` group with `loading.tsx`, and one catch-all outside it (`/dashboard/[...rest]`, `/admin/[...rest]`, `/wallet/[...rest]`) that runs the portal-root gate and then `notFound()`. An unknown path is therefore: signed out → sign-in, wrong role → 403, else a real 404 inside the shell (`(group)/not-found.tsx`). Other unknown URLs (incl. `/offers/x`, `/me/x`) get the root `not-found.tsx`, also a real 404, without a shell. Under `APP_ENV=test` only, `<root>/test-error` throws so E2E can prove each group's `error.tsx`.
+Why: a page under `loading.tsx` answers 200 once the fallback streams (Next "Status codes"), so the catch-all must sit outside that boundary; measured on the production build (customer catch-all under `loading.tsx` → 200, beside it → 404).
+Consequence / revisit when: new portal pages go under `(pages)`; a dynamic page that calls `notFound()` under `loading.tsx` is a soft 404 with `noindex` (acceptable behind sign-in). The step E coverage lint and matrix treat the three catch-alls as gated pages with the root's roles.
+
 ## 2026-11-13 — Staging secrets carry a `_STAGING` suffix; sending subdomain `mail.mozrewards.com`
 Decision: GitHub secrets for staging are named `<APP_ENV_NAME>_STAGING` (`SENTRY_DSN_STAGING`, `DEMO_EMAIL_BASE_STAGING`, `TURNSTILE_SECRET_KEY_STAGING`, `EMAIL_API_KEY_STAGING`, `EMAIL_FALLBACK_API_KEY_STAGING`, …); production later uses `_PRODUCTION`. The P0-15 deploy job maps each to the app's own name in the staging env file. `DEPLOY_SSH_KEY` is shared. Email goes out from `mail.mozrewards.com` (Resend + Brevo on the same subdomain); the Turnstile staging widget lists only `staging.mozrewards.com`.
 Why: one repository holds both environments' secrets (GitHub Free has no environment-scoped secrets on private repos); a subdomain keeps sending reputation apart from the site; no real key works on localhost.

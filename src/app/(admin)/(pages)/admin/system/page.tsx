@@ -22,7 +22,7 @@ function Shell({ children }: { children: React.ReactNode }): React.JSX.Element {
  * Admin System page (P0-13, ARCHITECTURE §11): the health monitor's latest snapshot. Admin owner only (DECISIONS
  * P0-13), with two-step verification; the database shows the snapshot to that role alone (RLS). The shared
  * gate (P0-12) answers before anything streams: signed out → 307 to staff sign-in, no TOTP → enrolment,
- * any other admin role → the 403 page. The `<main>` is the admin shell's.
+ * any other admin role → the 403 page. The main landmark is the admin shell's.
  */
 export default async function SystemPage(): Promise<React.JSX.Element> {
   const { scope } = await gateAdminRoute("/admin/system");
