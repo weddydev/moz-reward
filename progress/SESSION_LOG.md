@@ -403,3 +403,4 @@ Done: group layouts `(shop)`, `(admin)`, `(customer)` gate before the shell (`ga
 Evidence: `pnpm e2e portal-layouts.spec.ts system-page.spec.ts --project chromium --project iphone14` (production build): 16 passed, 0 failed (signed out → 307 + returnTo; customer on shop/admin → 403, no shell; staff nav without owner items).
 Evidence: gate:task PASS on `aebb93f` (unit 949, int 475, build, bundle, sast, E2E P0-12 10/0); pushed to `wip/P0-12-b`.
 Not verified: push CI on `aebb93f` (running); WebKit desktop, Pixel 7, 1440; shell visuals against DESIGN §5 (step E).
+Human: H-20 widget created, `TURNSTILE_SECRET_KEY_STAGING` set (gh secret list, 12 Nov 20:23 UTC); site key received; setting `NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` was blocked by the Mac's permission mode (one command left, in HUMAN_TASKS).
