@@ -2,10 +2,12 @@ import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { and, eq } from "drizzle-orm";
 
+import { headers } from "next/headers";
 import { getSession } from "@/server/auth/session";
 import { adminMembers, shopStaff } from "@/server/db/schema";
 import { env } from "@/server/env";
 import { poolFor } from "@/server/repos/_base";
+import { clientIp } from "@/server/security/request";
 import { authScope } from "./scope";
 import type { Principal } from "./policies";
 
@@ -19,6 +21,8 @@ export async function loadPrincipal(input: {
   mfaVerified: boolean;
   sessionCreatedAt: Date;
   sessionId?: string;
+  /** The request's client address; only the admin IP allowlist reads it (C-24). */
+  clientIp?: string;
 }): Promise<Principal> {
   const [staffRows, adminRows] = await Promise.all([
     db()
@@ -49,6 +53,18 @@ export function runAsPrincipal<T>(principal: Principal | null, fn: () => Promise
   return testPrincipal.run({ principal }, fn);
 }
 
+/**
+ * The address this request came from, for the admin IP allowlist. Outside a request (no `headers()`) it is
+ * "unknown", which a configured allowlist refuses.
+ */
+async function requestClientIp(): Promise<string> {
+  try {
+    return clientIp(await headers());
+  } catch {
+    return "unknown";
+  }
+}
+
 /** Current request's principal, or null when signed out. */
 export async function currentPrincipal(): Promise<Principal | null> {
   const override = testPrincipal.getStore();
@@ -63,5 +79,6 @@ export async function currentPrincipal(): Promise<Principal | null> {
     mfaVerified: session.session.mfaVerified === true,
     sessionCreatedAt: new Date(session.session.createdAt),
     sessionId: session.session.id,
+    clientIp: await requestClientIp(),
   });
 }
