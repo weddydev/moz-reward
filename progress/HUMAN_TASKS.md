@@ -15,6 +15,8 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 
 | ID | Priority | Task | Needed by | Why | Est. time |
 |---|---|---|---|---|---|
+| H-39 | 🔴 | **SSH from this laptop for Claude** (steps below): the VPS accepts both keys on the Windows laptop (`id_ed25519`, `moz_deploy`), but they need a passphrase, so Claude's non-interactive `ssh` can't use them. Load `id_ed25519` into the Windows ssh-agent once (you type the passphrase) | P0-15 step B (hardening run) | Claude runs the hardening script, deploys and drills over SSH itself (CLAUDE.md "Do it yourself") | 3 min |
+| H-40 | 🔴 | **Cloudflare Tunnel for staging** (steps below): create tunnel `moz-staging`, public hostname `staging.mozrewards.com` → `http://caddy:80`, put its token into GitHub secret `CLOUDFLARE_TUNNEL_TOKEN_STAGING` from your terminal | P0-15 step C (first deploy) | The origin is reachable only through the Tunnel (SECURITY §11); the token exists only in the Cloudflare dashboard | 10 min |
 | H-35 | 🟢 | Close GitHub issue #1 "Scheduled CI failing" (fixed in `dd05afe`, re-run 42812524717 green) | Any time | Claude may not write to GitHub issues | 1 min |
 | H-34 | 🟠 | Sentry: **`SENTRY_DSN_STAGING` set** (12 Nov; project `mozrewards`, Next.js, receiving events, PII scrubbed). Org slug `mozereward`, project `mozrewards`; the alert email reaches the shared Gmail inbox (probe MOZREWARDS-1 seen, PII redacted). Alert `New issue → email` (13 Nov): WHEN a new issue is created (+ escalates), IF any event, THEN suggested assignees → recently active members; test notification arrived in the shared inbox. Still to confirm: Subscription = Developer with no pay-as-you-go, the 11 Nov wizard auth token deleted | Sun 15 Nov 2026 (P0-15 staging) | Error reporting for web + worker | 5 min |
 | H-36 | 🟠 | Demo accounts: **steps 1–3 done** (12 Nov: shared inbox chosen, `DEMO_EMAIL_BASE_STAGING` set). Inbox is Gmail; plus addressing verified 13 Nov (`<inbox>+moz-test@…` landed in the Inbox). After the first staging deploy: steps 3–5 (run `demo:credentials` yourself, save the output in the password manager, add the six TOTP keys) | After the first P0-15 deploy | The demo customer signs in by email link; staff/admin demo accounts need password + code. Credentials are never committed or pasted into chat | 10 min |
@@ -33,6 +35,18 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 | H-30 | 🟢 | On each laptop: `gh auth refresh -h github.com -s user` (adds the read-only billing scope) | Next sub-phase close (P0-E) | `pnpm ci:usage` then reads the exact Actions minutes instead of an estimate | 2 min |
 
 ## Steps
+
+### H-39 — SSH for Claude on the Windows laptop (P0-15)
+1. Open **PowerShell as Administrator** and run: `Get-Service ssh-agent | Set-Service -StartupType Automatic; Start-Service ssh-agent`
+2. In a normal PowerShell: `ssh-add $env:USERPROFILE\.ssh\id_ed25519` and type the key's passphrase at the prompt (never in chat). The agent keeps it across reboots.
+3. Tell Claude "H-39 done". Claude checks `ssh root@72.61.17.208` with Windows OpenSSH, then does the rest itself. **Claude's part:** if `DEPLOY_SSH_KEY` turns out to have a passphrase too (CI can't type one), Claude makes a new passphrase-less CI deploy key, installs its public half on the VPS for the `deploy` user only and replaces the GitHub secret with `gh secret set DEPLOY_SSH_KEY < file`, without displaying it.
+
+### H-40 — Cloudflare Tunnel for staging (P0-15)
+1. Cloudflare dashboard → **Zero Trust** → Networks → **Tunnels** → Create a tunnel → **Cloudflared** → name `moz-staging` → Save.
+2. On the "Install connector" page, copy only the **token** (the long string after `--token` in any of the commands). Don't run the install command: the connector runs in our Docker stack.
+3. In a terminal in the repo: `gh secret set CLOUDFLARE_TUNNEL_TOKEN_STAGING`, then paste the token at the prompt (never in chat). Also save it in the password manager ("Moz Rewards staging tunnel").
+4. Back in the dashboard → Next → **Public hostname**: subdomain `staging`, domain `mozrewards.com`, service type **HTTP**, URL `caddy:80` → Save. (Cloudflare creates the DNS record itself; there is no A record for the VPS.)
+5. Tell Claude "H-40 done". The tunnel shows "Inactive" until Claude's first deploy starts the connector.
 
 ### H-25 — GitHub plan (decide before P0-14 finishes)
 GitHub Free on a **private** repo has no branch protection, no rulesets, no auto-merge and no environments (verified on docs.github.com, 9 Nov 2026). Required reviewers on environments are not available for private repos even on Pro/Team, so neither option relies on them.
