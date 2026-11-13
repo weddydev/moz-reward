@@ -11,6 +11,16 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-13 — Staging/production Postgres image and the non-superuser migration owner (P0-15 B)
+Decision: staging/production run `infra/postgres/Dockerfile`: `postgis/postgis:17-3.6` (Debian 13, Postgres 17.11) by digest + wal-g v3.0.9 (ubuntu-22.04 build, sha256-checked) + ca-certificates + gnupg; local/CI keep `imresamu/postgis:17-3.5` (multi-arch). Migrations run as `moz_owner` (NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB); `infra/postgres/bootstrap.sql` (superuser over the socket, idempotent) creates roles/databases/PostGIS and carries a self-closing shim for 0009 (`moz_auth` CREATE on public + `moz_owner` membership of `moz_auth`, granted only while 0010 hasn't run). The release runs bootstrap → migrate → bootstrap.
+Why: the 3.5 tag is Debian 11 / Postgres 17.5 (stale); 0009 hands functions to moz_auth, which a non-superuser can only do with those two grants (local/CI never saw it: their migration role is a superuser), and merged migrations are never edited.
+Consequence / revisit when: verified locally (16 migrations as moz_owner, shim closed afterwards, boot role checks OK for app/auth/worker, owner refused). Align local/CI to PostGIS 3.6 when imresamu publishes 17-3.6 (follow-up). Any future `OWNER TO` a role other than moz_rls needs the same treatment.
+
+## 2026-11-13 — New dev dependency: yaml (P0-15)
+Decision: `yaml` 2.9.1 (devDependency) parses the Compose files in `scripts/infra-compose.test.ts`.
+Why: the infra lint (no host ports, memory limits = RESOURCES.md, hardening options, C-27 grace) needs a YAML parser with merge-key support; none was a direct dependency.
+Consequence / revisit when: test-only, never in the runtime image.
+
 ---
 
 ## 2026-11-13 — P0-15 A: slim image (standalone + bundled CLIs); boot checks each URL's data role

@@ -450,3 +450,9 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - C-33 + review MEDIUM: boot requires each URL's login to be a member of its data role only; refuses CREATEROLE/CREATEDB/REPLICATION, pg_* server-file/program/all-data roles, moz_rls with LOGIN. Integration boot-db-role 9/0, worker-process source + bundle 2/0; unit bundle-cli 5/0; `pnpm check` PASS (unit 1041).
 - Security design check of P0-15 (security-reviewer): step A OK (MEDIUM fixed; LOWs in the plan file); 7 HIGH design requirements for B/C recorded in `progress/P0-15-plan.md`.
 - Blocked for the VPS: both laptop SSH keys need a passphrase (server accepts them; batch ssh can't sign) → H-39; tunnel token → H-40.
+
+## 2026-11-13 — P0 — P0-15 step B1 (Syedbadeshah76, Windows)
+- Infra as code on `wip/P0-15` (`2bfae3a`): Postgres image (PostGIS 17-3.6 by digest + wal-g v3.0.9 sha256 + ca-certificates + gnupg), pg_hba (superuser socket-only, scram), bootstrap.sql; Redis TLS + ACL configs; Caddy staging/production (C-23 id overwrite, log filter, exact Umami paths, basic auth + noindex); compose base + staging/production (limits = RESOURCES.md, staging CPU 1.5, no ports, cap_drop ALL, read-only, worker 90 s grace).
+- Evidence: infra lint 27/0 (and 3 failures on an injected host port + wrong limit); `caddy validate` + `docker compose config` both envs; Postgres image run as uid 999 read-only without caps: bootstrap ×3 exit 0, 16 migrations as non-superuser moz_owner (0009 needed a self-closing shim, DECISIONS), C-32 privileges checked with has_*_privilege, app boot role checks OK for app/auth/worker, owner refused; `pnpm check` PASS (unit 1069).
+- New 🟠 H-41 (staging basic-auth password). Drive C filled during image pulls (Docker Desktop stopped; the human freed space).
+- Exact next step: `/resume` → `git switch wip/P0-15` → P0-15 **B2** per `progress/P0-15-plan.md` (harden.sh + host files + `moz-deploy` helper + helper test).

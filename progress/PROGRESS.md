@@ -8,19 +8,19 @@ Baton: held by Syedbadeshah76 since 2026-11-13 (Windows)
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Session of Syedbadeshah76, 2026-11-13 (Windows)**, P0-15 (VPS + staging) started; steps A–E in **`progress/P0-15-plan.md`** (read it first: it holds the security design requirements for B–E).
-- **Finished: step A** on branch **`wip/P0-15`** (pushed with this note; HEAD `0572cc8` (step A code `556bfac`)): slim image (C-21: Next standalone + `scripts/bundle-cli.ts` bundles in `/app/cli`, Trivy with no skips, CI slim check) and boot role checks (C-33 + review MEDIUM + moz_rls NOLOGIN). Evidence in SESSION_LOG.
-- **Half-done:** P0-15 itself (B–E). C-21/C-33 have local evidence but are only *closed* when the image job runs on main / staging boots (step C). Not merged to main yet: merge `wip/P0-15` at P0-15's end (or earlier if P1 work must go on main first — then rebase).
-- **Next step: B** (infra as code): write `infra/host/harden.sh`, compose stacks, Caddyfile, Postgres image, bootstrap SQL, Redis TLS, `moz-deploy` helper per the plan file; run the hardening script once **H-39** is done (`/c/Windows/System32/OpenSSH/ssh.exe root@72.61.17.208` — Git Bash ssh can't use the Windows agent).
-- **Blocked on the human (🔴):** H-39 (load `id_ed25519` into the Windows ssh-agent; both laptop keys need a passphrase), H-40 (staging tunnel token). Step B's files don't need them; running them does.
-- **Not yet tested:** the image's `server.js` in CI (only `node --check`; full smoke on staging); quarantined pixel7 motion test (C-40); `global-error.tsx`; real-device sound/haptics (H-37); staging (none until step C).
-- **Windows laptop notes:** low memory can crash a Vitest worker in the pre-push gate (re-run); `pnpm sast` takes 10–23 min; no Python (use node for scripted edits); a scratch DB `moz_img` exists locally (drop any time).
+- **Finished: step A** (`556bfac`) and **step B1** on branch **`wip/P0-15`** (HEAD `2bfae3a`, pushed): `infra/postgres/` (PostGIS 17-3.6 + wal-g + bootstrap.sql with the 0009 shim), `infra/redis/`, `infra/caddy/`, `infra/compose/` (base + staging/production) and the infra lint `scripts/infra-compose.test.ts`. Evidence in SESSION_LOG; design for B2 in the plan file.
+- **Half-done:** P0-15 (B2–E). C-21/C-33 have local evidence but only *close* when the image job runs on main / staging boots (step C). C-32's bootstrap is verified locally, closes on staging. Not merged to main yet: merge `wip/P0-15` at P0-15's end (or earlier if P1 work must go on main first — then rebase).
+- **Next step: B2** (`git switch wip/P0-15` first): write `infra/host/harden.sh` + `infra/host/files/` and the root helper `infra/host/moz-deploy` exactly as the plan file's B2 bullets say (host paths, subcommands, Redis ACL rules are already fixed by B1's files), update `infra/docker/daemon.json`, add a bash test of the helper's argument validation. Run the hardening script once **H-39** is done (`/c/Windows/System32/OpenSSH/ssh.exe root@72.61.17.208` — Git Bash ssh can't use the Windows agent).
+- **Blocked on the human (🔴):** H-39 (load `id_ed25519` into the Windows ssh-agent), H-40 (staging tunnel token); 🟠 H-41 (staging basic-auth password) before step C. Writing B2's files needs none of them; running them does.
+- **Not yet tested:** the image's `server.js` in CI (only `node --check`); Redis TLS/ACL and the compose stacks running (only `docker compose config` + lint; first run on the VPS); Umami with `read_only`; quarantined pixel7 motion test (C-40); `global-error.tsx`; real-device sound/haptics (H-37); staging (none until step C).
+- **Windows laptop notes:** low memory can crash a Vitest worker in the pre-push gate (re-run); `pnpm sast` takes 10–23 min; no Python (use node for scripted edits); a scratch DB `moz_img` exists locally (drop any time). Drive C filled up on 13 Nov during Docker pulls (Docker Desktop stopped; freed by the human): check `df -h /c` before big image pulls/builds.
 
 ## Status
 - **Phase:** P0 open: **P0-15 in progress on `wip/P0-15`** (step A done; plan `progress/P0-15-plan.md`), then P0-E/P0 closes; P0-D closed 13 Nov. Working on **P1** meanwhile (human, 13 Nov: keep going, mark pending gates).
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → P1-02 → P1-03 → P1-04. P0-E waits only on P0-15 (human tasks).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-13 10:32 UTC, Syedbadeshah76 (P0-15 step A checkpoint; baton still held)
+- **Last updated:** 2026-11-13 12:00 UTC, Syedbadeshah76 (P0-15 step B1 checkpoint; baton still held)
 - **Staging and production:** one Hostinger VPS 72.61.17.208 (ready, not hardened; backups on B2) — not provisioned yet
 
 ## Now
@@ -30,7 +30,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - P0-15 is the only P0-E task left: VPS (H-06) and domain (H-07) ready; backups bucket ready (B2); human inputs for staging now in place (H-04, H-27, H-28 staging done 13 Nov); H-34/H-36 leftovers after the first deploy.
 
 ## Next (top 3)
-1. **P0-15** VPS + staging: now unblocked (H-04, H-27, H-28 staging done 13 Nov; H-21, H-17 already done). Staging is what every sub-phase close and the P0 gate need, so it goes before P1-02.
+1. **P0-15** VPS + staging: step B2 next (host hardening + `moz-deploy` helper), then C (deploy; needs H-39, H-40, H-41). Staging is what every sub-phase close and the P0 gate need, so it goes before P1-02.
 2. **P1-02** shop landing page (closes C-15), then P1-03, P1-04 (P1-A).
 3. P0-15 carries: C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38; known risk wal-g + R2 (ca-certificates).
 
@@ -80,11 +80,11 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - Motion (P0-10): `src/lib/motion/` (`route-transitions.ts`: NAV, `enterKeyframes`, `FADE_IN_PLACE_QUERY`, `vtName`, `cssTimeMs`, `viewTransitionActive`, VT downgrade; `nav-intent.ts`; `presets.ts`: `MOTION_PRESETS`, `staggerDelay`/`staggerStyle`, `transformOriginFor`, `placePopover`), `src/components/motion/` (`RouteTransition`/`RouteContent`, `TransitionLink`, `SharedElement` (`fit="cover"` for images), `Popover`; fixed UI stays outside `RouteTransition`), `/dev/motion` demos (`src/features/dev/motion/`); `src/features/dev/DevGate.tsx` (/dev 404 in production)
 - Sound and haptics (P0-11): `src/lib/sound.ts` (`armSound`, `play`, `SOUNDS`), `src/lib/haptics.ts` (`haptic`, `HAPTICS`); both obey the sound preference
 - UI: `src/styles/tokens.css` (+ `tokens.ts` list), `src/app/globals.css` (hover variant, `hit-44`, `[data-press]`, `.spinner`, `.skeleton`), `src/components/ui/` (overlays: `Overlay.tsx` + `Modal`/`SidePanel`/`BottomSheet`; gallery `src/features/dev/UiGallery.tsx`), `src/lib/use-hydrated.ts`, `src/features/auth/`
-- CI/tooling: `.github/workflows/ci.yml` + `scheduled.yml`; `scripts/gate-task.ts`, `gate-phase.ts`, `lib/gate.ts`, `pre-push.ts` (+ `.lefthook/pre-push/guard-and-gate.sh`), `osv-gate.ts`, `ci-usage.ts`, `e2e.ts`; `Dockerfile`, `tsconfig.build.json`, `renovate.json`
+- CI/tooling: `.github/workflows/ci.yml` + `scheduled.yml`; `scripts/gate-task.ts`, `gate-phase.ts`, `lib/gate.ts`, `pre-push.ts` (+ `.lefthook/pre-push/guard-and-gate.sh`), `osv-gate.ts`, `ci-usage.ts`, `e2e.ts`; `Dockerfile`, `tsconfig.build.json`, `renovate.json`; VPS (P0-15): `infra/compose/` (+ `scripts/infra-compose.test.ts`), `infra/caddy/`, `infra/postgres/` (bootstrap.sql), `infra/redis/`, plan `progress/P0-15-plan.md`
 - Tests: Vitest `unit` + `integration` (per-worker DBs); `tests/authz/` (matrix, harness self-test); `scripts/check-authz-coverage.ts` (AST, in `pnpm lint`); `tests/e2e/` (Playwright :3100, import `test` from `support/test.ts`); `tests/load/`, `tests/live/`, `stryker.config.mjs`
 
 ## Last verified (13 Nov 2026)
-- `wip/P0-15` step A (Windows): `pnpm check` PASS (unit 1041); int boot-db-role 9/0 + worker-process (source + bundle) 2/0; local image: Trivy no skips exit 0, migrate/seed/demo-credentials/web/worker run in the image, worker SIGTERM drain exit 0.
+- `wip/P0-15` step B1 (Windows): `pnpm check` PASS (unit 1069); infra lint 27/0 (fails on an injected host port + wrong limit); `caddy validate` both envs; `docker compose config` both envs; Postgres image as uid 999, read-only, no caps: bootstrap ×3 exit 0, 16 migrations as non-superuser moz_owner, privileges as C-32, boot role checks OK for app/auth/worker. Step A: Trivy no skips, CLIs + web + worker drain in the image.
 - P1-01 push CI `43377454009` on `f5c8495`: success (all 3 jobs).
 - P1-01 (Windows, before commit): unit open-status 17/0, codes 14/0, shop-links 4/0, shop-qr 4/0 (PNG decodes to the exact URL), check-migrations 47/0, eslint scope + admin-read rules 21/0; integration shop-details 16/0, membership-guard 7/0; `pnpm fix` clean (eslint incl. moz/admin-read). gate:task (pre-push) on `f5c8495` PASS: unit 1037, int 1134, build, bundle, sast.
 - `main` `af3aa57` (P0-D fixes): gate:task PASS (unit 998, int 1111 incl. route matrix 613, build, sast); shells spec 63/0 on 5 projects; visual baselines regenerated and inspected; CI `43364016465` on `f91af95` green.
