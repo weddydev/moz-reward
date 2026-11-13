@@ -10,11 +10,11 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Session of Syedbadeshah76, 2026-11-13 (Windows)**, continuing P1 on autopilot. Previous handoff (talha.syed): P0-12 + P0-D closed, CI `43364016465` green, P1 brief reviewed.
 - **Finished:** **P1-01** (this commit): C-34 closed (checker: open moz_app policies need `-- rls: open`, global markers only in the creating migration; ESLint `moz/admin-read`; memberships counter guard trigger, 0014); `shop_hours`, `shop_closures`, `nfc_tags` + RLS + one-hop trigger (0015); `openStatus`; shop code normalise/retry + `codes.exhausted` alert; QR service; directions/tel builders. Also: the authz-coverage repo-scan test gets a 30 s timeout (it timed out at 5 s under the parallel unit run on this laptop).
 - **Gate + CI:** pre-push gate:task on `f5c8495` PASS (unit 1037, int 1134, build, sast); push CI `43377454009` on `f5c8495` **green** (image + Trivy, check/int/build/E2E, gitleaks).
-- **Half-done:** nothing. **Next step: P1-02** (shop landing `/s/[code]`; closes C-15) — nothing started; first read `docs/phases/P1.md` P1-02 + its Read list, then (security-relevant? no; but C-15 rate limit) build the redis-cache shop read + per-IP limit test-first. Use `findActiveShopName`-style normalised lookup, `openStatus`, `directionsUrl`/`telHref`. The demo seed has no hours/closures yet: add them in P1-02 so the landing page shows real hours.
+- **Half-done:** nothing. **Next step: P0-15** (VPS + staging), now unblocked by H-04/H-27/H-28 (13 Nov): read `docs/phases/P0.md` P0-15 + its Read list and the CARRIED rows targeting it; then P1-02 (`/s/[code]`, C-15; add demo hours/closures to the seed there).
 - **Tested:** see "Last verified". **Not yet tested:** quarantined pixel7 motion test (C-40); `global-error.tsx`; real-device sound/haptics (H-37); rail labels toggle and More sheet on a real phone/tablet; staging (none until P0-15).
 - **Pending by the human's autopilot instruction (not passed):** P0-D close staging smoke + Sentry for the release (no staging until P0-15); P0-E and P0 phase closes wait on P0-15's human tasks.
 - **Do first:** `pnpm install` (dev deps jsqr, pngjs) and `pnpm db:migrate` (0014, 0015).
-- **Human side:** open 🟠 for P0-15 (H-04 in progress with the human, H-34 leftovers, H-36 after deploy); H-28 staging client done 13 Nov (production + branding before P5-04), H-12 Play account, H-37; 🟢 H-38 (delete merged wip branches). H-27 done 13 Nov.
+- **Human side:** open 🟠 for P0-15 (H-34 leftovers, H-36 after deploy); **H-04 done 13 Nov** (Resend Ireland + Brevo, both keys set); H-28 staging client done 13 Nov (production + branding before P5-04), H-12 Play account, H-37; 🟢 H-38 (delete merged wip branches). H-27 done 13 Nov.
 - **Windows laptop notes:** low memory can crash a Vitest worker in the pre-push gate (re-run); start Docker Desktop before `pnpm services:up`; `pnpm sast` takes 10–23 min there.
 
 ## Status
@@ -29,12 +29,12 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **P0-C closed** (`576b73e`; 5-project run `43269125099` 675/0/0 flaky). C-40 quarantine open (P0 phase gate).
 - **P0-D closed** (P0-12 + fixes; staging smoke pending until P0-15). P1 brief reviewed.
 - **P1-A started:** P1-01 done (13 Nov); C-34 closed.
-- P0-15 is the only P0-E task left: VPS (H-06) and domain (H-07) ready; backups bucket ready (B2); waits on H-04 (+ H-34, H-36 for the full staging sign-in; H-27 done 13 Nov).
+- P0-15 is the only P0-E task left: VPS (H-06) and domain (H-07) ready; backups bucket ready (B2); human inputs for staging now in place (H-04, H-27, H-28 staging done 13 Nov); H-34/H-36 leftovers after the first deploy.
 
 ## Next (top 3)
-1. **P1-02** shop landing page (closes C-15), then P1-03, P1-04 (P1-A). P1 runs while P0-15 waits on H-04/H-28 (human's autopilot instruction: move on, mark the P0 phase gate pending).
-2. P0-15 parts that need no human input (hardening script as code, compose stacks, deploy/rollback scripts) when a P1 sub-phase closes or the human tasks land.
-3. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); hardening script can start now (VPS ready, backups bucket + key ready); staging sign-in waits on H-04.
+1. **P0-15** VPS + staging: now unblocked (H-04, H-27, H-28 staging done 13 Nov; H-21, H-17 already done). Staging is what every sub-phase close and the P0 gate need, so it goes before P1-02.
+2. **P1-02** shop landing page (closes C-15), then P1-03, P1-04 (P1-A).
+3. P0-15 carries: C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38; known risk wal-g + R2 (ca-certificates).
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
@@ -61,7 +61,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 
 ## Blockers
 - Human 🔴: none.
-- 🟠 (needed by Sun 15 Nov for P0-15): H-04 Resend + Brevo, H-28 staging OAuth, H-34 Sentry, H-36 demo inbox, H-21 client's written risk acceptance, H-17 permissions. **Start now:** H-12 Play organisation account. **H-37** (🟠, before P1-06): iPhone + Android listen and vibrate check.
+- 🟠 for P0-15: none left before the first deploy (H-04, H-27, H-28 staging done 13 Nov); after it: H-34 leftovers, H-36 steps 3–5. **Start now:** H-12 Play organisation account. **H-37** (🟠, before P1-06): iPhone + Android listen and vibrate check.
 - Technical: C-40 (quarantined test) blocks the P0 phase gate. CI queue stalled during the Actions outage (see handoff). Known risk for P0-15: wal-g `wal-push` hangs against R2 without `ca-certificates` in the Postgres image (wal-g #2550).
 
 ## Map of the codebase
@@ -97,7 +97,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - P0-C close: gate:task PASS on `4a8851e` (unit 834, int 475, build, bundle, sast); push CI `43194017373` green; 5-project Linux E2E `43194053878` on `4a8851e`: 675 passed, 0 failed, 1 flaky (AC5, fixed after). After the last fixes: Linux WebKit + iPhone 14 in the Playwright image 12/0; Chromium 3/0; unit toast 16/0. `main` `32c0513`: gate:task PASS (unit 836, int 475, sast, E2E 39/0); push CI `43206390543` green; 5-project Linux E2E `43206412851`: 674 passed, 0 failed, 2 flaky (NOT green). `wip/P0-12` `faabf3b`: gate:task PASS.
 - `main` `ee83173` (P0-10): gate:task P0-10 PASS (E2E 46/0); motion specs 109/0 on 5 projects; full E2E 616/0; AC5 popover flake fixed at the cause (120/0 ×3 after).
 - P0-09 and P0-08: see SESSION_LOG (12 Nov).
-- Mutation 90.1% · `test:live`: storage ✅, email NOT VERIFIED (H-04). Staging: none yet.
+- Mutation 90.1% · `test:live`: storage ✅, email NOT VERIFIED (keys set 13 Nov; runs on staging in P0-15). Staging: none yet.
 
 ## Follow-ups (LOW, not fixed; owner task in brackets)
 - [P1-18] `shops_phone_e164` was added NOT VALID in 0015: `VALIDATE CONSTRAINT` it in a later migration (no shop has a phone yet).
@@ -117,4 +117,4 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 
 ## Open questions / assumptions
 - Launch-tier numbers await the client's written confirmation (H-21). Loyalty defaults pending H-22.
-- Not yet tested: passkey sign-in (real device), real email provider (H-04).
+- Not yet tested: passkey sign-in (real device), real email provider (keys set; first send on staging, P0-15).

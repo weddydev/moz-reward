@@ -440,3 +440,7 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 ## 2026-11-13 06:30 UTC — Syedbadeshah76 (Windows) — checkpoint after P1-01
 - P1-01 on main (`f5c8495`); push CI `43377454009` green; tree clean. H-27 done, H-28 staging client done; human working on H-04 (Brevo first).
 - Exact next step: `/resume` → P1-02 shop landing page `/s/[code]` (read P1.md P1-02 + Read list; redis-cache shop data 60 s + per-IP limit C-15, test first).
+
+## 2026-11-13 — Syedbadeshah76 (Windows) — human tasks H-04, H-28 (staging)
+- H-04 done with the human: Resend domain `mail.mozrewards.com` in Ireland (eu-west-1; a Tokyo default was deleted and redone), Brevo authenticated + sender verified; DNS checked via 1.1.1.1 (rsend-euw1, Resend DKIM, Brevo DKIM CNAMEs DNS-only, one DMARC). `gh secret list`: EMAIL_API_KEY_STAGING, EMAIL_FALLBACK_API_KEY_STAGING, GOOGLE_CLIENT_ID/SECRET_STAGING present.
+- P0-15 is now unblocked → Next #1 (staging before P1-02). Exact next step: `/resume` → P0-15.
