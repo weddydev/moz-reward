@@ -14,6 +14,9 @@ const staticHeaders = Object.entries(staticSecurityHeaders("/")).map(([key, valu
 const nextConfig: NextConfig = {
   // The E2E server (port 3100, APP_ENV=test) builds into its own folder so it can run beside `pnpm dev`.
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // The Docker build (NEXT_OUTPUT=standalone) ships only traced files: no dev dependencies or tool binaries in the
+  // runtime image (P0-15, C-21). Local and E2E builds keep `next start` (standalone needs symlinks on Windows).
+  ...(process.env.NEXT_OUTPUT === "standalone" ? { output: "standalone" as const } : {}),
   // Do not advertise the framework (SECURITY §5 baseline).
   poweredByHeader: false,
   experimental: { authInterrupts: true },

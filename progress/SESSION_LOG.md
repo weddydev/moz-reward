@@ -444,3 +444,9 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 ## 2026-11-13 — Syedbadeshah76 (Windows) — human tasks H-04, H-28 (staging)
 - H-04 done with the human: Resend domain `mail.mozrewards.com` in Ireland (eu-west-1; a Tokyo default was deleted and redone), Brevo authenticated + sender verified; DNS checked via 1.1.1.1 (rsend-euw1, Resend DKIM, Brevo DKIM CNAMEs DNS-only, one DMARC). `gh secret list`: EMAIL_API_KEY_STAGING, EMAIL_FALLBACK_API_KEY_STAGING, GOOGLE_CLIENT_ID/SECRET_STAGING present.
 - P0-15 is now unblocked → Next #1 (staging before P1-02). Exact next step: `/resume` → P0-15.
+
+## 2026-11-13 — P0 — P0-15 step A (Syedbadeshah76, Windows)
+- C-21: Next standalone (Docker build only) + esbuild CLI bundles (`scripts/bundle-cli.ts`, worker/relay/migrate/seed/demo-credentials). Local image 442 MB (node_modules 43 MB): Trivy 0.76.1 **no skips** exit 0; slim check passes (no npm/pnpm/corepack/tsx/esbuild/lefthook); in the image vs a scratch DB: migrate, seed (argon2 + TOTP check) and demo-credentials exit 0, web live/ready/pages/static 200 + healthy, worker `docker stop -t 75` → worker.stopped, exit 0 (Linux SIGTERM drain).
+- C-33 + review MEDIUM: boot requires each URL's login to be a member of its data role only; refuses CREATEROLE/CREATEDB/REPLICATION, pg_* server-file/program/all-data roles, moz_rls with LOGIN. Integration boot-db-role 9/0, worker-process source + bundle 2/0; unit bundle-cli 5/0; `pnpm check` PASS (unit 1041).
+- Security design check of P0-15 (security-reviewer): step A OK (MEDIUM fixed; LOWs in the plan file); 7 HIGH design requirements for B/C recorded in `progress/P0-15-plan.md`.
+- Blocked for the VPS: both laptop SSH keys need a passphrase (server accepts them; batch ssh can't sign) → H-39; tunnel token → H-40.

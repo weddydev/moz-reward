@@ -198,6 +198,7 @@ const eslintConfig = defineConfig([
     ".artifacts/**", // screenshots, traces and QA output (git-ignored)
     "out/**",
     "build/**",
+    "dist/**", // generated CLI bundles (pnpm bundle:cli)
     "coverage/**",
     "playwright-report/**",
     "test-results/**",

@@ -26,3 +26,4 @@ infra
 *.jks
 twa/
 .npmrc
+dist
