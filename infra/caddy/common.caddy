@@ -1,0 +1,63 @@
+# Shared Caddy snippets for staging and production (P0-15; SECURITY §11). Imported by Caddyfile.<env> after
+# its global options block (which must come first in a Caddyfile, so each env file holds its own copy).
+# Caddy listens on plain HTTP inside the `edge` network only; TLS terminates at Cloudflare and cloudflared is
+# the only client. No host ports.
+
+# Access log for the System page aggregation (C-35): route, status and duration only. No query strings,
+# headers (cookies, Authorization, Set-Cookie) or client IPs ever reach the log (HIGH, P0-15 design check).
+(access_log) {
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 50MiB
+			roll_keep 30
+			roll_keep_for 720h
+		}
+		format filter {
+			wrap json
+			request>uri regexp "\?.*$" ""
+			request>headers delete
+			request>remote_ip delete
+			request>remote_port delete
+			request>client_ip delete
+			request>tls delete
+			resp_headers delete
+			user_id delete
+		}
+	}
+}
+
+(app_common) {
+	import access_log
+	# C-23: every request gets Caddy's id; a client-sent X-Request-Id is overwritten, never trusted.
+	request_header X-Request-Id {http.request.uuid}
+	header -Server
+	header -Via
+
+	# Umami (production) is proxied on the app origin only for the tracker script and the event endpoint
+	# (C-36); every other /u/ path is a 404 here. Each env file defines `umami_routes` before importing this.
+	import umami_routes
+	handle /u/* {
+		respond 404
+	}
+	handle /u {
+		respond 404
+	}
+
+	handle {
+		reverse_proxy web-1:3000 web-2:3000 {
+			lb_policy round_robin
+			# Rolling deploys: a request that can't reach one replica is retried on the other.
+			lb_try_duration 10s
+			lb_try_interval 250ms
+			fail_duration 30s
+			health_uri /api/health/ready
+			health_interval 5s
+			health_timeout 3s
+			health_status 200
+			header_up X-Forwarded-Proto https
+			# SSE streams must not be buffered.
+			flush_interval -1
+		}
+	}
+}
+

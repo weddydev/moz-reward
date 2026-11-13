@@ -1,0 +1,73 @@
+# Staging override (P0-15): limits from infra/RESOURCES.md (staging total ≈ 3.3 GB, cpus 1.5 in total) so it
+# can never starve production. memswap_limit = mem_limit: staging containers never swap (AC7).
+# Change this file and RESOURCES.md together (infra/compose.test.ts compares them).
+
+services:
+  cloudflared:
+    mem_limit: 64m
+    memswap_limit: 64m
+    cpus: 0.05
+
+  caddy:
+    mem_limit: 64m
+    memswap_limit: 64m
+    cpus: 0.05
+    volumes:
+      - ${MOZ_INFRA:?}/caddy/Caddyfile.staging:/etc/caddy/Caddyfile:ro
+
+  web-1:
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 0.4
+    environment: &web-env
+      NODE_OPTIONS: --max-old-space-size=384
+  web-2:
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 0.4
+    environment: *web-env
+
+  worker:
+    mem_limit: 768m
+    memswap_limit: 768m
+    cpus: 0.25
+    environment:
+      NODE_OPTIONS: --max-old-space-size=576
+
+  postgres:
+    mem_limit: 1g
+    memswap_limit: 1g
+    cpus: 0.25
+    shm_size: 128m
+    command:
+      - postgres
+      - -c
+      - hba_file=/etc/postgresql/pg_hba.conf
+      - -c
+      - listen_addresses=*
+      - -c
+      - password_encryption=scram-sha-256
+      - -c
+      - log_statement=none
+      - -c
+      - max_connections=80
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=512MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+
+  redis-queue:
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 0.05
+    command: ["redis-server", "/etc/redis/redis.conf", "--maxmemory", "192mb"]
+
+  redis-cache:
+    mem_limit: 192m
+    memswap_limit: 192m
+    cpus: 0.05
+    command: ["redis-server", "/etc/redis/redis.conf", "--maxmemory", "128mb"]

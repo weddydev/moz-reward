@@ -1,0 +1,90 @@
+# Production override (P0-15): memory limits from infra/RESOURCES.md (production total ≈ 9.5 GB); no CPU limits
+# (production owns the host). memswap_limit = mem_limit: no container swaps (AC7). Provisioned in P0-15 but
+# serves only the maintenance page (caddy.env MAINTENANCE=on) until launch (P5).
+# Change this file and RESOURCES.md together (infra/compose.test.ts compares them).
+
+services:
+  cloudflared:
+    mem_limit: 128m
+    memswap_limit: 128m
+
+  caddy:
+    mem_limit: 128m
+    memswap_limit: 128m
+    volumes:
+      - ${MOZ_INFRA:?}/caddy/Caddyfile.production:/etc/caddy/Caddyfile:ro
+    depends_on: [web-1, web-2, umami]
+
+  web-1:
+    mem_limit: 1g
+    memswap_limit: 1g
+    environment: &web-env
+      NODE_OPTIONS: --max-old-space-size=768
+  web-2:
+    mem_limit: 1g
+    memswap_limit: 1g
+    environment: *web-env
+
+  worker:
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    environment:
+      NODE_OPTIONS: --max-old-space-size=1152
+
+  postgres:
+    mem_limit: 4608m
+    memswap_limit: 4608m
+    shm_size: 1g
+    command:
+      - postgres
+      - -c
+      - hba_file=/etc/postgresql/pg_hba.conf
+      - -c
+      - listen_addresses=*
+      - -c
+      - password_encryption=scram-sha-256
+      - -c
+      - log_statement=none
+      - -c
+      - max_connections=100
+      - -c
+      - shared_buffers=2GB
+      - -c
+      - effective_cache_size=6GB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=256MB
+
+  redis-queue:
+    mem_limit: 512m
+    memswap_limit: 512m
+    command: ["redis-server", "/etc/redis/redis.conf", "--maxmemory", "384mb"]
+
+  redis-cache:
+    mem_limit: 384m
+    memswap_limit: 384m
+    command: ["redis-server", "/etc/redis/redis.conf", "--maxmemory", "256mb"]
+
+  # Self-hosted analytics (ARCHITECTURE §1): own database and role in this Postgres, no access to the app
+  # database. Dashboard on its own host behind Cloudflare Access; the app origin proxies only the tracker
+  # script and the event endpoint (Caddyfile.production, C-36).
+  umami:
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+    image: ghcr.io/umami-software/umami:3.4.1@sha256:e69d1a7932e9dab0fc523edc7be1f3a53f3c261f57856fc2167ae74a8fc022e8
+    env_file: [{ path: "${MOZ_ETC:?}/env/umami.env", required: true }]
+    environment:
+      DISABLE_TELEMETRY: "1"
+      DISABLE_UPDATES: "1"
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    networks: [app, data]
+    mem_limit: 384m
+    memswap_limit: 384m
+    depends_on:
+      postgres: { condition: service_healthy }

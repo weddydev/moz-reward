@@ -1,0 +1,187 @@
+# Staging/production stack (P0-15; ARCHITECTURE §9, SECURITY §11). One base file + one override per environment
+# (staging.yml, production.yml: memory/CPU limits from infra/RESOURCES.md, Postgres settings, Umami). Run only
+# by the root helper `moz-deploy` (infra/host/moz-deploy) as Compose project moz-staging / moz-production, so the
+# two stacks share no network, volume or secret. Variables the helper sets (under `env -i`):
+#   MOZ_TAG       the release's commit SHA (image moz-rewards:<sha>)
+#   MOZ_PG_IMAGE  moz-postgres:<hash of infra/postgres>, built on the host
+#   MOZ_ETC       /etc/moz/<env>      root-only env files, TLS material, ACL files, Postgres superuser password
+#   MOZ_DATA      /var/lib/moz/<env>  Caddy access logs (System page aggregation, C-35)
+#   MOZ_INFRA     the release's infra/ directory (configs are read-only bind mounts)
+# Rules (checked by infra/compose.test.ts): no `ports:` anywhere (the origin is reachable only through the
+# Tunnel); every service has a memory limit, drops all capabilities, sets no-new-privileges and a pids limit.
+
+x-hardened: &hardened
+  restart: unless-stopped
+  init: true
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  pids_limit: 256
+
+x-app: &app
+  <<: *hardened
+  image: moz-rewards:${MOZ_TAG:?}
+  user: "1000:1000"
+  environment: &app-env
+    NODE_ENV: production
+    APP_RELEASE: ${MOZ_TAG:?}
+    # The per-environment CA that signed both Redis servers' certificates (rediss:// verifies against it).
+    NODE_EXTRA_CA_CERTS: /run/moz/redis-ca.crt
+    DISK_PATH: /
+  volumes:
+    - ${MOZ_ETC:?}/tls/ca.crt:/run/moz/redis-ca.crt:ro
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+
+x-web: &web
+  <<: *app
+  env_file: [{ path: "${MOZ_ETC:?}/env/web.env", required: true }]
+  networks: [app, data, egress]
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+    # Next's image/fetch cache; the rest of the filesystem is read-only.
+    - /app/.next/cache:size=256m,uid=1000,gid=1000,mode=0700
+  stop_grace_period: 30s
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis-queue: { condition: service_healthy }
+    redis-cache: { condition: service_healthy }
+
+services:
+  cloudflared:
+    <<: *hardened
+    image: cloudflare/cloudflared:2026.10.7@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
+    # Remote-managed tunnel: ingress (hostname → http://caddy:80, catch-all 404) lives in the Cloudflare
+    # dashboard. TUNNEL_TOKEN comes from the root-only env file.
+    command: ["tunnel", "--no-autoupdate", "--metrics", "127.0.0.1:2000", "run"]
+    env_file: [{ path: "${MOZ_ETC:?}/env/cloudflared.env", required: true }]
+    user: "65532:65532"
+    networks: [edge, tunnel_egress]
+    depends_on: [caddy]
+
+  caddy:
+    <<: *hardened
+    image: caddy:2.11.9-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+    env_file: [{ path: "${MOZ_ETC:?}/env/caddy.env", required: true }]
+    # Unprivileged user; port 80 inside the container's own network namespace only.
+    user: "65534:1000"
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: "80"
+    environment:
+      XDG_DATA_HOME: /tmp/caddy-data
+      XDG_CONFIG_HOME: /tmp/caddy-config
+    volumes:
+      - ${MOZ_INFRA:?}/caddy/common.caddy:/etc/caddy/common.caddy:ro
+      - ${MOZ_INFRA:?}/caddy/maintenance:/srv/maintenance:ro
+      - ${MOZ_DATA:?}/caddy-logs:/var/log/caddy
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    networks: [edge, app]
+    depends_on: [web-1, web-2]
+
+  web-1:
+    <<: *web
+  web-2:
+    <<: *web
+
+  worker:
+    <<: *app
+    command: ["node", "cli/worker.mjs"]
+    env_file: [{ path: "${MOZ_ETC:?}/env/worker.env", required: true }]
+    networks: [data, egress]
+    volumes:
+      - ${MOZ_ETC:?}/tls/ca.crt:/run/moz/redis-ca.crt:ro
+      # Caddy's access logs, read by the request-stats job (C-35).
+      - ${MOZ_DATA:?}/caddy-logs:/var/log/caddy:ro
+    # The image's HEALTHCHECK probes the web port, which the worker doesn't serve. Worker liveness is the
+    # health monitor's heartbeat (alerts) and /api/health/worker (deploy check).
+    healthcheck:
+      disable: true
+    # C-27: the worker drains in-flight jobs for 60 s on SIGTERM; never kill it before that.
+    stop_grace_period: 90s
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis-queue: { condition: service_healthy }
+      redis-cache: { condition: service_healthy }
+
+  postgres:
+    <<: *hardened
+    image: ${MOZ_PG_IMAGE:?}
+    # Runs as the image's postgres user from the start (no root entrypoint step, so no capabilities needed).
+    user: "999:999"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD_FILE: /run/moz/pg-superuser
+      POSTGRES_INITDB_ARGS: "--auth-local=peer --auth-host=scram-sha-256 --data-checksums"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ${MOZ_ETC:?}/postgres/superuser-password:/run/moz/pg-superuser:ro
+    tmpfs:
+      - /var/run/postgresql:size=1m,uid=999,gid=999,mode=0775
+      - /tmp:size=64m,mode=1777
+    # Internal network only, never a host port. pg_egress exists only for wal-g → R2 (step D).
+    networks: [data, pg_egress]
+    healthcheck:
+      # Over TCP as a role pg_hba accepts (no password is sent, so nothing is logged); the superuser over TCP
+      # would be rejected and logged on every probe.
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "moz_app", "-d", "moz"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+    stop_grace_period: 60s
+
+  redis-queue:
+    <<: *hardened
+    image: redis:7.4.12-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+    user: "999:999"
+    volumes:
+      - ${MOZ_INFRA:?}/redis/queue.conf:/etc/redis/redis.conf:ro
+      - ${MOZ_ETC:?}/redis-queue/tls:/tls:ro
+      - ${MOZ_ETC:?}/redis-queue/acl:/acl:ro
+      - redisqueue:/data
+    networks: [data]
+    healthcheck: &redis-health # The `health` ACL user may only PING.
+      test:
+        - CMD-SHELL
+        - redis-cli --tls --cacert /tls/ca.crt -h 127.0.0.1 -p 6379 --user health --pass health --no-auth-warning ping | grep -q PONG
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    stop_grace_period: 30s
+
+  redis-cache:
+    <<: *hardened
+    image: redis:7.4.12-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+    user: "999:999"
+    volumes:
+      - ${MOZ_INFRA:?}/redis/cache.conf:/etc/redis/redis.conf:ro
+      - ${MOZ_ETC:?}/redis-cache/tls:/tls:ro
+      - ${MOZ_ETC:?}/redis-cache/acl:/acl:ro
+    tmpfs:
+      - /data:size=8m,uid=999,gid=999,mode=0700
+    networks: [data]
+    healthcheck: *redis-health
+
+volumes:
+  pgdata:
+  redisqueue:
+
+networks:
+  # cloudflared ↔ Caddy only.
+  edge:
+    internal: true
+  # cloudflared → Cloudflare.
+  tunnel_egress: {}
+  # Caddy → web replicas (and Umami in production).
+  app:
+    internal: true
+  # Postgres and both Redis instances: no route out.
+  data:
+    internal: true
+  # web/worker → email, R2, Sentry, Google.
+  egress: {}
+  # Postgres → R2 for wal-g only.
+  pg_egress: {}

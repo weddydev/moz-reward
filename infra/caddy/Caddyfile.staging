@@ -1,0 +1,41 @@
+# Staging Caddy (P0-15): staging.<domain> through the staging Tunnel only. Basic auth + noindex on everything;
+# no Umami on staging. Env (root-only caddy.env, written by `moz-deploy`): APP_HOST, BASIC_AUTH_USER,
+# BASIC_AUTH_HASH (bcrypt from `caddy hash-password`, never the plain password).
+{
+	admin off
+	auto_https off
+	persist_config off
+	servers {
+		trusted_proxies static private_ranges
+		client_ip_headers Cf-Connecting-Ip
+		timeouts {
+			read_header 10s
+			idle 2m
+		}
+	}
+	log default {
+		output stderr
+		format json
+		level WARN
+	}
+}
+
+(umami_routes) {
+}
+
+import common.caddy
+
+http://{$APP_HOST} {
+	header X-Robots-Tag "noindex, nofollow"
+	basic_auth {
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+	}
+	# The app never sees the basic-auth credentials.
+	request_header -Authorization
+	import app_common
+}
+
+# Any other host name gets nothing.
+http:// {
+	respond 404
+}

@@ -31,7 +31,7 @@ Connection budget (checked at boot, ENGINEERING §6; per-role pools since P0-20)
 ## CPU
 
 - Production: no CPU limits (it owns the host).
-- Staging: `cpus` 1.5 in total across its containers (web 0.5 each, worker 0.3, postgres 0.2); k6 smoke against staging never runs while production serves real users.
+- Staging: `cpus` 1.5 in total across its containers (web 0.4 each, worker 0.25, postgres 0.25, caddy/cloudflared/redis-queue/redis-cache 0.05 each; `infra/compose/staging.yml`); k6 smoke against staging never runs while production serves real users.
 
 ## Disk (200 GB)
 
