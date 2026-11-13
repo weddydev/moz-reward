@@ -436,3 +436,7 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Integration shop-details 16/0: concurrent creation with forced clash + 20 parallel, exhaustion → `codes.exhausted` and no row, savepoint retry inside a caller tx, RLS on hours/closures/tags across shops and roles, NFC replaced twice → one hop, DB refuses chains.
 - `pnpm check` at session start: 1 failure = authz-coverage repo scan timing out at 5 s under the parallel run (0.7 s alone) → 30 s timeout. CI `43364016465` green on `f91af95`.
 - gate:task (pre-push) on `f5c8495`: PASS (unit 1037, int 1134, build, bundle, sast 856 s, E2E P1-01 0 specs); first push refused: db-foundation grants table missed the 3 new tables → added, amended. Human: H-28 staging client + GOOGLE_CLIENT_ID/SECRET_STAGING set (gh secret list 06:07/06:08 UTC).
+
+## 2026-11-13 06:30 UTC — Syedbadeshah76 (Windows) — checkpoint after P1-01
+- P1-01 on main (`f5c8495`); push CI `43377454009` green; tree clean. H-27 done, H-28 staging client done; human working on H-04 (Brevo first).
+- Exact next step: `/resume` → P1-02 shop landing page `/s/[code]` (read P1.md P1-02 + Read list; redis-cache shop data 60 s + per-IP limit C-15, test first).
