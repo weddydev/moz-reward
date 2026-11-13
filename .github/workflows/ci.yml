@@ -128,32 +128,7 @@ jobs:
           tags: moz-rewards:${{ github.sha }}
           cache-from: type=gha,scope=image
           cache-to: type=gha,scope=image,mode=max
-      # Binary pinned by checksum, not the trivy-action (its tags were hijacked in 2026). Blocks HIGH/CRITICAL
-      # with a fix available, like OSV (ENGINEERING §14, SECURITY §10).
-      - name: Trivy image scan (HIGH/CRITICAL with a fix)
-        run: |
-          curl -sSfL -o "$RUNNER_TEMP/trivy.tgz" https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-64bit.tar.gz
-          echo "c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0  $RUNNER_TEMP/trivy.tgz" | sha256sum -c -
-          tar -xzf "$RUNNER_TEMP/trivy.tgz" -C "$RUNNER_TEMP" trivy
-          # No --skip-dirs (P0-15, C-21): the runtime is Next standalone + bundled CLIs. Packages bundled into
-          # cli/*.mjs carry no package.json, so the lockfile OSV gate above is what covers them (DECISIONS).
-          "$RUNNER_TEMP/trivy" image --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL --exit-code 1 --no-progress \
-            "moz-rewards:${{ github.sha }}"
-      - name: slim runtime (no dev tools or package managers; the bundles parse)
-        run: |
-          docker run --rm --entrypoint sh "moz-rewards:${{ github.sha }}" -c '
-            set -e
-            for f in cli/worker.mjs cli/relay.mjs cli/migrate.mjs cli/seed.mjs cli/demo-credentials.mjs server.js; do
-              node --check "$f"
-            done
-            for t in npm npx pnpm corepack yarn tsx; do
-              if command -v "$t" >/dev/null; then echo "unexpected tool in the runtime: $t"; exit 1; fi
-            done
-            if ls node_modules/.pnpm | grep -E "^(esbuild|@esbuild|lefthook|tsx|typescript|vitest|@playwright)"; then
-              echo "dev dependency in the runtime"; exit 1
-            fi
-            for f in infra/compose/compose.yml infra/compose/staging.yml infra/compose/production.yml \
-                     infra/caddy/common.caddy infra/postgres/bootstrap.sql infra/redis/queue.conf; do
-              test -s "$f" || { echo "missing $f (moz-deploy reads the release config from the image)"; exit 1; }
-            done
-            echo "runtime is slim"'
+      # Trivy (HIGH/CRITICAL with a fix) + slim runtime: one script, also run by the production deploy on the
+      # image it ships (P0-15).
+      - name: Trivy image scan + slim runtime
+        run: bash scripts/image-check.sh "moz-rewards:${{ github.sha }}"

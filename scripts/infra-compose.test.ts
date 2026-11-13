@@ -105,7 +105,7 @@ describe("[P0-15] compose stacks", () => {
     it(`[P0-15] ${env}: third-party images are pinned by digest`, () => {
       for (const [name, s] of Object.entries(services)) {
         const image = String(s.image);
-        if (image.startsWith("moz-rewards:") || image.startsWith("${MOZ_PG_IMAGE")) continue;
+        if (image.startsWith("${MOZ_IMAGE") || image.startsWith("${MOZ_PG_IMAGE")) continue;
         expect(image, name).toMatch(/@sha256:[0-9a-f]{64}$/);
       }
     });

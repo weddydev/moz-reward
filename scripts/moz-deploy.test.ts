@@ -48,7 +48,8 @@ const EX_INPUT = 65;
 
 describe("[P0-15] moz-deploy request validation", () => {
   it.each([
-    `load ${SHA}`,
+    `load staging ${SHA}`,
+    `load production ${SHA}`,
     `release staging ${SHA}`,
     `release production ${SHA}`,
     "rollback staging",
@@ -77,13 +78,16 @@ describe("[P0-15] moz-deploy request validation", () => {
     [`release staging ${SHA}0`, "41-character SHA"],
     [`release staging ${SHA} extra`, "extra argument"],
     ["release staging", "missing SHA"],
-    [`load ${SHA}; rm -rf /`, "shell metacharacters"],
+    [`load ${SHA}`, "load without an environment (images are per environment)"],
+    [`load dev ${SHA}`, "load for an unknown environment"],
+    [`load staging ${SHA} ${SHA}`, "load with an extra argument"],
+    [`load staging ${SHA}; rm -rf /`, "shell metacharacters"],
     [`load $(id)`, "command substitution"],
-    [`load ${SHA}\nrelease staging ${SHA}`, "newline (second command)"],
-    [`load\t${SHA}`, "tab separator"],
+    [`load staging ${SHA}\nrelease staging ${SHA}`, "newline (second command)"],
+    [`load\tstaging ${SHA}`, "tab separator"],
     [`release  staging ${SHA}`, "double space"],
-    [` load ${SHA}`, "leading space"],
-    [`load ${SHA} `, "trailing space"],
+    [` load staging ${SHA}`, "leading space"],
+    [`load staging ${SHA} `, "trailing space"],
     ["write-env staging umami", "Umami on staging"],
     ["write-env staging ../web", "path in role"],
     ["write-env staging postgres", "unknown role"],
@@ -112,6 +116,24 @@ describe("[P0-15] moz-deploy request validation", () => {
       expect(check("admin", request).status).toBe(EX_USAGE);
     },
   );
+});
+
+describe("[P0-15] moz-deploy images are per environment", () => {
+  // Staging and production images of one commit differ (APP_ENV and public keys are build arguments), and both
+  // stacks share one host: the same tag must never name both.
+  it("[P0-15] each environment has its own image repository and release directory", () => {
+    const result = run(
+      'for e in staging production; do image_ref "$e" "$1"; release_dir "$e" "$1"; done',
+      [SHA],
+    );
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim().split("\n")).toEqual([
+      `moz-rewards-staging:${SHA}`,
+      `/var/lib/moz/releases/staging/${SHA}`,
+      `moz-rewards-production:${SHA}`,
+      `/var/lib/moz/releases/production/${SHA}`,
+    ]);
+  });
 });
 
 describe("[P0-15] moz-deploy env files", () => {

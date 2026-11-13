@@ -2,7 +2,8 @@
 # (staging.yml, production.yml: memory/CPU limits from infra/RESOURCES.md, Postgres settings, Umami). Run only
 # by the root helper `moz-deploy` (infra/host/moz-deploy) as Compose project moz-staging / moz-production, so the
 # two stacks share no network, volume or secret. Variables the helper sets (under `env -i`):
-#   MOZ_TAG       the release's commit SHA (image moz-rewards:<sha>)
+#   MOZ_TAG       the release's commit SHA
+#   MOZ_IMAGE     moz-rewards-<env>:<sha> (one image repository per environment: build args differ)
 #   MOZ_PG_IMAGE  moz-postgres:<hash of infra/postgres>, built on the host
 #   MOZ_ETC       /etc/moz/<env>      root-only env files, TLS material, ACL files, Postgres superuser password
 #   MOZ_DATA      /var/lib/moz/<env>  Caddy access logs (System page aggregation, C-35)
@@ -20,7 +21,7 @@ x-hardened: &hardened
 
 x-app: &app
   <<: *hardened
-  image: moz-rewards:${MOZ_TAG:?}
+  image: ${MOZ_IMAGE:?}
   user: "1000:1000"
   environment: &app-env
     NODE_ENV: production

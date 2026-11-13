@@ -5,7 +5,7 @@
 # Two callers:
 #   - CI, as the `deploy` user, through the forced command `restrict,command="sudo -n /usr/local/sbin/moz-deploy"`.
 #     The request is SSH_ORIGINAL_COMMAND (sudo keeps only that variable) and must be exactly one of
-#       load <sha>                  stdin: `docker save | zstd` of moz-rewards:<sha>
+#       load <env> <sha>            stdin: `docker save | zstd` of moz-rewards-<env>:<sha>
 #       release <env> <sha>        stdin: the migration owner's password (one line)
 #       rollback <env>
 #       write-env <env> <role>     stdin: KEY=value lines (role: web worker caddy cloudflared umami)
@@ -21,7 +21,11 @@ readonly SAFE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 readonly MOZ_ETC_ROOT=/etc/moz
 readonly MOZ_DATA_ROOT=/var/lib/moz
 readonly RELEASES=/var/lib/moz/releases
-readonly IMAGE_REPO=moz-rewards
+# Staging and production images of one commit differ (APP_ENV and public keys are build arguments), so each
+# environment has its own image repository and release directory: one tag never names both.
+image_repo() { echo "moz-rewards-$1"; }
+image_ref() { echo "moz-rewards-$1:$2"; }
+release_dir() { echo "$RELEASES/$1/$2"; }
 readonly PG_REPO=moz-postgres
 readonly CI_USER=deploy
 readonly KEEP_IMAGES=3
@@ -65,7 +69,7 @@ check_request() {
   local cmd=${w[0]} n=${#w[@]}
   case $cmd in
     load)
-      if ! { ((n == 2)) && is_sha "${w[1]}"; }; then usage_error "usage: load <sha>"; fi
+      if ! { ((n == 3)) && is_env "${w[1]}" && is_sha "${w[2]}"; }; then usage_error "usage: load <env> <sha>"; fi
       ;;
     release)
       if ! { ((n == 3)) && is_env "${w[1]}" && is_sha "${w[2]}"; }; then usage_error "usage: release <env> <sha>"; fi
@@ -169,7 +173,7 @@ cmd_init_env() {
   install -d -m 0755 -o root -g root "$etc/tls"
   install -d -m 0750 -o root -g 999 "$etc/postgres" "$etc/redis-queue" "$etc/redis-cache" \
     "$etc/redis-queue/tls" "$etc/redis-queue/acl" "$etc/redis-cache/tls" "$etc/redis-cache/acl"
-  install -d -m 0755 -o root -g root "$MOZ_DATA_ROOT" "$data" "$RELEASES"
+  install -d -m 0755 -o root -g root "$MOZ_DATA_ROOT" "$data" "$RELEASES" "$RELEASES/$env"
   install -d -m 2750 -o 65534 -g 1000 "$data/caddy-logs"
 
   # Passwords (hex: no URL escaping). Never printed.
@@ -265,7 +269,8 @@ cmd_write_env() {
 # Images and releases
 # ---------------------------------------------------------------------------------------------------------------
 cmd_load() {
-  local sha=$1 tag="$IMAGE_REPO:$1" out
+  local env=$1 sha=$2 tag out
+  tag=$(image_ref "$env" "$sha")
   if docker image inspect "$tag" >/dev/null 2>&1; then
     head -c "$MAX_IMAGE_ZST" >/dev/null
     log "$tag is already loaded"
@@ -284,12 +289,14 @@ cmd_load() {
 # The release's infra/ (Compose, Caddy, Postgres, Redis configs) comes out of its own image, so config is tied to
 # the code it was tested with and CI never writes files on the host.
 release_infra() {
-  local sha=$1 dest="$RELEASES/$1" tmp cid
+  local env=$1 sha=$2 dest tmp cid image
+  dest=$(release_dir "$env" "$sha")
+  image=$(image_ref "$env" "$sha")
   if [[ ! -d $dest/infra ]]; then
-    docker image inspect "$IMAGE_REPO:$sha" >/dev/null 2>&1 || die "$IMAGE_REPO:$sha is not loaded"
-    install -d -m 0755 -o root -g root "$RELEASES"
-    tmp=$(mktemp -d "$RELEASES/.tmp.XXXXXX")
-    cid=$(docker create "$IMAGE_REPO:$sha")
+    docker image inspect "$image" >/dev/null 2>&1 || die "$image is not loaded"
+    install -d -m 0755 -o root -g root "$RELEASES" "$RELEASES/$env"
+    tmp=$(mktemp -d "$RELEASES/$env/.tmp.XXXXXX")
+    cid=$(docker create "$image")
     docker cp -q "$cid:/app/infra" "$tmp/infra" || { docker rm "$cid" >/dev/null; rm -rf "$tmp"; die "no /app/infra in the image"; }
     docker rm "$cid" >/dev/null
     chown -R root:root "$tmp"
@@ -319,10 +326,10 @@ ensure_pg_image() {
 compose() {
   local env=$1 sha=$2 infra
   shift 2
-  infra=$RELEASES/$sha/infra
+  infra=$(release_dir "$env" "$sha")/infra
   [[ -d $infra ]] || die "release $sha has no infra directory"
   env -i PATH="$SAFE_PATH" HOME=/root \
-    MOZ_TAG="$sha" MOZ_PG_IMAGE="$(pg_image "$infra")" MOZ_ETC="$(etc_dir "$env")" MOZ_DATA="$(data_dir "$env")" \
+    MOZ_TAG="$sha" MOZ_IMAGE="$(image_ref "$env" "$sha")" MOZ_PG_IMAGE="$(pg_image "$infra")" MOZ_ETC="$(etc_dir "$env")" MOZ_DATA="$(data_dir "$env")" \
     MOZ_INFRA="$infra" \
     docker compose --progress quiet -p "moz-$env" -f "$infra/compose/compose.yml" -f "$infra/compose/$env.yml" "$@"
 }
@@ -378,7 +385,7 @@ run_migrations() {
     docker run --rm -i --network "moz-${env}_data" --read-only --cap-drop ALL \
       --security-opt no-new-privileges:true --user 1000:1000 --memory 512m --pids-limit 128 \
       --tmpfs /tmp:size=16m --name "moz-$env-migrate" \
-      "$IMAGE_REPO:$sha" node cli/migrate.mjs --url-stdin
+      "$(image_ref "$env" "$sha")" node cli/migrate.mjs --url-stdin
 }
 
 container_of() { compose "$1" "$2" ps -q "$3"; }
@@ -443,20 +450,20 @@ record_release() {
   printf '%s %s %s\n' "$(date -u +%FT%TZ)" "$sha" "${old:--}" >>"$data/release-history"
 }
 
-# Keep the newest KEEP_IMAGES app images plus every current/previous release; drop the rest and their infra.
+# Per environment: keep the newest KEEP_IMAGES app images plus its current/previous release; drop the rest and
+# their infra.
 prune() {
-  local keep=" " env tag
-  for env in staging production; do
-    keep+="$(current_release "$env") $(previous_release "$env") "
-  done
+  local env=$1 repo keep=" " tag
+  repo=$(image_repo "$env")
+  keep+="$(current_release "$env") $(previous_release "$env") "
   while read -r tag; do
     [[ $keep == *" $tag "* ]] && continue
     keep+="$tag "
-  done < <(docker image ls "$IMAGE_REPO" --format '{{.CreatedAt}}|{{.Tag}}' | sort -r | cut -d'|' -f2 | head -n "$KEEP_IMAGES")
+  done < <(docker image ls "$repo" --format '{{.CreatedAt}}|{{.Tag}}' | sort -r | cut -d'|' -f2 | head -n "$KEEP_IMAGES")
   while read -r tag; do
     [[ -z $tag || $keep == *" $tag "* ]] && continue
-    docker image rm "$IMAGE_REPO:$tag" >/dev/null 2>&1 && rm -rf "${RELEASES:?}/$tag" && log "pruned $tag"
-  done < <(docker image ls "$IMAGE_REPO" --format '{{.Tag}}')
+    docker image rm "$repo:$tag" >/dev/null 2>&1 && rm -rf "${RELEASES:?}/$env/$tag" && log "pruned $env $tag"
+  done < <(docker image ls "$repo" --format '{{.Tag}}')
 }
 
 cert_warnings() {
@@ -472,7 +479,7 @@ cmd_release() {
   [[ -d $(etc_dir "$env")/secrets ]] || die "run init-env $env first"
   read_owner_password
   prev=$(current_release "$env")
-  infra=$(release_infra "$sha")
+  infra=$(release_infra "$env" "$sha")
   ensure_pg_image "$infra"
   cert_warnings "$env"
 
@@ -495,7 +502,7 @@ cmd_release() {
   roll_web "$env" "$sha" "$prev" || die "release $sha aborted; ${prev:-nothing} keeps serving"
   roll_rest "$env" "$sha"
   record_release "$env" "$sha" "$prev"
-  prune
+  prune "$env"
   log "release $env $sha: done"
 }
 
@@ -504,8 +511,8 @@ cmd_rollback() {
   cur=$(current_release "$env")
   prev=$(previous_release "$env")
   [[ -n $prev ]] || die "no previous release recorded for $env"
-  docker image inspect "$IMAGE_REPO:$prev" >/dev/null 2>&1 || die "$IMAGE_REPO:$prev is no longer on the host"
-  release_infra "$prev" >/dev/null
+  docker image inspect "$(image_ref "$env" "$prev")" >/dev/null 2>&1 || die "$env image $prev is no longer on the host"
+  release_infra "$env" "$prev" >/dev/null
   # Migrations are expand-only, so the previous code runs on the current schema; data services stay as they are.
   log "rolling back $env from ${cur:-?} to $prev"
   roll_web "$env" "$prev" "$cur" || die "rollback aborted; ${cur:-nothing} keeps serving"
@@ -518,7 +525,7 @@ cmd_bootstrap_db() {
   local env=$1 cur infra
   cur=$(current_release "$env")
   [[ -n $cur ]] || die "no release recorded for $env"
-  infra=$(release_infra "$cur")
+  infra=$(release_infra "$env" "$cur")
   run_bootstrap "$env" "$infra"
   log "bootstrap-db $env: done"
 }
@@ -559,7 +566,7 @@ main() {
   flock -w 900 9 || die "another moz-deploy is still running"
   log "$mode ${SUDO_USER:-root}: $1 ${2:-} ${3:-}"
   case $1 in
-    load) cmd_load "$2" ;;
+    load) cmd_load "$2" "$3" ;;
     release) cmd_release "$2" "$3" ;;
     rollback) cmd_rollback "$2" ;;
     write-env) cmd_write_env "$2" "$3" ;;

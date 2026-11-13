@@ -140,16 +140,109 @@ export const localRoleUrls = (): (string | undefined)[] => [
   process.env.DATABASE_URL_WORKER,
 ];
 
-async function main(): Promise<void> {
-  const useTest = process.argv.includes("--test");
-  const url = useTest
-    ? process.env.DATABASE_URL_TEST
-    : process.env.DATABASE_URL_MIGRATIONS || process.env.DATABASE_URL;
+/** Longest accepted owner URL (a 128-character password plus host and database fit easily). */
+const MAX_STDIN_URL = 2048;
+const STDIN_TIMEOUT_MS = 30_000;
+
+/**
+ * Staging/production release step (P0-15, SECURITY: release secrets): the root helper pipes the migration
+ * owner's URL on stdin, so it is never in argv, the container's environment or a host file. Exactly one line
+ * (a trailing newline is optional); errors never repeat the input.
+ */
+export function readUrlFromStdin(
+  input: NodeJS.ReadableStream,
+  timeoutMs = STDIN_TIMEOUT_MS,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    let settled = false;
+    const finish = (err: Error | null, url?: string): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      input.removeListener("data", onData);
+      input.removeListener("end", onEnd);
+      input.removeListener("error", onError);
+      if (err) reject(err);
+      else resolve(url ?? "");
+    };
+    const fail = (why: string): void => {
+      finish(new Error(`--url-stdin: ${why}`));
+    };
+    const onData = (chunk: Buffer | string): void => {
+      const buf = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+      size += buf.length;
+      if (size > MAX_STDIN_URL + 2) {
+        fail(`the input is longer than ${String(MAX_STDIN_URL)} characters`);
+        return;
+      }
+      chunks.push(buf);
+    };
+    const onEnd = (): void => {
+      const text = Buffer.concat(chunks).toString("utf8");
+      const lines = text.replace(/\r?\n$/, "").split(/\r?\n/);
+      if (lines.length !== 1) {
+        fail("expected exactly one line");
+        return;
+      }
+      const url = lines[0] ?? "";
+      if (url === "") {
+        fail("the input is empty");
+        return;
+      }
+      let parsed: URL;
+      try {
+        parsed = new URL(url);
+      } catch {
+        fail("the input is not a URL");
+        return;
+      }
+      if (!["postgres:", "postgresql:"].includes(parsed.protocol) || parsed.hostname === "") {
+        fail("the input is not a postgres:// URL with a host");
+        return;
+      }
+      finish(null, url);
+    };
+    const onError = (): void => {
+      fail("stdin could not be read");
+    };
+    const timer = setTimeout(() => {
+      fail(`no URL on stdin within ${String(timeoutMs)} ms`);
+    }, timeoutMs);
+    input.on("data", onData);
+    input.on("end", onEnd);
+    input.on("error", onError);
+  });
+}
+
+export type MigrationUrlSource =
+  { source: "stdin" } | { source: "env"; url: string; test: boolean };
+
+/** Where `pnpm db:migrate` / `node cli/migrate.mjs` takes the migration URL from. */
+export function migrationUrlFromArgs(
+  argv: readonly string[],
+  env: Readonly<Record<string, string | undefined>>,
+): MigrationUrlSource {
+  const useTest = argv.includes("--test");
+  if (argv.includes("--url-stdin")) {
+    if (useTest) throw new Error("use --url-stdin or --test, not both");
+    return { source: "stdin" };
+  }
+  const url = useTest ? env.DATABASE_URL_TEST : env.DATABASE_URL_MIGRATIONS || env.DATABASE_URL;
   if (!url) throw new Error(useTest ? "DATABASE_URL_TEST is not set" : "DATABASE_URL is not set");
+  return { source: "env", url, test: useTest };
+}
+
+async function main(): Promise<void> {
+  const from = migrationUrlFromArgs(process.argv.slice(2), process.env);
+  const url = from.source === "stdin" ? await readUrlFromStdin(process.stdin) : from.url;
+  const useTest = from.source === "env" && from.test;
   const started = Date.now();
   await runMigrations(url);
   const appEnv = process.env.APP_ENV;
-  if (appEnv === "local" || appEnv === "test") {
+  // Release step (stdin): roles and passwords come from the VPS bootstrap only (C-32), never from here.
+  if (from.source === "env" && (appEnv === "local" || appEnv === "test")) {
     const client = migrationClient(url);
     try {
       await ensureLocalLoginRoles(client, localRoleUrls());

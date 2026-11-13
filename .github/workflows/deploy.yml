@@ -1,0 +1,251 @@
+# Deploy and rollback (P0-15; ARCHITECTURE §9, SECURITY §11, RUNBOOK §4–5).
+#   - Staging: automatically after a green CI run for a push to main, or on demand (any main commit with green CI).
+#   - Production: on demand only, for a commit on main whose push CI is green; the shipped image (production
+#     build args) is scanned again (Trivy + slim runtime) before it leaves the runner.
+#   - Rollback: on demand (`action: rollback`): the host switches back to its recorded previous release.
+# The runner builds the image for the environment (APP_ENV and public keys are build args), ships it over SSH
+# as `deploy@VPS`, whose key is restricted to the root helper `moz-deploy` (forced command; allowlist
+# load/release/rollback/write-env). Secrets go on stdin only, never argv; the host key is pinned
+# (infra/host/known_hosts). GitHub Free: repository secrets (<KEY>_STAGING / <KEY>_PRODUCTION) are readable by any
+# branch's workflow, so this repo never uses `pull_request_target` (DECISIONS 13 Nov "deploy workflow").
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy
+        type: choice
+        options: [staging, production]
+        default: staging
+      action:
+        description: deploy a commit, or roll back to the previous release
+        type: choice
+        options: [deploy, rollback]
+        default: deploy
+      sha:
+        description: Full 40-character commit SHA on main (blank = main's head; required for production)
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  VPS_HOST: 72.61.17.208
+
+jobs:
+  resolve:
+    name: resolve target
+    # Staging follows only a successful CI run for a push to main (not PRs, not other branches).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read # CI run lookup
+    outputs:
+      env: ${{ steps.r.outputs.env }}
+      suffix: ${{ steps.r.outputs.suffix }}
+      sha: ${{ steps.r.outputs.sha }}
+      action: ${{ steps.r.outputs.action }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - id: r
+        name: environment, commit, and the checks that allow it
+        env:
+          EVENT: ${{ github.event_name }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          IN_ENV: ${{ inputs.environment }}
+          IN_ACTION: ${{ inputs.action }}
+          IN_SHA: ${{ inputs.sha }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = workflow_run ]; then
+            env=staging; action=deploy; sha=$RUN_SHA
+          else
+            env=$IN_ENV; action=$IN_ACTION; sha=${IN_SHA:-}
+            case "$env" in staging|production) ;; *) echo "::error::unknown environment"; exit 1 ;; esac
+            case "$action" in deploy|rollback) ;; *) echo "::error::unknown action"; exit 1 ;; esac
+            if [ -z "$sha" ] && [ "$action" = deploy ]; then
+              [ "$env" = production ] && { echo "::error::production needs an explicit commit SHA"; exit 1; }
+              sha=$(git rev-parse origin/main)
+            fi
+          fi
+          if [ "$action" = deploy ]; then
+            [[ $sha =~ ^[0-9a-f]{40}$ ]] || { echo "::error::sha must be 40 lower-case hex characters"; exit 1; }
+            git merge-base --is-ancestor "$sha" origin/main || { echo "::error::$sha is not on main"; exit 1; }
+            green=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$sha&event=push&branch=main&status=success&per_page=1" --jq '.total_count')
+            [ "$green" -gt 0 ] || { echo "::error::$sha has no successful CI run for its push to main"; exit 1; }
+          fi
+          suffix=$(echo "$env" | tr '[:lower:]' '[:upper:]')
+          { echo "env=$env"; echo "suffix=$suffix"; echo "sha=$sha"; echo "action=$action"; } >> "$GITHUB_OUTPUT"
+          echo "$action $env ${sha:-(previous release)}"
+
+  deploy:
+    name: deploy ${{ needs.resolve.outputs.env }}
+    needs: resolve
+    if: needs.resolve.outputs.action == 'deploy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # One deploy per environment at a time; never cancel one half-way (the helper also holds a host lock).
+    concurrency:
+      group: deploy-${{ needs.resolve.outputs.env }}
+      cancel-in-progress: false
+    env:
+      ENV: ${{ needs.resolve.outputs.env }}
+      SHA: ${{ needs.resolve.outputs.sha }}
+      IMAGE: moz-rewards-${{ needs.resolve.outputs.env }}:${{ needs.resolve.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: build the ${{ needs.resolve.outputs.env }} image (environment build args)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          push: false
+          tags: ${{ env.IMAGE }}
+          build-args: |
+            APP_ENV=${{ needs.resolve.outputs.env }}
+            NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ secrets[format('NEXT_PUBLIC_TURNSTILE_SITE_KEY_{0}', needs.resolve.outputs.suffix)] }}
+          cache-from: type=gha,scope=image
+      - name: Trivy + slim runtime on the image being shipped (production)
+        if: needs.resolve.outputs.env == 'production'
+        run: bash scripts/image-check.sh "$IMAGE"
+
+      - name: SSH (deploy key, pinned host key, batch mode)
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/ssh"; install -d -m 700 "$d"
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$d/key"; chmod 600 "$d/key"
+          cat > "$d/config" <<EOF
+          Host vps
+            HostName $VPS_HOST
+            User deploy
+            IdentityFile $d/key
+            IdentitiesOnly yes
+            BatchMode yes
+            StrictHostKeyChecking yes
+            UserKnownHostsFile $GITHUB_WORKSPACE/infra/host/known_hosts
+            ServerAliveInterval 30
+            ConnectTimeout 20
+          EOF
+          echo "SSH_CONFIG=$d/config" >> "$GITHUB_ENV"
+
+      - name: env files (settings from infra/deploy, secrets from GitHub; stdin only)
+        env:
+          AUTH_SECRET: ${{ secrets[format('AUTH_SECRET_{0}', needs.resolve.outputs.suffix)] }}
+          DATA_ENCRYPTION_KEY: ${{ secrets[format('DATA_ENCRYPTION_KEY_{0}', needs.resolve.outputs.suffix)] }}
+          BLIND_INDEX_KEY: ${{ secrets[format('BLIND_INDEX_KEY_{0}', needs.resolve.outputs.suffix)] }}
+          MEMBER_QR_SIGNING_KEY: ${{ secrets[format('MEMBER_QR_SIGNING_KEY_{0}', needs.resolve.outputs.suffix)] }}
+          HEALTH_TOKEN: ${{ secrets[format('HEALTH_TOKEN_{0}', needs.resolve.outputs.suffix)] }}
+          EMAIL_API_KEY: ${{ secrets[format('EMAIL_API_KEY_{0}', needs.resolve.outputs.suffix)] }}
+          EMAIL_FALLBACK_API_KEY: ${{ secrets[format('EMAIL_FALLBACK_API_KEY_{0}', needs.resolve.outputs.suffix)] }}
+          TURNSTILE_SECRET_KEY: ${{ secrets[format('TURNSTILE_SECRET_KEY_{0}', needs.resolve.outputs.suffix)] }}
+          ALERT_EMAILS: ${{ secrets[format('ALERT_EMAILS_{0}', needs.resolve.outputs.suffix)] }}
+          GOOGLE_CLIENT_ID: ${{ secrets[format('GOOGLE_CLIENT_ID_{0}', needs.resolve.outputs.suffix)] }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets[format('GOOGLE_CLIENT_SECRET_{0}', needs.resolve.outputs.suffix)] }}
+          SENTRY_DSN: ${{ secrets[format('SENTRY_DSN_{0}', needs.resolve.outputs.suffix)] }}
+          DEMO_EMAIL_BASE: ${{ secrets[format('DEMO_EMAIL_BASE_{0}', needs.resolve.outputs.suffix)] }}
+          TUNNEL_TOKEN: ${{ secrets[format('CLOUDFLARE_TUNNEL_TOKEN_{0}', needs.resolve.outputs.suffix)] }}
+          APP_SECRET: ${{ secrets[format('UMAMI_APP_SECRET_{0}', needs.resolve.outputs.suffix)] }}
+          BASIC_AUTH_PASSWORD: ${{ secrets[format('BASIC_AUTH_PASSWORD_{0}', needs.resolve.outputs.suffix)] }}
+        run: |
+          set -euo pipefail
+          if [ "$ENV" = staging ]; then
+            [ -n "$BASIC_AUTH_PASSWORD" ] || { echo "::error::BASIC_AUTH_PASSWORD_STAGING is not set"; exit 1; }
+            # Caddy stores only the bcrypt hash; the password reaches `caddy hash-password` on stdin.
+            BASIC_AUTH_HASH=$(printf '%s\n' "$BASIC_AUTH_PASSWORD" |
+              docker run --rm -i --network none caddy:2.11.9-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0 caddy hash-password)
+            echo "::add-mask::$BASIC_AUTH_HASH"
+            export BASIC_AUTH_HASH
+            roles="web worker caddy cloudflared"
+          else
+            roles="web worker caddy cloudflared umami"
+          fi
+          for role in $roles; do
+            body=$(node scripts/deploy-env.mjs "$ENV" "$role")
+            printf '%s\n' "$body" | ssh -F "$SSH_CONFIG" vps "write-env $ENV $role"
+          done
+
+      - name: ship the image (docker save | zstd → moz-deploy load)
+        run: docker save "$IMAGE" | zstd -T0 -3 -q | ssh -F "$SSH_CONFIG" vps "load $ENV $SHA"
+
+      - name: release (bootstrap, migrations, rolling web, worker)
+        env:
+          DB_OWNER_PASSWORD: ${{ secrets[format('DB_OWNER_PASSWORD_{0}', needs.resolve.outputs.suffix)] }}
+        run: |
+          set -euo pipefail
+          [ -n "$DB_OWNER_PASSWORD" ] || { echo "::error::DB_OWNER_PASSWORD_${ENV^^} is not set"; exit 1; }
+          printf '%s\n' "$DB_OWNER_PASSWORD" | ssh -F "$SSH_CONFIG" vps "release $ENV $SHA"
+
+      - name: smoke through the Tunnel (staging; production shows the maintenance page until launch)
+        if: needs.resolve.outputs.env == 'staging'
+        env:
+          BASIC_AUTH_PASSWORD: ${{ secrets.BASIC_AUTH_PASSWORD_STAGING }}
+        run: |
+          set -euo pipefail
+          host=$(sed -n 's/^APP_HOST=//p' infra/deploy/staging.env)
+          user=$(sed -n 's/^BASIC_AUTH_USER=//p' infra/deploy/staging.env)
+          netrc="$RUNNER_TEMP/netrc"; ( umask 077; printf 'machine %s login %s password %s\n' "$host" "$user" "$BASIC_AUTH_PASSWORD" > "$netrc" )
+          for i in $(seq 1 20); do
+            if curl -fsS --netrc-file "$netrc" -o /dev/null "https://$host/api/health/ready"; then echo "ready"; break; fi
+            [ "$i" = 20 ] && { echo "::error::https://$host/api/health/ready never answered 200"; exit 1; }
+            sleep 6
+          done
+          release=$(curl -fsS --netrc-file "$netrc" -D - -o /dev/null "https://$host/api/health/live" | tr -d '\r' | sed -n 's/^x-app-release: //Ip')
+          echo "live; release header: ${release:-not exposed}"
+          rm -f "$netrc"
+
+      - name: clean up the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/netrc"
+
+  rollback:
+    name: rollback ${{ needs.resolve.outputs.env }}
+    needs: resolve
+    if: needs.resolve.outputs.action == 'rollback'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: deploy-${{ needs.resolve.outputs.env }}
+      cancel-in-progress: false
+    env:
+      ENV: ${{ needs.resolve.outputs.env }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          sparse-checkout: infra/host/known_hosts
+          sparse-checkout-cone-mode: false
+      - name: moz-deploy rollback
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/ssh"; install -d -m 700 "$d"
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$d/key"; chmod 600 "$d/key"
+          trap 'rm -rf "$d"' EXIT
+          ssh -i "$d/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$GITHUB_WORKSPACE/infra/host/known_hosts" -o ConnectTimeout=20 \
+            "deploy@$VPS_HOST" "rollback $ENV" < /dev/null
