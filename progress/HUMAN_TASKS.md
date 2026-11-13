@@ -31,6 +31,7 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 | H-13 | 🟢 | Test each demo on a real Android phone and a real iPhone | Every phase end | Real-device check | 15 min / phase |
 | H-14 | 🟢 | Send the client the demo notes and collect feedback | Every phase end | Client sign-off | — |
 | H-15 | 🟢 | Client's solicitor reviews the legal page drafts | P5 (by Tue 12 Jan 2027) | Launch | Client side |
+| H-38 | 🟢 | Delete the merged branches `wip/P0-12-b`, `wip/P0-12`, `wip/P0-C-close` (and older `wip/P0-08`…`wip/P0-19` if you like) on GitHub: `git push origin --delete <branch>` — Claude's branch deletion is refused by this laptop's permission settings | Any time | Tidy branch list | 2 min |
 | H-30 | 🟢 | On each laptop: `gh auth refresh -h github.com -s user` (adds the read-only billing scope) | Next sub-phase close (P0-E) | `pnpm ci:usage` then reads the exact Actions minutes instead of an estimate | 2 min |
 
 ## Steps

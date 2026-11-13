@@ -55,7 +55,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 **P0-D · Portal shells**
 
 - [x] P0-12 · App shells, navigation and route groups
-- [ ] P0-D closed with `/subphase-complete`
+- [x] P0-D closed with `/subphase-complete` (13 Nov 2026; staging smoke + Sentry for the release pending until P0-15 — human's autopilot instruction)
 
 - [ ] P0 closed with `/phase-complete`
 - [ ] P0 definition of done met and demo delivered

@@ -422,3 +422,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Full 5-project E2E (production build): 826 passed, 5 failed (rls.spec unscoped list → fixed, then 5/5), 179 skipped by design; shells spec 56/0 on 5 projects; @visual baselines (6) regenerated and inspected.
 - security-reviewer: no BLOCK/HIGH, 2 MEDIUM fixed (page lint own path, blank allowlist boot); design-reviewer: 1 HIGH (rail closing behind its popover) + 4 MEDIUM fixed; LOWs in PROGRESS follow-ups.
 - C-01, C-02, C-04, C-05, C-24 closed (matrix, E2E, integration as listed in the CARRIED rows).
+
+## 2026-11-13 05:45 IST — talha.syed (Mac) — P0-D closed; handoff
+- P0-D close: code-reviewer approve-with-fixes (4 MEDIUM fixed: deactivated-admin matrix column, customer sub-path 404 decision, animation-based waits, dead test API removed); qa-engineer 2 majors fixed (More-sheet error inline, second tab refresh) + 3 minors; LOWs → Follow-ups.
+- `af3aa57` gate:task PASS (unit 998, int 1111, route matrix 613); shells 63/0 on 5 projects; CI on `8f3f3b8`/`af3aa57` red only on a Linux 320px nav-label truncation → `f91af95` (labels never truncate) → CI `43364016465` green.
+- Staging smoke + Sentry for the release: NOT RUN (no staging until P0-15; pending per the human's autopilot instruction). `pnpm ci:usage`: 66% of Actions minutes (estimate).
+- P1 phase-start brief review: Edge cases/Verify added for P1-01, 05, 07, 08, 10, 11, 13, 14, 16, 17.
+- code-review done f91af95
