@@ -11,6 +11,16 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-13 — P0 closes with its staging work carried to P1 (human instruction)
+Decision: finish every P0 item that needs no human task (P0-15 D2, D3, the local parts of E incl. the final security review of the whole P0-15 diff, C-40, C-17, then the P0 phase gate without staging), then move everything that needs H-39/H-40/H-41/H-42 into one CARRIED row **C-42 "P0-15 staging"** targeting the P1-A close, and start P1 (P1-02).
+Why: the human (talha.syed, 13 Nov) wants P0 closed now; the remaining P0 work waits only on their tasks and should close quickly once they land.
+Consequence: no criterion is dropped; C-42 lists each staging-only criterion (B2 run, C2 deploy + rollback, D4, AC1–5/7–8 staging evidence, C-19/23/27/32/35/36/37/38 staging proof). Revisit when the human tasks are done.
+
+## 2026-11-13 — WAL archiving through one wrapper; lever on by default; metrics in job_heartbeats.value (P0-15 D2)
+Decision: `infra/postgres/moz-walg` (`wal-push %p` / `backup-push`) is the only way wal-g runs: host-pinned key check, `WALG_PGP_KEY_PATH` forced, settings allowlist (only the B2 key pair comes from CI), `env -i` + `timeout`. New environments start with the archive-off lever set; `moz-backup wal-on` removes it and takes a base backup. WAL freshness from `pg_stat_archiver` (no `backup:wal` row); storage and key expiry in `job_heartbeats.value` (0017). B2 split: production 8 GB, staging 2 GB.
+Why: spike + e2e (amd64 image, MinIO list+write user) showed wal-g encrypts with the public key alone and backup-push needs no read; without the lever, a missing key pair would keep every segment in `pg_wal` and fill the disk.
+Consequence: wal-g's metadata JSON (LSNs, file names/sizes, hostname) is stored unencrypted, data objects never are (test plants a marker). The deploy skips the backup role with a warning until both `B2_BACKUP_KEY_ID_<ENV>`/`B2_BACKUP_KEY_<ENV>` exist. Storage estimate NOT VERIFIED until D4.
+
 ## 2026-11-13 — Backup job details: pinned key in the script, drill from a fresh piped dump (P0-15 D1)
 Decision: the backup key's fingerprint is a constant in `infra/host/moz-backup`, which harden.sh installs from a developer's checkout (with the key at `/etc/moz/backup/public.asc`); a release or CI can change neither. The monthly drill restores a **fresh** `pg_dump` piped straight into `pg_restore` in a `--network none` scratch container (tmpfs data), not the uploaded file: the host has no private key, so no plaintext ever touches disk; the uploaded object is checked every night instead (size, single-part ETag = MD5, only version), and decryptability is proved by `pnpm backup:verify` (D3, monthly after launch). Heartbeats go through `record_backup_heartbeat(name)` (0016, SECURITY DEFINER owned by moz_rls, `backup:<name>` only). B2 credentials arrive as `moz-deploy write-env <env> backup` (B2_KEY_ID/B2_APP_KEY only); `init-env` enables the timer, so runs fail loudly (journal + `backup:dump-failed`) until H-42.
 Why: keeps the private key off the VPS (design check HIGH 5, MEDIUM "prefer tee, no plaintext on disk") while still proving nightly that what B2 holds is what was sent.

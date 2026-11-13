@@ -7,20 +7,21 @@ Baton: held by talha.syed since 2026-11-13 17:08 UTC (Mac)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 2026-11-13 (Mac); baton held.** P0-15 (VPS + staging) in progress; steps A–E in **`progress/P0-15-plan.md`** (read it first: the D bullet, "D design check" and the new "Moved to D2" line).
-- **Finished (on branch `wip/P0-15`, HEAD `eea8672`, pushed):** A, B1, B2 files, C1, **D1** (this session): `infra/host/moz-backup` (nightly dump | gpg → B2 upload + stored-object check; drill on the 1st), `infra/backup/checks.sql`, migration **0016** `record_backup_heartbeat`, failure alerts in `health.backup`, systemd units (harden.sh installs, `init-env` enables), `write-env <env> backup`. DECISIONS 13 Nov "Backup job details".
-- **Half-done and how to continue:** **D2 next** (no human input needed): `git switch wip/P0-15`; WAL archiving (compose command, `moz-wal-push` wrapper, host-pinned key check, lever on a RO mount + alert, `backup:base` + weekly `backup-push`), `pg_stat_archiver` health, storage + key-expiry rules, and the `backup` role wiring in deploy.yml/deploy-env/deploy-secrets (secrets from H-42) with walg.env built by moz-deploy. Then D3 (`pnpm backup:verify`), D4 on staging. Unchanged: B2 run (Windows, H-39), C2 (H-40, H-41, merge wip first), E (incl. the final security review of the whole P0-15 diff, D1 included).
-- **Tested (this session, Mac):** gate:task on `eea8672` PASS (unit 1218, int 1160, build, bundle, sast, lint:sh 4); backup e2e vs MinIO + dev Postgres 9/9. Previous push CI `43472041888` (`4e25e42`) green.
-- **Not yet tested:** push CI for `eea8672` (check `gh run list --branch wip/P0-15 --limit 1`); moz-backup units/timer/harden install on a real host; deploy.yml never run; `scripts/image-check.sh` not run in CI; harden.sh and moz-deploy on a real host; compose stacks running; Umami `read_only`; C-40 quarantined pixel7 motion test; `global-error.tsx`; real-device sound/haptics (H-37); staging (none until C2).
-- **Do first:** nothing new locally. **Migration number:** `wip/P0-15` adds `0016_backup_heartbeat`; if main gets its own 0016 first (P1-02), renumber the wip one before merging. Switching between main and `wip/P0-15` changes devDependencies (`pnpm install`). Progress files are edited on **main** only; code on `wip/P0-15`. Host-script tests need bash ≥ 4 and the backup e2e needs gpg (`brew install bash gnupg`; Git Bash on Windows has both). H-41's secrets file on the Windows laptop must be deleted by the human after import.
+- **Checkpoint by talha.syed, 2026-11-13 (Mac); baton held.** P0-15 in progress; steps in **`progress/P0-15-plan.md`** (read its new **"Close plan"** line first).
+- **Human decision (13 Nov, this session):** close P0 now. Finish everything that needs no human task, then move all staging-only work (needs H-39/H-40/H-41/H-42) into one CARRIED row **C-42 "P0-15 staging"** targeting the P1-A close, tick P0-15/close P0, and start P1-02. Nothing is dropped (DECISIONS 13 Nov).
+- **Finished (on `wip/P0-15`, HEAD `25e05cf`, pushed):** A, B1, B2 files, C1, D1, **D2** (this session): `infra/postgres/moz-walg` wal-g wrapper, compose archive settings, key pin + archive-off lever + `walg.env` in moz-deploy, moz-backup `base`/`wal-on`/`wal-off` + storage/key-expiry metrics (migration **0017**), health rules (pg_stat_archiver, lever, base, storage, key), backup role in deploy.yml (secrets `B2_BACKUP_KEY_ID_<ENV>`/`B2_BACKUP_KEY_<ENV>`, as H-42 says).
+- **Half-done and how to continue:** **D3 next** (no human input): `git switch wip/P0-15 && pnpm install`; build `pnpm backup:verify` (`scripts/backup-verify.ts`, plan D bullet) incl. `--wal --target-time` PITR against MinIO in the amd64 image (reuse `tests/integration/walg-archive.test.ts` setup) = AC4 local proof; RUNBOOK §6/§12; then the Close plan order: E local parts → C-40 → C-17 → `/phase-complete` without staging → C-42 → P1-02.
+- **Tested (this session, Mac):** gate:task on `40769e9` PASS (unit 1260, int 1172, build, bundle, sast, lint:sh 5); pre-push gate on `25e05cf` PASS; wal-g e2e 3/3; actionlint clean. D1 push CI `43477028692` green.
+- **Not yet tested:** push CI for `40769e9`/`25e05cf` (check `gh run list --branch wip/P0-15 --limit 2`; the integration job now builds the amd64 Postgres image); everything on a real host (units, timers, harden, moz-deploy, lever bind mount, compose stacks); deploy.yml never run; B2 storage estimate (RESOURCES, NOT VERIFIED); Umami `read_only`; C-40; `global-error.tsx`; H-37 devices; staging (none).
+- **Do first:** nothing locally. **Migrations:** `wip/P0-15` adds 0016 + 0017; if main gets its own first (P1-02), renumber the wip ones before merging. Switching main ↔ `wip/P0-15` changes devDependencies (`pnpm install`). Progress files on **main** only; code on `wip/P0-15`. Host-script tests need bash ≥ 4 and gpg (`brew install bash gnupg`); gpg homes need a short path (agent socket). H-41's secrets file on the Windows laptop must be deleted by the human after import.
 - **Windows laptop notes:** low memory can crash a Vitest worker in the pre-push gate (re-run); `pnpm sast` takes 10–23 min; commit progress edits separately before pushing; no Python (use node); check `df -h /c` before big image pulls.
 
 ## Status
-- **Phase:** P0 open: **P0-15 in progress on `wip/P0-15`** (A, B1, B2 files, C1, D1 done; plan `progress/P0-15-plan.md`), then P0-E/P0 closes; P0-D closed 13 Nov. Working on **P1** meanwhile (human, 13 Nov: keep going, mark pending gates).
+- **Phase:** P0 closing: **P0-15 on `wip/P0-15`** (A, B1, B2 files, C1, D1, D2 done); human 13 Nov: finish the non-human work, carry staging to P1 as C-42, close P0, then P1-02 (plan "Close plan").
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → P1-02 → P1-03 → P1-04. P0-E waits only on P0-15 (human tasks).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-13 18:00 UTC, talha.syed (checkpoint after P0-15 D1; baton held)
+- **Last updated:** 2026-11-13 18:40 UTC, talha.syed (checkpoint after P0-15 D2; baton held)
 - **Staging and production:** one Hostinger VPS 72.61.17.208 (ready, not hardened; backups on B2) — not provisioned yet
 
 ## Now
@@ -30,9 +31,9 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - P0-15 is the only P0-E task left: VPS (H-06) and domain (H-07) ready; backups bucket ready (B2); human inputs for staging now in place (H-04, H-27, H-28 staging done 13 Nov); H-34/H-36 leftovers after the first deploy.
 
 ## Next (top 3)
-1. **P0-15** D2 next (WAL archiving + `pg_stat_archiver`/storage/key-expiry rules + `backup` role wiring in deploy.yml; no human input needed), then D3 `pnpm backup:verify`. B2 run (H-39, Windows) and C2 first staging deploy (H-40, H-41; merge wip first) whenever the human tasks land; D4 needs C2 + H-42. Staging goes before P1-02.
-2. **P1-02** shop landing page (closes C-15), then P1-03, P1-04 (P1-A).
-3. P0-15 carries: C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38; known risk wal-g + B2/R2 (ca-certificates; read capability unproven).
+1. **P0-15** D3 `pnpm backup:verify` (+ PITR vs MinIO) → E local parts + final security review → C-40 → C-17 → P0 phase gate without staging → open C-42 → tick P0-15, close P0 (human, 13 Nov). Staging work (B2 run, C2, D4, E staging) runs whenever H-39/H-40/H-41/H-42 land.
+2. **P1-02** shop landing page (closes C-15), then P1-03, P1-04 (P1-A; its close also closes C-42).
+3. P0-15 carries: C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38; wal-g write-only + public-key encryption proven vs MinIO (D2); B2 itself unproven until D4.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |

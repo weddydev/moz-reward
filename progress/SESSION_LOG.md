@@ -480,3 +480,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Evidence: gate:task PASS (unit 1218, int 1160, build, bundle, sast, lint:sh 4); backup e2e vs MinIO + dev Postgres 9/9 (decrypts with the private key to a full archive; list+write-only user gets 403 on read; tamper, wrong key, pg_dump failure and failed drill all caught with `*-failed` heartbeats).
 - Found on the way: MinIO escapes ETag quotes as `&#34;` (parser now strips all forms); rls.test definer inventory updated for the new function.
 - Exact next step: D2 on `wip/P0-15` (WAL + `backup` role wiring in deploy.yml; see plan "Moved to D2").
+
+## 2026-11-13 — P0 — P0-15 step D2 (talha.syed, Mac)
+- `wip/P0-15` `40769e9` + `25e05cf`: `infra/postgres/moz-walg` (wal-push/backup-push, pinned key, lever, timeout), compose archive settings + mounts, moz-deploy key pin + lever + walg.env, moz-backup base/wal-on/wal-off + storage/key-expiry metrics (0017), health rules (archiver, lever, base, storage, key), backup role in deploy.yml/deploy-env.
+- Evidence: gate:task PASS on `40769e9` (unit 1260, int 1172, build, bundle, sast, lint:sh 5); wal-g e2e in the amd64 image vs MinIO list+write user 3/3 (objects 0xC1, decrypt to zstd, no plaintext marker, lever, wrong pin fails then retries); actionlint deploy.yml clean.
+- Found on the way: bash 5.2 `patsub_replacement` turned `&amp;`→`&` into a no-op (fixed); backticks in a moz-deploy log line would have run a command (ShellCheck); empty listing aborted under pipefail (fixed); workflow secret names aligned with H-42.
+- Human (13 Nov): close P0 now, carry the staging work to P1 (DECISIONS). Exact next step: D3 `pnpm backup:verify` (+ `--wal --target-time` PITR vs MinIO).
+
