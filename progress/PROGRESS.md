@@ -14,7 +14,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Tested:** see "Last verified". **Not yet tested:** quarantined pixel7 motion test (C-40); `global-error.tsx`; real-device sound/haptics (H-37); rail labels toggle and More sheet on a real phone/tablet; staging (none until P0-15).
 - **Pending by the human's autopilot instruction (not passed):** P0-D close staging smoke + Sentry for the release (no staging until P0-15); P0-E and P0 phase closes wait on P0-15's human tasks.
 - **Do first:** nothing new (no env vars, migrations or seeds). A blank `ADMIN_IP_ALLOWLIST=` is fine locally; it fails the boot only on staging/production.
-- **Human side:** open 🟠 for P0-15 (H-27, H-04, H-28, H-34 leftovers, H-36 after deploy), H-12 Play account, H-37; new 🟢 H-38 (delete merged wip branches; Claude's branch deletion is refused here).
+- **Human side:** open 🟠 for P0-15 (H-04, H-28, H-34 leftovers, H-36 after deploy), H-12 Play account, H-37; new 🟢 H-38 (delete merged wip branches; Claude's branch deletion is refused here).
 - **Windows laptop notes:** low memory can crash a Vitest worker in the pre-push gate (re-run); start Docker Desktop before `pnpm services:up`; `pnpm sast` takes 10–23 min there.
 
 ## Status
@@ -23,15 +23,15 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
 - **Last updated:** 2026-11-13 05:45 IST, talha.syed (handoff after P0-D close)
-- **Staging and production:** one Hostinger VPS 72.61.17.208 (ready, not hardened; P0-15 needs H-27; backups on B2) — not provisioned yet
+- **Staging and production:** one Hostinger VPS 72.61.17.208 (ready, not hardened; backups on B2) — not provisioned yet
 
 ## Now
 - **P0-C closed** (`576b73e`; 5-project run `43269125099` 675/0/0 flaky). C-40 quarantine open (P0 phase gate).
 - **P0-D closed** (P0-12 + fixes; staging smoke pending until P0-15). P1 brief reviewed.
-- P0-15 is the only P0-E task left: VPS (H-06) and domain (H-07) ready; backups bucket ready (B2); waits on H-27 (+ H-34, H-36, H-04 for the full staging sign-in).
+- P0-15 is the only P0-E task left: VPS (H-06) and domain (H-07) ready; backups bucket ready (B2); waits on H-04 (+ H-34, H-36 for the full staging sign-in; H-27 done 13 Nov).
 
 ## Next (top 3)
-1. **P1-01** (shop entities, codes, hours, NFC; closes C-34). P1 starts while P0-15 waits on H-27/H-04/H-28 (human's autopilot instruction: move on, mark the P0 phase gate pending).
+1. **P1-01** (shop entities, codes, hours, NFC; closes C-34). P1 starts while P0-15 waits on H-04/H-28 (human's autopilot instruction: move on, mark the P0 phase gate pending).
 2. P0-15 parts that need no human input (hardening script as code, compose stacks, deploy/rollback scripts) when a P1 sub-phase closes or the human tasks land.
 3. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); hardening script can start now (VPS ready, backups bucket + key ready); staging sign-in waits on H-04.
 
@@ -61,7 +61,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 
 ## Blockers
 - Human 🔴: none.
-- 🟠 (needed by Sun 15 Nov for P0-15): H-27 UptimeRobot, H-04 Resend + Brevo, H-28 staging OAuth, H-34 Sentry, H-36 demo inbox, H-21 client's written risk acceptance, H-17 permissions. **Start now:** H-12 Play organisation account. **H-37** (🟠, before P1-06): iPhone + Android listen and vibrate check.
+- 🟠 (needed by Sun 15 Nov for P0-15): H-04 Resend + Brevo, H-28 staging OAuth, H-34 Sentry, H-36 demo inbox, H-21 client's written risk acceptance, H-17 permissions. **Start now:** H-12 Play organisation account. **H-37** (🟠, before P1-06): iPhone + Android listen and vibrate check.
 - Technical: C-40 (quarantined test) blocks the P0 phase gate. CI queue stalled during the Actions outage (see handoff). Known risk for P0-15: wal-g `wal-push` hangs against R2 without `ca-certificates` in the Postgres image (wal-g #2550).
 
 ## Map of the codebase
