@@ -108,6 +108,8 @@ services:
       - ${MOZ_ETC:?}/tls/ca.crt:/run/moz/redis-ca.crt:ro
       # Caddy's access logs, read by the request-stats job (C-35).
       - ${MOZ_DATA:?}/caddy-logs:/var/log/caddy:ro
+      # The archive-off lever: health.backup alerts while it exists (P0-15 D2).
+      - ${MOZ_ETC:?}/backup-lever:/run/moz/backup-lever:ro
     # The image's HEALTHCHECK probes the web port, which the worker doesn't serve. Worker liveness is the
     # health monitor's heartbeat (alerts) and /api/health/worker (deploy check).
     healthcheck:
@@ -132,10 +134,14 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ${MOZ_ETC:?}/postgres/superuser-password:/run/moz/pg-superuser:ro
+      # wal-g settings (walg.env 0440 root:999), the backup public key and its host-pinned fingerprint; and the
+      # archive-off lever. Root-owned on the host and read-only here: Postgres can't change either (P0-15 D2).
+      - ${MOZ_ETC:?}/walg:/run/moz/walg:ro
+      - ${MOZ_ETC:?}/backup-lever:/run/moz/backup-lever:ro
     tmpfs:
       - /var/run/postgresql:size=1m,uid=999,gid=999,mode=0775
       - /tmp:size=64m,mode=1777
-    # Internal network only, never a host port. pg_egress exists only for wal-g → R2 (step D).
+    # Internal network only, never a host port. pg_egress exists only for wal-g → B2 (step D).
     networks: [data, pg_egress]
     healthcheck:
       # Over TCP as a role pg_hba accepts (no password is sent, so nothing is logged); the superuser over TCP

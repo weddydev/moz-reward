@@ -11,8 +11,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const ROLES = {
-  staging: ["web", "worker", "caddy", "cloudflared"],
-  production: ["web", "worker", "caddy", "cloudflared", "umami"],
+  staging: ["web", "worker", "caddy", "cloudflared", "backup"],
+  production: ["web", "worker", "caddy", "cloudflared", "umami", "backup"],
 };
 
 const APP_CONFIG = [
@@ -34,6 +34,7 @@ const CONFIG_KEYS = {
   caddy: ["APP_HOST", "BASIC_AUTH_USER", "UMAMI_HOST", "MAINTENANCE"],
   cloudflared: [],
   umami: [],
+  backup: [],
 };
 
 const APP_SECRETS = {
@@ -61,6 +62,9 @@ const SECRET_KEYS = {
   caddy: { required: [], optional: [], stagingRequired: ["BASIC_AUTH_HASH"] },
   cloudflared: { required: ["TUNNEL_TOKEN"], optional: [], stagingRequired: [] },
   umami: { required: ["APP_SECRET"], optional: [], stagingRequired: [] },
+  // The B2 key pair of the nightly dumps and wal-g (list + write only, H-42). moz-deploy builds every other
+  // backup setting on the host (endpoint, bucket, prefix, key).
+  backup: { required: ["B2_KEY_ID", "B2_APP_KEY"], optional: [], stagingRequired: [] },
 };
 
 export const ALL_SECRET_KEYS = [

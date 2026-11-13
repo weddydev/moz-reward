@@ -25,3 +25,5 @@ RUN set -eux; \
 
 # Client authentication (scram-sha-256 only; the superuser only over the socket as the OS user postgres).
 COPY pg_hba.conf /etc/postgresql/pg_hba.conf
+# WAL archiving and base backups go through this wrapper only (key check, archive-off lever, timeouts; D2).
+COPY --chmod=0755 moz-walg /usr/local/bin/moz-walg

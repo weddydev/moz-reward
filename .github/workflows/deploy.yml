@@ -169,6 +169,8 @@ jobs:
           TUNNEL_TOKEN: ${{ secrets[format('CLOUDFLARE_TUNNEL_TOKEN_{0}', needs.resolve.outputs.suffix)] }}
           APP_SECRET: ${{ secrets[format('UMAMI_APP_SECRET_{0}', needs.resolve.outputs.suffix)] }}
           BASIC_AUTH_PASSWORD: ${{ secrets[format('BASIC_AUTH_PASSWORD_{0}', needs.resolve.outputs.suffix)] }}
+          B2_KEY_ID: ${{ secrets[format('B2_KEY_ID_{0}', needs.resolve.outputs.suffix)] }}
+          B2_APP_KEY: ${{ secrets[format('B2_APP_KEY_{0}', needs.resolve.outputs.suffix)] }}
         run: |
           set -euo pipefail
           if [ "$ENV" = staging ]; then
@@ -181,6 +183,16 @@ jobs:
             roles="web worker caddy cloudflared"
           else
             roles="web worker caddy cloudflared umami"
+          fi
+          # Backups (P0-15 D): the B2 key pair (H-42). Until both secrets exist the role is skipped with a warning;
+          # the host then keeps WAL archiving off (archive-off lever) and the nightly dump fails loudly
+          # (backup:dump-failed). One secret without the other is a mistake: fail.
+          if [ -n "$B2_KEY_ID" ] && [ -n "$B2_APP_KEY" ]; then
+            roles="$roles backup"
+          elif [ -n "$B2_KEY_ID$B2_APP_KEY" ]; then
+            echo "::error::set both B2_KEY_ID_${ENV^^} and B2_APP_KEY_${ENV^^}, or neither"; exit 1
+          else
+            echo "::warning::B2_KEY_ID_${ENV^^}/B2_APP_KEY_${ENV^^} are not set (H-42): backups are not configured on $ENV"
           fi
           for role in $roles; do
             body=$(node scripts/deploy-env.mjs "$ENV" "$role")

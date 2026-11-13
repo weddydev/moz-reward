@@ -5,6 +5,7 @@
  */
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   check,
   index,
   integer,
@@ -44,6 +45,8 @@ export const failedJobs = pgTable(
 export const jobHeartbeats = pgTable("job_heartbeats", {
   name: text().primaryKey(),
   lastRunAt: tz().notNull(),
+  /** A measurement some heartbeats carry (P0-15 D2): `backup:storage` bytes, `backup:key-expiry` epoch seconds. */
+  value: bigint({ mode: "number" }),
   ...timestamps(),
 });
 

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { Redis } from "ioredis";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { newId } from "@/lib/id";
@@ -137,5 +138,45 @@ describe("[P0-13] AC2: the health monitor", () => {
     expect(
       await readOpsSnapshot(mintAdminScope({ userId: support.id, role: "support" })),
     ).toBeNull();
+  });
+});
+
+describe("[P0-15] D2: the health monitor reads the backup measurements and the archive-off lever", () => {
+  it("[P0-15] base backup, storage bytes, key expiry and the lever reach the snapshot", async () => {
+    const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const path = await import("node:path");
+    const dir = mkdtempSync(path.join(tmpdir(), "moz-lever-"));
+    const lever = path.join(dir, "archive-off");
+    const alerter = createAlerter({
+      redis: limiterRedis,
+      keyPrefix: `t-${newId()}`,
+      send: () => Promise.resolve(),
+    });
+    try {
+      await db().execute(sql`SELECT public.record_backup_heartbeat('backup:base')`);
+      await db().execute(sql`SELECT public.record_backup_metric('backup:storage', 1500000000)`);
+      await db().execute(sql`SELECT public.record_backup_metric('backup:key-expiry', 1893456000)`);
+
+      const off = (await healthTick({ alerter, archiveOffFile: lever })).snapshot.backups;
+      expect(off.archiveOff).toBe(false);
+      expect(off.lastBaseAt).not.toBeNull();
+      expect(off.storageBytes).toBe(1_500_000_000);
+      expect(off.storageBudgetBytes).toBe(2_000_000_000); // APP_ENV=test → the staging share
+      expect(off.keyExpiresAt).toBe("2030-01-01T00:00:00.000Z");
+
+      writeFileSync(lever, "");
+      const on = (await healthTick({ alerter, archiveOffFile: lever })).snapshot.backups;
+      expect(on.archiveOff).toBe(true);
+
+      // A key without expiry is recorded as 0 and reads as "never expires".
+      await db().execute(sql`SELECT public.record_backup_metric('backup:key-expiry', 0)`);
+      expect(
+        (await healthTick({ alerter, archiveOffFile: lever })).snapshot.backups.keyExpiresAt,
+      ).toBeNull();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+      await db().execute(sql`DELETE FROM job_heartbeats WHERE name LIKE 'backup:%'`);
+    }
   });
 });

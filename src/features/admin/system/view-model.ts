@@ -106,6 +106,17 @@ export function systemView(s: HealthSnapshot, now: Date): SystemView {
           rows: [
             { label: "Last nightly dump", value: ageText(ageOf(s.backups.lastDumpAt, now)) },
             { label: "Last WAL archive", value: ageText(ageOf(s.backups.lastWalAt, now)) },
+            { label: "Last base backup", value: ageText(ageOf(s.backups.lastBaseAt, now)) },
+            ...(s.backups.archiveOff === true
+              ? [{ label: "WAL archiving", value: "off (archive-off lever)" }]
+              : []),
+            {
+              label: "Backup storage",
+              value:
+                s.backups.storageBytes === null
+                  ? "unknown"
+                  : `${(s.backups.storageBytes / 1e9).toFixed(2)} of ${(s.backups.storageBudgetBytes / 1e9).toFixed(0)} GB`,
+            },
             {
               label: "Last restore drill",
               value: ageText(ageOf(s.backups.lastRestoreDrillAt, now)),

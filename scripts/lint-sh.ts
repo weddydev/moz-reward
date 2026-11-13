@@ -14,6 +14,7 @@ export const SCRIPTS = [
   "infra/host/harden.sh",
   "infra/host/moz-deploy",
   "infra/host/moz-backup",
+  "infra/postgres/moz-walg",
   "scripts/image-check.sh",
 ];
 

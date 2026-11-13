@@ -49,6 +49,14 @@ services:
       - password_encryption=scram-sha-256
       - -c
       - log_statement=none
+      # WAL archiving to B2 through the wrapper (P0-15 D2): a forced segment switch every minute when anything was
+      # written (the health monitor writes every minute), so the newest archived WAL is at most ~1 min old.
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_timeout=60
+      - -c
+      - archive_command=/usr/local/bin/moz-walg wal-push %p
       - -c
       - max_connections=80
       - -c

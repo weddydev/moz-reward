@@ -32,12 +32,39 @@ export async function readOpsSnapshot(
   return row ?? null;
 }
 
-/** Last run per heartbeat name (`scheduled:heartbeat`, and from P0-15 the backup jobs). */
-export async function heartbeats(scope: SystemScope): Promise<Map<string, Date>> {
+export type Heartbeat = { lastRunAt: Date; value: number | null };
+
+/**
+ * Last run per heartbeat name (`scheduled:heartbeat`, and from P0-15 the backup jobs), with the measurement
+ * some of them carry (`backup:storage`, `backup:key-expiry`; 0017).
+ */
+export async function heartbeats(scope: SystemScope): Promise<Map<string, Heartbeat>> {
   const rows = await poolFor(scope)
-    .select({ name: jobHeartbeats.name, lastRunAt: jobHeartbeats.lastRunAt })
+    .select({
+      name: jobHeartbeats.name,
+      lastRunAt: jobHeartbeats.lastRunAt,
+      value: jobHeartbeats.value,
+    })
     .from(jobHeartbeats);
-  return new Map(rows.map((r) => [r.name, r.lastRunAt]));
+  return new Map(rows.map((r) => [r.name, { lastRunAt: r.lastRunAt, value: r.value }]));
+}
+
+/**
+ * WAL archiving as Postgres reports it (P0-15 D2): the last segment archive_command archived and the last one it
+ * failed. Both null when archiving has never run (dev, CI, or archive_mode off).
+ */
+export async function archiverStatus(
+  scope: SystemScope,
+): Promise<{ lastArchivedAt: Date | null; lastFailedAt: Date | null }> {
+  const rows = await poolFor(scope).execute<{
+    archived: string | null;
+    failed: string | null;
+  }>(
+    sql`SELECT last_archived_time::text AS archived, last_failed_time::text AS failed FROM pg_stat_archiver`,
+  );
+  const row = [...rows][0];
+  const at = (v: string | null | undefined): Date | null => (v ? new Date(v) : null);
+  return { lastArchivedAt: at(row?.archived), lastFailedAt: at(row?.failed) };
 }
 
 /** Unresolved dead-lettered jobs, and how many of them failed in the last `recentSec` seconds. */

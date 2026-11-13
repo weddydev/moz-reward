@@ -87,6 +87,22 @@ When data is lost or corrupted (or after §14). Targets: RPO ≤ 5 min (WAL), RT
 - A side effect that happened **after** the restore point, recorded only in data the restore threw away, can run **again**: e.g. an email sent at 14:07 whose outbox row (completed at 14:07) was lost when restoring to 14:05 is sent a second time. Internal effects re-run idempotently; external ones (emails, push, payments later) need provider-side idempotency keys (P2 adds them for payments). Tell the client if customers may have received duplicates.
 - Never replay further back than needed: every extra minute is more possible duplicates.
 
+**WAL archiving and the archive-off lever (P0-15 D2).** Postgres archives WAL every minute through
+`/usr/local/bin/moz-walg` (wal-g, encrypted to the pinned backup key); a weekly base backup runs Sundays 03:30
+(`moz-basebackup@<env>.timer`). The System page shows "Last WAL archive" (from `pg_stat_archiver`) and "Last base
+backup"; health.backup alerts when WAL is > 10 min old or failing, the base backup is > 8 days old or failed, the
+lever is set, storage reaches 70% of the environment's B2 share, or the key expires within 30 days.
+- **B2 down or the key pair wrong, and `pg_wal` growing** (disk alert, §12): `sudo moz-backup wal-off <env>` sets
+  the lever (`/etc/moz/<env>/backup-lever/archive-off`, root-owned, mounted read-only into Postgres). Segments are
+  then passed over and recycled. Point-in-time recovery has a **gap** from that moment; nightly dumps continue.
+- **As soon as B2 works again:** `sudo moz-backup wal-on <env>`. It removes the lever and takes a base backup at
+  once, so point-in-time recovery restarts from there. Never remove the file by hand without that backup.
+- A new environment starts with the lever set (`moz-deploy init-env`): the first deploy with the B2 key pair
+  (H-42) writes `/etc/moz/<env>/walg/walg.env`; then run `wal-on` once.
+- Check: `sudo docker exec moz-<env>-postgres-1 psql -U postgres -Atc "SELECT * FROM pg_stat_archiver"` —
+  `last_failed_time` newer than `last_archived_time` means archiving is failing; the reason is in
+  `docker logs moz-<env>-postgres-1` (lines starting `moz-walg:`).
+
 ## 7. Redis loss
 
 **redis-queue** (BullMQ, rate limits, alert dedup, email/Sentry counters; AOF everysec, `noeviction`).

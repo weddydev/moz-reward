@@ -20,9 +20,16 @@ const snapshot = (over: Partial<HealthSnapshot> = {}): HealthSnapshot => ({
     enabled: false,
     lastDumpAt: null,
     lastWalAt: null,
+    lastWalFailedAt: null,
     lastRestoreDrillAt: null,
     lastDumpFailedAt: null,
     lastRestoreDrillFailedAt: null,
+    lastBaseAt: null,
+    lastBaseFailedAt: null,
+    archiveOff: null,
+    storageBytes: null,
+    storageBudgetBytes: 2_000_000_000,
+    keyExpiresAt: null,
   },
   email: { sentToday: 290, cap: 400 },
   sentry: { sentThisMonth: null, quota: 5000 },
@@ -62,6 +69,30 @@ describe("[P0-13] System page view model", () => {
     expect(v.queues[0]).toMatchObject({ name: "email", lag: "75 s", lagging: true });
     expect(v.backups).toEqual({ enabled: false, rows: [] });
     expect(v.alerts).toEqual(["health.queue_lag", "quota.email"]);
+  });
+
+  it("[P0-15] enabled backups list dump, WAL, base, storage and drill; the archive-off lever shows only while on", () => {
+    const backups = {
+      ...snapshot().backups,
+      enabled: true,
+      lastDumpAt: ago(3600),
+      lastWalAt: ago(40),
+      lastBaseAt: ago(2 * 86400),
+      lastRestoreDrillAt: ago(86400),
+      storageBytes: 1_234_000_000,
+    };
+    const rows = (archiveOff: boolean | null): string[] =>
+      systemView(snapshot({ backups: { ...backups, archiveOff } }), NOW).backups.rows.map(
+        (r) => `${r.label}: ${r.value}`,
+      );
+    expect(rows(false)).toEqual([
+      "Last nightly dump: 1 h",
+      "Last WAL archive: 40 s",
+      "Last base backup: 2 days",
+      "Backup storage: 1.23 of 2 GB",
+      "Last restore drill: 24 h",
+    ]);
+    expect(rows(true)).toContain("WAL archiving: off (archive-off lever)");
   });
 
   it("stored snapshots are validated before rendering", () => {

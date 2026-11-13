@@ -70,6 +70,19 @@ describe("[P0-15] deploy env files", () => {
     expect(keysOf(buildEnv("production", "umami", CONFIG, fullSecrets()))).toEqual(["APP_SECRET"]);
   });
 
+  it("[P0-15] backup gets exactly the B2 key pair, in both environments (D2)", () => {
+    for (const env of ["staging", "production"] as const) {
+      expect(ROLES[env]).toContain("backup");
+      expect(keysOf(buildEnv(env, "backup", CONFIG, fullSecrets()))).toEqual([
+        "B2_KEY_ID",
+        "B2_APP_KEY",
+      ]);
+    }
+    expect(() =>
+      buildEnv("staging", "backup", CONFIG, { ...fullSecrets(), B2_APP_KEY: "" }),
+    ).toThrow("B2_APP_KEY_STAGING is not set");
+  });
+
   it("a missing or blank required secret fails, naming the key and not any value", () => {
     const s = fullSecrets();
     s.AUTH_SECRET = "";

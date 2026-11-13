@@ -64,6 +64,9 @@ describe("[P0-15] moz-backup arguments", () => {
     ["run", "production"],
     ["drill", "staging"],
     ["drill", "production"],
+    ["base", "staging"],
+    ["wal-on", "production"],
+    ["wal-off", "staging"],
   ])("[P0-15] accepts %s %s", (cmd, env) => {
     const r = run('check_args "$@"; printf "%s\\n" "${REQ[@]}"', [cmd, env]);
     expect(r.status).toBe(0);
@@ -77,6 +80,8 @@ describe("[P0-15] moz-backup arguments", () => {
     [["dump", "staging"]],
     [["run", "staging", "extra"]],
     [["run", "Staging"]],
+    [["wal", "staging"]],
+    [["base-push", "staging"]],
   ])("[P0-15] refuses %j with exit 64", (args) => {
     const r = run('check_args "$@"', args);
     expect(r.status).toBe(64);
@@ -303,5 +308,161 @@ describe("[P0-15] systemd units", () => {
     expect(t).toMatch(/^OnCalendar=\*-\*-\* 02:30:00 Europe\/London$/m);
     expect(t).toMatch(/^Persistent=true$/m);
     expect(t).toMatch(/^WantedBy=timers.target$/m);
+  });
+});
+
+describe("[P0-15] D2: base backups, the archive-off lever and the nightly measurements", () => {
+  /** Runs `dispatch` with the container calls stubbed: heartbeats/metrics/wal-g are logged to stdout. */
+  const dispatch = (
+    cmd: string,
+    opts: { walg?: number; walgEnv?: boolean; leverDir?: boolean } = {},
+  ): Run & { etc: string } => {
+    const etc = mkdtempSync(path.join(tmp, "etc-"));
+    const data = mkdtempSync(path.join(tmp, "data-"));
+    if (opts.leverDir !== false)
+      mkdirSync(path.join(etc, "staging", "backup-lever"), { recursive: true });
+    mkdirSync(path.join(etc, "staging", "walg"), { recursive: true });
+    if (opts.walgEnv)
+      writeFileSync(path.join(etc, "staging", "walg", "walg.env"), "AWS_REGION='x'\n");
+    const r = run(
+      `MOZ_ETC_ROOT="$1" MOZ_DATA_ROOT="$2"
+       heartbeat() { echo "heartbeat $2"; }
+       metric() { echo "metric $2 $3"; }
+       WALG_RC=$3 CMD=$4
+       walg_exec() { echo "walg $*"; return "$WALG_RC"; }
+       dispatch "$CMD" staging`,
+      [etc.replaceAll("\\", "/"), data.replaceAll("\\", "/"), String(opts.walg ?? 0), cmd],
+    );
+    return { ...r, etc };
+  };
+  const lever = (etc: string): string => path.join(etc, "staging", "backup-lever", "archive-off");
+
+  it("[P0-15] base: wal-g backup-push in the container, then heartbeat backup:base", () => {
+    const r = dispatch("base");
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("walg staging backup-push\nheartbeat base\n");
+  });
+
+  it("[P0-15] base: a failed wal-g writes backup:base-failed (health.backup alerts at once)", () => {
+    const r = dispatch("base", { walg: 1 });
+    expect(r.status).toBe(1);
+    expect(r.stdout).toBe("walg staging backup-push\nheartbeat base-failed\n");
+    expect(r.stderr).toContain("FAILED: base (staging)");
+  });
+
+  it("[P0-15] wal-off sets the lever; wal-on removes it and takes a base backup straight away", () => {
+    const off = dispatch("wal-off");
+    expect(off.status).toBe(0);
+    expect(readdirSync(path.dirname(lever(off.etc)))).toEqual(["archive-off"]);
+    expect(off.stderr).toContain("WAL archiving is OFF for staging");
+
+    const etc = off.etc;
+    writeFileSync(path.join(etc, "staging", "walg", "walg.env"), "AWS_REGION='x'\n");
+    const on = run(
+      `MOZ_ETC_ROOT="$1" MOZ_DATA_ROOT="$2"
+       heartbeat() { echo "heartbeat $2"; }
+       walg_exec() { [[ -e "$1/staging/backup-lever/archive-off" ]] && echo "lever still set"; echo "walg $*"; }
+       dispatch wal-on staging`,
+      [etc.replaceAll("\\", "/"), mkdtempSync(path.join(tmp, "data-")).replaceAll("\\", "/")],
+    );
+    expect(on.status).toBe(0);
+    expect(on.stdout).toBe("walg staging backup-push\nheartbeat base\n");
+    expect(readdirSync(path.dirname(lever(etc)))).toEqual([]);
+  });
+
+  it("[P0-15] wal-on refuses before the deploy has written wal-g's settings (H-42), keeping the lever", () => {
+    const r = dispatch("wal-on");
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain("no wal-g settings for staging yet");
+    expect(r.stdout).not.toContain("walg");
+  });
+
+  it("[P0-15] wal-off refuses before init-env has made the lever directory", () => {
+    const r = dispatch("wal-off", { leverDir: false });
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain("run moz-deploy init-env staging first");
+  });
+
+  const page = (sizes: number[], next?: string): string =>
+    `<ListBucketResult><IsTruncated>${next ? "true" : "false"}</IsTruncated>${
+      next ? `<NextContinuationToken>${next}</NextContinuationToken>` : ""
+    }${sizes.map((n, i) => `<Contents><Key>staging/wal/${String(i)}</Key><Size>${String(n)}</Size></Contents>`).join("\n")}</ListBucketResult>`;
+
+  it("[P0-15] sums a listing page and returns the continuation token (decoded), or - on the last page", () => {
+    expect(run("xml_list_page", [], page([10, 20, 3_000_000_000])).stdout).toBe("3000000030 3 -\n");
+    expect(run("xml_list_page", [], page([5], "1abc+/=&amp;x")).stdout).toBe("5 1 1abc+/=&x\n");
+    expect(run("xml_list_page", [], page([])).stdout).toBe("0 0 -\n");
+    // Truncated without a token: refused rather than an endless loop.
+    expect(run("xml_list_page", [], page([1]).replace("false", "true")).status).toBe(1);
+  });
+
+  it("[P0-15] storage_bytes follows continuation tokens across pages and sums every object", () => {
+    const r = run(
+      `calls=0
+       s3() { calls=$((calls+1)); local a="$*"
+         if [[ $a == *continuation-token=T2* ]]; then cat "$TMPP/p3"
+         elif [[ $a == *continuation-token=T1* ]]; then cat "$TMPP/p2"
+         else cat "$TMPP/p1"; fi; }
+       export TMPP="$1"
+       storage_bytes staging`,
+      [
+        (() => {
+          const d = mkdtempSync(path.join(tmp, "pages-"));
+          writeFileSync(path.join(d, "p1"), page([100, 200], "T1"));
+          writeFileSync(path.join(d, "p2"), page([300], "T2"));
+          writeFileSync(path.join(d, "p3"), page([400, 500]));
+          return d.replaceAll("\\", "/");
+        })(),
+      ],
+    );
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("1500 5\n");
+  });
+
+  it("[P0-15] metric accepts only the two names and whole numbers (no SQL from a value)", () => {
+    const m = (name: string, value: string): Run =>
+      run('pg_exec() { echo "SQL $*" >&2; }; metric staging "$1" "$2"', [name, value]);
+    expect(m("storage", "1500").stderr).toContain("record_backup_metric('backup:storage', 1500)");
+    expect(m("key-expiry", "0").status).toBe(0);
+    expect(m("dump", "1").status).toBe(1);
+    expect(m("storage", "1); DROP TABLE x; --").status).toBe(1);
+    expect(m("storage", "-1").status).toBe(1);
+    expect(m("storage", "").status).toBe(1);
+  });
+
+  it("[P0-15] a failed storage reading after a good dump only warns: no backup:dump-failed", () => {
+    const etc = mkdtempSync(path.join(tmp, "etc-"));
+    const r = run(
+      `MOZ_ETC_ROOT="$1" MOZ_DATA_ROOT="$2"
+       load_creds() { :; }; check_key() { KEY_EXPIRES=0; }
+       backup_db() { echo "dump $2"; }
+       heartbeat() { echo "heartbeat $2"; }
+       storage_bytes() { die "listing failed"; }
+       drill_due() { false; }
+       dispatch run staging`,
+      [etc.replaceAll("\\", "/"), mkdtempSync(path.join(tmp, "data-")).replaceAll("\\", "/")],
+    );
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("dump moz\nheartbeat dump\n");
+    expect(r.stderr).toContain("WARNING: could not record the storage total");
+  });
+
+  it("[P0-15] the base-backup timer fires Sundays 03:30 London time; its service runs moz-backup base", () => {
+    const dir = path.join(root, "infra", "host", "files", "systemd");
+    const svc = readFileSync(path.join(dir, "moz-basebackup@.service"), "utf8");
+    const timer = readFileSync(path.join(dir, "moz-basebackup@.timer"), "utf8");
+    expect(svc).toMatch(/^ExecStart=\/usr\/local\/sbin\/moz-backup base %i$/m);
+    for (const line of [
+      "UMask=0077",
+      "PrivateTmp=yes",
+      "ProtectSystem=strict",
+      "NoNewPrivileges=yes",
+    ]) {
+      expect(svc).toContain(`\n${line}\n`);
+    }
+    expect(timer).toMatch(/^OnCalendar=Sun \*-\*-\* 03:30:00 Europe\/London$/m);
+    expect(timer).toMatch(/^Persistent=true$/m);
+    const harden = readFileSync(path.join(root, "infra", "host", "harden.sh"), "utf8");
+    expect(harden).toContain("moz-basebackup@.service moz-basebackup@.timer");
   });
 });

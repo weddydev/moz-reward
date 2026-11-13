@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { findBash } from "./lib/find-bash";
@@ -8,6 +9,7 @@ import { findBash } from "./lib/find-bash";
  * sudo, request in SSH_ORIGINAL_COMMAND). These tests source it in bash and drive its pure functions: request
  * validation (the allowlist) and env-file rendering (what a caller may put in a root-only env file).
  */
+const root = path.resolve(import.meta.dirname, "..");
 const helper = path
   .resolve(import.meta.dirname, "..", "infra", "host", "moz-deploy")
   .replaceAll("\\", "/");
@@ -242,5 +244,70 @@ describe("[P0-15] moz-deploy env files", () => {
   it("[P0-15] refuses more than 64 KiB", () => {
     const result = render("staging", "cloudflared", `TUNNEL_TOKEN=${"a".repeat(70_000)}\n`);
     expect(result.status).toBe(EX_INPUT);
+  });
+});
+
+describe("[P0-15] D2: wal-g settings are built on the host from the B2 key pair alone", () => {
+  const ID = "003a1b2c3d4e5f60000000009";
+  const KEY = "K003abcdefghijklmnopqrstuvwxyzABCD";
+
+  it.each(["staging", "production"])(
+    "[P0-15] %s: fixed endpoint, region, bucket and per-environment prefix; only the key pair varies",
+    (env) => {
+      const r = run('walg_env "$1" "$2" "$3"', [env, ID, KEY]);
+      expect(r.status).toBe(0);
+      expect(r.stdout.split("\n").slice(1)).toEqual([
+        `AWS_ACCESS_KEY_ID='${ID}'`,
+        `AWS_SECRET_ACCESS_KEY='${KEY}'`,
+        "AWS_ENDPOINT='https://s3.eu-central-003.backblazeb2.com'",
+        "AWS_REGION='eu-central-003'",
+        "AWS_S3_FORCE_PATH_STYLE='true'",
+        `WALG_S3_PREFIX='s3://mozrewards-backups-dfd829/${env}/wal'`,
+        "",
+      ]);
+    },
+  );
+
+  it.each([
+    ["has space", KEY],
+    [ID, "short"],
+    [ID, "K003abc'; touch /tmp/x; '"],
+  ])("[P0-15] refuses a malformed key pair %j", (id, key) => {
+    const r = run('walg_env staging "$1" "$2"', [id, key]);
+    expect(r.status).toBe(1);
+    expect(r.stdout).not.toContain("AWS_SECRET_ACCESS_KEY");
+  });
+
+  it("[P0-15] the settings file moz-deploy writes is exactly what moz-walg accepts", () => {
+    const walg = readFileSync(path.join(root, "infra", "postgres", "moz-walg"), "utf8");
+    const written = run('walg_env staging "$1" "$2"', [ID, KEY]).stdout;
+    for (const key of [...written.matchAll(/^([A-Z0-9_]+)=/gm)].map((m) => m[1] ?? "")) {
+      expect(walg).toContain(`      ${key}) W_`);
+    }
+  });
+
+  it("[P0-15] endpoint, region, bucket and pinned key are the same in moz-deploy and moz-backup", () => {
+    const backup = readFileSync(path.join(root, "infra", "host", "moz-backup"), "utf8");
+    const deploy = readFileSync(path.join(root, "infra", "host", "moz-deploy"), "utf8");
+    const value = (src: string, name: string): string =>
+      src
+        .split("\n")
+        .map((l) => l.replace(/^readonly /, ""))
+        .find((l) => l.startsWith(`${name}=`))
+        ?.slice(name.length + 1) ?? "";
+    expect(value(deploy, "B2_ENDPOINT")).toBe(value(backup, "S3_ENDPOINT"));
+    expect(value(deploy, "B2_REGION")).toBe(value(backup, "S3_REGION"));
+    expect(value(deploy, "B2_BUCKET")).toBe(value(backup, "S3_BUCKET"));
+    expect(value(deploy, "BACKUP_KEY_FPR")).toBe(value(backup, "PUBKEY_FPR"));
+    expect(value(deploy, "BACKUP_PUBKEY")).toBe(value(backup, "PUBKEY"));
+    expect(value(deploy, "BACKUP_KEY_FPR")).toMatch(/^[0-9A-F]{40}$/);
+  });
+
+  it("[P0-15] init-env starts with the archive-off lever set and enables both backup timers", () => {
+    const deploy = readFileSync(path.join(root, "infra", "host", "moz-deploy"), "utf8");
+    const init = /cmd_init_env\(\) \{[\s\S]*?\n\}/.exec(deploy)?.[0] ?? "";
+    expect(init).toContain('pin_backup_key "$env"');
+    expect(init).toMatch(/! -s \$etc\/walg\/walg.env && ! -e \$etc\/backup-lever\/archive-off/);
+    expect(init).toContain("for unit in moz-backup moz-basebackup; do");
   });
 });

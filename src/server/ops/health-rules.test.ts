@@ -24,9 +24,16 @@ function healthy(): HealthSnapshot {
       enabled: false,
       lastDumpAt: null,
       lastWalAt: null,
+      lastWalFailedAt: null,
       lastRestoreDrillAt: null,
       lastDumpFailedAt: null,
       lastRestoreDrillFailedAt: null,
+      lastBaseAt: null,
+      lastBaseFailedAt: null,
+      archiveOff: null,
+      storageBytes: null,
+      storageBudgetBytes: 2_000_000_000,
+      keyExpiresAt: null,
     },
     email: { sentToday: 10, cap: 400 },
     sentry: { sentThisMonth: 100, quota: 5000 },
@@ -120,81 +127,138 @@ describe("[P0-13] health thresholds (ARCHITECTURE §11)", () => {
     expect(kinds(s)).toEqual(["quota.email", "quota.sentry"]);
   });
 
+  /** Every backup check fresh and passing (enabled). */
+  const okBackups = (): HealthSnapshot["backups"] => ({
+    enabled: true,
+    lastDumpAt: ago(3600),
+    lastWalAt: ago(60),
+    lastWalFailedAt: null,
+    lastRestoreDrillAt: ago(86400),
+    lastDumpFailedAt: null,
+    lastRestoreDrillFailedAt: null,
+    lastBaseAt: ago(2 * 86400),
+    lastBaseFailedAt: null,
+    archiveOff: false,
+    storageBytes: 500_000_000,
+    storageBudgetBytes: 2_000_000_000,
+    keyExpiresAt: null,
+  });
+  const backupAlert = (
+    b: Partial<HealthSnapshot["backups"]>,
+  ): Record<string, unknown> | undefined => {
+    const s = healthy();
+    s.backups = { ...okBackups(), ...b };
+    return evaluateHealth(s, NOW).find((a) => a.kind === "health.backup")?.detail;
+  };
+
   it("backups are checked only once enabled (P0-15): dump > 26 h, WAL > 10 min, drill > 35 days, or missing", () => {
     const s = healthy();
     expect(kinds(s)).toEqual([]); // not enabled yet: nothing to check
-    s.backups = {
-      enabled: true,
-      lastDumpAt: ago(25 * 3600),
-      lastWalAt: ago(9 * 60),
-      lastRestoreDrillAt: ago(30 * 86400),
-      lastDumpFailedAt: null,
-      lastRestoreDrillFailedAt: null,
-    };
-    expect(kinds(s)).toEqual([]);
-    s.backups = {
-      enabled: true,
-      lastDumpAt: ago(27 * 3600),
-      lastWalAt: null,
-      lastRestoreDrillAt: ago(36 * 86400),
-      lastDumpFailedAt: null,
-      lastRestoreDrillFailedAt: null,
-    };
-    const alert = evaluateHealth(s, NOW).find((a) => a.kind === "health.backup");
-    expect(alert?.detail).toEqual({
+    expect(
+      backupAlert({
+        lastDumpAt: ago(25 * 3600),
+        lastWalAt: ago(9 * 60),
+        lastRestoreDrillAt: ago(30 * 86400),
+        lastBaseAt: ago(7 * 86400),
+      }),
+    ).toBeUndefined();
+    expect(
+      backupAlert({
+        lastDumpAt: ago(27 * 3600),
+        lastWalAt: null,
+        lastRestoreDrillAt: ago(36 * 86400),
+      }),
+    ).toEqual({
       dumpAgeHours: 27,
       walAgeMin: null,
+      baseAgeDays: 2,
       drillAgeDays: 36,
       dumpFailed: false,
       drillFailed: false,
+      walFailing: false,
+      baseFailed: false,
+      archiveOff: false,
+      storagePct: 25,
+      keyExpiresInDays: null,
     });
   });
 
   it("[P0-15] a failed dump or drill newer than the last success alerts at once, whatever the ages", () => {
-    const s = healthy();
-    const fresh = {
-      enabled: true,
-      lastDumpAt: ago(3600),
-      lastWalAt: ago(60),
-      lastRestoreDrillAt: ago(86400),
-    };
     // A failure older than the success it was followed by is history, not an alert.
-    s.backups = {
-      ...fresh,
-      lastDumpFailedAt: ago(2 * 86400),
-      lastRestoreDrillFailedAt: ago(3 * 86400),
-    };
-    expect(kinds(s)).toEqual([]);
-
-    s.backups = { ...fresh, lastDumpFailedAt: ago(60), lastRestoreDrillFailedAt: null };
-    expect(evaluateHealth(s, NOW).find((a) => a.kind === "health.backup")?.detail).toMatchObject({
+    expect(
+      backupAlert({ lastDumpFailedAt: ago(2 * 86400), lastRestoreDrillFailedAt: ago(3 * 86400) }),
+    ).toBeUndefined();
+    expect(backupAlert({ lastDumpFailedAt: ago(60) })).toMatchObject({
       dumpFailed: true,
       drillFailed: false,
     });
-
     // A drill that has never passed but has failed: the failure alerts (not only the 35-day age).
-    s.backups = {
-      ...fresh,
-      lastRestoreDrillAt: null,
-      lastDumpFailedAt: null,
-      lastRestoreDrillFailedAt: ago(60),
-    };
-    expect(evaluateHealth(s, NOW).find((a) => a.kind === "health.backup")?.detail).toMatchObject({
-      dumpFailed: false,
-      drillFailed: true,
-    });
+    expect(
+      backupAlert({ lastRestoreDrillAt: null, lastRestoreDrillFailedAt: ago(60) }),
+    ).toMatchObject({ dumpFailed: false, drillFailed: true });
 
     // Not enabled (staging before D4): failures are not alerted either.
-    s.backups = { ...s.backups, enabled: false };
+    const s = healthy();
+    s.backups = { ...okBackups(), lastDumpFailedAt: ago(60), enabled: false };
     expect(kinds(s)).toEqual([]);
   });
 
-  it("[P0-15] a snapshot stored before the failure heartbeats existed still parses (failures read as none)", () => {
+  it("[P0-15] WAL: pg_stat_archiver failing (last failure newer than last success) alerts even when the last archive is recent", () => {
+    expect(backupAlert({ lastWalFailedAt: ago(120), lastWalAt: ago(180) })).toMatchObject({
+      walFailing: true,
+      walAgeMin: 3,
+    });
+    // An old failure followed by successes is not an alert.
+    expect(backupAlert({ lastWalFailedAt: ago(3600), lastWalAt: ago(30) })).toBeUndefined();
+    // Never archived (archive_mode off or archiving never succeeded) = failing.
+    expect(backupAlert({ lastWalAt: null })).toMatchObject({ walAgeMin: null });
+    expect(backupAlert({ lastWalAt: ago(11 * 60) })).toMatchObject({ walAgeMin: 11 });
+  });
+
+  it("[P0-15] the archive-off lever alerts for as long as it exists; unknown lever state alone does not", () => {
+    expect(backupAlert({ archiveOff: true })).toMatchObject({ archiveOff: true });
+    expect(backupAlert({ archiveOff: null })).toBeUndefined();
+  });
+
+  it("[P0-15] base backup: older than 8 days, missing, or failed since the last success alerts", () => {
+    expect(backupAlert({ lastBaseAt: ago(8 * 86400 - 60) })).toBeUndefined();
+    expect(backupAlert({ lastBaseAt: ago(8 * 86400 + 60) })).toMatchObject({ baseAgeDays: 8 });
+    expect(backupAlert({ lastBaseAt: null })).toMatchObject({ baseAgeDays: null });
+    expect(backupAlert({ lastBaseFailedAt: ago(60) })).toMatchObject({ baseFailed: true });
+    expect(backupAlert({ lastBaseFailedAt: ago(3 * 86400) })).toBeUndefined();
+  });
+
+  it("[P0-15] storage alerts at 70% of the environment's B2 budget; unknown storage does not", () => {
+    expect(backupAlert({ storageBytes: 1_399_999_999 })).toBeUndefined();
+    expect(backupAlert({ storageBytes: 1_400_000_000 })).toMatchObject({ storagePct: 70 });
+    expect(backupAlert({ storageBytes: null })).toBeUndefined();
+    // A missing budget (snapshot stored before D2) never divides by zero into an alert.
+    expect(backupAlert({ storageBytes: 1_400_000_000, storageBudgetBytes: 0 })).toBeUndefined();
+  });
+
+  it("[P0-15] the backup key alerts 30 days before it expires (and once expired); no expiry = no alert", () => {
+    const inDays = (d: number): string => new Date(NOW.getTime() + d * 86400_000).toISOString();
+    expect(backupAlert({ keyExpiresAt: inDays(31) })).toBeUndefined();
+    expect(backupAlert({ keyExpiresAt: inDays(29) })).toMatchObject({ keyExpiresInDays: 29 });
+    expect(backupAlert({ keyExpiresAt: inDays(-1) })).toMatchObject({ keyExpiresInDays: -1 });
+    expect(backupAlert({ keyExpiresAt: null })).toBeUndefined();
+  });
+
+  it("[P0-15] a snapshot stored before the D1/D2 fields existed still parses (new fields read as none)", () => {
     const old = JSON.parse(JSON.stringify(healthy())) as Record<string, unknown>;
     old.backups = { enabled: true, lastDumpAt: null, lastWalAt: null, lastRestoreDrillAt: null };
     const parsed = healthSnapshotSchema.parse(old);
-    expect(parsed.backups.lastDumpFailedAt).toBeNull();
-    expect(parsed.backups.lastRestoreDrillFailedAt).toBeNull();
+    expect(parsed.backups).toMatchObject({
+      lastDumpFailedAt: null,
+      lastRestoreDrillFailedAt: null,
+      lastWalFailedAt: null,
+      lastBaseAt: null,
+      lastBaseFailedAt: null,
+      archiveOff: null,
+      storageBytes: null,
+      storageBudgetBytes: 0,
+      keyExpiresAt: null,
+    });
   });
 
   it("unknown values (a check that could not run) never raise a false alarm by themselves", () => {

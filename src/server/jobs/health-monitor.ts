@@ -1,13 +1,18 @@
 import "server-only";
-import { statfs } from "node:fs/promises";
+import { stat, statfs } from "node:fs/promises";
 import { systemScope } from "@/server/authz/scope";
 import { cacheRedis } from "@/server/cache";
 import { env } from "@/server/env";
 import { log } from "@/server/log";
 import { type Alerter, type RaiseResult, sharedAlerter } from "@/server/ops/alerts";
-import { evaluateHealth, type HealthSnapshot } from "@/server/ops/health-rules";
+import {
+  BACKUP_STORAGE_BUDGET_BYTES,
+  evaluateHealth,
+  type HealthSnapshot,
+} from "@/server/ops/health-rules";
 import { readUsage } from "@/server/ops/usage";
 import {
+  archiverStatus,
   databaseSizeBytes,
   failedJobStats,
   heartbeats,
@@ -37,12 +42,32 @@ const RECENT_FAILED_SEC = 10 * 60;
 
 export const BACKUP_HEARTBEATS = {
   dump: "backup:dump",
-  wal: "backup:wal",
   restoreDrill: "backup:restore-drill",
+  base: "backup:base",
   // Written by infra/host/moz-backup when a run fails (health.backup alerts while newer than the success).
   dumpFailed: "backup:dump-failed",
   restoreDrillFailed: "backup:restore-drill-failed",
+  baseFailed: "backup:base-failed",
+  // Measurements (job_heartbeats.value, 0017): bytes in B2 and the key's expiry (epoch seconds, 0 = none).
+  storage: "backup:storage",
+  keyExpiry: "backup:key-expiry",
 } as const;
+
+/**
+ * The archive-off lever (P0-15 D2, RUNBOOK §6): a root-owned file on a read-only mount (`/etc/moz/<env>/backup-lever`
+ * on the host). While it exists the Postgres wrapper skips WAL archiving, so health.backup alerts.
+ */
+export const ARCHIVE_OFF_FILE = "/run/moz/backup-lever/archive-off";
+
+async function leverPresent(file: string): Promise<boolean> {
+  try {
+    await stat(file);
+    return true;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw err;
+  }
+}
 
 const SCOPE = systemScope("health monitor: job bookkeeping, outbox age and database size");
 
@@ -106,6 +131,8 @@ export type MonitorDeps = {
   cache?: () => Redis;
   alerter?: Alerter;
   now?: () => Date;
+  /** Tests point this at a temporary file. */
+  archiveOffFile?: string;
 };
 
 export async function collectHealth(deps: MonitorDeps = {}): Promise<HealthSnapshot> {
@@ -119,8 +146,12 @@ export async function collectHealth(deps: MonitorDeps = {}): Promise<HealthSnaps
     timed(() => redis().ping()),
     timed(() => cache().ping()),
   ]);
-  const [beats, failed, outbox, queues, usage, disk] = await Promise.all([
+  const [beats, archiver, lever, failed, outbox, queues, usage, disk] = await Promise.all([
     db.ok ? timed(() => heartbeats(SCOPE)) : Promise.resolve({ ok: false as const, ms: 0 }),
+    db.ok && e.BACKUPS_ENABLED
+      ? timed(() => archiverStatus(SCOPE))
+      : Promise.resolve({ ok: false as const, ms: 0 }),
+    timed(() => leverPresent(deps.archiveOffFile ?? ARCHIVE_OFF_FILE)),
     db.ok
       ? timed(() => failedJobStats(SCOPE, RECENT_FAILED_SEC))
       : Promise.resolve({ ok: false as const, ms: 0 }),
@@ -132,7 +163,10 @@ export async function collectHealth(deps: MonitorDeps = {}): Promise<HealthSnaps
     timed(() => diskUsedPct(e.DISK_PATH)),
   ]);
   const beat = (name: string): string | null =>
-    valueOr(beats, null)?.get(name)?.toISOString() ?? null;
+    valueOr(beats, null)?.get(name)?.lastRunAt.toISOString() ?? null;
+  const measured = (name: string): number | null => valueOr(beats, null)?.get(name)?.value ?? null;
+  const archiverValue = valueOr(archiver, null);
+  const keyExpiry = measured(BACKUP_HEARTBEATS.keyExpiry);
   const outboxValue = valueOr(outbox, null);
   const failedValue = valueOr(failed, null);
   const usageValue = valueOr(usage, null);
@@ -156,10 +190,21 @@ export async function collectHealth(deps: MonitorDeps = {}): Promise<HealthSnaps
     backups: {
       enabled: e.BACKUPS_ENABLED,
       lastDumpAt: beat(BACKUP_HEARTBEATS.dump),
-      lastWalAt: beat(BACKUP_HEARTBEATS.wal),
+      lastWalAt: archiverValue?.lastArchivedAt?.toISOString() ?? null,
+      lastWalFailedAt: archiverValue?.lastFailedAt?.toISOString() ?? null,
       lastRestoreDrillAt: beat(BACKUP_HEARTBEATS.restoreDrill),
       lastDumpFailedAt: beat(BACKUP_HEARTBEATS.dumpFailed),
       lastRestoreDrillFailedAt: beat(BACKUP_HEARTBEATS.restoreDrillFailed),
+      lastBaseAt: beat(BACKUP_HEARTBEATS.base),
+      lastBaseFailedAt: beat(BACKUP_HEARTBEATS.baseFailed),
+      archiveOff: valueOr(lever, null),
+      storageBytes: measured(BACKUP_HEARTBEATS.storage),
+      storageBudgetBytes:
+        e.APP_ENV === "production"
+          ? BACKUP_STORAGE_BUDGET_BYTES.production
+          : BACKUP_STORAGE_BUDGET_BYTES.staging,
+      // 0 = the key never expires.
+      keyExpiresAt: keyExpiry ? new Date(keyExpiry * 1000).toISOString() : null,
     },
     email: { sentToday: usageValue?.emailToday ?? null, cap: e.EMAIL_DAILY_CAP },
     sentry: { sentThisMonth: usageValue?.sentryMonth ?? null, quota: e.SENTRY_MONTHLY_QUOTA },

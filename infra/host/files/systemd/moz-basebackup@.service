@@ -1,0 +1,28 @@
+# Weekly wal-g base backup of one environment (P0-15 D2): `moz-backup base <env>` runs wal-g backup-push through
+# infra/postgres/moz-walg inside the Postgres container. Installed by harden.sh; enabled per environment by
+# `moz-deploy init-env <env>` (timer). Results: `journalctl -u moz-basebackup@<env>`; heartbeat backup:base
+# (backup:base-failed on failure; health.backup alerts after 8 days without one).
+[Unit]
+Description=Moz Rewards base backup (%i)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/moz-backup base %i
+UMask=0077
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/moz /run/lock
+ProtectHome=read-only
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TimeoutStartSec=4h

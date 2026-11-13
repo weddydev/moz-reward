@@ -36,6 +36,13 @@ readonly MAX_ENV_BYTES=65536
 readonly WAIT_SECONDS=180
 readonly EX_USAGE=64
 readonly EX_INPUT=65
+# Backups (P0-15 D2). The same values as infra/host/moz-backup (scripts/moz-deploy.test.ts keeps them equal):
+# wal-g's settings are built here, so CI only ever supplies the B2 key pair.
+readonly B2_ENDPOINT=https://s3.eu-central-003.backblazeb2.com
+readonly B2_REGION=eu-central-003
+readonly B2_BUCKET=mozrewards-backups-dfd829
+readonly BACKUP_PUBKEY=/etc/moz/backup/public.asc
+readonly BACKUP_KEY_FPR=1D1D1BF1F6FDA0F2EDA8FAA0D356B5CAA21C0F58
 
 die() {
   printf 'moz-deploy: %s\n' "$*" >&2
@@ -211,10 +218,56 @@ cmd_init_env() {
   # deploy has delivered the B2 key pair (`write-env <env> backup`, H-42) each run fails loudly: journal and the
   # backup:dump-failed heartbeat.
   install -d -m 0700 -o root -g root "$data/backup-work"
-  [[ -f /etc/systemd/system/moz-backup@.timer ]] || die "moz-backup@.timer is not installed: run harden.sh first"
-  systemctl enable --now --quiet "moz-backup@$env.timer"
-  log "moz-backup@$env.timer enabled (02:30 Europe/London)"
+  pin_backup_key "$env"
+  # WAL archiving starts with the archive-off lever set: without B2 credentials every segment would stay in
+  # pg_wal and fill the disk. `moz-backup wal-on <env>` removes it and takes the first base backup (D4).
+  install -d -m 0755 -o root -g root "$etc/backup-lever"
+  if [[ ! -s $etc/walg/walg.env && ! -e $etc/backup-lever/archive-off ]]; then
+    : | write_file "$etc/backup-lever/archive-off" 0644 root:root
+    log "WAL archiving is off until the B2 keys are delivered and 'moz-backup wal-on $env' runs"
+  fi
+  for unit in moz-backup moz-basebackup; do
+    [[ -f /etc/systemd/system/$unit@.timer ]] || die "$unit@.timer is not installed: run harden.sh first"
+    systemctl enable --now --quiet "$unit@$env.timer"
+  done
+  log "backup timers enabled (dump 02:30 daily, base backup Sun 03:30, Europe/London)"
   log "init-env $env: done"
+}
+
+# pin_backup_key <env>: the public key wal-g encrypts to, and its fingerprint, for the Postgres container
+# (/run/moz/walg, read-only). The fingerprint is this script's constant, never the release's: moz-walg refuses to
+# archive unless the key file has exactly that fingerprint (design check HIGH 2).
+pin_backup_key() {
+  local env=$1 dir colons fpr pubs home
+  dir=$(etc_dir "$env")/walg
+  [[ -r $BACKUP_PUBKEY ]] || die "$BACKUP_PUBKEY is missing: run harden.sh first"
+  home=$(mktemp -d)
+  colons=$(gpg --homedir "$home" --batch --no-tty --with-colons --show-keys "$BACKUP_PUBKEY" 2>/dev/null) || colons=""
+  gpgconf --homedir "$home" --kill all >/dev/null 2>&1 || true
+  rm -rf "$home"
+  [[ -n $colons ]] || die "$BACKUP_PUBKEY is not an OpenPGP key"
+  pubs=$(grep -c '^pub:' <<<"$colons" || true)
+  fpr=$(awk -F: '$1 == "fpr" { print $10; exit }' <<<"$colons")
+  if ((pubs != 1)) || [[ $fpr != "$BACKUP_KEY_FPR" ]]; then
+    die "$BACKUP_PUBKEY is not the pinned backup key"
+  fi
+  install -d -m 0750 -o root -g 999 "$dir"
+  write_file "$dir/public.asc" 0644 root:999 <"$BACKUP_PUBKEY"
+  printf '%s\n' "$BACKUP_KEY_FPR" | write_file "$dir/fingerprint" 0644 root:999
+}
+
+# walg_env <env> <key id> <app key>: wal-g's settings for infra/postgres/moz-walg. Only the key pair comes from
+# the caller (already validated by render_env); endpoint, bucket and prefix are this host's constants.
+walg_env() {
+  local env=$1 id=$2 key=$3
+  [[ $id =~ ^[A-Za-z0-9]{8,64}$ && $key =~ ^[A-Za-z0-9+/=_-]{16,128}$ ]] || die "malformed B2 key pair"
+  printf '# Written by moz-deploy write-env (%s/backup). Read by moz-walg only. Do not edit by hand.\n' "$env"
+  printf "AWS_ACCESS_KEY_ID='%s'\n" "$id"
+  printf "AWS_SECRET_ACCESS_KEY='%s'\n" "$key"
+  printf "AWS_ENDPOINT='%s'\n" "$B2_ENDPOINT"
+  printf "AWS_REGION='%s'\n" "$B2_REGION"
+  printf "AWS_S3_FORCE_PATH_STYLE='true'\n"
+  printf "WALG_S3_PREFIX='s3://%s/%s/wal'\n" "$B2_BUCKET" "$env"
 }
 
 # A server certificate is (re)issued when missing, signed by another CA, or expiring within 60 days.
@@ -278,6 +331,15 @@ cmd_write_env() {
   body=$(render_env "$env" "$role")
   { printf '%s\n' "$body"; generated_env "$env" "$role"; } | write_file "$etc/env/$role.env" 0600 root:root
   log "wrote $env/$role.env"
+  if [[ $role == backup ]]; then
+    # The same key pair for wal-g, readable by the Postgres container's user only (group 999).
+    local id key
+    id=$(sed -n "s/^B2_KEY_ID='\(.*\)'$/\1/p" <<<"$body")
+    key=$(sed -n "s/^B2_APP_KEY='\(.*\)'$/\1/p" <<<"$body")
+    [[ -d $etc/walg ]] || die "run init-env $env first (no walg directory)"
+    walg_env "$env" "$id" "$key" | write_file "$etc/walg/walg.env" 0440 root:999
+    log "wrote $env/walg/walg.env"
+  fi
 }
 
 # ---------------------------------------------------------------------------------------------------------------

@@ -1,0 +1,141 @@
+#!/bin/bash
+# moz-walg: the only way wal-g runs in the staging/production Postgres container (P0-15 D2; ARCHITECTURE §9,
+# SECURITY §11, RUNBOOK §6).
+#
+#   moz-walg wal-push <path>   archive_command (postgres -c archive_command='/usr/local/bin/moz-walg wal-push %p')
+#   moz-walg backup-push       weekly full base backup (`moz-backup base <env>` runs it through docker exec)
+#
+# Nothing leaves the container in clear (design check HIGH 2): before every call the backup public key must be
+# exactly one key whose fingerprint equals the one the host pinned (moz-deploy init-env writes both files), and
+# wal-g gets WALG_PGP_KEY_PATH from this script, never from a file. wal-g runs under `env -i` with an allowlist
+# of settings from walg.env (0440 root:999, written by `moz-deploy write-env <env> backup`): only the B2 key pair
+# comes from CI; endpoint, bucket and prefix are fixed by moz-deploy. Every call runs under `timeout`, so a hang
+# is a failure Postgres retries and pg_stat_archiver reports (HIGH 3).
+#
+# The archive-off lever (HIGH 3): while /run/moz/backup-lever/archive-off exists (a root-owned read-only mount,
+# not PGDATA), wal-push reports success without uploading, so pg_wal can't fill the disk while B2 is unusable.
+# health.backup alerts for as long as it exists; RUNBOOK §6: `moz-backup wal-on <env>` removes it and takes a
+# base backup at once (point-in-time recovery restarts from there).
+set -Eeuo pipefail
+umask 077
+export LC_ALL=C
+
+# Not readonly only so scripts/moz-walg.test.ts can source this file and point it at a temporary directory.
+CONF_DIR=/run/moz/walg
+LEVER=/run/moz/backup-lever/archive-off
+WALG=/usr/local/bin/wal-g
+WAL_PUSH_SECONDS=300
+BASE_SECONDS=10800
+readonly SAFE_PATH=/usr/local/bin:/usr/bin:/bin
+readonly EX_USAGE=64
+
+log() { printf 'moz-walg: %s\n' "$*" >&2; }
+die() {
+  log "$*"
+  exit 1
+}
+
+# load_conf: walg.env → the six allowed settings, each checked; anything else in the file is refused.
+load_conf() {
+  local file=$CONF_DIR/walg.env line key value
+  [[ -r $file ]] || die "$file is missing: archiving is not configured (H-42, then the deploy writes it)"
+  W_KEY_ID="" W_SECRET="" W_ENDPOINT="" W_REGION="" W_PREFIX="" W_PATH_STYLE=""
+  while IFS= read -r line || [[ -n $line ]]; do
+    [[ -z $line || $line == \#* ]] && continue
+    [[ $line =~ ^([A-Z0-9_]+)=\'([^\']*)\'$ ]] || die "$file: unexpected line"
+    key=${BASH_REMATCH[1]}
+    value=${BASH_REMATCH[2]}
+    case $key in
+      AWS_ACCESS_KEY_ID) W_KEY_ID=$value ;;
+      AWS_SECRET_ACCESS_KEY) W_SECRET=$value ;;
+      AWS_ENDPOINT) W_ENDPOINT=$value ;;
+      AWS_REGION) W_REGION=$value ;;
+      WALG_S3_PREFIX) W_PREFIX=$value ;;
+      AWS_S3_FORCE_PATH_STYLE) W_PATH_STYLE=$value ;;
+      *) die "$file: $key is not an allowed setting" ;;
+    esac
+  done <"$file"
+  [[ $W_KEY_ID =~ ^[A-Za-z0-9]{8,64}$ ]] || die "$file: AWS_ACCESS_KEY_ID missing or malformed"
+  [[ $W_SECRET =~ ^[A-Za-z0-9+/=_-]{16,128}$ ]] || die "$file: AWS_SECRET_ACCESS_KEY missing or malformed"
+  [[ $W_ENDPOINT =~ ^https?://[a-z0-9.-]+(:[0-9]{1,5})?$ ]] || die "$file: AWS_ENDPOINT missing or malformed"
+  [[ $W_REGION =~ ^[a-z0-9-]{2,32}$ ]] || die "$file: AWS_REGION missing or malformed"
+  [[ $W_PREFIX =~ ^s3://[a-z0-9][a-z0-9-]{1,62}/(staging|production)/wal$ ]] || die "$file: WALG_S3_PREFIX missing or malformed"
+  [[ $W_PATH_STYLE == true ]] || die "$file: AWS_S3_FORCE_PATH_STYLE must be true"
+}
+
+# check_key: public.asc holds exactly one valid key with the fingerprint the host pinned.
+check_key() {
+  local key=$CONF_DIR/public.asc pinned colons pubs fpr validity home
+  [[ -r $key ]] || die "$key is missing: refusing to archive without encryption"
+  pinned=$(tr -d ' \n' <"$CONF_DIR/fingerprint" 2>/dev/null) || die "$CONF_DIR/fingerprint is missing"
+  [[ $pinned =~ ^[0-9A-F]{40}$ ]] || die "$CONF_DIR/fingerprint is not a full key fingerprint"
+  home=$(mktemp -d "${TMPDIR:-/tmp}/moz-walg-gnupg.XXXXXX")
+  colons=$(gpg --homedir "$home" --batch --no-tty --with-colons --show-keys "$key" 2>/dev/null) || {
+    rm -rf "$home"
+    die "$key is not an OpenPGP key"
+  }
+  rm -rf "$home"
+  pubs=$(grep -c '^pub:' <<<"$colons" || true)
+  ((pubs == 1)) || die "$key must hold exactly one key (found $pubs)"
+  fpr=$(awk -F: '$1 == "fpr" { print $10; exit }' <<<"$colons")
+  [[ $fpr == "$pinned" ]] || die "$key has fingerprint $fpr, not the pinned $pinned"
+  validity=$(awk -F: '$1 == "pub" { print $2 }' <<<"$colons")
+  [[ $validity != [rei] ]] || die "the backup key is revoked, expired or invalid ($validity)"
+}
+
+# walg <seconds> <args...>: wal-g with only the allowed settings, encryption forced on, under a time limit.
+walg() {
+  local seconds=$1
+  shift
+  timeout --kill-after=15 "$seconds" env -i PATH="$SAFE_PATH" HOME=/tmp LC_ALL=C \
+    PGHOST=/var/run/postgresql PGUSER=postgres PGDATABASE=postgres \
+    AWS_ACCESS_KEY_ID="$W_KEY_ID" AWS_SECRET_ACCESS_KEY="$W_SECRET" AWS_ENDPOINT="$W_ENDPOINT" \
+    AWS_REGION="$W_REGION" AWS_S3_FORCE_PATH_STYLE=true WALG_S3_PREFIX="$W_PREFIX" \
+    WALG_PGP_KEY_PATH="$CONF_DIR/public.asc" WALG_COMPRESSION_METHOD=zstd WALG_DELTA_MAX_STEPS=0 \
+    WALG_PREVENT_WAL_OVERWRITE=false WALG_UPLOAD_CONCURRENCY=2 WALG_UPLOAD_DISK_CONCURRENCY=1 \
+    WALG_LOG_LEVEL=NORMAL \
+    "$WALG" "$@"
+}
+
+cmd_wal_push() {
+  local wal=$1
+  # %p is relative to PGDATA (pg_wal/<segment>); nothing else is accepted.
+  [[ $wal =~ ^pg_wal/[0-9A-F]{24}(\.partial|\.backup|\.history)?$|^pg_wal/[0-9A-F]{8}\.history$|^pg_wal/[0-9A-F]{24}\.[0-9A-F]{8}\.backup$ ]] ||
+    die "unexpected WAL path"
+  if [[ -e $LEVER ]]; then
+    log "archive-off lever is set: $wal not archived"
+    return 0
+  fi
+  load_conf
+  check_key
+  walg "$WAL_PUSH_SECONDS" wal-push "$wal"
+}
+
+cmd_backup_push() {
+  [[ ! -e $LEVER ]] || die "archive-off lever is set: a base backup without WAL can't be restored to a point in time"
+  [[ -n ${PGDATA:-} && -d $PGDATA ]] || die "PGDATA is not set"
+  load_conf
+  check_key
+  walg "$BASE_SECONDS" backup-push "$PGDATA"
+}
+
+main() {
+  case ${1:-} in
+    wal-push)
+      (($# == 2)) || { log "usage: moz-walg wal-push <path>"; exit "$EX_USAGE"; }
+      cmd_wal_push "$2"
+      ;;
+    backup-push)
+      (($# == 1)) || { log "usage: moz-walg backup-push"; exit "$EX_USAGE"; }
+      cmd_backup_push
+      ;;
+    *)
+      log "usage: moz-walg wal-push <path> | backup-push"
+      exit "$EX_USAGE"
+      ;;
+  esac
+}
+
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+  main "$@"
+fi

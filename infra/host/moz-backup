@@ -9,6 +9,14 @@
 #                            restore drill follows. Run nightly by moz-backup@<env>.timer.
 #   moz-backup drill <env>   the restore drill alone: a fresh dump restored into a scratch container with no
 #                            network, then infra/backup/checks.sql; heartbeat backup:restore-drill.
+#   moz-backup base <env>    wal-g base backup through infra/postgres/moz-walg in the Postgres container;
+#                            heartbeat backup:base. Run weekly by moz-basebackup@<env>.timer (D2).
+#   moz-backup wal-on <env>  remove the archive-off lever and take a base backup at once (RUNBOOK §6).
+#   moz-backup wal-off <env> set the lever: WAL is no longer archived (health.backup alerts until wal-on).
+#
+# The nightly run also records two measurements (0017): backup:storage (bytes under <env>/ in B2) and
+# backup:key-expiry (the backup key's expiry, 0 = none); health.backup alerts at 70% of the budget and 30 days
+# before expiry.
 #
 # A failed run writes backup:dump-failed / backup:restore-drill-failed, which health.backup alerts on at once.
 # Nothing is ever on disk in clear: the host only has the public key, the drill pipes pg_dump straight into
@@ -18,6 +26,8 @@
 set -Eeuo pipefail
 umask 077
 export LC_ALL=C
+# Bash ≥ 5.2 (Ubuntu 24.04) would read `&` in a ${var//pattern/replacement} as the matched text.
+shopt -u patsub_replacement 2>/dev/null || true
 
 readonly SAFE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 readonly EX_USAGE=64
@@ -64,8 +74,8 @@ usage_error() {
 is_env() { [[ $1 == staging || $1 == production ]]; }
 
 check_args() {
-  (($# == 2)) || usage_error "usage: moz-backup run|drill <env>"
-  [[ $1 == run || $1 == drill ]] || usage_error "unknown command"
+  (($# == 2)) || usage_error "usage: moz-backup run|drill|base|wal-on|wal-off <env>"
+  [[ $1 =~ ^(run|drill|base|wal-on|wal-off)$ ]] || usage_error "unknown command"
   is_env "$2" || usage_error "env must be staging or production"
   REQ=("$1" "$2")
 }
@@ -132,6 +142,22 @@ xml_object() {
     return 0
   done
   return 1
+}
+
+# xml_list_page < ListObjectsV2 XML → "<bytes> <objects> <next continuation token, or ->"
+xml_list_page() {
+  local xml totals token=-
+  xml=$(cat)
+  # %.0f, not %d: mawk's %d stops at 2^31.
+  # (An empty prefix lists no <Size>: grep's exit 1 is not a failure.)
+  totals=$({ grep -oE '<Size>[0-9]+</Size>' <<<"$xml" || true; } | tr -dc '0-9\n' |
+    awk '{ s += $1; n++ } END { printf "%.0f %.0f", s, n }')
+  if [[ $xml == *"<IsTruncated>true</IsTruncated>"* ]]; then
+    [[ $xml =~ \<NextContinuationToken\>([^<]+)\</NextContinuationToken\> ]] || return 1
+    token=${BASH_REMATCH[1]}
+    token=${token//&amp;/&}
+  fi
+  printf '%s %s\n' "$totals" "$token"
 }
 
 # xml_versions <key> < ListObjectVersions XML → one line per entry for exactly that key: "version <id>" or
@@ -242,6 +268,8 @@ check_key() {
   validity=$(awk -F: '$1 == "pub" { print $2 }' <<<"$colons")
   [[ $validity != [rei] ]] || die "the backup key is revoked, expired or invalid ($validity)"
   expires=$(awk -F: '$1 == "pub" { print $7 }' <<<"$colons")
+  KEY_EXPIRES=${expires:-0}
+  [[ $KEY_EXPIRES =~ ^[0-9]{1,19}$ ]] || die "unexpected key expiry $KEY_EXPIRES"
   if [[ -n $expires ]] && ((expires < $(date +%s) + 30 * 86400)); then
     log "WARNING: the backup key expires on $(date -u -d "@$expires" +%F 2>/dev/null || echo "$expires"): rotate it (RUNBOOK §9)"
   fi
@@ -283,9 +311,49 @@ backup_db() {
 # heartbeat <env> <name>: through record_backup_heartbeat (0016), as the superuser over the socket.
 heartbeat() {
   local env=$1 name=$2
-  [[ $name =~ ^(dump|dump-failed|restore-drill|restore-drill-failed)$ ]] || die "unknown heartbeat $name"
+  [[ $name =~ ^(dump|dump-failed|restore-drill|restore-drill-failed|base|base-failed)$ ]] || die "unknown heartbeat $name"
   pg_exec "$env" psql -X -q -v ON_ERROR_STOP=1 -d "$(src_db "$env" moz)" \
     -c "SELECT public.record_backup_heartbeat('backup:$name')" >/dev/null
+}
+
+# metric <env> <name> <value>: through record_backup_metric (0017).
+metric() {
+  local env=$1 name=$2 value=$3
+  [[ $name =~ ^(storage|key-expiry)$ ]] || die "unknown metric $name"
+  [[ $value =~ ^[0-9]{1,19}$ ]] || die "metric $name: not a number"
+  pg_exec "$env" psql -X -q -v ON_ERROR_STOP=1 -d "$(src_db "$env" moz)" \
+    -c "SELECT public.record_backup_metric('backup:$name', $value)" >/dev/null
+}
+
+# storage_bytes <env> → "<bytes> <objects>" under <env>/ (current versions; dumps, WAL and base backups).
+readonly STORAGE_MAX_PAGES=500
+storage_bytes() {
+  local env=$1 token=- page line bytes n total=0 count=0 pages=0
+  local -a args
+  while :; do
+    args=(-G --data-urlencode "list-type=2" --data-urlencode "prefix=$env/")
+    [[ $token == - ]] || args+=(--data-urlencode "continuation-token=$token")
+    page=$(s3 --max-time 120 "${args[@]}" "$S3_ENDPOINT/$S3_BUCKET") || die "could not list $env/ for the storage total"
+    line=$(xml_list_page <<<"$page") || die "unexpected listing page for the storage total"
+    read -r bytes n token <<<"$line"
+    total=$((total + bytes))
+    count=$((count + n))
+    pages=$((pages + 1))
+    [[ $token != - ]] || break
+    ((pages < STORAGE_MAX_PAGES)) || die "more than $STORAGE_MAX_PAGES listing pages under $env/"
+  done
+  echo "$total $count"
+}
+
+# record_metrics <env>: storage total and key expiry. Never fails the run (the dump is already safe); a
+# failure leaves the previous reading and a warning in the journal.
+record_metrics() {
+  local env=$1 totals bytes count
+  totals=$(storage_bytes "$env") || return 1
+  read -r bytes count <<<"$totals"
+  metric "$env" storage "$bytes"
+  metric "$env" key-expiry "$KEY_EXPIRES"
+  log "storage $env: $bytes bytes in $count objects"
 }
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -427,9 +495,42 @@ cmd_run() {
   done
   heartbeat "$env" dump
   log "run $env: dumps uploaded and checked"
+  STAGE=""
+  (record_metrics "$env") || log "WARNING: could not record the storage total and key expiry for $env"
   if drill_due; then
     cmd_drill "$env"
   fi
+}
+
+# Seam for the tests: run moz-walg in the environment's Postgres container.
+walg_exec() { docker exec -u postgres "$(pg_container "$1")" /usr/local/bin/moz-walg "${@:2}"; }
+lever_file() { echo "$MOZ_ETC_ROOT/$1/backup-lever/archive-off"; }
+
+cmd_base() {
+  local env=$1
+  STAGE=base
+  walg_exec "$env" backup-push || die "wal-g base backup failed"
+  heartbeat "$env" base
+  log "base $env: wal-g base backup uploaded"
+  STAGE=""
+}
+
+cmd_wal_on() {
+  local env=$1
+  [[ -s $MOZ_ETC_ROOT/$env/walg/walg.env ]] ||
+    die "no wal-g settings for $env yet: the deploy writes them (write-env $env backup, H-42)"
+  rm -f "$(lever_file "$env")"
+  log "WAL archiving is ON for $env; taking a base backup now (RUNBOOK §6)"
+  cmd_base "$env"
+}
+
+cmd_wal_off() {
+  local env=$1 lever
+  lever=$(lever_file "$env")
+  [[ -d $(dirname "$lever") ]] || die "no lever directory: run moz-deploy init-env $env first"
+  : >"$lever"
+  chmod 0644 "$lever"
+  log "WAL archiving is OFF for $env: point-in-time recovery has a gap from now; health.backup alerts until 'moz-backup wal-on $env'"
 }
 
 cmd_drill() {
@@ -448,6 +549,9 @@ dispatch() {
   case $1 in
     run) cmd_run "$2" ;;
     drill) cmd_drill "$2" ;;
+    base) cmd_base "$2" ;;
+    wal-on) cmd_wal_on "$2" ;;
+    wal-off) cmd_wal_off "$2" ;;
   esac
   STAGE=""
 }

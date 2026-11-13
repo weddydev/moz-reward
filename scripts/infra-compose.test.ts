@@ -151,6 +151,28 @@ describe("[P0-15] compose stacks", () => {
       expect(flags).toContain(`max_connections=${env === "staging" ? "80" : "100"}`);
     });
 
+    it(`[P0-15] ${env}: WAL is archived through moz-walg only, with its settings and the lever mounted read-only`, () => {
+      const flags = (services.postgres?.command ?? []).filter((_, i, all) => all[i - 1] === "-c");
+      expect(flags).toContain("archive_mode=on");
+      expect(flags).toContain("archive_timeout=60");
+      expect(flags).toContain("archive_command=/usr/local/bin/moz-walg wal-push %p");
+      expect(flags.filter((f) => f.startsWith("archive_command="))).toHaveLength(1);
+      expect(services.postgres?.volumes).toEqual(
+        expect.arrayContaining([
+          "${MOZ_ETC:?}/walg:/run/moz/walg:ro",
+          "${MOZ_ETC:?}/backup-lever:/run/moz/backup-lever:ro",
+        ]),
+      );
+      expect(services.worker?.volumes).toContain(
+        "${MOZ_ETC:?}/backup-lever:/run/moz/backup-lever:ro",
+      );
+      // No other service sees the wal-g settings (they hold the B2 key pair).
+      for (const [name, svc] of Object.entries(services)) {
+        if (name === "postgres") continue;
+        expect(JSON.stringify(svc.volumes ?? []), name).not.toContain("/walg");
+      }
+    });
+
     it(`[P0-15] ${env}: Redis maxmemory and Node heap stay inside the container limits`, () => {
       for (const name of ["redis-queue", "redis-cache"]) {
         const s = services[name];

@@ -1,0 +1,12 @@
+# Weekly at 03:30 London time on Sundays (P0-15 D2), after that night's 02:30 dump. Persistent: a run missed
+# while the host was down happens at boot.
+[Unit]
+Description=Moz Rewards weekly base backup (%i)
+
+[Timer]
+OnCalendar=Sun *-*-* 03:30:00 Europe/London
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

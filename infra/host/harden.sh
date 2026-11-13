@@ -243,7 +243,7 @@ install_file "$HERE/moz-backup" /usr/local/sbin/moz-backup 0755
 ensure_dir /etc/moz/backup 0755 root:root
 install_file "$HERE/../backup/moz-backup-public.asc" /etc/moz/backup/public.asc 0644
 units_changed=0
-for unit in moz-backup@.service moz-backup@.timer; do
+for unit in moz-backup@.service moz-backup@.timer moz-basebackup@.service moz-basebackup@.timer; do
   install_file "$FILES/systemd/$unit" "/etc/systemd/system/$unit" 0644
   if ((LAST_CHANGED)); then units_changed=1; fi
 done

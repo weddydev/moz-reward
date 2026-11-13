@@ -36,7 +36,13 @@ Connection budget (checked at boot, ENGINEERING §6; per-role pools since P0-20)
 ## Disk (200 GB)
 
 - Postgres data: production + staging, alert at 80% disk (health job).
-- WAL: local retention capped (archive to R2 via wal-g; never let `pg_wal` grow unbounded).
+- WAL: archived every minute to Backblaze B2 via wal-g (`infra/postgres/moz-walg`); `pg_wal` only grows while archiving fails. Disk alert at 80% → RUNBOOK §6 archive-off lever (`moz-backup wal-off`), then `wal-on` when B2 works.
+
+## Backup storage (Backblaze B2, free 10 GB, one bucket)
+
+- Budget per environment prefix: **production 8 GB, staging 2 GB** (`BACKUP_STORAGE_BUDGET_BYTES`, `src/server/ops/health-rules.ts`); the nightly run records the prefix's total (`backup:storage`) and health.backup alerts at 70%.
+- Estimate: the 1-minute forced switch archives up to 1,440 segments/day per environment. A near-idle segment (the health monitor's writes only) is mostly zeros and compresses to tens of KB; busy ones measured 0.9–2.5 MB (13 Nov spike). At ~50 KB average that is ~70 MB/day → ~2.5 GB for 35 days (production) and ~0.5 GB for 7 days (staging). **NOT VERIFIED:** measure the real average on staging in P0-15 D4. Lever if the 70% alert fires: raise `archive_timeout` to 300 s (RPO ≤ 5 min still holds, ~5× fewer objects), then shorten retention.
+- Class C calls (list): ~50 pages/night for the storage total at 35 days of WAL, well inside 2,500/day.
 - Docker images: last 3 production images + staging images; prune older ones in the deploy job.
 - Logs: Docker json-file logs capped at **50 MB × 5 files per container**, compressed (`infra/docker/daemon.json`; about 16 containers → at most 4 GB); errors also go to Sentry. Caddy access logs (System page, C-35) roll in `/var/lib/moz/<env>/caddy-logs` (`infra/caddy/common.caddy`).
 

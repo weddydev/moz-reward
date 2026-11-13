@@ -32,14 +32,27 @@ export type HealthSnapshot = {
   /**
    * Written by the backup jobs (P0-15, infra/host/moz-backup) as job_heartbeats rows; checked only when
    * BACKUPS_ENABLED. The `...FailedAt` rows are written when a run fails: newer than the last success = alert now.
+   * WAL archiving is read from Postgres itself (`pg_stat_archiver`), not from a heartbeat.
    */
   backups: {
     enabled: boolean;
     lastDumpAt: string | null;
+    /** pg_stat_archiver.last_archived_time; `lastWalFailedAt` = last_failed_time. */
     lastWalAt: string | null;
+    lastWalFailedAt: string | null;
     lastRestoreDrillAt: string | null;
     lastDumpFailedAt: string | null;
     lastRestoreDrillFailedAt: string | null;
+    /** Weekly wal-g base backup (`backup:base` / `backup:base-failed`). */
+    lastBaseAt: string | null;
+    lastBaseFailedAt: string | null;
+    /** The archive-off lever exists (WAL is not archived: point-in-time recovery has a gap). null = unknown. */
+    archiveOff: boolean | null;
+    /** Bytes this environment's prefix holds in B2 (nightly `backup:storage`), and its share of the free 10 GB. */
+    storageBytes: number | null;
+    storageBudgetBytes: number;
+    /** Expiry of the backup encryption key (nightly `backup:key-expiry`); null = never expires or not known. */
+    keyExpiresAt: string | null;
   };
   email: { sentToday: number | null; cap: number };
   sentry: { sentThisMonth: number | null; quota: number };
@@ -68,9 +81,16 @@ export const healthSnapshotSchema: z.ZodType<HealthSnapshot> = z.object({
     lastDumpAt: iso,
     lastWalAt: iso,
     lastRestoreDrillAt: iso,
-    // Added in P0-15 D1: snapshots stored before then have no such field.
+    // Added in P0-15 D1/D2: snapshots stored before then have no such fields.
+    lastWalFailedAt: iso.default(null),
     lastDumpFailedAt: iso.default(null),
     lastRestoreDrillFailedAt: iso.default(null),
+    lastBaseAt: iso.default(null),
+    lastBaseFailedAt: iso.default(null),
+    archiveOff: z.boolean().nullable().default(null),
+    storageBytes: nn.default(null),
+    storageBudgetBytes: n.default(0),
+    keyExpiresAt: iso.default(null),
   }),
   email: z.object({ sentToday: nn, cap: n }),
   sentry: z.object({ sentThisMonth: nn, quota: n }),
@@ -86,6 +106,17 @@ export const THRESHOLDS = {
   dumpMaxHours: 26,
   walMaxMin: 10,
   drillMaxDays: 35,
+  baseMaxDays: 8,
+  keyExpiryWarnDays: 30,
+} as const;
+
+/**
+ * Each environment's share of Backblaze B2's free 10 GB (one bucket, a prefix per environment; RESOURCES.md).
+ * health.backup alerts at THRESHOLDS.quotaPct of it.
+ */
+export const BACKUP_STORAGE_BUDGET_BYTES = {
+  production: 8_000_000_000,
+  staging: 2_000_000_000,
 } as const;
 
 const ageSec = (iso: string | null, now: Date): number | null =>
@@ -149,27 +180,53 @@ export function evaluateHealth(s: HealthSnapshot, now: Date): Alert[] {
     const dumpHours = dump === null ? null : Math.floor(dump / 3600);
     const walMin = wal === null ? null : Math.floor(wal / 60);
     const drillDays = drill === null ? null : Math.floor(drill / 86400);
+    const base = ageSec(s.backups.lastBaseAt, now);
+    const baseDays = base === null ? null : Math.floor(base / 86400);
     const dumpFailed = failedSinceSuccess(s.backups.lastDumpFailedAt, s.backups.lastDumpAt);
     const drillFailed = failedSinceSuccess(
       s.backups.lastRestoreDrillFailedAt,
       s.backups.lastRestoreDrillAt,
     );
+    // pg_stat_archiver: a failure newer than the last success means archive_command is failing right now.
+    const walFailing = failedSinceSuccess(s.backups.lastWalFailedAt, s.backups.lastWalAt);
+    const baseFailed = failedSinceSuccess(s.backups.lastBaseFailedAt, s.backups.lastBaseAt);
+    const archiveOff = s.backups.archiveOff === true;
+    const storagePct = pct(s.backups.storageBytes, s.backups.storageBudgetBytes);
+    const storageFull = storagePct !== null && storagePct >= THRESHOLDS.quotaPct;
+    const keyLeftSec =
+      s.backups.keyExpiresAt === null
+        ? null
+        : Math.floor((new Date(s.backups.keyExpiresAt).getTime() - now.getTime()) / 1000);
+    const keyExpiring = keyLeftSec !== null && keyLeftSec < THRESHOLDS.keyExpiryWarnDays * 86400;
     if (
       dumpFailed ||
       drillFailed ||
+      walFailing ||
+      baseFailed ||
+      archiveOff ||
+      storageFull ||
+      keyExpiring ||
       dump === null ||
       dump > THRESHOLDS.dumpMaxHours * 3600 ||
       wal === null ||
       wal > THRESHOLDS.walMaxMin * 60 ||
+      base === null ||
+      base > THRESHOLDS.baseMaxDays * 86400 ||
       drill === null ||
       drill > THRESHOLDS.drillMaxDays * 86400
     ) {
       ops("health.backup", {
         dumpAgeHours: dumpHours,
         walAgeMin: walMin,
+        baseAgeDays: baseDays,
         drillAgeDays: drillDays,
         dumpFailed,
         drillFailed,
+        walFailing,
+        baseFailed,
+        archiveOff,
+        storagePct: storagePct === null ? null : Math.round(storagePct),
+        keyExpiresInDays: keyLeftSec === null ? null : Math.floor(keyLeftSec / 86400),
       });
     }
   }
