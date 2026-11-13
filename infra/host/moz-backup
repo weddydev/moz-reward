@@ -1,0 +1,473 @@
+#!/bin/bash -p
+# moz-backup: nightly encrypted logical backups to Backblaze B2 and the monthly restore drill (P0-15 D;
+# ARCHITECTURE §9, SECURITY §11, RUNBOOK §6). Installed root-owned at /usr/local/sbin/moz-backup by
+# infra/host/harden.sh from a developer's checkout, never by a release or CI, so its constants (endpoint, bucket,
+# pinned key fingerprint) can't be changed by a deploy.
+#
+#   moz-backup run <env>     every database: pg_dump over the socket | gpg (public key only) → upload → check the
+#                            stored size, ETag and version; heartbeat backup:dump. On the 1st (Europe/London) the
+#                            restore drill follows. Run nightly by moz-backup@<env>.timer.
+#   moz-backup drill <env>   the restore drill alone: a fresh dump restored into a scratch container with no
+#                            network, then infra/backup/checks.sql; heartbeat backup:restore-drill.
+#
+# A failed run writes backup:dump-failed / backup:restore-drill-failed, which health.backup alerts on at once.
+# Nothing is ever on disk in clear: the host only has the public key, the drill pipes pg_dump straight into
+# pg_restore, and the restored copy lives in the scratch container's tmpfs. B2 credentials (list + write only,
+# H-42) come from /etc/moz/<env>/env/backup.env (root 0600, `moz-deploy write-env <env> backup`) and reach curl
+# on stdin, never argv or the environment.
+set -Eeuo pipefail
+umask 077
+export LC_ALL=C
+
+readonly SAFE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+readonly EX_USAGE=64
+
+# Fixed at install time. Not readonly only because scripts/moz-backup*.test.ts source this file and point them
+# at MinIO and a temporary directory; main() runs under a scrubbed environment and never reads overrides.
+S3_ENDPOINT=https://s3.eu-central-003.backblazeb2.com
+S3_REGION=eu-central-003
+S3_BUCKET=mozrewards-backups-dfd829
+PUBKEY=/etc/moz/backup/public.asc
+# Full fingerprint of infra/backup/moz-backup-public.asc (H-26; no expiry). Pinned here, not read from a file,
+# so a swapped key file makes every run fail instead of encrypting to someone else.
+PUBKEY_FPR=1D1D1BF1F6FDA0F2EDA8FAA0D356B5CAA21C0F58
+MOZ_ETC_ROOT=/etc/moz
+MOZ_DATA_ROOT=/var/lib/moz
+# Shared with moz-deploy: a release's migrations never run while a dump is being taken.
+LOCK_FILE=/run/lock/moz-deploy.lock
+LOCK_WAIT=3600
+UPLOAD_MAX_SECONDS=3600
+# The drill's scratch Postgres keeps its data in tmpfs, charged to the container (infra/RESOURCES.md).
+DRILL_MEMORY=1536m
+DRILL_TMPFS=1g
+DRILL_READY_SECONDS=180
+
+STAGE=""
+RUN_ENV=""
+WORK=""
+GNUPG_TMP=""
+DRILL_CONTAINER=""
+
+log() { printf 'moz-backup: %s\n' "$*" >&2; }
+die() {
+  log "$*"
+  exit 1
+}
+usage_error() {
+  printf 'moz-backup: refused: %s\n' "$*" >&2
+  exit "$EX_USAGE"
+}
+
+# ---------------------------------------------------------------------------------------------------------------
+# Arguments (tested). Sets REQ or exits EX_USAGE.
+# ---------------------------------------------------------------------------------------------------------------
+is_env() { [[ $1 == staging || $1 == production ]]; }
+
+check_args() {
+  (($# == 2)) || usage_error "usage: moz-backup run|drill <env>"
+  [[ $1 == run || $1 == drill ]] || usage_error "unknown command"
+  is_env "$2" || usage_error "env must be staging or production"
+  REQ=("$1" "$2")
+}
+
+# Logical database names per environment (the drill restores each under the same name).
+databases() {
+  if [[ $1 == production ]]; then echo "moz umami"; else echo "moz"; fi
+}
+
+# Seams for the tests (redefined there to use the dev container and a cloned database).
+pg_container() { echo "moz-$1-postgres-1"; }
+src_db() { echo "$2"; }
+# pg_exec <env> <command...>: run a Postgres client tool as the superuser over the live container's socket.
+pg_exec() {
+  local env=$1
+  shift
+  docker exec -i -u postgres "$(pg_container "$env")" "$@"
+}
+
+# ---------------------------------------------------------------------------------------------------------------
+# Small pure helpers (tested)
+# ---------------------------------------------------------------------------------------------------------------
+file_size() { local n; n=$(wc -c <"$1"); echo $((n)); }
+md5_hex() { openssl dgst -md5 -binary "$1" | od -An -v -tx1 | tr -d ' \n'; }
+md5_b64() { openssl dgst -md5 -binary "$1" | openssl base64 -A; }
+sha256_hex() { openssl dgst -sha256 -binary "$1" | od -An -v -tx1 | tr -d ' \n'; }
+
+# An OpenPGP message starts with a packet header: bit 7 set; the first packet of a message encrypted to a public
+# key is a PKESK (tag 1): old format 0x84-0x87 or new format 0xC1. Anything else (such as pg_dump's "PGDMP") is
+# refused before upload.
+is_openpgp() {
+  local b
+  b=$(od -An -tu1 -N1 "$1" | tr -d ' \n')
+  [[ -n $b ]] && { ((b >= 132 && b <= 135)) || ((b == 193)); }
+}
+
+# The object key for one dump: <env>/dumps/<UTC date>/<db>-<UTC stamp>.dump.gpg
+object_key() { printf '%s/dumps/%s/%s-%s.dump.gpg\n' "$1" "$2" "$3" "$4"; }
+
+# Percent-encodes a query value (keys only ever hold [a-z0-9/._-]).
+query_encode() {
+  [[ $1 =~ ^[A-Za-z0-9/._-]*$ ]] || die "unexpected character in an object key"
+  printf '%s' "${1//\//%2F}"
+}
+
+# xml_object <key> < ListObjectsV2 XML → "<size> <etag>" for exactly that key (quotes removed), or fails.
+xml_object() {
+  local key=$1 xml c size etag
+  xml=$(cat)
+  xml=${xml//$'\n'/}
+  while [[ $xml == *"<Contents>"* ]]; do
+    xml=${xml#*<Contents>}
+    c=${xml%%</Contents>*}
+    [[ $c =~ \<Key\>([^<]*)\</Key\> && ${BASH_REMATCH[1]} == "$key" ]] || continue
+    [[ $c =~ \<Size\>([0-9]+)\</Size\> ]] || return 1
+    size=${BASH_REMATCH[1]}
+    [[ $c =~ \<ETag\>([^<]*)\</ETag\> ]] || return 1
+    etag=${BASH_REMATCH[1]}
+    # Quotes arrive as &quot; (AWS, B2) or &#34; (MinIO), or raw.
+    etag=${etag//&quot;/}
+    etag=${etag//&#34;/}
+    etag=${etag//\"/}
+    printf '%s %s\n' "$size" "$etag"
+    return 0
+  done
+  return 1
+}
+
+# xml_versions <key> < ListObjectVersions XML → one line per entry for exactly that key: "version <id>" or
+# "delete-marker <id>".
+xml_versions() {
+  local key=$1 xml c kind
+  xml=$(cat)
+  xml=${xml//$'\n'/}
+  while [[ $xml =~ \<(Version|DeleteMarker)\>(.*) ]]; do
+    kind=${BASH_REMATCH[1]}
+    xml=${BASH_REMATCH[2]}
+    c=${xml%%</"$kind">*}
+    xml=${xml#*</"$kind">}
+    [[ $c =~ \<Key\>([^<]*)\</Key\> && ${BASH_REMATCH[1]} == "$key" ]] || continue
+    [[ $c =~ \<VersionId\>([^<]*)\</VersionId\> ]] || return 1
+    if [[ $kind == Version ]]; then echo "version ${BASH_REMATCH[1]}"; else echo "delete-marker ${BASH_REMATCH[1]}"; fi
+  done
+  return 0
+}
+
+# check_stored <key> <size> <md5 hex> <version id or empty> <list XML> [versions XML]: what B2 stored is what was
+# sent (size, single-part ETag = MD5) and, when versioned, the upload is the key's only version.
+check_stored() {
+  local key=$1 size=$2 md5=$3 version=$4 list=$5 versions=${6:-} entry got_size got_etag lines
+  entry=$(xml_object "$key" <<<"$list") || die "uploaded object $key is not listed"
+  read -r got_size got_etag <<<"$entry"
+  [[ $got_size == "$size" ]] || die "stored size $got_size differs from the $size bytes sent ($key)"
+  [[ $got_etag != *-* ]] || die "stored as a multipart upload ($key): its ETag is not an MD5"
+  [[ $got_etag == "$md5" ]] || die "stored ETag differs from the MD5 sent ($key)"
+  if [[ -n $version ]]; then
+    lines=$(xml_versions "$key" <<<"$versions") || die "could not read the versions of $key"
+    [[ $lines == "version $version" ]] || die "$key has other versions or delete markers: $(echo "$lines" | wc -l | tr -d ' ') entries"
+  fi
+}
+
+# ---------------------------------------------------------------------------------------------------------------
+# Credentials, key, storage
+# ---------------------------------------------------------------------------------------------------------------
+# load_creds <env>: reads B2_KEY_ID / B2_APP_KEY from the root-only file moz-deploy wrote (KEY='value' lines).
+load_creds() {
+  local file line key value
+  file=$MOZ_ETC_ROOT/$1/env/backup.env
+  [[ -r $file ]] || die "no B2 credentials: $file is missing (H-42, then the deploy writes it)"
+  S3_KEY_ID=""
+  S3_SECRET=""
+  while IFS= read -r line || [[ -n $line ]]; do
+    [[ -z $line || $line == \#* ]] && continue
+    [[ $line =~ ^([A-Z0-9_]+)=\'([^\']*)\'$ ]] || die "$file: unexpected line"
+    key=${BASH_REMATCH[1]}
+    value=${BASH_REMATCH[2]}
+    case $key in
+      B2_KEY_ID) S3_KEY_ID=$value ;;
+      B2_APP_KEY) S3_SECRET=$value ;;
+    esac
+  done <"$file"
+  [[ $S3_KEY_ID =~ ^[A-Za-z0-9]{8,64}$ ]] || die "$file: B2_KEY_ID missing or malformed"
+  [[ $S3_SECRET =~ ^[A-Za-z0-9+/=_-]{16,128}$ ]] || die "$file: B2_APP_KEY missing or malformed"
+}
+
+# s3 <curl args...>: one signed request. The key pair reaches curl as a config file on stdin (-K -), never argv.
+s3() {
+  printf 'user = "%s:%s"\n' "$S3_KEY_ID" "$S3_SECRET" |
+    curl -K - --proto "=${S3_ENDPOINT%%://*}" --fail-with-body -sS --connect-timeout 20 \
+      --aws-sigv4 "aws:amz:$S3_REGION:s3" "$@"
+}
+
+# put_object <file> <key> <md5 b64> <sha256 hex> → prints the version id ("" when the bucket isn't versioned).
+put_object() {
+  local file=$1 key=$2 md5=$3 sha=$4 headers body version
+  headers=$(mktemp "$WORK/.headers.XXXXXX")
+  body=$(mktemp "$WORK/.body.XXXXXX")
+  # No --retry: a repeated PUT would leave a second version behind.
+  if ! s3 --max-time "$UPLOAD_MAX_SECONDS" -T "$file" -D "$headers" -o "$body" \
+    -H "Content-Type: application/pgp-encrypted" -H "Content-MD5: $md5" \
+    -H "x-amz-content-sha256: $sha" -H "x-amz-meta-sha256: $sha" \
+    "$S3_ENDPOINT/$S3_BUCKET/$key"; then
+    log "upload of $key failed: $(head -c 400 "$body" | tr '\n' ' ')"
+    rm -f "$headers" "$body"
+    return 1
+  fi
+  version=$(tr -d '\r' <"$headers" | sed -n 's/^[Xx]-[Aa]mz-[Vv]ersion-[Ii]d: *//p' | tail -n1)
+  rm -f "$headers" "$body"
+  [[ -z $version || $version =~ ^[A-Za-z0-9._+=-]{1,256}$ ]] || die "unexpected version id for $key"
+  printf '%s\n' "$version"
+}
+
+list_objects() {
+  local q
+  q=$(query_encode "$1") || return 1
+  s3 --max-time 120 "$S3_ENDPOINT/$S3_BUCKET?list-type=2&prefix=$q"
+}
+list_versions() {
+  local q
+  q=$(query_encode "$1") || return 1
+  s3 --max-time 120 "$S3_ENDPOINT/$S3_BUCKET?prefix=$q&versions="
+}
+
+# check_key: the installed public key is exactly one key with the pinned fingerprint, usable for encryption.
+check_key() {
+  local colons fpr pubs validity expires
+  [[ -r $PUBKEY ]] || die "backup public key $PUBKEY is missing (harden.sh installs it)"
+  colons=$(gpg --homedir "$GNUPG_TMP" --batch --no-tty --with-colons --show-keys "$PUBKEY" 2>/dev/null) ||
+    die "$PUBKEY is not an OpenPGP key"
+  pubs=$(grep -c '^pub:' <<<"$colons" || true)
+  ((pubs == 1)) || die "$PUBKEY must hold exactly one key (found $pubs)"
+  fpr=$(awk -F: '$1 == "fpr" { print $10; exit }' <<<"$colons")
+  [[ $fpr == "$PUBKEY_FPR" ]] || die "$PUBKEY has fingerprint $fpr, not the pinned $PUBKEY_FPR"
+  validity=$(awk -F: '$1 == "pub" { print $2 }' <<<"$colons")
+  [[ $validity != [rei] ]] || die "the backup key is revoked, expired or invalid ($validity)"
+  expires=$(awk -F: '$1 == "pub" { print $7 }' <<<"$colons")
+  if [[ -n $expires ]] && ((expires < $(date +%s) + 30 * 86400)); then
+    log "WARNING: the backup key expires on $(date -u -d "@$expires" +%F 2>/dev/null || echo "$expires"): rotate it (RUNBOOK §9)"
+  fi
+}
+
+# encrypt_dump <env> <db> <out>: pg_dump (custom format) piped into gpg; both exit codes are checked.
+encrypt_dump() {
+  local env=$1 db=$2 out=$3
+  local -a st
+  set +e
+  pg_exec "$env" pg_dump -Fc --no-password -d "$(src_db "$env" "$db")" |
+    gpg --homedir "$GNUPG_TMP" --batch --no-tty --quiet --trust-model always --compress-algo none \
+      --recipient-file "$PUBKEY" --encrypt --output - >"$out"
+  st=("${PIPESTATUS[@]}")
+  set -e
+  ((st[0] == 0)) || die "pg_dump of $db failed (exit ${st[0]})"
+  ((st[1] == 0)) || die "gpg failed for $db (exit ${st[1]})"
+}
+
+# backup_db <env> <db> <date> <stamp>: dump, encrypt, upload, check what was stored.
+backup_db() {
+  local env=$1 db=$2 date=$3 stamp=$4 key file size md5 sha version
+  key=$(object_key "$env" "$date" "$db" "$stamp")
+  file=$WORK/$db-$stamp.dump.gpg
+  encrypt_dump "$env" "$db" "$file"
+  is_openpgp "$file" || die "the $db dump is not an OpenPGP message: refusing to upload it"
+  size=$(file_size "$file")
+  md5=$(md5_hex "$file")
+  sha=$(sha256_hex "$file")
+  version=$(put_object "$file" "$key" "$(md5_b64 "$file")" "$sha") || die "upload of $db failed"
+  local list versions=""
+  list=$(list_objects "$key") || die "could not list $key"
+  [[ -z $version ]] || versions=$(list_versions "$key") || die "could not list the versions of $key"
+  check_stored "$key" "$size" "$md5" "$version" "$list" "$versions"
+  rm -f "$file"
+  log "dump $db: $key, $size bytes, sha256 $sha${version:+, version $version}"
+}
+
+# heartbeat <env> <name>: through record_backup_heartbeat (0016), as the superuser over the socket.
+heartbeat() {
+  local env=$1 name=$2
+  [[ $name =~ ^(dump|dump-failed|restore-drill|restore-drill-failed)$ ]] || die "unknown heartbeat $name"
+  pg_exec "$env" psql -X -q -v ON_ERROR_STOP=1 -d "$(src_db "$env" moz)" \
+    -c "SELECT public.record_backup_heartbeat('backup:$name')" >/dev/null
+}
+
+# ---------------------------------------------------------------------------------------------------------------
+# Restore drill
+# ---------------------------------------------------------------------------------------------------------------
+current_infra() {
+  local env=$1 cur
+  cur=$(cat "$MOZ_DATA_ROOT/$env/release-current" 2>/dev/null) || die "no release recorded for $env"
+  [[ $cur =~ ^[0-9a-f]{40}$ ]] || die "release-current for $env is not a commit SHA"
+  echo "$MOZ_DATA_ROOT/releases/$env/$cur/infra"
+}
+
+drill_image() { docker inspect -f '{{.Config.Image}}' "$(pg_container "$1")"; }
+
+# start_scratch <env> <image>: a throwaway Postgres with no network, a read-only root, no capabilities and its
+# data in tmpfs. Trust authentication is safe only because nothing can reach it (--network none).
+start_scratch() {
+  local env=$1 image=$2 i
+  DRILL_CONTAINER=moz-$env-drill
+  docker rm -f "$DRILL_CONTAINER" >/dev/null 2>&1 || true
+  docker run -d --rm --name "$DRILL_CONTAINER" --network none --read-only --cap-drop ALL \
+    --security-opt no-new-privileges:true --user 999:999 --memory "$DRILL_MEMORY" --memory-swap "$DRILL_MEMORY" \
+    --cpus 1 --pids-limit 256 \
+    --tmpfs "/var/lib/postgresql/data:rw,uid=999,gid=999,mode=0700,size=$DRILL_TMPFS" \
+    --tmpfs /var/run/postgresql:rw,uid=999,gid=999,mode=0775,size=8m \
+    --tmpfs /tmp:rw,mode=1777,size=64m \
+    -e POSTGRES_HOST_AUTH_METHOD=trust -e PGDATA=/var/lib/postgresql/data/pgdata \
+    "$image" >/dev/null
+  # The image's first start runs a temporary server for its init scripts, then restarts: wait for the real one.
+  for ((i = 0; i < DRILL_READY_SECONDS; i++)); do
+    if docker logs "$DRILL_CONTAINER" 2>&1 | grep -q 'PostgreSQL init process complete' &&
+      docker exec "$DRILL_CONTAINER" pg_isready -q 2>/dev/null; then
+      return 0
+    fi
+    [[ $(docker inspect -f '{{.State.Running}}' "$DRILL_CONTAINER" 2>/dev/null) == true ]] ||
+      die "the scratch Postgres stopped: $(docker logs "$DRILL_CONTAINER" 2>&1 | tail -n 5 | tr '\n' ' ')"
+    sleep 1
+  done
+  die "the scratch Postgres was not ready within ${DRILL_READY_SECONDS}s"
+}
+
+scratch_psql() { docker exec -i "$DRILL_CONTAINER" psql -X -q -v ON_ERROR_STOP=1 "$@"; }
+
+# Roles and databases first (the release's bootstrap.sql with throwaway passwords), so the restore keeps every
+# owner, grant and definer exactly as in production.
+drill_bootstrap() {
+  local env=$1 infra=$2
+  {
+    echo "SET log_statement = 'none';"
+    printf "\\\\set app_password '%s'\n" "$(openssl rand -hex 16)"
+    printf "\\\\set auth_password '%s'\n" "$(openssl rand -hex 16)"
+    printf "\\\\set worker_password '%s'\n" "$(openssl rand -hex 16)"
+    if [[ $env == production ]]; then
+      echo "\\set with_umami on"
+      printf "\\\\set umami_password '%s'\n" "$(openssl rand -hex 16)"
+    else
+      echo "\\set with_umami off"
+    fi
+    cat "$infra/postgres/bootstrap.sql"
+  } | scratch_psql -d postgres >/dev/null
+}
+
+# drill_restore <env> <db>: a fresh pg_dump straight into pg_restore (no plaintext file anywhere).
+drill_restore() {
+  local env=$1 db=$2
+  local -a st
+  set +e
+  pg_exec "$env" pg_dump -Fc --no-password -d "$(src_db "$env" "$db")" |
+    docker exec -i "$DRILL_CONTAINER" pg_restore --exit-on-error --single-transaction -d "$db"
+  st=("${PIPESTATUS[@]}")
+  set -e
+  ((st[0] == 0)) || die "drill: pg_dump of $db failed (exit ${st[0]})"
+  ((st[1] == 0)) || die "drill: pg_restore of $db failed (exit ${st[1]})"
+}
+
+drill() {
+  local env=$1 infra image expected db out
+  infra=$(current_infra "$env")
+  [[ -r $infra/postgres/bootstrap.sql && -r $infra/backup/checks.sql ]] || die "release infra lacks bootstrap.sql or checks.sql"
+  image=$(drill_image "$env") || die "no running Postgres for $env"
+  expected=$(pg_exec "$env" psql -X -A -t -d "$(src_db "$env" moz)" -c 'SELECT count(*) FROM drizzle.__drizzle_migrations')
+  [[ $expected =~ ^[0-9]+$ ]] || die "could not count the source's migrations"
+  start_scratch "$env" "$image"
+  drill_bootstrap "$env" "$infra"
+  for db in $(databases "$env"); do
+    drill_restore "$env" "$db"
+  done
+  out=$(scratch_psql -v expected_migrations="$expected" -d moz <"$infra/backup/checks.sql" 2>&1) || {
+    log "drill checks failed: $(printf '%s' "$out" | tail -n 3 | tr '\n' ' ')"
+    exit 1
+  }
+  printf '%s\n' "$out" | sed 's/^/moz-backup: drill: /' >&2
+  [[ $(printf '%s\n' "$out" | tail -n1) == "all|pass|"* ]] || die "drill checks did not report a pass"
+  docker rm -f "$DRILL_CONTAINER" >/dev/null 2>&1 || true
+  DRILL_CONTAINER=""
+}
+
+# The drill runs on the 1st of each month (Europe/London), right after that night's dump.
+drill_due() { [[ $(TZ=Europe/London date +%d) == 01 ]]; }
+
+# ---------------------------------------------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------------------------------------------
+on_exit() {
+  local rc=$?
+  set +e
+  [[ -n $DRILL_CONTAINER ]] && docker rm -f "$DRILL_CONTAINER" >/dev/null 2>&1
+  [[ -n $WORK && -d $WORK ]] && rm -rf "${WORK:?}"/*.gpg "${WORK:?}"/.headers.* "${WORK:?}"/.body.* 2>/dev/null
+  if [[ -n $GNUPG_TMP && -d $GNUPG_TMP ]]; then
+    gpgconf --homedir "$GNUPG_TMP" --kill all >/dev/null 2>&1
+    rm -rf "$GNUPG_TMP"
+  fi
+  if ((rc != 0)) && [[ -n $STAGE ]]; then
+    heartbeat "$RUN_ENV" "$STAGE-failed" || log "could not record backup:$STAGE-failed"
+    log "FAILED: $STAGE ($RUN_ENV)"
+  fi
+  exit "$rc"
+}
+
+prepare() {
+  local env=$1
+  RUN_ENV=$env
+  WORK=$MOZ_DATA_ROOT/$env/backup-work
+  install -d -m 0700 "$WORK"
+  # Leftovers of an interrupted run (ciphertext only, but never kept).
+  rm -rf "${WORK:?}"/*.gpg "${WORK:?}"/.headers.* "${WORK:?}"/.body.*
+  GNUPG_TMP=$(mktemp -d "$WORK/.gnupg.XXXXXX")
+}
+
+cmd_run() {
+  local env=$1 date stamp db
+  STAGE=dump
+  load_creds "$env"
+  check_key
+  date=$(date -u +%F)
+  stamp=$(date -u +%Y%m%dT%H%M%SZ)
+  for db in $(databases "$env"); do
+    backup_db "$env" "$db" "$date" "$stamp"
+  done
+  heartbeat "$env" dump
+  log "run $env: dumps uploaded and checked"
+  if drill_due; then
+    cmd_drill "$env"
+  fi
+}
+
+cmd_drill() {
+  local env=$1
+  STAGE=restore-drill
+  drill "$env"
+  heartbeat "$env" restore-drill
+  log "drill $env: restored and every check passed"
+  STAGE=""
+}
+
+# dispatch <cmd> <env>: the command with its cleanup and failure heartbeat (the tests enter here).
+dispatch() {
+  trap on_exit EXIT
+  prepare "$2"
+  case $1 in
+    run) cmd_run "$2" ;;
+    drill) cmd_drill "$2" ;;
+  esac
+  STAGE=""
+}
+
+main() {
+  if [[ -z ${MOZ_BACKUP_SCRUBBED:-} ]]; then
+    exec /usr/bin/env -i PATH="$SAFE_PATH" HOME=/root LC_ALL=C MOZ_BACKUP_SCRUBBED=1 /bin/bash -p "$0" "$@"
+  fi
+  ((EUID == 0)) || die "run as root (systemd or sudo)"
+  local arg
+  for arg in "$@"; do
+    [[ $arg =~ ^[a-z0-9-]+$ ]] || usage_error "arguments must be lower-case words"
+  done
+  check_args "$@"
+  exec 9>"$LOCK_FILE"
+  flock -w "$LOCK_WAIT" 9 || die "moz-deploy held the lock for more than ${LOCK_WAIT}s"
+  log "${REQ[0]} ${REQ[1]} (by ${SUDO_USER:-systemd})"
+  dispatch "${REQ[@]}"
+}
+
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+  main "$@"
+fi

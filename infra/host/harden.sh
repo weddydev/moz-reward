@@ -13,6 +13,7 @@
 # docker group); sshd policy (keys only, no root, AllowUsers) checked with `sshd -t` and `sshd -T`; ufw
 # default-deny with SSH rate-limited as the only inbound rule (the app is reachable only through the Cloudflare
 # Tunnel); fail2ban; unattended upgrades; the root helper /usr/local/sbin/moz-deploy and its directories.
+# Also the backup job: /usr/local/sbin/moz-backup, its systemd units and the backup public key (P0-15 D).
 set -Eeuo pipefail
 # `… | install_content` must run in this shell, or its change count is lost.
 shopt -s lastpipe
@@ -107,6 +108,8 @@ if grep -rlq $'\r' "$HERE" "$DAEMON_JSON"; then
   die "CR line endings in $(grep -rl $'\r' "$HERE" "$DAEMON_JSON" | head -n1): copy from a git checkout (LF)"
 fi
 bash -n "$HERE/moz-deploy" || die "moz-deploy has a syntax error"
+bash -n "$HERE/moz-backup" || die "moz-backup has a syntax error"
+[[ -s $HERE/../backup/moz-backup-public.asc ]] || die "missing infra/backup/moz-backup-public.asc"
 if dpkg-query -W -f='${Status}' docker.io 2>/dev/null | grep -q 'install ok installed'; then
   die "Ubuntu's docker.io is installed; remove it first (Docker CE from Docker's repository is used)"
 fi
@@ -233,6 +236,18 @@ for env in staging production; do
   # Caddy (65534) writes access logs; the worker (gid 1000) reads them for the System page (C-35).
   ensure_dir "/var/lib/moz/$env/caddy-logs" 2750 65534:1000
 done
+
+# Nightly backups (P0-15 D): the script, the public key it encrypts to (fingerprint pinned inside the script) and
+# its systemd units. `moz-deploy init-env <env>` enables the timer per environment.
+install_file "$HERE/moz-backup" /usr/local/sbin/moz-backup 0755
+ensure_dir /etc/moz/backup 0755 root:root
+install_file "$HERE/../backup/moz-backup-public.asc" /etc/moz/backup/public.asc 0644
+units_changed=0
+for unit in moz-backup@.service moz-backup@.timer; do
+  install_file "$FILES/systemd/$unit" "/etc/systemd/system/$unit" 0644
+  if ((LAST_CHANGED)); then units_changed=1; fi
+done
+if ((units_changed)); then systemctl daemon-reload; fi
 
 # --- 7. SSH -------------------------------------------------------------------------------------------------------
 grep -qE '^Include /etc/ssh/sshd_config\.d/\*\.conf' /etc/ssh/sshd_config ||

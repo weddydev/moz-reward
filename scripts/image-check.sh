@@ -27,7 +27,7 @@ docker run --rm --network none --entrypoint sh "$image" -c '
     echo "dev dependency in the runtime"; exit 1
   fi
   for f in infra/compose/compose.yml infra/compose/staging.yml infra/compose/production.yml \
-           infra/caddy/common.caddy infra/postgres/bootstrap.sql infra/redis/queue.conf; do
+           infra/caddy/common.caddy infra/postgres/bootstrap.sql infra/redis/queue.conf infra/backup/checks.sql; do
     test -s "$f" || { echo "missing $f (moz-deploy reads the release config from the image)"; exit 1; }
   done
   echo "runtime is slim"'

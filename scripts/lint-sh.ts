@@ -10,7 +10,12 @@ export const SHELLCHECK_IMAGE =
   "koalaman/shellcheck:v0.10.0@sha256:2097951f02e735b613f4a34de20c40f937a6c8f18ecb170612c88c34517221fb";
 
 /** Repo-relative: the root scripts for the VPS and the image check CI and the production deploy share. */
-export const SCRIPTS = ["infra/host/harden.sh", "infra/host/moz-deploy", "scripts/image-check.sh"];
+export const SCRIPTS = [
+  "infra/host/harden.sh",
+  "infra/host/moz-deploy",
+  "infra/host/moz-backup",
+  "scripts/image-check.sh",
+];
 
 const repoDir = path.resolve(import.meta.dirname, "..");
 const run = spawnSync(

@@ -1,0 +1,11 @@
+# Nightly at 02:30 London time (P0-15 D). Persistent: a run missed while the host was down happens at boot.
+[Unit]
+Description=Moz Rewards nightly backup (%i)
+
+[Timer]
+OnCalendar=*-*-* 02:30:00 Europe/London
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

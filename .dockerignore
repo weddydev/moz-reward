@@ -20,6 +20,7 @@ infra
 !infra/compose
 !infra/postgres
 !infra/redis
+!infra/backup/checks.sql
 *.md
 .env*
 !.env.example

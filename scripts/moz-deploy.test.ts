@@ -199,6 +199,46 @@ describe("[P0-15] moz-deploy env files", () => {
     expect(result.stdout).not.toContain("hunter2");
   });
 
+  const B2 = "B2_KEY_ID=003a1b2c3d4e5f60000000009\nB2_APP_KEY=K003abcdefghijklmnopqrstuvwxyzABCD\n";
+
+  it.each(["staging", "production"])(
+    "[P0-15] %s/backup takes exactly the B2 key pair (D1)",
+    (env) => {
+      expect(check("ci", `write-env ${env} backup`).status).toBe(0);
+      const result = render(env, "backup", B2);
+      expect(result.stderr).toBe("");
+      expect(result.stdout.split("\n").slice(1)).toEqual([
+        "B2_KEY_ID='003a1b2c3d4e5f60000000009'",
+        "B2_APP_KEY='K003abcdefghijklmnopqrstuvwxyzABCD'",
+        "",
+      ]);
+    },
+  );
+
+  it.each([
+    ["S3_ENDPOINT=https://evil.example\n", "the endpoint is fixed in moz-backup"],
+    ["S3_BUCKET=other\n", "the bucket is fixed in moz-backup"],
+    ["WALG_S3_PREFIX=s3://other\n", "wal-g settings are built on the host"],
+    ["PGP_KEY=x\n", "the key is pinned on the host"],
+  ])("[P0-15] backup refuses %j (%s)", (line) => {
+    const result = render("staging", "backup", B2 + line);
+    expect(result.status).toBe(EX_INPUT);
+    expect(result.stderr).toMatch(/only B2_KEY_ID and B2_APP_KEY/);
+  });
+
+  it.each([
+    ["B2_KEY_ID=003a1b2c3d4e5f60000000009\n", "B2_APP_KEY is required"],
+    [
+      "B2_KEY_ID=has space\nB2_APP_KEY=K003abcdefghijklmnopqrstuvwxyzABCD\n",
+      "B2_KEY_ID is malformed",
+    ],
+    ["B2_KEY_ID=003a1b2c3d4e5f60000000009\nB2_APP_KEY=short\n", "B2_APP_KEY is malformed"],
+  ])("[P0-15] backup refuses %j", (input, message) => {
+    const result = render("staging", "backup", input);
+    expect(result.status).toBe(EX_INPUT);
+    expect(result.stderr).toContain(message);
+  });
+
   it("[P0-15] refuses more than 64 KiB", () => {
     const result = render("staging", "cloudflared", `TUNNEL_TOKEN=${"a".repeat(70_000)}\n`);
     expect(result.status).toBe(EX_INPUT);

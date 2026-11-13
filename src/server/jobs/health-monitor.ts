@@ -39,6 +39,9 @@ export const BACKUP_HEARTBEATS = {
   dump: "backup:dump",
   wal: "backup:wal",
   restoreDrill: "backup:restore-drill",
+  // Written by infra/host/moz-backup when a run fails (health.backup alerts while newer than the success).
+  dumpFailed: "backup:dump-failed",
+  restoreDrillFailed: "backup:restore-drill-failed",
 } as const;
 
 const SCOPE = systemScope("health monitor: job bookkeeping, outbox age and database size");
@@ -155,6 +158,8 @@ export async function collectHealth(deps: MonitorDeps = {}): Promise<HealthSnaps
       lastDumpAt: beat(BACKUP_HEARTBEATS.dump),
       lastWalAt: beat(BACKUP_HEARTBEATS.wal),
       lastRestoreDrillAt: beat(BACKUP_HEARTBEATS.restoreDrill),
+      lastDumpFailedAt: beat(BACKUP_HEARTBEATS.dumpFailed),
+      lastRestoreDrillFailedAt: beat(BACKUP_HEARTBEATS.restoreDrillFailed),
     },
     email: { sentToday: usageValue?.emailToday ?? null, cap: e.EMAIL_DAILY_CAP },
     sentry: { sentThisMonth: usageValue?.sentryMonth ?? null, quota: e.SENTRY_MONTHLY_QUOTA },

@@ -595,6 +595,7 @@ describe("[P0-20] re-review (0011): admin writes bound to the admin role; define
       "app_in_shop",
       "app_is_admin",
       "app_shop_role",
+      "record_backup_heartbeat",
       "revoke_sessions_on_privilege_change",
     ]);
     for (const f of fns) {

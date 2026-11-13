@@ -56,6 +56,8 @@ COPY infra/caddy ./infra/caddy
 COPY infra/compose ./infra/compose
 COPY infra/postgres ./infra/postgres
 COPY infra/redis ./infra/redis
+# The restore checks run by the host backup drill (infra/host/moz-backup reads them from the current release).
+COPY infra/backup/checks.sql ./infra/backup/checks.sql
 USER node
 EXPOSE 3000
 # Liveness only; readiness (/api/health/ready) is checked by Caddy and the deploy job (P0-13/P0-15). The worker

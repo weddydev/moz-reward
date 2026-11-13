@@ -29,12 +29,17 @@ export type HealthSnapshot = {
   /** Dead-lettered jobs: still unresolved, and new since the previous tick's window (10 min). */
   failedJobs: { unresolved: number | null; recent: number | null };
   disk: { path: string; usedPct: number | null };
-  /** Written by the backup jobs (P0-15) as job_heartbeats rows; checked only when BACKUPS_ENABLED. */
+  /**
+   * Written by the backup jobs (P0-15, infra/host/moz-backup) as job_heartbeats rows; checked only when
+   * BACKUPS_ENABLED. The `...FailedAt` rows are written when a run fails: newer than the last success = alert now.
+   */
   backups: {
     enabled: boolean;
     lastDumpAt: string | null;
     lastWalAt: string | null;
     lastRestoreDrillAt: string | null;
+    lastDumpFailedAt: string | null;
+    lastRestoreDrillFailedAt: string | null;
   };
   email: { sentToday: number | null; cap: number };
   sentry: { sentThisMonth: number | null; quota: number };
@@ -63,6 +68,9 @@ export const healthSnapshotSchema: z.ZodType<HealthSnapshot> = z.object({
     lastDumpAt: iso,
     lastWalAt: iso,
     lastRestoreDrillAt: iso,
+    // Added in P0-15 D1: snapshots stored before then have no such field.
+    lastDumpFailedAt: iso.default(null),
+    lastRestoreDrillFailedAt: iso.default(null),
   }),
   email: z.object({ sentToday: nn, cap: n }),
   sentry: z.object({ sentThisMonth: nn, quota: n }),
@@ -82,6 +90,10 @@ export const THRESHOLDS = {
 
 const ageSec = (iso: string | null, now: Date): number | null =>
   iso === null ? null : Math.floor((now.getTime() - new Date(iso).getTime()) / 1000);
+
+/** A failure heartbeat counts until a success newer than it is recorded. */
+const failedSinceSuccess = (failedAt: string | null, okAt: string | null): boolean =>
+  failedAt !== null && (okAt === null || new Date(failedAt).getTime() > new Date(okAt).getTime());
 
 const pct = (used: number | null, cap: number): number | null =>
   used === null || cap <= 0 ? null : (used / cap) * 100;
@@ -137,7 +149,14 @@ export function evaluateHealth(s: HealthSnapshot, now: Date): Alert[] {
     const dumpHours = dump === null ? null : Math.floor(dump / 3600);
     const walMin = wal === null ? null : Math.floor(wal / 60);
     const drillDays = drill === null ? null : Math.floor(drill / 86400);
+    const dumpFailed = failedSinceSuccess(s.backups.lastDumpFailedAt, s.backups.lastDumpAt);
+    const drillFailed = failedSinceSuccess(
+      s.backups.lastRestoreDrillFailedAt,
+      s.backups.lastRestoreDrillAt,
+    );
     if (
+      dumpFailed ||
+      drillFailed ||
       dump === null ||
       dump > THRESHOLDS.dumpMaxHours * 3600 ||
       wal === null ||
@@ -145,7 +164,13 @@ export function evaluateHealth(s: HealthSnapshot, now: Date): Alert[] {
       drill === null ||
       drill > THRESHOLDS.drillMaxDays * 86400
     ) {
-      ops("health.backup", { dumpAgeHours: dumpHours, walAgeMin: walMin, drillAgeDays: drillDays });
+      ops("health.backup", {
+        dumpAgeHours: dumpHours,
+        walAgeMin: walMin,
+        drillAgeDays: drillDays,
+        dumpFailed,
+        drillFailed,
+      });
     }
   }
 

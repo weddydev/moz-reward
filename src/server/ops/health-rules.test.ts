@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { evaluateHealth, type HealthSnapshot, THRESHOLDS } from "./health-rules";
+import {
+  evaluateHealth,
+  type HealthSnapshot,
+  healthSnapshotSchema,
+  THRESHOLDS,
+} from "./health-rules";
 
 const NOW = new Date("2026-11-10T12:00:00Z");
 const ago = (sec: number): string => new Date(NOW.getTime() - sec * 1000).toISOString();
@@ -15,7 +20,14 @@ function healthy(): HealthSnapshot {
     outbox: { pending: 0, oldestAgeSec: 0 },
     failedJobs: { unresolved: 0, recent: 0 },
     disk: { path: "/", usedPct: 41 },
-    backups: { enabled: false, lastDumpAt: null, lastWalAt: null, lastRestoreDrillAt: null },
+    backups: {
+      enabled: false,
+      lastDumpAt: null,
+      lastWalAt: null,
+      lastRestoreDrillAt: null,
+      lastDumpFailedAt: null,
+      lastRestoreDrillFailedAt: null,
+    },
     email: { sentToday: 10, cap: 400 },
     sentry: { sentThisMonth: 100, quota: 5000 },
     sse: { connections: null },
@@ -116,6 +128,8 @@ describe("[P0-13] health thresholds (ARCHITECTURE §11)", () => {
       lastDumpAt: ago(25 * 3600),
       lastWalAt: ago(9 * 60),
       lastRestoreDrillAt: ago(30 * 86400),
+      lastDumpFailedAt: null,
+      lastRestoreDrillFailedAt: null,
     };
     expect(kinds(s)).toEqual([]);
     s.backups = {
@@ -123,9 +137,64 @@ describe("[P0-13] health thresholds (ARCHITECTURE §11)", () => {
       lastDumpAt: ago(27 * 3600),
       lastWalAt: null,
       lastRestoreDrillAt: ago(36 * 86400),
+      lastDumpFailedAt: null,
+      lastRestoreDrillFailedAt: null,
     };
     const alert = evaluateHealth(s, NOW).find((a) => a.kind === "health.backup");
-    expect(alert?.detail).toEqual({ dumpAgeHours: 27, walAgeMin: null, drillAgeDays: 36 });
+    expect(alert?.detail).toEqual({
+      dumpAgeHours: 27,
+      walAgeMin: null,
+      drillAgeDays: 36,
+      dumpFailed: false,
+      drillFailed: false,
+    });
+  });
+
+  it("[P0-15] a failed dump or drill newer than the last success alerts at once, whatever the ages", () => {
+    const s = healthy();
+    const fresh = {
+      enabled: true,
+      lastDumpAt: ago(3600),
+      lastWalAt: ago(60),
+      lastRestoreDrillAt: ago(86400),
+    };
+    // A failure older than the success it was followed by is history, not an alert.
+    s.backups = {
+      ...fresh,
+      lastDumpFailedAt: ago(2 * 86400),
+      lastRestoreDrillFailedAt: ago(3 * 86400),
+    };
+    expect(kinds(s)).toEqual([]);
+
+    s.backups = { ...fresh, lastDumpFailedAt: ago(60), lastRestoreDrillFailedAt: null };
+    expect(evaluateHealth(s, NOW).find((a) => a.kind === "health.backup")?.detail).toMatchObject({
+      dumpFailed: true,
+      drillFailed: false,
+    });
+
+    // A drill that has never passed but has failed: the failure alerts (not only the 35-day age).
+    s.backups = {
+      ...fresh,
+      lastRestoreDrillAt: null,
+      lastDumpFailedAt: null,
+      lastRestoreDrillFailedAt: ago(60),
+    };
+    expect(evaluateHealth(s, NOW).find((a) => a.kind === "health.backup")?.detail).toMatchObject({
+      dumpFailed: false,
+      drillFailed: true,
+    });
+
+    // Not enabled (staging before D4): failures are not alerted either.
+    s.backups = { ...s.backups, enabled: false };
+    expect(kinds(s)).toEqual([]);
+  });
+
+  it("[P0-15] a snapshot stored before the failure heartbeats existed still parses (failures read as none)", () => {
+    const old = JSON.parse(JSON.stringify(healthy())) as Record<string, unknown>;
+    old.backups = { enabled: true, lastDumpAt: null, lastWalAt: null, lastRestoreDrillAt: null };
+    const parsed = healthSnapshotSchema.parse(old);
+    expect(parsed.backups.lastDumpFailedAt).toBeNull();
+    expect(parsed.backups.lastRestoreDrillFailedAt).toBeNull();
   });
 
   it("unknown values (a check that could not run) never raise a false alarm by themselves", () => {

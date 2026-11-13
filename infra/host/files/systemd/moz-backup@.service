@@ -1,0 +1,27 @@
+# Nightly encrypted backup of one environment (P0-15 D): `moz-backup run <env>`, plus the restore drill on the
+# 1st of the month. Installed by harden.sh; enabled per environment by `moz-deploy init-env <env>` (timer).
+# Results: `journalctl -u moz-backup@<env>`; heartbeats backup:dump / backup:restore-drill (and *-failed).
+[Unit]
+Description=Moz Rewards backup (%i)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/moz-backup run %i
+UMask=0077
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/moz /run/lock
+ProtectHome=read-only
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TimeoutStartSec=3h
