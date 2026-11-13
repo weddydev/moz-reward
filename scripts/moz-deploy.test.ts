@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { findBash } from "./lib/find-bash";
 
 /**
  * P0-15 B2: the root helper `infra/host/moz-deploy` is the only thing CI can run on the VPS (forced command →
@@ -12,19 +12,6 @@ const helper = path
   .resolve(import.meta.dirname, "..", "infra", "host", "moz-deploy")
   .replaceAll("\\", "/");
 
-function findBash(): string {
-  if (process.platform !== "win32") return "bash";
-  // Git for Windows' bash (System32\bash.exe is WSL, which can't see this path).
-  const candidates = [process.env.ProgramFiles, process.env.ProgramW6432, process.env.LOCALAPPDATA]
-    .filter((dir): dir is string => Boolean(dir))
-    .flatMap((dir) => [
-      path.join(dir, "Git", "bin", "bash.exe"),
-      path.join(dir, "Programs", "Git", "bin", "bash.exe"),
-    ]);
-  const found = candidates.find((file) => existsSync(file));
-  if (!found) throw new Error("Git for Windows bash not found; these tests need bash");
-  return found;
-}
 const bash = findBash();
 
 type Run = { status: number | null; stdout: string; stderr: string };
