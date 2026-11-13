@@ -8,7 +8,7 @@ Baton: held by Syedbadeshah76 since 2026-11-13 (Windows)
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Session of Syedbadeshah76, 2026-11-13 (Windows)**, P0-15 (VPS + staging) started; steps A–E in **`progress/P0-15-plan.md`** (read it first: it holds the security design requirements for B–E).
-- **Finished: step A** on branch **`wip/P0-15`** (pushed with this note; HEAD `556bfac`): slim image (C-21: Next standalone + `scripts/bundle-cli.ts` bundles in `/app/cli`, Trivy with no skips, CI slim check) and boot role checks (C-33 + review MEDIUM + moz_rls NOLOGIN). Evidence in SESSION_LOG.
+- **Finished: step A** on branch **`wip/P0-15`** (pushed with this note; HEAD `0572cc8` (step A code `556bfac`)): slim image (C-21: Next standalone + `scripts/bundle-cli.ts` bundles in `/app/cli`, Trivy with no skips, CI slim check) and boot role checks (C-33 + review MEDIUM + moz_rls NOLOGIN). Evidence in SESSION_LOG.
 - **Half-done:** P0-15 itself (B–E). C-21/C-33 have local evidence but are only *closed* when the image job runs on main / staging boots (step C). Not merged to main yet: merge `wip/P0-15` at P0-15's end (or earlier if P1 work must go on main first — then rebase).
 - **Next step: B** (infra as code): write `infra/host/harden.sh`, compose stacks, Caddyfile, Postgres image, bootstrap SQL, Redis TLS, `moz-deploy` helper per the plan file; run the hardening script once **H-39** is done (`/c/Windows/System32/OpenSSH/ssh.exe root@72.61.17.208` — Git Bash ssh can't use the Windows agent).
 - **Blocked on the human (🔴):** H-39 (load `id_ed25519` into the Windows ssh-agent; both laptop keys need a passphrase), H-40 (staging tunnel token). Step B's files don't need them; running them does.
