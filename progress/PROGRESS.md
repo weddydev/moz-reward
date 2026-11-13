@@ -9,12 +9,12 @@ Baton: held by Syedbadeshah76 since 2026-11-13 (Windows)
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Session of Syedbadeshah76, 2026-11-13 (Windows)**, continuing P1 on autopilot. Previous handoff (talha.syed): P0-12 + P0-D closed, CI `43364016465` green, P1 brief reviewed.
 - **Finished:** **P1-01** (this commit): C-34 closed (checker: open moz_app policies need `-- rls: open`, global markers only in the creating migration; ESLint `moz/admin-read`; memberships counter guard trigger, 0014); `shop_hours`, `shop_closures`, `nfc_tags` + RLS + one-hop trigger (0015); `openStatus`; shop code normalise/retry + `codes.exhausted` alert; QR service; directions/tel builders. Also: the authz-coverage repo-scan test gets a 30 s timeout (it timed out at 5 s under the parallel unit run on this laptop).
-- **Gate:** run by the pre-push hook on the P1-01 commit (the stamp hashes the tree at the start, so progress files were written first). Its result is in the next progress commit / SESSION_LOG.
+- **Gate:** pre-push gate:task on `f5c8495` PASS (unit 1037, int 1134, build, sast). Push CI on `f5c8495`: see Last verified.
 - **Half-done:** nothing. **Next: P1-02** (shop landing `/s/[code]`; closes C-15). Use `findActiveShopName`-style normalised lookup, `openStatus`, `directionsUrl`/`telHref`. The demo seed has no hours/closures yet: add them in P1-02 so the landing page shows real hours.
 - **Tested:** see "Last verified". **Not yet tested:** quarantined pixel7 motion test (C-40); `global-error.tsx`; real-device sound/haptics (H-37); rail labels toggle and More sheet on a real phone/tablet; staging (none until P0-15).
 - **Pending by the human's autopilot instruction (not passed):** P0-D close staging smoke + Sentry for the release (no staging until P0-15); P0-E and P0 phase closes wait on P0-15's human tasks.
 - **Do first:** `pnpm install` (dev deps jsqr, pngjs) and `pnpm db:migrate` (0014, 0015).
-- **Human side:** open 🟠 for P0-15 (H-04, H-28, H-34 leftovers, H-36 after deploy), H-12 Play account, H-37; 🟢 H-38 (delete merged wip branches). H-27 done 13 Nov.
+- **Human side:** open 🟠 for P0-15 (H-04 in progress with the human, H-34 leftovers, H-36 after deploy); H-28 staging client done 13 Nov (production + branding before P5-04), H-12 Play account, H-37; 🟢 H-38 (delete merged wip branches). H-27 done 13 Nov.
 - **Windows laptop notes:** low memory can crash a Vitest worker in the pre-push gate (re-run); start Docker Desktop before `pnpm services:up`; `pnpm sast` takes 10–23 min there.
 
 ## Status
@@ -86,7 +86,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - Tests: Vitest `unit` + `integration` (per-worker DBs); `tests/authz/` (matrix, harness self-test); `scripts/check-authz-coverage.ts` (AST, in `pnpm lint`); `tests/e2e/` (Playwright :3100, import `test` from `support/test.ts`); `tests/load/`, `tests/live/`, `stryker.config.mjs`
 
 ## Last verified (13 Nov 2026)
-- P1-01 (Windows, before commit): unit open-status 17/0, codes 14/0, shop-links 4/0, shop-qr 4/0 (PNG decodes to the exact URL), check-migrations 47/0, eslint scope + admin-read rules 21/0; integration shop-details 16/0, membership-guard 7/0; `pnpm fix` clean (eslint incl. moz/admin-read). gate:task: pre-push on the commit.
+- P1-01 (Windows, before commit): unit open-status 17/0, codes 14/0, shop-links 4/0, shop-qr 4/0 (PNG decodes to the exact URL), check-migrations 47/0, eslint scope + admin-read rules 21/0; integration shop-details 16/0, membership-guard 7/0; `pnpm fix` clean (eslint incl. moz/admin-read). gate:task (pre-push) on `f5c8495` PASS: unit 1037, int 1134, build, bundle, sast.
 - `main` `af3aa57` (P0-D fixes): gate:task PASS (unit 998, int 1111 incl. route matrix 613, build, sast); shells spec 63/0 on 5 projects; visual baselines regenerated and inspected; CI `43364016465` on `f91af95` green.
 - `main` P0-12 squash (Mac): `pnpm check` PASS (unit 998, titles strict); route authz matrix 562/0; full 5-project E2E on the production build 826 passed + the 5 failures (rls.spec, unscoped list) fixed and re-run 5/5; shells 56/0 on 5 projects; visual baselines (6) inspected; gate:task on the push (see SESSION_LOG).
 - `wip/P0-12-b` `7878fdf` (P0-12 step D, Mac): gate:task PASS (unit 987, int 475, build, bundle, sast, E2E P0-12 30/0); `pnpm e2e portal-pages.spec.ts portal-layouts.spec.ts system-page.spec.ts` on Chromium + WebKit + iPhone 14 (production build): 54/0; screenshots of the 403, both not-found pages and the error page inspected at 320, 390, 1440.

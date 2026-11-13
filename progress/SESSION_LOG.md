@@ -435,4 +435,4 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Unit: open-status 17/0 (normal, overnight, closure, no hours, BST start/end, 30-min boundary, missing hour → 02:00), codes 14/0, shop-links 4/0, shop-qr 4/0 (PNG decodes to the exact URL; EC M; quiet zone 4).
 - Integration shop-details 16/0: concurrent creation with forced clash + 20 parallel, exhaustion → `codes.exhausted` and no row, savepoint retry inside a caller tx, RLS on hours/closures/tags across shops and roles, NFC replaced twice → one hop, DB refuses chains.
 - `pnpm check` at session start: 1 failure = authz-coverage repo scan timing out at 5 s under the parallel run (0.7 s alone) → 30 s timeout. CI `43364016465` green on `f91af95`.
-- gate:task: run by the pre-push hook on the P1-01 commit (result recorded in the next progress commit).
+- gate:task (pre-push) on `f5c8495`: PASS (unit 1037, int 1134, build, bundle, sast 856 s, E2E P1-01 0 specs); first push refused: db-foundation grants table missed the 3 new tables → added, amended. Human: H-28 staging client + GOOGLE_CLIENT_ID/SECRET_STAGING set (gh secret list 06:07/06:08 UTC).
