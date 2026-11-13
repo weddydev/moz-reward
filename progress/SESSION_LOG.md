@@ -456,3 +456,9 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Evidence: infra lint 27/0 (and 3 failures on an injected host port + wrong limit); `caddy validate` + `docker compose config` both envs; Postgres image run as uid 999 read-only without caps: bootstrap ×3 exit 0, 16 migrations as non-superuser moz_owner (0009 needed a self-closing shim, DECISIONS), C-32 privileges checked with has_*_privilege, app boot role checks OK for app/auth/worker, owner refused; `pnpm check` PASS (unit 1069).
 - New 🟠 H-41 (staging basic-auth password). Drive C filled during image pulls (Docker Desktop stopped; the human freed space).
 - Exact next step: `/resume` → `git switch wip/P0-15` → P0-15 **B2** per `progress/P0-15-plan.md` (harden.sh + host files + `moz-deploy` helper + helper test).
+
+## 2026-11-13 — P0 — P0-15 step B2 files (Syedbadeshah76, Windows)
+- `wip/P0-15` `e5c0116`: `infra/host/harden.sh` (idempotent, ok/CHANGED count; admin sudo users, `deploy` forced command, sshd drop-in checked by `sshd -T`, ufw 22/tcp only, fail2ban, unattended upgrades, Docker CE by key fingerprint) + `infra/host/moz-deploy` (CI allowlist load/release/rollback/write-env; secrets on stdin; per-env CA, Redis certs/ACLs; rolling web with put-back); `/app/infra` in the image; daemon.json live-restore/no-new-privileges/userland-proxy off, logs 50 MB × 5.
+- Evidence: gate:task PASS (unit 1134, int 1139, sast, lint:sh); `scripts/moz-deploy.test.ts` 65/0 and fails on an injected allowlist change; ShellCheck clean; init-env twice in Ubuntu 24.04 (no file changes); Redis with the generated files: TLS-only, ACL rules hold, SAN checked.
+- New passphrase-less CI deploy key `~/.ssh/moz_ci_deploy` (H-39 Claude's part; GitHub secret replaced in step C). gid 999 on Ubuntu 24.04 = systemd-journal (DECISIONS).
+- Exact next step: after H-39, the plan file's "B2 run" bullet; otherwise start step C's code.
