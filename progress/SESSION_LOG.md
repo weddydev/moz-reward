@@ -474,3 +474,9 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - `wip/P0-15` `4e25e42`: Mac admin key `talha.pub`; `scripts/lib/find-bash.ts` (host-script tests need bash ≥ 4; first Mac push failed 23 moz-deploy tests under bash 3.2). gate:task PASS (unit 1167, int 1139, sast, lint:sh).
 - Step D designed in `progress/P0-15-plan.md` (host `moz-backup` + timers, prefix per env, list+write keys, gpg to the pinned fingerprint, drill on the 1st, wal-g, `pnpm backup:verify`); security-reviewer design check: 5 HIGH folded in (Object Lock, WAL never in clear, lever on RO mount + alert, `backup:base` heartbeat, PIPESTATUS + dump-failed). DECISIONS + new 🟠 H-42.
 - Exact next step: `/resume` → `git switch wip/P0-15` → D1 per the plan's D bullet and "D design check".
+
+## 2026-11-13 — P0 — P0-15 step D1 (talha.syed, Mac)
+- `wip/P0-15` `eea8672`: `infra/host/moz-backup` (dump | gpg → sigv4 upload → size/ETag/version check; monthly drill into a `--network none` tmpfs scratch Postgres + `infra/backup/checks.sql`), migration 0016 `record_backup_heartbeat`, `health.backup` alerts on `*-failed` newer than success, systemd units + harden.sh/init-env, `write-env <env> backup`.
+- Evidence: gate:task PASS (unit 1218, int 1160, build, bundle, sast, lint:sh 4); backup e2e vs MinIO + dev Postgres 9/9 (decrypts with the private key to a full archive; list+write-only user gets 403 on read; tamper, wrong key, pg_dump failure and failed drill all caught with `*-failed` heartbeats).
+- Found on the way: MinIO escapes ETag quotes as `&#34;` (parser now strips all forms); rls.test definer inventory updated for the new function.
+- Exact next step: D2 on `wip/P0-15` (WAL + `backup` role wiring in deploy.yml; see plan "Moved to D2").

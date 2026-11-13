@@ -11,6 +11,11 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-13 — Backup job details: pinned key in the script, drill from a fresh piped dump (P0-15 D1)
+Decision: the backup key's fingerprint is a constant in `infra/host/moz-backup`, which harden.sh installs from a developer's checkout (with the key at `/etc/moz/backup/public.asc`); a release or CI can change neither. The monthly drill restores a **fresh** `pg_dump` piped straight into `pg_restore` in a `--network none` scratch container (tmpfs data), not the uploaded file: the host has no private key, so no plaintext ever touches disk; the uploaded object is checked every night instead (size, single-part ETag = MD5, only version), and decryptability is proved by `pnpm backup:verify` (D3, monthly after launch). Heartbeats go through `record_backup_heartbeat(name)` (0016, SECURITY DEFINER owned by moz_rls, `backup:<name>` only). B2 credentials arrive as `moz-deploy write-env <env> backup` (B2_KEY_ID/B2_APP_KEY only); `init-env` enables the timer, so runs fail loudly (journal + `backup:dump-failed`) until H-42.
+Why: keeps the private key off the VPS (design check HIGH 5, MEDIUM "prefer tee, no plaintext on disk") while still proving nightly that what B2 holds is what was sent.
+Revisit when: the app database outgrows ~800 MB (scratch data in tmpfs, RESOURCES), or if a drill of the uploaded bytes on the host is wanted (would need the private key there: no).
+
 ## 2026-11-13 — Backup retention by B2 Object Lock + lifecycle, not wal-g delete (P0-15 D)
 Decision: nightly dumps and wal-g run from host-side `infra/host/moz-backup` (systemd timers installed by `moz-deploy init-env`), one bucket with a prefix per environment. Host keys are list + write only per prefix; history is protected by B2 Object Lock (governance, 35 d production / 7 d staging) and per-prefix lifecycle rules delete old objects, so no host ever holds a delete or read capability and `wal-g delete` is not used. WAL lag comes from `pg_stat_archiver` in the health monitor, not a `backup:wal` heartbeat. Full design + security design check: `progress/P0-15-plan.md` "D".
 Why: write access alone can hide/overwrite objects, and "keep only the last version" would then delete the original; a compromised VPS must not be able to erase backups (design check HIGH 1).
