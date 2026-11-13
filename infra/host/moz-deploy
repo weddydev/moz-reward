@@ -1,0 +1,575 @@
+#!/bin/bash -p
+# moz-deploy: the only way anything changes the staging/production stacks (P0-15; ARCHITECTURE §9, SECURITY §11).
+# Installed root-owned at /usr/local/sbin/moz-deploy by infra/host/harden.sh (CI can never change it).
+#
+# Two callers:
+#   - CI, as the `deploy` user, through the forced command `restrict,command="sudo -n /usr/local/sbin/moz-deploy"`.
+#     The request is SSH_ORIGINAL_COMMAND (sudo keeps only that variable) and must be exactly one of
+#       load <sha>                  stdin: `docker save | zstd` of moz-rewards:<sha>
+#       release <env> <sha>        stdin: the migration owner's password (one line)
+#       rollback <env>
+#       write-env <env> <role>     stdin: KEY=value lines (role: web worker caddy cloudflared umami)
+#   - A developer's sudo user (or root) with arguments: the CI commands plus
+#       init-env <env>  bootstrap-db <env>  status <env>
+# <env> is staging|production, <sha> 40 lower-case hex. Secrets arrive on stdin only: never argv, -e, --env-file
+# or a host file for the owner password, and nothing secret is ever printed.
+set -Eeuo pipefail
+umask 077
+export LC_ALL=C
+
+readonly SAFE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+readonly MOZ_ETC_ROOT=/etc/moz
+readonly MOZ_DATA_ROOT=/var/lib/moz
+readonly RELEASES=/var/lib/moz/releases
+readonly IMAGE_REPO=moz-rewards
+readonly PG_REPO=moz-postgres
+readonly CI_USER=deploy
+readonly KEEP_IMAGES=3
+readonly MAX_REQUEST=128
+readonly MAX_IMAGE_ZST=$((1024 * 1024 * 1024))
+readonly MAX_IMAGE_TAR=$((4 * 1024 * 1024 * 1024))
+readonly MAX_ENV_BYTES=65536
+readonly WAIT_SECONDS=180
+readonly EX_USAGE=64
+readonly EX_INPUT=65
+
+die() {
+  printf 'moz-deploy: %s\n' "$*" >&2
+  exit 1
+}
+usage_error() {
+  printf 'moz-deploy: refused: %s\n' "$*" >&2
+  exit "$EX_USAGE"
+}
+input_error() {
+  printf 'moz-deploy: bad input: %s\n' "$*" >&2
+  exit "$EX_INPUT"
+}
+log() { printf 'moz-deploy: %s\n' "$*" >&2; }
+
+# ---------------------------------------------------------------------------------------------------------------
+# Request validation (tested by scripts/moz-deploy.test.ts). Sets REQ (array) or exits EX_USAGE.
+# ---------------------------------------------------------------------------------------------------------------
+is_env() { [[ $1 == staging || $1 == production ]]; }
+is_sha() { [[ $1 =~ ^[0-9a-f]{40}$ ]]; }
+is_role() { [[ $1 =~ ^(web|worker|caddy|cloudflared|umami)$ ]]; }
+
+# check_request <ci|admin> <request string>
+check_request() {
+  local mode=$1 request=$2
+  local charset='^[a-z0-9-]+( [a-z0-9-]+)*$'
+  ((${#request} <= MAX_REQUEST)) || usage_error "request too long"
+  [[ $request =~ $charset ]] || usage_error "request must be lower-case words separated by single spaces"
+  local -a w
+  read -r -a w <<<"$request"
+  local cmd=${w[0]} n=${#w[@]}
+  case $cmd in
+    load)
+      if ! { ((n == 2)) && is_sha "${w[1]}"; }; then usage_error "usage: load <sha>"; fi
+      ;;
+    release)
+      if ! { ((n == 3)) && is_env "${w[1]}" && is_sha "${w[2]}"; }; then usage_error "usage: release <env> <sha>"; fi
+      ;;
+    rollback)
+      if ! { ((n == 2)) && is_env "${w[1]}"; }; then usage_error "usage: rollback <env>"; fi
+      ;;
+    write-env)
+      if ! { ((n == 3)) && is_env "${w[1]}" && is_role "${w[2]}"; }; then usage_error "usage: write-env <env> <role>"; fi
+      [[ ${w[2]} != umami || ${w[1]} == production ]] || usage_error "umami runs in production only"
+      ;;
+    init-env | bootstrap-db | status)
+      [[ $mode == admin ]] || usage_error "$cmd is for developers, not CI"
+      if ! { ((n == 2)) && is_env "${w[1]}"; }; then usage_error "usage: $cmd <env>"; fi
+      ;;
+    *) usage_error "unknown command" ;;
+  esac
+  REQ=("${w[@]}")
+}
+
+# ---------------------------------------------------------------------------------------------------------------
+# Env files (tested). render_env <env> <role> < KEY=value lines → the file body (without generated values).
+# Every value is written single-quoted, so Compose never interpolates it (a bcrypt hash keeps its `$`).
+# ---------------------------------------------------------------------------------------------------------------
+# Generated on the host (init-env) or set by the compose file; never accepted from the caller.
+readonly RESERVED_KEYS=" DATABASE_URL DATABASE_URL_AUTH DATABASE_URL_WORKER DATABASE_URL_MIGRATIONS DATABASE_URL_TEST \
+REDIS_URL REDIS_CACHE_URL REDIS_URL_TEST NODE_EXTRA_CA_CERTS NODE_OPTIONS NODE_ENV APP_RELEASE PATH HOME BASH_ENV ENV "
+
+required_keys() {
+  case $1/$2 in
+    # The app validates the rest of its env at boot (src/server/env.ts); APP_ENV is baked into the image.
+    */web | */worker) echo "APP_URL REDIS_KEY_PREFIX" ;;
+    staging/caddy) echo "APP_HOST BASIC_AUTH_USER BASIC_AUTH_HASH" ;;
+    production/caddy) echo "APP_HOST UMAMI_HOST MAINTENANCE" ;;
+    */cloudflared) echo "TUNNEL_TOKEN" ;;
+    */umami) echo "APP_SECRET" ;;
+  esac
+}
+
+render_env() {
+  local env=$1 role=$2 line key value input
+  local -A seen=()
+  input=$(head -c $((MAX_ENV_BYTES + 1)); printf x)
+  input=${input%x}
+  ((${#input} <= MAX_ENV_BYTES)) || input_error "more than $MAX_ENV_BYTES bytes"
+  # (Bash drops NUL bytes when reading, so they can't reach the file.)
+  [[ $input != *$'\r'* ]] || input_error "carriage return in input"
+  printf '# Written by moz-deploy write-env (%s/%s). Do not edit by hand.\n' "$env" "$role"
+  while IFS= read -r line || [[ -n $line ]]; do
+    [[ -z $line || $line == \#* ]] && continue
+    [[ $line =~ ^([A-Z][A-Z0-9_]{0,63})=(.*)$ ]] || input_error "line is not KEY=value with an upper-case key"
+    key=${BASH_REMATCH[1]}
+    value=${BASH_REMATCH[2]}
+    [[ $RESERVED_KEYS != *" $key "* ]] || input_error "$key is set by the host, not the caller"
+    [[ $key != LD_* ]] || input_error "$key is not allowed"
+    [[ -z ${seen[$key]:-} ]] || input_error "$key appears twice"
+    [[ $value != *"'"* ]] || input_error "$key: single quotes are not allowed in values"
+    # Caddy's basic_auth takes a bcrypt hash (`caddy hash-password`), never the password itself.
+    if [[ $key == BASIC_AUTH_HASH && ! $value =~ ^\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}$ ]]; then
+      input_error "BASIC_AUTH_HASH must be a bcrypt hash"
+    fi
+    seen[$key]=1
+    printf "%s='%s'\n" "$key" "$value"
+  done <<<"$input"
+  for key in $(required_keys "$env" "$role"); do
+    [[ -n ${seen[$key]:-} ]] || input_error "$key is required for $env/$role"
+  done
+}
+
+# ---------------------------------------------------------------------------------------------------------------
+# Host state
+# ---------------------------------------------------------------------------------------------------------------
+etc_dir() { echo "$MOZ_ETC_ROOT/$1"; }
+data_dir() { echo "$MOZ_DATA_ROOT/$1"; }
+secret() { cat "$(etc_dir "$1")/secrets/$2"; }
+
+# write_file <path> <mode> <owner:group>   (stdin → atomic replace)
+write_file() {
+  local dest=$1 mode=$2 owner=$3 tmp
+  tmp=$(mktemp "$(dirname "$dest")/.tmp.XXXXXX")
+  cat >"$tmp"
+  chmod "$mode" "$tmp"
+  chown "$owner" "$tmp"
+  mv -f "$tmp" "$dest"
+}
+
+gen_secret() {
+  local file=$1
+  [[ -s $file ]] && return 0
+  openssl rand -hex 32 | tr -d '\n' | write_file "$file" 0600 root:root
+  log "generated $(basename "$file")"
+}
+
+sha256_of() { printf '%s' "$1" | sha256sum | cut -d' ' -f1; }
+
+cmd_init_env() {
+  local env=$1 etc data svc name
+  etc=$(etc_dir "$env")
+  data=$(data_dir "$env")
+  install -d -m 0700 -o root -g root "$MOZ_ETC_ROOT" "$etc" "$etc/env" "$etc/secrets"
+  install -d -m 0755 -o root -g root "$etc/tls"
+  install -d -m 0750 -o root -g 999 "$etc/postgres" "$etc/redis-queue" "$etc/redis-cache" \
+    "$etc/redis-queue/tls" "$etc/redis-queue/acl" "$etc/redis-cache/tls" "$etc/redis-cache/acl"
+  install -d -m 0755 -o root -g root "$MOZ_DATA_ROOT" "$data" "$RELEASES"
+  install -d -m 2750 -o 65534 -g 1000 "$data/caddy-logs"
+
+  # Passwords (hex: no URL escaping). Never printed.
+  for name in db-app db-auth db-worker redis-queue-web redis-queue-worker redis-cache-web redis-cache-worker; do
+    gen_secret "$etc/secrets/$name"
+  done
+  [[ $env == production ]] && gen_secret "$etc/secrets/db-umami"
+  if [[ ! -s $etc/postgres/superuser-password ]]; then
+    openssl rand -hex 32 | tr -d '\n' | write_file "$etc/postgres/superuser-password" 0640 root:999
+    log "generated the Postgres superuser password"
+  fi
+
+  # One internal CA per environment; Redis server certificates name the Compose service (SAN).
+  if [[ ! -s $etc/tls/ca.key ]]; then
+    openssl req -x509 -new -nodes -newkey ec -pkeyopt ec_paramgen_curve:P-256 -sha256 -days 3650 \
+      -subj "/CN=moz-$env internal CA" -addext "basicConstraints=critical,CA:TRUE,pathlen:0" \
+      -addext "keyUsage=critical,keyCertSign,cRLSign" -keyout "$etc/tls/ca.key" -out "$etc/tls/ca.crt" 2>/dev/null
+    chmod 0600 "$etc/tls/ca.key"
+    chmod 0644 "$etc/tls/ca.crt"
+    log "created the $env internal CA"
+  fi
+  for svc in redis-queue redis-cache; do
+    issue_server_cert "$env" "$svc"
+    write_acl "$env" "$svc"
+  done
+  log "init-env $env: done"
+}
+
+# A server certificate is (re)issued when missing, signed by another CA, or expiring within 60 days.
+issue_server_cert() {
+  local env=$1 svc=$2 etc dir csr
+  etc=$(etc_dir "$env")
+  dir=$etc/$svc/tls
+  install -m 0644 -o root -g root "$etc/tls/ca.crt" "$dir/ca.crt"
+  if [[ -s $dir/server.crt && -s $dir/server.key ]] &&
+    openssl verify -CAfile "$etc/tls/ca.crt" "$dir/server.crt" >/dev/null 2>&1 &&
+    openssl x509 -checkend $((60 * 86400)) -noout -in "$dir/server.crt" >/dev/null; then
+    return 0
+  fi
+  csr=$(mktemp)
+  openssl req -new -nodes -newkey ec -pkeyopt ec_paramgen_curve:P-256 -sha256 -subj "/CN=$svc" \
+    -keyout "$dir/server.key" -out "$csr" 2>/dev/null
+  openssl x509 -req -in "$csr" -CA "$etc/tls/ca.crt" -CAkey "$etc/tls/ca.key" -CAcreateserial -sha256 \
+    -days 825 -out "$dir/server.crt" \
+    -extfile <(printf 'subjectAltName=DNS:%s\nextendedKeyUsage=serverAuth\nkeyUsage=critical,digitalSignature\nbasicConstraints=CA:FALSE\n' "$svc") \
+    2>/dev/null
+  rm -f "$csr"
+  chown root:999 "$dir/server.key" "$dir/server.crt"
+  chmod 0640 "$dir/server.key"
+  chmod 0644 "$dir/server.crt"
+  log "issued the $svc server certificate (restart $svc to load it)"
+}
+
+# Redis ACL users (passwords stored as SHA-256 in the file the container can read).
+write_acl() {
+  local env=$1 svc=$2 etc client perms
+  etc=$(etc_dir "$env")
+  perms='~* &* +@all -@dangerous +info +client|setname +client|getname +client|id +client|setinfo'
+  {
+    echo "user default off"
+    echo "user health on nopass -@all +ping"
+    for client in web worker; do
+      echo "user $client on #$(sha256_of "$(secret "$env" "$svc-$client")") $perms"
+    done
+  } | write_file "$etc/$svc/acl/users.acl" 0640 root:999
+}
+
+# Values only the host knows, appended after the caller's lines.
+generated_env() {
+  local env=$1 role=$2 db=postgres:5432
+  case $role in
+    web | worker)
+      echo "DATABASE_URL='postgres://moz_app:$(secret "$env" db-app)@$db/moz'"
+      echo "DATABASE_URL_AUTH='postgres://moz_auth:$(secret "$env" db-auth)@$db/moz'"
+      [[ $role == worker ]] && echo "DATABASE_URL_WORKER='postgres://moz_worker:$(secret "$env" db-worker)@$db/moz'"
+      echo "REDIS_URL='rediss://$role:$(secret "$env" "redis-queue-$role")@redis-queue:6379'"
+      echo "REDIS_CACHE_URL='rediss://$role:$(secret "$env" "redis-cache-$role")@redis-cache:6379'"
+      ;;
+    umami) echo "DATABASE_URL='postgresql://umami:$(secret "$env" db-umami)@$db/umami'" ;;
+  esac
+}
+
+cmd_write_env() {
+  local env=$1 role=$2 etc body
+  etc=$(etc_dir "$env")
+  [[ -d $etc/secrets ]] || die "run init-env $env first"
+  body=$(render_env "$env" "$role")
+  { printf '%s\n' "$body"; generated_env "$env" "$role"; } | write_file "$etc/env/$role.env" 0600 root:root
+  log "wrote $env/$role.env"
+}
+
+# ---------------------------------------------------------------------------------------------------------------
+# Images and releases
+# ---------------------------------------------------------------------------------------------------------------
+cmd_load() {
+  local sha=$1 tag="$IMAGE_REPO:$1" out
+  if docker image inspect "$tag" >/dev/null 2>&1; then
+    head -c "$MAX_IMAGE_ZST" >/dev/null
+    log "$tag is already loaded"
+    return 0
+  fi
+  out=$(head -c "$MAX_IMAGE_ZST" | zstd -dcq | head -c "$MAX_IMAGE_TAR" | docker load)
+  # The archive may only carry this one tag (a crafted archive could re-tag another image).
+  if [[ $out != "Loaded image: $tag" ]]; then
+    log "the archive did not load exactly $tag; got: $(printf '%s' "$out" | tr '\n' ' ' | head -c 300)"
+    docker image rm "$tag" >/dev/null 2>&1 || true
+    die "load refused"
+  fi
+  log "loaded $tag"
+}
+
+# The release's infra/ (Compose, Caddy, Postgres, Redis configs) comes out of its own image, so config is tied to
+# the code it was tested with and CI never writes files on the host.
+release_infra() {
+  local sha=$1 dest="$RELEASES/$1" tmp cid
+  if [[ ! -d $dest/infra ]]; then
+    docker image inspect "$IMAGE_REPO:$sha" >/dev/null 2>&1 || die "$IMAGE_REPO:$sha is not loaded"
+    install -d -m 0755 -o root -g root "$RELEASES"
+    tmp=$(mktemp -d "$RELEASES/.tmp.XXXXXX")
+    cid=$(docker create "$IMAGE_REPO:$sha")
+    docker cp -q "$cid:/app/infra" "$tmp/infra" || { docker rm "$cid" >/dev/null; rm -rf "$tmp"; die "no /app/infra in the image"; }
+    docker rm "$cid" >/dev/null
+    chown -R root:root "$tmp"
+    chmod -R u=rwX,go=rX "$tmp"
+    rm -rf "$dest"
+    mv "$tmp" "$dest"
+  fi
+  echo "$dest/infra"
+}
+
+pg_image() {
+  local infra=$1 hash
+  hash=$(cd "$infra/postgres" && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-16)
+  echo "$PG_REPO:$hash"
+}
+
+ensure_pg_image() {
+  local infra=$1 tag
+  tag=$(pg_image "$infra")
+  if ! docker image inspect "$tag" >/dev/null 2>&1; then
+    log "building $tag"
+    docker build -q -t "$tag" "$infra/postgres" >/dev/null
+  fi
+}
+
+# compose <env> <sha> <args...>: Compose for that release's files and image, under a clean environment.
+compose() {
+  local env=$1 sha=$2 infra
+  shift 2
+  infra=$RELEASES/$sha/infra
+  [[ -d $infra ]] || die "release $sha has no infra directory"
+  env -i PATH="$SAFE_PATH" HOME=/root \
+    MOZ_TAG="$sha" MOZ_PG_IMAGE="$(pg_image "$infra")" MOZ_ETC="$(etc_dir "$env")" MOZ_DATA="$(data_dir "$env")" \
+    MOZ_INFRA="$infra" \
+    docker compose --progress quiet -p "moz-$env" -f "$infra/compose/compose.yml" -f "$infra/compose/$env.yml" "$@"
+}
+
+psql_super() {
+  local env=$1
+  shift
+  docker exec -i -u postgres "moz-$env-postgres-1" psql -X -q -v ON_ERROR_STOP=1 "$@"
+}
+
+# The bootstrap (B1's bootstrap.sql) behind a header that sets its password variables. Statements are never
+# logged, not even on error.
+run_bootstrap() {
+  local env=$1 infra=$2
+  {
+    echo "SET log_statement = 'none';"
+    echo "SET log_min_error_statement = 'panic';"
+    printf "\\\\set app_password '%s'\n" "$(secret "$env" db-app)"
+    printf "\\\\set auth_password '%s'\n" "$(secret "$env" db-auth)"
+    printf "\\\\set worker_password '%s'\n" "$(secret "$env" db-worker)"
+    if [[ $env == production ]]; then
+      echo "\\set with_umami on"
+      printf "\\\\set umami_password '%s'\n" "$(secret "$env" db-umami)"
+    else
+      echo "\\set with_umami off"
+    fi
+    cat "$infra/postgres/bootstrap.sql"
+  } | psql_super "$env" -d postgres
+}
+
+read_owner_password() {
+  local pw
+  IFS= read -r -t 30 pw || input_error "the owner password was not given on stdin"
+  [[ $pw =~ ^[A-Za-z0-9._~-]{24,128}$ ]] || input_error "the owner password must be 24-128 URL-safe characters"
+  OWNER_PASSWORD=$pw
+}
+
+# The GitHub secret is the owner password's only source: each release sets it, so rotating the secret rotates it.
+set_owner_password() {
+  local env=$1
+  {
+    echo "SET log_statement = 'none';"
+    echo "SET log_min_error_statement = 'panic';"
+    echo "SET password_encryption = 'scram-sha-256';"
+    printf "\\\\set owner_password '%s'\n" "$OWNER_PASSWORD"
+    echo "ALTER ROLE moz_owner PASSWORD :'owner_password';"
+  } | psql_super "$env" -d postgres
+}
+
+run_migrations() {
+  local env=$1 sha=$2
+  printf 'postgres://moz_owner:%s@postgres:5432/moz\n' "$OWNER_PASSWORD" |
+    docker run --rm -i --network "moz-${env}_data" --read-only --cap-drop ALL \
+      --security-opt no-new-privileges:true --user 1000:1000 --memory 512m --pids-limit 128 \
+      --tmpfs /tmp:size=16m --name "moz-$env-migrate" \
+      "$IMAGE_REPO:$sha" node cli/migrate.mjs --url-stdin
+}
+
+container_of() { compose "$1" "$2" ps -q "$3"; }
+
+# Readiness (DB + Redis reachable), checked inside the new container before the next one is replaced.
+wait_ready() {
+  local env=$1 sha=$2 svc=$3 id i
+  id=$(container_of "$env" "$sha" "$svc")
+  [[ -n $id ]] || return 1
+  for ((i = 0; i < 30; i++)); do
+    if docker exec "$id" node -e "fetch('http://127.0.0.1:3000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" 2>/dev/null; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+# Replace web-1 then web-2 (Caddy retries the other replica meanwhile); any failure puts every replaced
+# replica back on <prev>, so the previous version keeps serving.
+roll_web() {
+  local env=$1 sha=$2 prev=$3 svc back done_svcs=()
+  for svc in web-1 web-2; do
+    done_svcs+=("$svc")
+    if compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" "$svc" &&
+      wait_ready "$env" "$sha" "$svc"; then
+      log "$svc is ready on $sha"
+      continue
+    fi
+    log "$svc failed its health check on $sha"
+    if [[ -n $prev ]]; then
+      for back in "${done_svcs[@]}"; do
+        compose "$env" "$prev" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" "$back" ||
+          log "could not put $back back on $prev"
+      done
+      log "web replicas are back on $prev"
+    fi
+    return 1
+  done
+}
+
+roll_rest() {
+  local env=$1 sha=$2
+  # The worker drains for 60 s on SIGTERM (stop_grace_period 90 s, C-27).
+  compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" worker
+  if [[ $env == production ]]; then
+    compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" umami
+  fi
+  compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" caddy cloudflared
+}
+
+current_release() { cat "$(data_dir "$1")/release-current" 2>/dev/null || true; }
+previous_release() { cat "$(data_dir "$1")/release-previous" 2>/dev/null || true; }
+
+record_release() {
+  local env=$1 sha=$2 old=$3 data
+  data=$(data_dir "$env")
+  if [[ -n $old && $old != "$sha" ]]; then
+    printf '%s\n' "$old" | write_file "$data/release-previous" 0644 root:root
+  fi
+  printf '%s\n' "$sha" | write_file "$data/release-current" 0644 root:root
+  printf '%s %s %s\n' "$(date -u +%FT%TZ)" "$sha" "${old:--}" >>"$data/release-history"
+}
+
+# Keep the newest KEEP_IMAGES app images plus every current/previous release; drop the rest and their infra.
+prune() {
+  local keep=" " env tag
+  for env in staging production; do
+    keep+="$(current_release "$env") $(previous_release "$env") "
+  done
+  while read -r tag; do
+    [[ $keep == *" $tag "* ]] && continue
+    keep+="$tag "
+  done < <(docker image ls "$IMAGE_REPO" --format '{{.CreatedAt}}|{{.Tag}}' | sort -r | cut -d'|' -f2 | head -n "$KEEP_IMAGES")
+  while read -r tag; do
+    [[ -z $tag || $keep == *" $tag "* ]] && continue
+    docker image rm "$IMAGE_REPO:$tag" >/dev/null 2>&1 && rm -rf "${RELEASES:?}/$tag" && log "pruned $tag"
+  done < <(docker image ls "$IMAGE_REPO" --format '{{.Tag}}')
+}
+
+cert_warnings() {
+  local env=$1 svc
+  for svc in redis-queue redis-cache; do
+    openssl x509 -checkend $((60 * 86400)) -noout -in "$(etc_dir "$env")/$svc/tls/server.crt" >/dev/null ||
+      log "WARNING: the $env $svc certificate expires within 60 days: run 'sudo moz-deploy init-env $env' and restart $svc"
+  done
+}
+
+cmd_release() {
+  local env=$1 sha=$2 infra prev
+  [[ -d $(etc_dir "$env")/secrets ]] || die "run init-env $env first"
+  read_owner_password
+  prev=$(current_release "$env")
+  infra=$(release_infra "$sha")
+  ensure_pg_image "$infra"
+  cert_warnings "$env"
+
+  log "data services"
+  compose "$env" "$sha" up -d --wait --wait-timeout "$WAIT_SECONDS" postgres redis-queue redis-cache
+  # Bootstrap → owner password → migrate (expand-only) → bootstrap again (drops the 0009 shim). A failure here
+  # stops before any replica is switched.
+  log "bootstrap"
+  run_bootstrap "$env" "$infra"
+  set_owner_password "$env"
+  log "migrations"
+  run_migrations "$env" "$sha"
+  run_bootstrap "$env" "$infra"
+  if [[ $env == staging ]]; then
+    log "demo seed"
+    compose "$env" "$sha" run --rm --no-deps -T worker node cli/seed.mjs
+  fi
+
+  log "rolling web"
+  roll_web "$env" "$sha" "$prev" || die "release $sha aborted; ${prev:-nothing} keeps serving"
+  roll_rest "$env" "$sha"
+  record_release "$env" "$sha" "$prev"
+  prune
+  log "release $env $sha: done"
+}
+
+cmd_rollback() {
+  local env=$1 cur prev
+  cur=$(current_release "$env")
+  prev=$(previous_release "$env")
+  [[ -n $prev ]] || die "no previous release recorded for $env"
+  docker image inspect "$IMAGE_REPO:$prev" >/dev/null 2>&1 || die "$IMAGE_REPO:$prev is no longer on the host"
+  release_infra "$prev" >/dev/null
+  # Migrations are expand-only, so the previous code runs on the current schema; data services stay as they are.
+  log "rolling back $env from ${cur:-?} to $prev"
+  roll_web "$env" "$prev" "$cur" || die "rollback aborted; ${cur:-nothing} keeps serving"
+  roll_rest "$env" "$prev"
+  record_release "$env" "$prev" "$cur"
+  log "rollback $env: now on $prev"
+}
+
+cmd_bootstrap_db() {
+  local env=$1 cur infra
+  cur=$(current_release "$env")
+  [[ -n $cur ]] || die "no release recorded for $env"
+  infra=$(release_infra "$cur")
+  run_bootstrap "$env" "$infra"
+  log "bootstrap-db $env: done"
+}
+
+cmd_status() {
+  local env=$1 cur
+  cur=$(current_release "$env")
+  echo "current:  ${cur:-none}"
+  echo "previous: $(previous_release "$env")"
+  [[ -n $cur ]] && compose "$env" "$cur" ps --format 'table {{.Service}}\t{{.State}}\t{{.Status}}'
+  return 0
+}
+
+main() {
+  # Re-run under a scrubbed environment (sudo keeps only SSH_ORIGINAL_COMMAND for the deploy user).
+  if [[ -z ${MOZ_DEPLOY_SCRUBBED:-} ]]; then
+    exec /usr/bin/env -i PATH="$SAFE_PATH" HOME=/root LC_ALL=C MOZ_DEPLOY_SCRUBBED=1 \
+      SUDO_USER="${SUDO_USER:-}" SSH_ORIGINAL_COMMAND="${SSH_ORIGINAL_COMMAND:-}" /bin/bash -p "$0" "$@"
+  fi
+  ((EUID == 0)) || die "run as root (sudo)"
+  local mode request arg
+  if [[ ${SUDO_USER:-} == "$CI_USER" ]]; then
+    # CI: no arguments (sudoers allows none); the request is the SSH command.
+    (($# == 0)) || usage_error "arguments are not accepted from $CI_USER"
+    mode="ci"
+    request=${SSH_ORIGINAL_COMMAND:-}
+  else
+    mode="admin"
+    for arg in "$@"; do
+      [[ $arg =~ ^[a-z0-9-]+$ ]] || usage_error "arguments must be lower-case words"
+    done
+    request="$*"
+  fi
+  check_request "$mode" "$request"
+  set -- "${REQ[@]}"
+
+  exec 9>/run/lock/moz-deploy.lock
+  flock -w 900 9 || die "another moz-deploy is still running"
+  log "$mode ${SUDO_USER:-root}: $1 ${2:-} ${3:-}"
+  case $1 in
+    load) cmd_load "$2" ;;
+    release) cmd_release "$2" "$3" ;;
+    rollback) cmd_rollback "$2" ;;
+    write-env) cmd_write_env "$2" "$3" ;;
+    init-env) cmd_init_env "$2" ;;
+    bootstrap-db) cmd_bootstrap_db "$2" ;;
+    status) cmd_status "$2" ;;
+  esac
+}
+
+# Sourced by the tests for the pure functions; executed on the host.
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+  main "$@"
+fi

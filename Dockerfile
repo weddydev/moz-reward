@@ -50,6 +50,12 @@ COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/dist/cli ./cli
 # Migrations for the release step (`node cli/migrate.mjs`, run from /app: it reads ./drizzle).
 COPY --from=build /app/drizzle ./drizzle
+# The stack configs for this release (Compose, Caddy, Postgres, Redis): `moz-deploy` copies them out of the image,
+# so a deploy uses exactly the config tested with this code and CI never writes files on the host (P0-15).
+COPY infra/caddy ./infra/caddy
+COPY infra/compose ./infra/compose
+COPY infra/postgres ./infra/postgres
+COPY infra/redis ./infra/redis
 USER node
 EXPOSE 3000
 # Liveness only; readiness (/api/health/ready) is checked by Caddy and the deploy job (P0-13/P0-15). The worker

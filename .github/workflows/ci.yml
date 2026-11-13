@@ -75,6 +75,8 @@ jobs:
           pnpm osv:gate "$RUNNER_TEMP/osv.json"
       - name: pnpm audit (production dependencies, high/critical — SECURITY §10)
         run: pnpm audit --prod --audit-level high
+      - name: ShellCheck (root scripts for the VPS; same command as pnpm lint:sh)
+        run: pnpm lint:sh
       - name: Semgrep (SAST — default + OWASP Top 10 + secrets rules, SECURITY §10)
         # Same command as the local twin in gate:task (scripts/sast.ts holds the pinned image and rules).
         run: pnpm sast
@@ -150,4 +152,8 @@ jobs:
             if ls node_modules/.pnpm | grep -E "^(esbuild|@esbuild|lefthook|tsx|typescript|vitest|@playwright)"; then
               echo "dev dependency in the runtime"; exit 1
             fi
+            for f in infra/compose/compose.yml infra/compose/staging.yml infra/compose/production.yml \
+                     infra/caddy/common.caddy infra/postgres/bootstrap.sql infra/redis/queue.conf; do
+              test -s "$f" || { echo "missing $f (moz-deploy reads the release config from the image)"; exit 1; }
+            done
             echo "runtime is slim"'

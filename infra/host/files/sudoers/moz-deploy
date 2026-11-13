@@ -1,0 +1,5 @@
+# Moz Rewards (infra/host/harden.sh). The CI user may run the root helper with NO arguments and nothing else;
+# its request is the SSH command, which sudo passes through as SSH_ORIGINAL_COMMAND only for this command.
+Defaults!/usr/local/sbin/moz-deploy env_keep += "SSH_ORIGINAL_COMMAND"
+Defaults:deploy !requiretty
+deploy ALL=(root) NOPASSWD: /usr/local/sbin/moz-deploy ""

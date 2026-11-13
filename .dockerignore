@@ -15,6 +15,11 @@ progress
 design
 tests
 infra
+# The release's stack configs ship inside the image (/app/infra); moz-deploy extracts them per SHA (P0-15).
+!infra/caddy
+!infra/compose
+!infra/postgres
+!infra/redis
 *.md
 .env*
 !.env.example

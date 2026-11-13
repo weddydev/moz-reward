@@ -39,7 +39,8 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 ### H-39 — SSH for Claude on the Windows laptop (P0-15)
 1. Open **PowerShell as Administrator** and run: `Get-Service ssh-agent | Set-Service -StartupType Automatic; Start-Service ssh-agent`
 2. In a normal PowerShell: `ssh-add $env:USERPROFILE\.ssh\id_ed25519` and type the key's passphrase at the prompt (never in chat). The agent keeps it across reboots.
-3. Tell Claude "H-39 done". Claude checks `ssh root@72.61.17.208` with Windows OpenSSH, then does the rest itself. **Claude's part:** if `DEPLOY_SSH_KEY` turns out to have a passphrase too (CI can't type one), Claude makes a new passphrase-less CI deploy key, installs its public half on the VPS for the `deploy` user only and replaces the GitHub secret with `gh secret set DEPLOY_SSH_KEY < file`, without displaying it.
+3. Tell Claude "H-39 done". Claude checks `ssh root@72.61.17.208` with Windows OpenSSH, then does the rest itself. **Claude's part:** if `DEPLOY_SSH_KEY` turns out to have a passphrase too (CI can't type one), Claude makes a new passphrase-less CI deploy key, installs its public half on the VPS for the `deploy` user only and replaces the GitHub secret with `gh secret set DEPLOY_SSH_KEY < file`, without displaying it. *(13 Nov: it does have a passphrase; the new key `~/.ssh/moz_ci_deploy` is made and its public half is in `infra/host/files/deploy_ci.pub`; the secret is replaced in step C.)*
+4. Good to know: after the hardening run, **root can no longer log in over SSH**. You log in as `badeshah@72.61.17.208`, the other developer as `talha@…` (the same keys as today, with `sudo`). Hostinger's browser console (hPanel → VPS → Browser terminal) stays the way in if SSH ever breaks.
 
 ### H-40 — Cloudflare Tunnel for staging (P0-15)
 1. Cloudflare dashboard → **Zero Trust** → Networks → **Tunnels** → Create a tunnel → **Cloudflared** → name `moz-staging` → Save.

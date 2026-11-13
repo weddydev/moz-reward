@@ -38,7 +38,7 @@ Connection budget (checked at boot, ENGINEERING §6; per-role pools since P0-20)
 - Postgres data: production + staging, alert at 80% disk (health job).
 - WAL: local retention capped (archive to R2 via wal-g; never let `pg_wal` grow unbounded).
 - Docker images: last 3 production images + staging images; prune older ones in the deploy job.
-- Logs: JSON logs rotated, 30 days.
+- Logs: Docker json-file logs capped at **50 MB × 5 files per container**, compressed (`infra/docker/daemon.json`; about 16 containers → at most 4 GB); errors also go to Sentry. Caddy access logs (System page, C-35) roll in `/var/lib/moz/<env>/caddy-logs` (`infra/caddy/common.caddy`).
 
 ## When to move to the scale path
 

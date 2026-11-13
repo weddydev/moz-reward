@@ -1,0 +1,12 @@
+// Moz Rewards (infra/host/harden.sh). Adds to Ubuntu's 50unattended-upgrades (lists are additive):
+// Docker's repository too (engine/containerd security fixes), and an explicit reboot window when a kernel or
+// libc update needs one. Docker's live-restore keeps containers running across a dockerd upgrade; after a
+// reboot every container restarts (`restart: unless-stopped`) and the Tunnel reconnects (P0-15 edge case).
+Unattended-Upgrade::Origins-Pattern {
+        "origin=Docker,label=Docker CE";
+};
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+Unattended-Upgrade::Automatic-Reboot-Time "04:30";

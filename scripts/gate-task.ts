@@ -143,6 +143,8 @@ function main(): void {
     },
     // Semgrep, as in CI (P0-18: a CI-only check let a finding through).
     { name: "sast", run: () => commandStep("sast", "pnpm", ["sast"]) },
+    // ShellCheck on the root scripts for the VPS (P0-15), as in CI.
+    { name: "lint:sh", run: () => commandStep("lint:sh", "pnpm", ["lint:sh"]) },
   );
   if (ids.length > 0) {
     steps.push({
