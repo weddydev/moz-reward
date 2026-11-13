@@ -469,3 +469,8 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Claude's part of H-41: 7 staging secrets generated into GitHub (values only in `C:\Users\DELL\moz-secrets-staging-2026-11-13.env` for the password manager); `DEPLOY_SSH_KEY` replaced with `moz_ci_deploy` (matched `deploy_ci.pub`). H-41 row was missing from HUMAN_TASKS: added.
 - Exact next step: B2 run after H-39; else step D's code. C2 (first deploy) needs merge to main + H-40 + H-41.
 - Handoff 14:10 UTC: push CI `43436273032` on `f144411` green (image job skipped off main); baton freed.
+
+## 2026-11-13 — P0 — P0-15 step D design (talha.syed, Mac)
+- `wip/P0-15` `4e25e42`: Mac admin key `talha.pub`; `scripts/lib/find-bash.ts` (host-script tests need bash ≥ 4; first Mac push failed 23 moz-deploy tests under bash 3.2). gate:task PASS (unit 1167, int 1139, sast, lint:sh).
+- Step D designed in `progress/P0-15-plan.md` (host `moz-backup` + timers, prefix per env, list+write keys, gpg to the pinned fingerprint, drill on the 1st, wal-g, `pnpm backup:verify`); security-reviewer design check: 5 HIGH folded in (Object Lock, WAL never in clear, lever on RO mount + alert, `backup:base` heartbeat, PIPESTATUS + dump-failed). DECISIONS + new 🟠 H-42.
+- Exact next step: `/resume` → `git switch wip/P0-15` → D1 per the plan's D bullet and "D design check".
