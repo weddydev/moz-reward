@@ -466,5 +466,6 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 ## 2026-11-13 — P0 — P0-15 step C1 (Syedbadeshah76, Windows)
 - `wip/P0-15` `f144411`: `migrate --url-stdin`; `.github/workflows/deploy.yml` (staging after green main CI/on demand, production on demand with re-scan, rollback); per-env images (`load <env> <sha>`: same-SHA staging/prod images differ by build args); `scripts/image-check.sh` shared with CI; `deploy-env.mjs` + `infra/deploy/<env>.env`; `deploy-secrets.mjs`; pinned `known_hosts`.
 - Evidence: gate:task PASS (unit 1167, int 1139, sast, lint:sh 3); bundled migrate CLI via stdin migrated the local test DB and refused bad input without echo; actionlint clean; moz-deploy tests failed 4 before the per-env fix.
-- Claude's part of H-41: 7 staging secrets generated into GitHub (values only in `C:UsersDELLmoz-secrets-staging-2026-11-13.env` for the password manager); `DEPLOY_SSH_KEY` replaced with `moz_ci_deploy` (matched `deploy_ci.pub`). H-41 row was missing from HUMAN_TASKS: added.
+- Claude's part of H-41: 7 staging secrets generated into GitHub (values only in `C:\Users\DELL\moz-secrets-staging-2026-11-13.env` for the password manager); `DEPLOY_SSH_KEY` replaced with `moz_ci_deploy` (matched `deploy_ci.pub`). H-41 row was missing from HUMAN_TASKS: added.
 - Exact next step: B2 run after H-39; else step D's code. C2 (first deploy) needs merge to main + H-40 + H-41.
+- Handoff 14:10 UTC: push CI `43436273032` on `f144411` green (image job skipped off main); baton freed.
