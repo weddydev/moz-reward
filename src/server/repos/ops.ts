@@ -19,7 +19,10 @@ export async function writeOpsSnapshot(
     .onConflictDoUpdate({ target: opsSnapshot.id, set: { takenAt, data } });
 }
 
-/** The latest snapshot, or null (none yet, or the caller is not the admin owner: RLS shows no row). */
+/**
+ * The latest snapshot, or null (none yet, or the caller is not the admin owner: RLS shows no row).
+ * admin-scope: the one global health row (no shop data), readable by the admin owner only.
+ */
 export async function readOpsSnapshot(
   scope: AdminScope,
 ): Promise<{ takenAt: Date; data: unknown } | null> {

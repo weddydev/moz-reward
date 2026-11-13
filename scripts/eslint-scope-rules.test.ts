@@ -51,3 +51,77 @@ describe("[P0-20] scope import allowlists (C-12)", { timeout: 60_000 }, () => {
     expect(await restricted("src/server/testing/factories.ts", OWNER)).toEqual([]);
   });
 });
+
+/** Messages of moz/admin-read for `code` linted as if it were `filePath` (type-aware). */
+async function adminReadErrors(filePath: string, code: string): Promise<string[]> {
+  const [result] = await eslint.lintText(code, { filePath });
+  return (result?.messages ?? [])
+    .filter((m) => m.ruleId === "moz/admin-read")
+    .map((m) => m.message);
+}
+
+const repo = (signature: string, body: string, doc = ""): string =>
+  [
+    'import "server-only";',
+    'import type { AdminScope, CustomerScope, Scope } from "@/server/authz/scope";',
+    'import { adminRead, transaction, withScope } from "./_base";',
+    `${doc}export async function f${signature}: Promise<unknown> {`,
+    `  return ${body};`,
+    "}",
+    "",
+  ].join("\n");
+
+describe(
+  "[P1-01] C-34 moz/admin-read: admin cross-shop reads only through adminRead",
+  { timeout: 60_000 },
+  () => {
+    beforeAll(async () => {
+      await eslint.lintText("export {};\n", { filePath: "src/server/repos/shops.ts" });
+    }, 240_000);
+
+    const FILE = "src/server/repos/shops.ts";
+
+    it("flags withScope / transaction with an AdminScope, a Scope union or a generic scope", async () => {
+      for (const code of [
+        repo("(scope: AdminScope)", "withScope(scope, async () => 1)"),
+        repo("(scope: Scope)", "withScope(scope, async () => 1)"),
+        repo("(scope: AdminScope)", "transaction(scope, async () => 1)"),
+        repo("<S extends Scope>(scope: S)", "withScope(scope, async () => 1)"),
+        repo("(scope: AdminScope)", "withScope(scope, async () => 1)", "// admin-scope: short\n"),
+      ]) {
+        expect(await adminReadErrors(FILE, code), code).toEqual([
+          expect.stringMatching(/AdminScope.*adminRead/),
+        ]);
+      }
+    });
+
+    it("flags a renamed import too", async () => {
+      const code = repo("(scope: AdminScope)", "run(scope, async () => 1)").replace(
+        "import { adminRead, transaction, withScope }",
+        "import { adminRead, withScope as run, transaction }",
+      );
+      expect(await adminReadErrors(FILE, code)).toHaveLength(1);
+    });
+
+    it("allows tenant scopes, adminRead and a stated reason", async () => {
+      for (const code of [
+        repo("(scope: CustomerScope)", "withScope(scope, async () => 1)"),
+        repo(
+          "(scope: AdminScope)",
+          'adminRead(scope, { entity: "shops", reason: "support" }, async () => 1)',
+        ),
+        repo(
+          "(scope: AdminScope)",
+          "withScope(scope, async () => 1)",
+          "/** admin-scope: a global admin-only row, no shop data */\n",
+        ),
+        repo(
+          "(scope: AdminScope)",
+          "withScope(scope, async () => 1) // admin-scope: an audited global write",
+        ),
+      ]) {
+        expect(await adminReadErrors(FILE, code), code).toEqual([]);
+      }
+    });
+  },
+);

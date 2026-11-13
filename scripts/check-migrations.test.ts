@@ -146,7 +146,8 @@ describe("[P0-20] every table has RLS enabled, forced and a policy unless declar
   const create = 'CREATE TABLE "rewards" ("id" uuid PRIMARY KEY, "membership_id" uuid NOT NULL);';
   const enable = "ALTER TABLE rewards ENABLE ROW LEVEL SECURITY;";
   const force = 'ALTER TABLE "public"."rewards" FORCE ROW LEVEL SECURITY;';
-  const policy = "CREATE POLICY rewards_own ON rewards FOR SELECT TO moz_app USING (true);";
+  const policy =
+    "CREATE POLICY rewards_own ON rewards FOR SELECT TO moz_app USING (membership_id IS NOT NULL);";
   const files = (...sql: string[]) =>
     sql.map((s, i) => ({ name: `00${String(10 + i)}_x.sql`, sql: s }));
 
@@ -207,5 +208,79 @@ describe("[P0-20] every table has RLS enabled, forced and a policy unless declar
     expect([...state.global.keys()].sort()).toEqual(["failed_jobs", "job_heartbeats"]);
     expect(state.tables.get("feature_flags")).toMatchObject({ enabled: true, forced: true });
     expect(state.tables.get("memberships")).toMatchObject({ enabled: true, forced: true });
+    expect(state.problems).toEqual([]);
+  });
+});
+
+describe("[P1-01] C-34: open moz_app policies need a reason; global markers count only where the table is created", () => {
+  const create = 'CREATE TABLE "rewards" ("id" uuid PRIMARY KEY);';
+  const rls = [
+    "ALTER TABLE rewards ENABLE ROW LEVEL SECURITY;",
+    "ALTER TABLE rewards FORCE ROW LEVEL SECURITY;",
+  ].join("\n");
+  const open =
+    "CREATE POLICY rewards_read ON rewards FOR SELECT TO moz_app, moz_auth USING (true);";
+  const scoped = "CREATE POLICY rewards_k ON rewards FOR SELECT TO moz_app USING (id IS NOT NULL);";
+  const reason = "-- rls: open rewards — the public catalogue, no tenant rows";
+  const globalMarker = "-- rls: global rewards — test fixture with a long enough reason";
+  const files = (...sql: string[]) =>
+    sql.map((s, i) => ({ name: `00${String(20 + i)}_x.sql`, sql: s }));
+  const one = (...parts: string[]) => parts.join("\n");
+
+  it("fails a moz_app policy with USING (true) and no reason marker, naming file and policy", () => {
+    expect(checkRls(files(one(create, rls, open)))).toEqual([
+      expect.stringMatching(
+        /^0020_x\.sql: policy "rewards_read" gives moz_app every row of "rewards"/,
+      ),
+    ]);
+  });
+
+  it("fails WITH CHECK (true), extra parentheses, upper case, a quoted role and no TO (PUBLIC)", () => {
+    for (const p of [
+      "CREATE POLICY w ON rewards FOR INSERT TO moz_app WITH CHECK (true);",
+      "CREATE POLICY w ON rewards FOR SELECT TO moz_app USING ((TRUE));",
+      'CREATE POLICY w ON rewards FOR SELECT TO "moz_app" USING ( true );',
+      "CREATE POLICY w ON rewards FOR SELECT USING (true);",
+      "CREATE POLICY w ON rewards FOR SELECT TO public USING (true);",
+    ]) {
+      expect(checkRls(files(one(create, rls, p))), p).toHaveLength(1);
+    }
+  });
+
+  it("passes with the reason marker in the same migration only", () => {
+    expect(checkRls(files(one(create, rls, reason, open)))).toEqual([]);
+    expect(checkRls(files(one(create, rls, open), reason))).toHaveLength(1);
+    expect(checkRls(files(one(create, rls, scoped), one(reason, open)))).toEqual([]);
+  });
+
+  it("ignores open policies for other roles and scoped moz_app policies; a short reason doesn't count", () => {
+    const auth = "CREATE POLICY a ON rewards FOR ALL TO moz_auth USING (true) WITH CHECK (true);";
+    expect(checkRls(files(one(create, rls, auth, scoped)))).toEqual([]);
+    expect(checkRls(files(one(create, rls, "-- rls: open rewards — short", open)))).toHaveLength(1);
+  });
+
+  it("forgets an open policy that a later migration drops", () => {
+    expect(
+      checkRls(files(one(create, rls, open, scoped), "DROP POLICY rewards_read ON rewards;")),
+    ).toEqual([]);
+  });
+
+  it("counts a global marker only in the migration that creates the table", () => {
+    expect(checkRls(files(one(create, globalMarker)))).toEqual([]);
+    const late = checkRls(files(create, globalMarker));
+    expect(late).toContainEqual(
+      expect.stringMatching(
+        /^0021_x\.sql: "-- rls: global rewards" only counts in the migration that creates "rewards"/,
+      ),
+    );
+    expect(late).toContainEqual(
+      expect.stringMatching(/table "rewards": ENABLE ROW LEVEL SECURITY/),
+    );
+  });
+
+  it("a re-created table loses its earlier global status", () => {
+    expect(
+      checkRls(files(one(create, globalMarker), 'DROP TABLE "rewards";', create)),
+    ).toHaveLength(1);
   });
 });

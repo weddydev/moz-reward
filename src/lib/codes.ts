@@ -6,9 +6,11 @@ import { randomInt } from "node:crypto";
  */
 export const CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
 const MAX_ATTEMPTS = 5;
+/** Shop codes (PRODUCT §3) and member IDs are 6 characters. */
+export const SHOP_CODE_LENGTH = 6;
 
 export class CodeCollisionError extends Error {
-  constructor(attempts: number) {
+  constructor(readonly attempts: number) {
     super(`Could not generate a unique code after ${attempts} attempts`);
     this.name = "CodeCollisionError";
   }
@@ -32,6 +34,21 @@ export function formatCode(code: string, opts: { group: number; separator?: stri
   return parts.join(opts.separator ?? "-");
 }
 
+const MAX_LOOKUP_INPUT = 64;
+
+/**
+ * A typed or scanned code as stored (upper case, no spaces or dashes), or null when it can't be one: wrong
+ * length, or a character the generator never emits (0, O, 1, I, L, U …). A mistyped confusable is therefore
+ * simply "not found", and callers skip the database for anything that returns null.
+ */
+export function normaliseCode(input: string, length: number): string | null {
+  if (input.length > MAX_LOOKUP_INPUT) return null;
+  const code = input.trim().replace(/[\s-]/g, "").toUpperCase();
+  if (code.length !== length) return null;
+  for (const ch of code) if (!CODE_ALPHABET.includes(ch)) return null;
+  return code;
+}
+
 /** "K7Q42M" → "K7Q-42M" (display only; stored without the dash). */
 export function formatMemberId(code: string): string {
   return formatCode(code, { group: 3 });
@@ -52,11 +69,15 @@ function isUniqueViolation(err: unknown): boolean {
  */
 export async function withUniqueCode<T>(
   insert: (code: string) => Promise<T>,
-  opts: { length: number },
+  opts: {
+    length: number;
+    /** Tests only: force collisions. */ generate?: (() => string) | undefined;
+  },
 ): Promise<T> {
+  const next = opts.generate ?? (() => generateCode(opts.length));
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      return await insert(generateCode(opts.length));
+      return await insert(next());
     } catch (err) {
       if (!isUniqueViolation(err)) throw err;
     }

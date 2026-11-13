@@ -429,3 +429,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Staging smoke + Sentry for the release: NOT RUN (no staging until P0-15; pending per the human's autopilot instruction). `pnpm ci:usage`: 66% of Actions minutes (estimate).
 - P1 phase-start brief review: Edge cases/Verify added for P1-01, 05, 07, 08, 10, 11, 13, 14, 16, 17.
 - code-review done f91af95
+
+## 2026-11-13 — Syedbadeshah76 (Windows) — P1-01 shop entities, codes, hours, NFC (closes C-34)
+- C-34: check-migrations 47/0 (open-policy marker, global marker only where created); ESLint `moz/admin-read` rule tests 21/0 and `eslint src/server` clean after 6 reasons/1 narrowed type; membership-guard integration 7/0 (catalog + customer/staff/worker cases).
+- Unit: open-status 17/0 (normal, overnight, closure, no hours, BST start/end, 30-min boundary, missing hour → 02:00), codes 14/0, shop-links 4/0, shop-qr 4/0 (PNG decodes to the exact URL; EC M; quiet zone 4).
+- Integration shop-details 16/0: concurrent creation with forced clash + 20 parallel, exhaustion → `codes.exhausted` and no row, savepoint retry inside a caller tx, RLS on hours/closures/tags across shops and roles, NFC replaced twice → one hop, DB refuses chains.
+- `pnpm check` at session start: 1 failure = authz-coverage repo scan timing out at 5 s under the parallel run (0.7 s alone) → 30 s timeout. CI `43364016465` green on `f91af95`.
+- gate:task: run by the pre-push hook on the P1-01 commit (result recorded in the next progress commit).

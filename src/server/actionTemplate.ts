@@ -145,7 +145,10 @@ function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-/** Steps 1–8 for one call. Shared by actions and route handlers. */
+/**
+ * Steps 1–8 for one call. Shared by actions and route handlers.
+ * admin-scope: the action's own transaction; the repositories it calls are checked by moz/admin-read.
+ */
 async function execute<Schema extends z.ZodType, Ctx extends ScopeContext, Out>(
   spec: Spec<Schema, Ctx, Out>,
   raw: unknown,

@@ -76,7 +76,9 @@ describe("[P0-07] authz coverage script", () => {
     expect([...matrixNames(src)].sort()).toEqual(["POST /api/uploads", "renameShop"]);
   });
 
-  it("the repository has no uncovered endpoints", () => {
+  // A whole-repo AST scan: ~0.7 s alone, but over 5 s under the parallel unit
+  // run on a low-memory laptop, so it gets its own timeout.
+  it("the repository has no uncovered endpoints", { timeout: 30_000 }, () => {
     expect(uncovered(process.cwd())).toEqual([]);
   });
 });

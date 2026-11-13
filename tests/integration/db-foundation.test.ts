@@ -104,6 +104,9 @@ describe("[P0-03] app role moz_app (least privilege)", () => {
     failed_jobs: "",
     job_heartbeats: "",
     ops_snapshot: "S", // P0-13: admin owner reads the health snapshot (RLS); the worker writes it
+    shop_hours: "ISUD", // P1-01: the owner edits hours (RLS: owner / admin owner+support)
+    shop_closures: "ISUD", // P1-01: the owner adds and removes closure days (same RLS)
+    nfc_tags: "ISU", // P1-01: no DELETE, tags are history (replaced, never removed)
   };
 
   it("has exactly the reviewed grants per table, never TRUNCATE", async () => {

@@ -63,6 +63,7 @@ export function outboxScope(scope: Scope): OutboxScope {
 /**
  * Appends one row in the caller's transaction (the side effect commits or rolls back with the change). The id
  * is generated here: the web role may only INSERT (C-29), so there is no RETURNING.
+ * admin-scope: an append of the caller's own event (outbox_append ties the row to the writer), never a read.
  */
 export async function insertOutbox(
   scope: Scope,

@@ -77,6 +77,7 @@ export function audit(
 /**
  * One audit row written under `scope`'s own database role, outside any caller transaction (P0-20): system
  * sweeps record their runs as `moz_worker`, identity events as `moz_auth`.
+ * admin-scope: an audit append under the caller's own role, never a read.
  */
 export function auditAs(
   scope: Scope,

@@ -154,8 +154,19 @@ export function checkConcurrentMigration(name: string, sql: string): string[] {
  * dynamic SQL (EXECUTE format(...)) is invisible here, which is why 0009 spells every table out.
  * tests/integration/rls-catalog.test.ts checks the same thing on the live database.
  */
-type RlsTable = { enabled: boolean; forced: boolean; policies: Set<string> };
-export type RlsState = { tables: Map<string, RlsTable>; global: Map<string, string> };
+type RlsTable = {
+  enabled: boolean;
+  forced: boolean;
+  policies: Set<string>;
+  /** Policies that give `moz_app` every row (`USING (true)` / `WITH CHECK (true)`) with no reason → file. */
+  openUnmarked: Map<string, string>;
+};
+export type RlsState = {
+  tables: Map<string, RlsTable>;
+  global: Map<string, string>;
+  /** Markers that don't count (e.g. a `global` marker outside the migration that creates the table). */
+  problems: string[];
+};
 
 const NAME = String.raw`(?:"?\w+"?\.)?"?(\w+)"?`;
 const RLS_PATTERNS = {
@@ -172,24 +183,64 @@ const RLS_PATTERNS = {
   ),
 };
 const GLOBAL_MARKER = /^--\s*rls:\s*global\s+(\w+)(?:\s+[—–-]+\s*(.*))?$/gim;
+const OPEN_MARKER = /^--\s*rls:\s*open\s+(\w+)(?:\s+[—–-]+\s*(.*))?$/gim;
+
+/**
+ * C-34: a `global` marker counts only in the migration that creates the table, so a later migration can't
+ * quietly exempt a table that already holds tenant rows. These two predate the rule (0004 created them, 0009
+ * declared them global when RLS arrived) and stay accepted by name.
+ */
+const GRANDFATHERED_GLOBAL = new Set(["0009_rls.sql:failed_jobs", "0009_rls.sql:job_heartbeats"]);
+
+/** `marker table — reason` lines of one file (reason ≥ 10 characters, or the marker doesn't count). */
+function markers(sql: string, pattern: RegExp): Map<string, string> {
+  const found = new Map<string, string>();
+  for (const m of sql.matchAll(pattern)) {
+    const reason = (m[2] ?? "").trim();
+    if (m[1] && reason.length >= 10) found.set(m[1].toLowerCase(), reason);
+  }
+  return found;
+}
+
+const POLICY_ROLES = /\bTO\s+(.+?)(?=\s+USING\b|\s+WITH\s+CHECK\b|$)/is;
+const ALWAYS_TRUE = /\b(?:USING|WITH\s+CHECK)\s*\(\s*\(*\s*true\s*\)*\s*\)/i;
+
+/** Whether a CREATE POLICY gives the web role (`moz_app`, or PUBLIC when no role is named) every row. */
+function opensToApp(stmt: string): boolean {
+  if (!ALWAYS_TRUE.test(stmt)) return false;
+  const roles = POLICY_ROLES.exec(stmt)?.[1];
+  if (roles === undefined) return true;
+  return roles
+    .split(",")
+    .map((r) => r.trim().replace(/"/g, "").toLowerCase())
+    .some((r) => r === "moz_app" || r === "public");
+}
 
 export function rlsState(files: readonly { name: string; sql: string }[]): RlsState {
   const tables = new Map<string, RlsTable>();
   const global = new Map<string, string>();
-  for (const { sql } of files) {
-    for (const m of sql.matchAll(GLOBAL_MARKER)) {
-      const reason = (m[2] ?? "").trim();
-      if (m[1] && reason.length >= 10) global.set(m[1].toLowerCase(), reason);
-    }
+  const problems: string[] = [];
+  for (const { name, sql } of files) {
+    const globalHere = markers(sql, GLOBAL_MARKER);
+    const openHere = markers(sql, OPEN_MARKER);
+    const createdHere = new Set<string>();
     for (const stmt of statements(stripComments(sql))) {
       const created = RLS_PATTERNS.create.exec(stmt)?.[1]?.toLowerCase();
       if (created) {
-        tables.set(created, { enabled: false, forced: false, policies: new Set() });
+        tables.set(created, {
+          enabled: false,
+          forced: false,
+          policies: new Set(),
+          openUnmarked: new Map(),
+        });
+        createdHere.add(created);
+        global.delete(created);
         continue;
       }
       const dropped = RLS_PATTERNS.drop.exec(stmt)?.[1]?.toLowerCase();
       if (dropped) {
         tables.delete(dropped);
+        global.delete(dropped);
         continue;
       }
       const alter = RLS_PATTERNS.alter.exec(stmt);
@@ -204,22 +255,41 @@ export function rlsState(files: readonly { name: string; sql: string }[]): RlsSt
       }
       const created2 = RLS_PATTERNS.createPolicy.exec(stmt);
       if (created2?.[1] && created2[2]) {
-        tables.get(created2[2].toLowerCase())?.policies.add(created2[1].toLowerCase());
+        const policy = created2[1].toLowerCase();
+        const onTable = created2[2].toLowerCase();
+        const t = tables.get(onTable);
+        t?.policies.add(policy);
+        if (t && opensToApp(stmt) && !openHere.has(onTable)) t.openUnmarked.set(policy, name);
         continue;
       }
       const dropped2 = RLS_PATTERNS.dropPolicy.exec(stmt);
       if (dropped2?.[1] && dropped2[2]) {
-        tables.get(dropped2[2].toLowerCase())?.policies.delete(dropped2[1].toLowerCase());
+        const t = tables.get(dropped2[2].toLowerCase());
+        t?.policies.delete(dropped2[1].toLowerCase());
+        t?.openUnmarked.delete(dropped2[1].toLowerCase());
+      }
+    }
+    for (const [table, reason] of globalHere) {
+      if (createdHere.has(table) || GRANDFATHERED_GLOBAL.has(`${name}:${table}`)) {
+        global.set(table, reason);
+      } else {
+        problems.push(
+          `${name}: "-- rls: global ${table}" only counts in the migration that creates "${table}" (C-34)`,
+        );
       }
     }
   }
-  return { tables, global };
+  return { tables, global, problems };
 }
 
 export function checkRls(files: readonly { name: string; sql: string }[]): string[] {
-  const { tables, global } = rlsState(files);
-  const problems: string[] = [];
+  const { tables, global, problems } = rlsState(files);
   for (const [table, t] of tables) {
+    for (const [policy, file] of t.openUnmarked) {
+      problems.push(
+        `${file}: policy "${policy}" gives moz_app every row of "${table}" (USING/WITH CHECK true); add "-- rls: open ${table} — <reason>" in the same migration or scope it (C-34)`,
+      );
+    }
     if (global.has(table)) continue;
     const missing = [
       t.enabled ? null : "ENABLE ROW LEVEL SECURITY",

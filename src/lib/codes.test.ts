@@ -5,6 +5,7 @@ import {
   formatCode,
   formatMemberId,
   generateCode,
+  normaliseCode,
   withUniqueCode,
 } from "./codes";
 
@@ -77,5 +78,52 @@ describe("[P0-03] code format and length", () => {
       expect(() => generateCode(bad)).toThrow(RangeError);
     expect(generateCode(4)).toHaveLength(4);
     expect(generateCode(32)).toHaveLength(32);
+  });
+});
+
+describe("[P1-01] shop code lookup normalisation", () => {
+  it("upper-cases and trims, and accepts a dash or spaces between groups", () => {
+    expect(normaliseCode("  k7q42m ", 6)).toBe("K7Q42M");
+    expect(normaliseCode("k7q-42m", 6)).toBe("K7Q42M");
+    expect(normaliseCode("K7Q 42M", 6)).toBe("K7Q42M");
+  });
+
+  it("returns null for the wrong length or any character the generator never emits (no DB lookup)", () => {
+    for (const bad of [
+      "",
+      "K7Q42",
+      "K7Q42MX",
+      "K7Q4OM",
+      "K7Q40M",
+      "K7Q41M",
+      "K7Q4IM",
+      "K7Q4LM",
+      "K7Q4UM",
+      "K7Q4_M",
+      "K7Q4éM",
+    ]) {
+      expect(normaliseCode(bad, 6), bad).toBeNull();
+    }
+  });
+
+  it("caps the input it is willing to read", () => {
+    expect(normaliseCode(`${" ".repeat(200)}K7Q42M`, 6)).toBeNull();
+  });
+});
+
+describe("[P1-01] code generator injection (collision tests)", () => {
+  it("uses the given generator, so a test can force collisions", async () => {
+    const codes = ["AAAAAA", "AAAAAA", "BBBBBB"];
+    const seen: string[] = [];
+    const out = await withUniqueCode(
+      async (code) => {
+        seen.push(code);
+        if (seen.length < 3) throw Object.assign(new Error("dup"), { code: "23505" });
+        return code;
+      },
+      { length: 6, generate: () => codes.shift() ?? "ZZZZZZ" },
+    );
+    expect(out).toBe("BBBBBB");
+    expect(seen).toEqual(["AAAAAA", "AAAAAA", "BBBBBB"]);
   });
 });

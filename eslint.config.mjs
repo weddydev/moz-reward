@@ -126,6 +126,12 @@ const eslintConfig = defineConfig([
     ],
     rules: { "moz/require-server-only": "error" },
   },
+  // C-34: admin-scoped DB access goes through adminRead, or says why it is not a cross-shop read.
+  {
+    files: ["src/server/**/*.ts"],
+    ignores: ["**/*.test.ts", "src/server/repos/_base.ts"],
+    rules: { "moz/admin-read": "error" },
+  },
   // Tests may use `!` (ENGINEERING §2) and don't export public APIs.
   {
     files: ["**/*.test.{ts,tsx}", "**/*.spec.ts", "tests/**/*.ts", "scripts/**/*.test.ts"],

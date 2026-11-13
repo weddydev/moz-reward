@@ -15,8 +15,11 @@ export function securityAlert(event: SecurityAlertEvent, detail: Record<string, 
   raiseAlert({ kind: event, category: "security", detail });
 }
 
-/** Operational alerts (P0-18: outbox rows waiting > 2 min, dispatched jobs lost from redis-queue). */
-export type OpsAlertEvent = "outbox.stale" | "outbox.lost";
+/**
+ * Operational alerts (P0-18: outbox rows waiting > 2 min, dispatched jobs lost from redis-queue; P1-01: a public
+ * code could not be generated).
+ */
+export type OpsAlertEvent = "outbox.stale" | "outbox.lost" | "codes.exhausted";
 
 export function opsAlert(event: OpsAlertEvent, detail: Record<string, unknown>): void {
   log().warn({ alert: event, category: "ops", ...detail }, `ops alert: ${event}`);

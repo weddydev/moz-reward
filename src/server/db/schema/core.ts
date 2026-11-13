@@ -89,6 +89,8 @@ export const shops = pgTable(
     index("shops_location_gist").using("gist", t.location),
     index("shops_status_idx").on(t.status),
     check("shops_shop_code_format", sql`${t.shopCode} ~ '^[2-9A-HJKMNP-TV-Z]{6}$'`),
+    // P1-01: the Call button dials this (src/lib/shop-links.ts). Added NOT VALID in 0015 (locking rules).
+    check("shops_phone_e164", sql`${t.phone} ~ '^\\+[1-9][0-9]{6,14}$'`),
   ],
 );
 

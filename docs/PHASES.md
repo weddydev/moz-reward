@@ -65,7 +65,7 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 
 **P1-A · Shops and entry**
 
-- [ ] P1-01 · Shop entities, codes, hours, NFC records
+- [x] P1-01 · Shop entities, codes, hours, NFC records
 - [ ] P1-02 · Shop landing page `/s/[code]`
 - [ ] P1-03 · Gilded Gate entry animation
 - [ ] P1-04 · Join flow, profile completion, member ID

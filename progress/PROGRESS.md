@@ -7,31 +7,32 @@ Baton: held by Syedbadeshah76 since 2026-11-13 (Windows)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handed over by talha.syed, 2026-11-13 05:45 IST (Mac)** after an autopilot session (the human asked to keep going without stops).
-- **Finished:** **P0-12** (`8f3f3b8`) and **P0-D closed** (fixes `af3aa57`, `f91af95`): shells per DESIGN §5, role + shop switchers (tabs stay in sync), gates on every portal page (lint: each page awaits its own table path), route authz matrix (34 routes × 18 columns), C-24 admin IP allowlist at sign-in/session/account endpoints, `/portal` landing, C-05, `Cache-Control: private, no-store` on portal paths, `/me/security` inside the customer portal. Reviews: security (2 MEDIUM fixed), design (1 HIGH + 4 MEDIUM fixed), code (4 MEDIUM fixed), QA (2 majors + 3 minors fixed); LOWs in Follow-ups. **P1 phase-start brief review done** (`docs/phases/P1.md`).
-- **CI:** run `43364016465` on `f91af95` **green** (the two runs before failed only on a Linux 320px label truncation, fixed in `f91af95`).
-- **Half-done:** nothing. **Next: P1-01** (nothing started). Plan from reading the code: C-34 has four parts. (a) `scripts/check-migrations.ts` `checkRls`: fail a `moz_app` policy with `USING (true)` / `WITH CHECK (true)` unless the same migration has `-- rls: open <table> — <reason>`; the existing `audit_logs_append` (0009, `WITH CHECK (true)` to moz_app) needs a new migration that drops and re-creates it with the marker (never edit applied migrations). (b) A `-- rls: global` marker only counts in the migration that creates the table. (c) Admin cross-shop reads only via `adminRead`: a type or lint guard on repos taking `AdminScope` (today `readOpsSnapshot`, `upsertFlag` use `withScope(adminScope)`, which are own-table/admin-only rows; decide and record). (d) Customers can't write `memberships` counters: `memberships_own` is `FOR ALL` to moz_app and staff use the same role, so column grants can't separate them; a BEFORE INSERT/UPDATE trigger that, when `current_setting('app.scope') = 'customer'`, refuses changes outside the customer-writable columns (muted, marketing_opt_in, left_at) and non-default counters on insert; plus a catalog test that fails when a new memberships column isn't classified. Then the rest of P1-01 (shop_hours, shop_closures, nfc_tags, `openStatus`, QR service, builders).
+- **Session of Syedbadeshah76, 2026-11-13 (Windows)**, continuing P1 on autopilot. Previous handoff (talha.syed): P0-12 + P0-D closed, CI `43364016465` green, P1 brief reviewed.
+- **Finished:** **P1-01** (this commit): C-34 closed (checker: open moz_app policies need `-- rls: open`, global markers only in the creating migration; ESLint `moz/admin-read`; memberships counter guard trigger, 0014); `shop_hours`, `shop_closures`, `nfc_tags` + RLS + one-hop trigger (0015); `openStatus`; shop code normalise/retry + `codes.exhausted` alert; QR service; directions/tel builders. Also: the authz-coverage repo-scan test gets a 30 s timeout (it timed out at 5 s under the parallel unit run on this laptop).
+- **Gate:** run by the pre-push hook on the P1-01 commit (the stamp hashes the tree at the start, so progress files were written first). Its result is in the next progress commit / SESSION_LOG.
+- **Half-done:** nothing. **Next: P1-02** (shop landing `/s/[code]`; closes C-15). Use `findActiveShopName`-style normalised lookup, `openStatus`, `directionsUrl`/`telHref`. The demo seed has no hours/closures yet: add them in P1-02 so the landing page shows real hours.
 - **Tested:** see "Last verified". **Not yet tested:** quarantined pixel7 motion test (C-40); `global-error.tsx`; real-device sound/haptics (H-37); rail labels toggle and More sheet on a real phone/tablet; staging (none until P0-15).
 - **Pending by the human's autopilot instruction (not passed):** P0-D close staging smoke + Sentry for the release (no staging until P0-15); P0-E and P0 phase closes wait on P0-15's human tasks.
-- **Do first:** nothing new (no env vars, migrations or seeds). A blank `ADMIN_IP_ALLOWLIST=` is fine locally; it fails the boot only on staging/production.
-- **Human side:** open 🟠 for P0-15 (H-04, H-28, H-34 leftovers, H-36 after deploy), H-12 Play account, H-37; new 🟢 H-38 (delete merged wip branches; Claude's branch deletion is refused here).
+- **Do first:** `pnpm install` (dev deps jsqr, pngjs) and `pnpm db:migrate` (0014, 0015).
+- **Human side:** open 🟠 for P0-15 (H-04, H-28, H-34 leftovers, H-36 after deploy), H-12 Play account, H-37; 🟢 H-38 (delete merged wip branches). H-27 done 13 Nov.
 - **Windows laptop notes:** low memory can crash a Vitest worker in the pre-push gate (re-run); start Docker Desktop before `pnpm services:up`; `pnpm sast` takes 10–23 min there.
 
 ## Status
 - **Phase:** P0 open (P0-15 and the P0-E/P0 closes pending human tasks; P0-D closed 13 Nov). Working on **P1** meanwhile (human, 13 Nov: keep going, mark pending gates).
-- **Current sub-phase:** P0-E production foundation: ~~P0-14~~ → ~~P0-19~~ → ~~P0-18~~ → ~~P0-20~~ → ~~P0-13~~ → ~~P0-21~~ → P0-15 → ~~P0-16~~; then P0-C (P0-08…11), then P0-D (P0-12).
+- **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → P1-02 → P1-03 → P1-04. P0-E waits only on P0-15 (human tasks).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-13 05:45 IST, talha.syed (handoff after P0-D close)
+- **Last updated:** 2026-11-13, Syedbadeshah76 (P1-01 done)
 - **Staging and production:** one Hostinger VPS 72.61.17.208 (ready, not hardened; backups on B2) — not provisioned yet
 
 ## Now
 - **P0-C closed** (`576b73e`; 5-project run `43269125099` 675/0/0 flaky). C-40 quarantine open (P0 phase gate).
 - **P0-D closed** (P0-12 + fixes; staging smoke pending until P0-15). P1 brief reviewed.
+- **P1-A started:** P1-01 done (13 Nov); C-34 closed.
 - P0-15 is the only P0-E task left: VPS (H-06) and domain (H-07) ready; backups bucket ready (B2); waits on H-04 (+ H-34, H-36 for the full staging sign-in; H-27 done 13 Nov).
 
 ## Next (top 3)
-1. **P1-01** (shop entities, codes, hours, NFC; closes C-34). P1 starts while P0-15 waits on H-04/H-28 (human's autopilot instruction: move on, mark the P0 phase gate pending).
+1. **P1-02** shop landing page (closes C-15), then P1-03, P1-04 (P1-A). P1 runs while P0-15 waits on H-04/H-28 (human's autopilot instruction: move on, mark the P0 phase gate pending).
 2. P0-15 parts that need no human input (hardening script as code, compose stacks, deploy/rollback scripts) when a P1 sub-phase closes or the human tasks land.
 3. **P0-15**: VPS + staging (+ C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38); hardening script can start now (VPS ready, backups bucket + key ready); staging sign-in waits on H-04.
 
@@ -47,7 +48,6 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-25 | B-SEC-9 (P0-19) | P2-04 | Creating a password credential for an existing user (staff invite) revokes that user's existing sessions, like trigger 0006 does on role changes | integration |
 | C-32 | P0-20 | P0-15 | Postgres bootstrap creates moz_app/moz_auth/moz_worker logins, moz_rls NOLOGIN WITH ADMIN to a non-superuser migration owner (boot asserts NOLOGIN), PostGIS revokes re-applied; four URLs only in their containers; staging max_connections 80; RLS EXPLAIN on staging data | staging boot + DECISIONS |
 | C-33 | P0-20 review | P0-15 | Boot asserts each DB URL is its expected role (pg_has_role) and web logins can't SET ROLE worker/auth | integration |
-| C-34 | P0-20 review | P1-01 | Checker fails moz_app `USING (true)` without reason marker; global marker only in the creating migration; adminRead enforced; membership counter column grants | lint test + integration |
 | C-27 | P0-18 | P0-15 | Worker container stop grace ≥ 75 s (60 s drain); bundled worker keeps the `server-only` hook (emails render) | staging deploy log + worker-process test |
 | C-28 | P0-18 | P1-10 | SSE streams get a jittered `retry:` before close on shutdown | integration |
 | C-35 | P0-13 | P0-15 | Backup jobs write `backup:dump`/`backup:wal`/`backup:restore-drill` heartbeats + `BACKUPS_ENABLED=true` on staging; per-route request rate/p95/error on the System page from host logs | staging health snapshot + screenshot |
@@ -70,6 +70,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - `src/server/auth/` — Better Auth `auth.ts` (`getAuth()`, created on first use; + hooks, staff gate), `session.ts` (`sessionFromHeaders`, role limits), `mfa.ts`, `privileged.ts`, `cookies.ts`, `ip.ts`, `social.ts`, `magic-link.ts`, `staff-login.ts` + `attempt-guard.ts` (atomic lockout), `link-confirm.ts` (POST confirm of email links; page `/sign-in/confirm`, route `/api/sign-in/confirm`); `src/server/integrations/breach/` (HIBP)
 - `src/server/portal/` (P0-12, on `wip/P0-12-b`) — `decide.ts` (pure route gate, active shop, layout route), `gate.ts` (`gate*Route`, `gatePortalLayout`), `active-shop.ts`; route table `src/features/portal/routes.ts`
 - `src/server/authz/` — `decide*` policies, `require*` (incl. `requireStaffAwardLimit`, `requireOwnAccount`), `principal.ts`, `scope.ts`
+- P1-01: `src/lib/open-status.ts` (`openStatus`), `src/lib/codes.ts` (`normaliseCode`, `SHOP_CODE_LENGTH`), `src/lib/shop-links.ts` (`directionsUrl`, `telHref`), `src/server/services/shop-qr.ts`, `src/server/repos/shops.ts` (`createShop`), `src/server/repos/nfc-tags.ts`, schema `shop-details.ts`; lint rule `scripts/eslint-rules/admin-read.mjs` (`// admin-scope: <reason>`)
 - `src/server/repos/` — the only DB access (`_base.ts`: `withScope`, `transaction`, `adminRead`, `poolFor` (auth/system), `inShop`, `ownedBy`; scope → role pool + SET LOCAL); `src/server/services/` (audit incl. `auditAs`, flags, sessions)
 - `src/server/ops/` (P0-13) — `alerts.ts` (dedup + delivery), `health-rules.ts`, `ready.ts` (health routes `src/app/api/health/*`), `usage.ts`; `src/server/jobs/health-monitor.ts`, `log-throttle.ts`; `src/server/repos/ops.ts`; `src/server/observability/` (Sentry, tunnel `/api/monitoring`, request errors); `src/lib/sentry-scrub.ts`, `sentry-browser.ts`, `consent.ts`; `src/features/admin/system/` (+ `src/app/(admin)/admin/system`), `src/features/consent/`; `docs/RUNBOOK.md`
 - `src/server/security/` — `headers.ts`, `rate-limit.ts` (`ipLimit` policy), `auth-limit.ts` (blanket `/api/auth/*`), `request.ts` (`clientIp`, `assertSameOrigin`), `turnstile.ts`, `ip-bucket.ts` (IPv6 /64), `alert.ts` (`securityAlert`), `keys.ts` (HKDF purposes); `src/server/log.ts` (pino + `serializeError`)
@@ -85,6 +86,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - Tests: Vitest `unit` + `integration` (per-worker DBs); `tests/authz/` (matrix, harness self-test); `scripts/check-authz-coverage.ts` (AST, in `pnpm lint`); `tests/e2e/` (Playwright :3100, import `test` from `support/test.ts`); `tests/load/`, `tests/live/`, `stryker.config.mjs`
 
 ## Last verified (13 Nov 2026)
+- P1-01 (Windows, before commit): unit open-status 17/0, codes 14/0, shop-links 4/0, shop-qr 4/0 (PNG decodes to the exact URL), check-migrations 47/0, eslint scope + admin-read rules 21/0; integration shop-details 16/0, membership-guard 7/0; `pnpm fix` clean (eslint incl. moz/admin-read). gate:task: pre-push on the commit.
 - `main` `af3aa57` (P0-D fixes): gate:task PASS (unit 998, int 1111 incl. route matrix 613, build, sast); shells spec 63/0 on 5 projects; visual baselines regenerated and inspected; CI `43364016465` on `f91af95` green.
 - `main` P0-12 squash (Mac): `pnpm check` PASS (unit 998, titles strict); route authz matrix 562/0; full 5-project E2E on the production build 826 passed + the 5 failures (rls.spec, unscoped list) fixed and re-run 5/5; shells 56/0 on 5 projects; visual baselines (6) inspected; gate:task on the push (see SESSION_LOG).
 - `wip/P0-12-b` `7878fdf` (P0-12 step D, Mac): gate:task PASS (unit 987, int 475, build, bundle, sast, E2E P0-12 30/0); `pnpm e2e portal-pages.spec.ts portal-layouts.spec.ts system-page.spec.ts` on Chromium + WebKit + iPhone 14 (production build): 54/0; screenshots of the 403, both not-found pages and the error page inspected at 320, 390, 1440.
@@ -97,6 +99,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - Mutation 90.1% · `test:live`: storage ✅, email NOT VERIFIED (H-04). Staging: none yet.
 
 ## Follow-ups (LOW, not fixed; owner task in brackets)
+- [P1-18] `shops_phone_e164` was added NOT VALID in 0015: `VALIDATE CONSTRAINT` it in a later migration (no shop has a phone yet).
 - [P0-15] From the P0-12 security review (LOW): prefetch requests (`next-router-prefetch` / `purpose: prefetch`) skip the proxy, so a client-sent `x-pathname` reaches the layout gate (only weakens a deny to a content-free 200 for the sender) and such responses carry Next's default cache header, not ours; a full HTML page fetched with `purpose: prefetch` has no CSP. Run the proxy for prefetches on portal paths or mark proxied requests; add a strict CSP + Cache-Control to the prefetch `headers()` rule.
 - [P1] From the P0-D code review and QA (LOW/minor): `forbidden.tsx` "Go to my home page" can point at a portal that refuses the user too (off-list admin, moderator) — gate it like `signedInStaffDestination`, fall back to `/wallet`; `forbidden.tsx` reloads the principal uncached (reuse the gate's `requestPrincipal`); `shell.ts` `memberShops` opens one scoped transaction per membership in parallel (sequential or one query); `/staff/sign-in?returnTo=/admin` for shop staff lands on the 403 page (fall back to home for portals the user can't open); a toast raised while any modal dialog is open sits behind it (the shop switcher now shows its error inline; a top-layer Toaster would fix it for every caller).
 - [P1] From the P0-12 design review (LOW): rail PortalSwitcher stays icon-only when the rail opens (render its label with `rail-label`); `px-[18px]` off the spacing scale; shop sidebar list overflows below ~865px height with no scroll cue (fade mask or tighter gap); toast visual baselines use `maxDiffPixelRatio 0.002`, which misses ~200-pixel changes (use `--update-snapshots=all` when a shell changes).

@@ -18,6 +18,7 @@ Alert emails go to every address in `ALERT_EMAILS` (both developers). Subject: `
 | `error.unexpected` | An unhandled error in an action, route, page, Better Auth or after-commit work. Detail: `where` and `requestId`. | Sentry (search the request id), then the host logs for that `requestId` (§15). |
 | `outbox.stale` | Outbox rows waiting > 2 min to be dispatched: the relay or redis-queue is stuck. | §8 (worker) and §7 (Redis). |
 | `outbox.lost` | Dispatched jobs vanished from redis-queue (re-dispatched automatically). | §7 — usually a Redis restart without its AOF. |
+| `codes.exhausted` | Five random public codes in a row were taken (shop code, member ID…); nothing was created and the caller saw an error. Detail: `kind`, `attempts`. | One alert is chance-level impossible at today's size (30⁶ ≈ 729 M codes): look for a bug in the generator or a unique index on the wrong column; if the code space is genuinely filling up, lengthen the code (DECISIONS). |
 | `health.db` | Postgres did not answer the monitor within 2 s. | `docker compose ps postgres`, its logs; disk (§12). |
 | `health.redis` | redis-queue did not answer. Jobs, rate limits and alert dedup are affected; requests needing limits fail closed (503). | §7. |
 | `health.scheduler` | No scheduler heartbeat for 3 min (checked once the worker has run 3 min): repeatable jobs aren't running. | §8. |

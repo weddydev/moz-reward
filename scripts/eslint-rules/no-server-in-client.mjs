@@ -1,3 +1,5 @@
+import adminRead from "./admin-read.mjs";
+
 /**
  * Files marked "use client" must never import server code (ENGINEERING §3, SECURITY: secrets never reach
  * client bundles). Catches `@/server/...`, relative paths into a `server/` folder, and `server-only`.
@@ -86,5 +88,11 @@ const requireServerOnly = {
   },
 };
 
-const plugin = { rules: { "no-server-in-client": rule, "require-server-only": requireServerOnly } };
+const plugin = {
+  rules: {
+    "no-server-in-client": rule,
+    "require-server-only": requireServerOnly,
+    "admin-read": adminRead,
+  },
+};
 export default plugin;
