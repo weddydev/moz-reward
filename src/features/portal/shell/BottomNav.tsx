@@ -14,6 +14,11 @@ import { PortalSwitchList } from "./PortalSwitcher";
 import { ShopSwitchList } from "./ShopSwitcher";
 import type { ShellProps } from "./types";
 
+/**
+ * Labels never truncate: a slot is 64px at 320px and "Customers" needs about that much (more with Linux font
+ * rendering), so a label may spill a few pixels into its neighbours' space, centred; the bar itself never
+ * scrolls sideways (E2E at 320px).
+ */
 const slotClass =
   "text-caption flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 font-semibold";
 
@@ -96,7 +101,7 @@ export function BottomNav({
                       <Icon icon={navIcon(r.icon)} />
                     </Pill>
                   )}
-                  <span data-nav-label className="max-w-full truncate tracking-tight">
+                  <span data-nav-label className="tracking-tight whitespace-nowrap">
                     {label}
                   </span>
                 </TransitionLink>
