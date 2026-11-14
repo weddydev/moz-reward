@@ -15,7 +15,7 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 
 | ID | Priority | Task | Needed by | Why | Est. time |
 |---|---|---|---|---|---|
-| H-40 | 🔴 | **Cloudflare Tunnel for staging** (steps below): create tunnel `moz-staging`, public hostname `staging.mozrewards.com` → `http://caddy:80`, put its token into GitHub secret `CLOUDFLARE_TUNNEL_TOKEN_STAGING` from your terminal | P0-15 step C (first deploy) | The origin is reachable only through the Tunnel (SECURITY §11); the token exists only in the Cloudflare dashboard | 10 min |
+| H-40 | 🔴 | **Cloudflare origin settings for staging (no Tunnel for now, T-5)** (steps below): proxied DNS record, SSL Full (strict), Authenticated Origin Pulls on, an Origin certificate into two GitHub secrets | P0-15 step C (first deploy) | Origin lock without Zero Trust (which needs a card): only Cloudflare can reach the VPS (DECISIONS 14 Nov) | 10 min |
 | H-41 | 🟠 | **Staging secrets into the password manager + alert emails** (steps below): Claude generates the staging secrets into GitHub and one file on this laptop; you copy that file into the password manager, delete it, and set `ALERT_EMAILS_STAGING` | P0-15 step C (first staging deploy) | SECURITY §7: every staging secret also lives in the password manager; Claude never sees the values. Alert emails are your addresses, so you set them | 5 min |
 | H-42 | 🟠 | **Backblaze B2 for backups: Object Lock, per-environment keys, lifecycle** (steps below) | Before P0-15 step D4 (first staging backups, after C2) | Backups must survive a compromised server: write-only keys per environment and Object Lock so nothing on the VPS can erase or overwrite history (P0-15 design check HIGH 1); keys exist only in the B2 dashboard | 15 min |
 | H-34 | 🟠 | Sentry: **`SENTRY_DSN_STAGING` set** (12 Nov; project `mozrewards`, Next.js, receiving events, PII scrubbed). Org slug `mozereward`, project `mozrewards`; the alert email reaches the shared Gmail inbox (probe MOZREWARDS-1 seen, PII redacted). Alert `New issue → email` (13 Nov): WHEN a new issue is created (+ escalates), IF any event, THEN suggested assignees → recently active members; test notification arrived in the shared inbox. Still to confirm: Subscription = Developer with no pay-as-you-go, the 11 Nov wizard auth token deleted | Sun 15 Nov 2026 (P0-15 staging) | Error reporting for web + worker | 5 min |
@@ -42,12 +42,18 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 3. Tell Claude "H-39 done". Claude checks `ssh root@72.61.17.208` with Windows OpenSSH, then does the rest itself. **Claude's part:** if `DEPLOY_SSH_KEY` turns out to have a passphrase too (CI can't type one), Claude makes a new passphrase-less CI deploy key, installs its public half on the VPS for the `deploy` user only and replaces the GitHub secret with `gh secret set DEPLOY_SSH_KEY < file`, without displaying it. *(13 Nov: it does have a passphrase; the new key `~/.ssh/moz_ci_deploy` is made and its public half is in `infra/host/files/deploy_ci.pub`; the secret is replaced in step C.)*
 4. Good to know: after the hardening run, **root can no longer log in over SSH**. You log in as `badeshah@72.61.17.208`, the other developer as `talha@…` (the same keys as today, with `sudo`). Hostinger's browser console (hPanel → VPS → Browser terminal) stays the way in if SSH ever breaks.
 
-### H-40 — Cloudflare Tunnel for staging (P0-15)
-1. Cloudflare dashboard → **Zero Trust** → Networks → **Tunnels** → Create a tunnel → **Cloudflared** → name `moz-staging` → Save.
-2. On the "Install connector" page, copy only the **token** (the long string after `--token` in any of the commands). Don't run the install command: the connector runs in our Docker stack.
-3. In a terminal in the repo: `gh secret set CLOUDFLARE_TUNNEL_TOKEN_STAGING`, then paste the token at the prompt (never in chat). Also save it in the password manager ("Moz Rewards staging tunnel").
-4. Back in the dashboard → Next → **Public hostname**: subdomain `staging`, domain `mozrewards.com`, service type **HTTP**, URL `caddy:80` → Save. (Cloudflare creates the DNS record itself; there is no A record for the VPS.)
-5. Tell Claude "H-40 done". The tunnel shows "Inactive" until Claude's first deploy starts the connector.
+### H-40 — Cloudflare origin settings for staging (P0-15; replaces the Tunnel until launch, T-5)
+All in the normal Cloudflare dashboard → zone **mozrewards.com** (no Zero Trust, no card).
+1. **DNS → Records → Add record:** type `A`, name `staging`, IPv4 `72.61.17.208`, **Proxy status: Proxied (orange cloud)**, TTL Auto → Save. (If a `staging` record exists, edit it to this.) Until Claude's first deploy the page shows a Cloudflare 521 error; that's expected.
+2. **SSL/TLS → Overview → Configure → Full (strict)** → Save.
+3. **SSL/TLS → Origin Server → Authenticated Origin Pulls:** switch **On**.
+4. **SSL/TLS → Origin Server → Create Certificate:** "Generate private key and CSR with Cloudflare", key type **ECC**, hostnames: only `staging.mozrewards.com` (remove the defaults), validity 15 years, format **PEM** → Create.
+5. With that page still open, in a terminal in the repo (nothing is echoed; the value goes from the clipboard straight to GitHub):
+   - click **Copy** under *Private key*, then run `pbpaste | gh secret set CLOUDFLARE_ORIGIN_KEY_STAGING`
+   - click **Copy** under *Origin certificate*, then run `pbpaste | gh secret set CLOUDFLARE_ORIGIN_CERT_STAGING`
+   - clear the clipboard: `pbcopy < /dev/null`
+   (Windows: `Get-Clipboard -Raw | gh secret set …`.) Also save both in the password manager ("Moz Rewards staging origin certificate") — the private key is shown only once.
+6. Tell Claude "H-40 done". **Claude's part:** check the two secrets exist (names only), then Compose/Caddy (Origin certificate, client-certificate check for origin pulls, Cloudflare IP ranges as trusted proxies), the firewall (443 only from Cloudflare's published ranges, refreshed by a timer; 80 closed), deploy smoke through `https://staging.mozrewards.com`, RUNBOOK, and a test that a direct hit on the VPS IP fails.
 
 ### H-41 — Staging secrets and alert emails (P0-15)
 1. **Claude's part (done 13 Nov):** `node scripts/deploy-secrets.mjs staging` set every generated staging secret in GitHub (app keys, `DB_OWNER_PASSWORD_STAGING`, `BASIC_AUTH_PASSWORD_STAGING`) and wrote their values once to `C:\Users\DELL\moz-secrets-staging-2026-11-13.env` (the file exists now). Claude also replaced `DEPLOY_SSH_KEY` with the passphrase-less CI key (13 Nov).

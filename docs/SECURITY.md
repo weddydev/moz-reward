@@ -166,7 +166,7 @@ Redis sliding-window limits (per IP + per user where signed in). Defaults:
 
 One Hostinger VPS runs production and staging (ARCHITECTURE §9). The host is provisioned by an idempotent hardening script in `infra/`; a second run makes no changes.
 
-- [ ] **Origin lock is mandatory**: the origin is reachable only through Cloudflare Tunnel (`cloudflared`, one tunnel per environment). The host has no inbound 80/443; Caddy and the app publish no host ports. A check from outside to the VPS IP on 80/443 must fail.
+- [ ] **Origin lock is mandatory**: the origin is reachable only through Cloudflare Tunnel (`cloudflared`, one tunnel per environment). The host has no inbound 80/443; Caddy and the app publish no host ports. A check from outside to the VPS IP on 80/443 must fail. **Temporary exception until launch (T-5, DECISIONS 14 Nov):** staging uses Cloudflare's proxy instead of the Tunnel — 443 open only to Cloudflare's IP ranges, Authenticated Origin Pulls, Origin certificate with Full (strict); the outside check is then "a direct TLS connection to the VPS IP without Cloudflare's client certificate fails".
 - [ ] Host firewall: ufw default-deny inbound; only SSH is open.
 - [ ] SSH key-only (password and root login disabled) as a non-root `deploy` user; both developers' keys installed; fail2ban on SSH.
 - [ ] unattended-upgrades for security updates (reboot window documented in the RUNBOOK; containers restart and the Tunnel reconnects).

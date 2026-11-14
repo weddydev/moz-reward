@@ -11,6 +11,11 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-14 — Origin lock without the Tunnel until launch (human)
+Decision: staging uses Cloudflare's proxy instead of Cloudflare Tunnel: proxied `A` record to the VPS, ufw allows 443 only from Cloudflare's published IP ranges (refreshed by a timer; 80 closed), Caddy requires Cloudflare's origin-pull client certificate and serves a Cloudflare Origin certificate (SSL Full strict). The Tunnel design (SECURITY §11) comes back before launch.
+Why: Cloudflare Zero Trust (Tunnel, Access) asks for a card even on the Free plan; the human chose not to add one now. The proxy design keeps "only Cloudflare reaches the origin" without it.
+Consequence / revisit when: 443 is open on the host (Cloudflare ranges only); the shared origin-pull certificate proves "via Cloudflare", not "via our zone", so staging also keeps basic auth. Tracked as T-5 / C-44 → P5-12 (PROGRESS, TEMPORARY.md).
+
 ## 2026-11-14 — Working-process changes after the speed audit (human-approved)
 Decision: (1) **Autopilot** is a separate mode, off by default (`/autopilot`, "switch to autopilot", `/resume autopilot`): a thin orchestrator plus one fresh subagent per step; the default protocol is unchanged. (2) Never wait idle for CI. (3) The pre-push hook runs `pnpm check` for pushes only to `wip/*`; main and `t/*` keep `gate:task` (`scripts/pre-push.ts` `gateFor`); CI runs the full set on every push. (4) PROGRESS trimmed to current state: the map is in `progress/MAP.md`, LOW follow-ups in `progress/FOLLOWUPS.md`, old evidence in SESSION_LOG. (5) Motion/overlay/visual spec changes run in the Linux Playwright image before pushing. (6) `/resume` fetches every branch and refuses a wip branch whose HEAD differs from the handoff note; it renames a stale `../CLAUDE.md`.
 Why: the audit of this Mac's session logs (8–13 Nov) found 776 M tokens re-read against 2.8 M written; sessions averaged up to 340k context per step and two hit the 5-hour limit (idle 3.8 h and 5.3 h). There were also ≥ 100 min of CI polling, a full local gate (Semgrep 10–23 min on Windows) before CI repeated it on every checkpoint push, a 25 KB PROGRESS read at every resume, and a stale parent CLAUDE.md that loaded every session. History check: no handover ever built on a stale branch and no work was redone, but nothing enforced that.
