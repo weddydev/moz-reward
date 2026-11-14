@@ -12,4 +12,4 @@ Close the current phase ($ARGUMENTS, e.g. "P1"). This is the **one heavy gate** 
 6. **Staging:** latest green `main` deployed, demo seed fresh, Sentry clean, RUNBOOK extended for this phase's features.
 7. **Demo:** run `/demo`.
 8. **Progress (one commit):** HUMAN_TASKS for the next phase (with steps and needed-by), PROGRESS (phase done, next phase's first task — which starts with the brief review), SESSION_LOG (gate summary table). Push; confirm CI.
-9. **Reply** with: gate results table (pass / fail / deferred with reason), staging URL, demo summary, open human tasks grouped 🔴 / 🟠 / 🟢.
+9. **Reply** with: gate results table (pass / fail / deferred with reason), staging URL, demo summary, open human tasks grouped 🔴 / 🟠 / 🟢, and the open lines of `progress/TEMPORARY.md` (what is still temporary and when it must be fixed).
