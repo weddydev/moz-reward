@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   changedFiles,
   DOCS_ONLY_GLOBS,
+  gateFor,
   needsGate,
   parsePushLines,
   refusal,
@@ -54,6 +55,30 @@ describe("[P0-14] pre-push guard", () => {
     const block = /paths-ignore:\n((?:\s+- .+\n)+)/.exec(ci)?.[1] ?? "";
     const globs = [...block.matchAll(/- "?([^"\n]+)"?/g)].map((m) => m[1]);
     expect(new Set(globs)).toEqual(new Set(DOCS_ONLY_GLOBS));
+  });
+});
+
+describe("[P0-15] pre-push gate level by target branch (DECISIONS 14 Nov)", () => {
+  it("a push only to wip/* branches runs the fast check (CI runs the full set on the push)", () => {
+    expect(gateFor([line(A, B, "refs/heads/wip/P0-15")])).toBe("check");
+    expect(gateFor([line(A, Z, "refs/heads/wip/P0-15"), line(B, A, "refs/heads/wip/P1-02")])).toBe(
+      "check",
+    );
+  });
+
+  it("main, task branches and anything else keep the full gate:task", () => {
+    expect(gateFor([line(A, B)])).toBe("task");
+    expect(gateFor([line(A, B, "refs/heads/t/P1-02")])).toBe("task");
+    expect(gateFor([line(A, B, "refs/heads/wipe")])).toBe("task");
+    expect(gateFor([line(A, B, "refs/heads/wip/P0-15"), line(A, B)])).toBe("task");
+  });
+
+  it("deletions don't count; a push with nothing but deletions has no gate level", () => {
+    expect(gateFor([line(Z, B, "refs/heads/wip/old"), line(A, B, "refs/heads/wip/P0-15")])).toBe(
+      "check",
+    );
+    expect(gateFor([line(Z, B, "refs/heads/wip/old")])).toBe("check");
+    expect(gateFor([line(Z, B, "refs/heads/wip/old"), line(A, B)])).toBe("task");
   });
 });
 

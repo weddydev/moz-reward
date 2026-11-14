@@ -11,6 +11,16 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-14 — Working-process changes after the speed audit (human-approved)
+Decision: (1) **Autopilot** is a separate mode, off by default (`/autopilot`, "switch to autopilot", `/resume autopilot`): a thin orchestrator plus one fresh subagent per step; the default protocol is unchanged. (2) Never wait idle for CI. (3) The pre-push hook runs `pnpm check` for pushes only to `wip/*`; main and `t/*` keep `gate:task` (`scripts/pre-push.ts` `gateFor`); CI runs the full set on every push. (4) PROGRESS trimmed to current state: the map is in `progress/MAP.md`, LOW follow-ups in `progress/FOLLOWUPS.md`, old evidence in SESSION_LOG. (5) Motion/overlay/visual spec changes run in the Linux Playwright image before pushing. (6) `/resume` fetches every branch and refuses a wip branch whose HEAD differs from the handoff note; it renames a stale `../CLAUDE.md`.
+Why: the audit of this Mac's session logs (8–13 Nov) found 776 M tokens re-read against 2.8 M written; sessions averaged up to 340k context per step and two hit the 5-hour limit (idle 3.8 h and 5.3 h). There were also ≥ 100 min of CI polling, a full local gate (Semgrep 10–23 min on Windows) before CI repeated it on every checkpoint push, a 25 KB PROGRESS read at every resume, and a stale parent CLAUDE.md that loaded every session. History check: no handover ever built on a stale branch and no work was redone, but nothing enforced that.
+Consequence / revisit when: a wip push can now reach CI with an integration/E2E failure the local check didn't run; it must be green before the next push (unchanged rule). Performance checks keep their original plan (Lighthouse from P1; human, 14 Nov).
+
+## 2026-11-14 — Repository is public until launch (human)
+Decision: `weddydev/moz-reward` was made public by the human to get unlimited GitHub Actions minutes during the build; it goes back to private before launch (CARRIED C-43 → P5 launch readiness). ENGINEERING §16 "free" mode otherwise applies unchanged.
+Why: CI used ~1,000+ minutes in 6 days; a private repo on GitHub Free gets 2,000 a month.
+Consequence: everything committed (code, security design, RUNBOOK, infra, the VPS address) is readable by anyone and stays in any clone made meanwhile. Secrets were never committed (gitleaks on every push) and must never be; nothing may rely on the code or the VPS address being secret. Before going private, plan Actions minutes (GitHub Pro, or trim CI).
+
 ## 2026-11-13 — P0 closes with its staging work carried to P1 (human instruction)
 Decision: finish every P0 item that needs no human task (P0-15 D2, D3, the local parts of E incl. the final security review of the whole P0-15 diff, C-40, C-17, then the P0 phase gate without staging), then move everything that needs H-39/H-40/H-41/H-42 into one CARRIED row **C-42 "P0-15 staging"** targeting the P1-A close, and start P1 (P1-02).
 Why: the human (talha.syed, 13 Nov) wants P0 closed now; the remaining P0 work waits only on their tasks and should close quickly once they land.

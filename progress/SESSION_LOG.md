@@ -487,3 +487,22 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Found on the way: bash 5.2 `patsub_replacement` turned `&amp;`→`&` into a no-op (fixed); backticks in a moz-deploy log line would have run a command (ShellCheck); empty listing aborted under pipefail (fixed); workflow secret names aligned with H-42.
 - Human (13 Nov): close P0 now, carry the staging work to P1 (DECISIONS). Exact next step: D3 `pnpm backup:verify` (+ `--wal --target-time` PITR vs MinIO).
 
+## 2026-11-14 — P0 — audit; older "Last verified" lines archived from PROGRESS
+- `wip/P0-15` step B1 (Windows): `pnpm check` PASS (unit 1069); infra lint 27/0 (fails on an injected host port + wrong limit); `caddy validate` both envs; `docker compose config` both envs; Postgres image as uid 999, read-only, no caps: bootstrap ×3 exit 0, 16 migrations as non-superuser moz_owner, privileges as C-32, boot role checks OK for app/auth/worker. Step A: Trivy no skips, CLIs + web + worker drain in the image.
+- P1-01 push CI `43377454009` on `f5c8495`: success (all 3 jobs).
+- P1-01 (Windows, before commit): unit open-status 17/0, codes 14/0, shop-links 4/0, shop-qr 4/0 (PNG decodes to the exact URL), check-migrations 47/0, eslint scope + admin-read rules 21/0; integration shop-details 16/0, membership-guard 7/0; `pnpm fix` clean (eslint incl. moz/admin-read). gate:task (pre-push) on `f5c8495` PASS: unit 1037, int 1134, build, bundle, sast.
+- `main` `af3aa57` (P0-D fixes): gate:task PASS (unit 998, int 1111 incl. route matrix 613, build, sast); shells spec 63/0 on 5 projects; visual baselines regenerated and inspected; CI `43364016465` on `f91af95` green.
+- `main` P0-12 squash (Mac): `pnpm check` PASS (unit 998, titles strict); route authz matrix 562/0; full 5-project E2E on the production build 826 passed + the 5 failures (rls.spec, unscoped list) fixed and re-run 5/5; shells 56/0 on 5 projects; visual baselines (6) inspected; gate:task on the push (see SESSION_LOG).
+- `main` `576b73e` (P0-C flaky fixes): gate:task PASS (unit 838, int 475, build, bundle, sast); toast + overlay specs 27/0 (3 skipped: pixel7 quarantine) on 5 projects; routes-axe motion 18/0 (Chromium + WebKit ×3). 5-project run `43221794416` on `6ad688a`: 674 passed, 0 failed, 1 flaky (fixed in `576b73e`). `wip/P0-12-b`: unit portal 29/0, proxy 7/0; CI `43226256972` green on `341433e`.
+- `main` `72b668a` (P0-11): gate:task P0-11 PASS (unit 818, int 475, build, bundle, sast, E2E 6/0); full 5-project E2E 646/0 (169 skipped by design); CI workflow_dispatch `43129226265`: success.
+- P0-C close: gate:task PASS on `4a8851e` (unit 834, int 475, build, bundle, sast); push CI `43194017373` green; 5-project Linux E2E `43194053878` on `4a8851e`: 675 passed, 0 failed, 1 flaky (AC5, fixed after). After the last fixes: Linux WebKit + iPhone 14 in the Playwright image 12/0; Chromium 3/0; unit toast 16/0. `main` `32c0513`: gate:task PASS (unit 836, int 475, sast, E2E 39/0); push CI `43206390543` green; 5-project Linux E2E `43206412851`: 674 passed, 0 failed, 2 flaky (NOT green). `wip/P0-12` `faabf3b`: gate:task PASS.
+- `main` `ee83173` (P0-10): gate:task P0-10 PASS (E2E 46/0); motion specs 109/0 on 5 projects; full E2E 616/0; AC5 popover flake fixed at the cause (120/0 ×3 after).
+- P0-09 and P0-08: see SESSION_LOG (12 Nov).
+- Mutation 90.1% · `test:live`: storage ✅, email NOT VERIFIED (keys set 13 Nov; runs on staging in P0-15). Staging: none yet.
+
+## 2026-11-14 — P0 — speed audit and process changes (no task work)
+- Audit (this Mac's 22 session logs, 313 commits, 111 CI runs): 776 M tokens re-read vs 2.8 M written; two 5-hour-limit stalls (3.8 h, 5.3 h); 36/111 CI runs red (8 deliberate red-CI proofs, ~16 flaky E2E, 5 scheduled, 4 local-gate gaps since fixed); no handover ever built on a stale branch.
+- Changes: `/autopilot` (+ CLAUDE.md §1), `gateFor` in `scripts/pre-push.ts` (unit pre-push 13/0, the 3 new tests failed first), `/resume` fetch + wip HEAD check, PROGRESS split (MAP.md, FOLLOWUPS.md), DECISIONS ×2, C-43; issue #1 closed (13 Nov scheduled run green); `../CLAUDE.md` renamed `.stale` on the Mac.
+- Not done: 4 ghost "queued" runs from 11 Nov can't be cancelled (GitHub says completed / not queued); deleting the 8 merged remote wip branches was refused by the permission prompt (left as is).
+- Next: P0-15 D3 `pnpm backup:verify` (unchanged).
+

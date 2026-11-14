@@ -2,6 +2,8 @@
  * Committed pre-push hook (P0-14, ENGINEERING §16; lefthook.yml → `pre-push`). Git passes one line per ref on
  * stdin: `<local ref> <local sha> <remote ref> <remote sha>`.
  *   - Refuses deleting `main` and any non-fast-forward (force) push, to any branch.
+ *   - Pushes only to `wip/*` checkpoint branches run the fast `pnpm check`; CI runs the full set on that push and
+ *     the task-closing push (main or `t/*`) runs the full gate (DECISIONS 14 Nov 2026, `gateFor`).
  *   - Runs `pnpm gate:task` unless every changed file is docs/progress-only (the same paths CI's path filter
  *     skips — DOCS_ONLY_GLOBS, kept equal to ci.yml by a test).
  * Server-side protection exists only in GITHUB_MODE=pro; in free mode this hook is the guard (it can be
@@ -52,6 +54,15 @@ export function refusal(
 /** True when at least one changed file can affect the build or tests. Git prints `/`-separated paths. */
 export function needsGate(changedFiles: string[]): boolean {
   return changedFiles.some((f) => !DOCS_ONLY_GLOBS.some((g) => path.posix.matchesGlob(f, g)));
+}
+
+/**
+ * Gate level for a push: "check" when every branch it updates is a `wip/*` checkpoint branch (CI runs the full set on
+ * the push; the task-closing push to main or `t/*` runs gate:task), else "task". Deletions don't count.
+ */
+export function gateFor(lines: PushLine[]): "check" | "task" {
+  const updates = lines.filter((l) => !ZERO.test(l.localSha));
+  return updates.every((l) => l.remoteRef.startsWith("refs/heads/wip/")) ? "check" : "task";
 }
 
 /**
@@ -113,6 +124,17 @@ function main(): void {
         : "[pre-push] docs/progress-only push: gate:task skipped (same rule as CI)",
     );
     process.exit(0);
+  }
+  if (gateFor(lines) === "check") {
+    console.warn(
+      "[pre-push] wip/* checkpoint push: running pnpm check (CI runs the full set on this push) …",
+    );
+    // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
+    const c = spawnSync("pnpm", ["check"], {
+      stdio: "inherit",
+      shell: process.platform === "win32",
+    });
+    process.exit(c.status ?? 1);
   }
   // The same task IDs the gate would pick when spawned below (unpushed commits, else the next unticked task).
   const { ids } = resolveTaskIds(
