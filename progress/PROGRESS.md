@@ -61,7 +61,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-17 | Stryker | P0 phase gate | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 
 ## Blockers
-- Human 🔴: **H-39** (SSH key into the Windows agent) and **H-40** (staging tunnel token) block running P0-15 steps B–C on the VPS.
+- Human 🔴: **H-40** (staging tunnel token) blocks the first staging deploy (C2). H-39 done 14 Nov from the Mac: the VPS hardening run (B2 run) is unblocked from the Mac; the Windows laptop needs its one-time `ssh-add` before it does VPS work.
 - 🟠 for P0-15: **H-42** (B2 Object Lock + per-env keys, before D4); **H-41** (secrets file into the password manager + `ALERT_EMAILS_STAGING`) before the first deploy; after it: H-34 leftovers, H-36 steps 3–5. **Start now:** H-12 Play organisation account. **H-37** (🟠, before P1-06): iPhone + Android listen and vibrate check.
 - Technical: C-40 (quarantined test) blocks the P0 phase gate. Known risk for P0-15: wal-g `wal-push` hangs against R2 without `ca-certificates` in the Postgres image (wal-g #2550).
 
