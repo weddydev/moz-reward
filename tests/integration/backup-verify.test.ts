@@ -163,14 +163,14 @@ describe.skipIf(ON_WINDOWS)("[P0-15] backup:verify end to end (dev Postgres + Mi
   it("[P0-15] the newest dump downloads, matches its sha256, decrypts, restores and passes every check; nothing is left behind", async () => {
     const before = workDirs().length;
     await upload(hoursAgo(30), Buffer.from("older, never read"), { sha256: "0".repeat(64) });
-    const key = await upload(hoursAgo(2), cipher);
+    const key = await upload(hoursAgo(0), cipher);
     const lines: string[] = [];
     const result = await verifyBackup(opts({ log: (l) => lines.push(l) }));
     expect(result.error).toBeUndefined();
     expect(result.ok).toBe(true);
     expect(lines[0]).toMatch(
       new RegExp(
-        `^downloaded ${key.replaceAll(".", "\\.")} \\(\\d+ bytes, 2\\.0 h old, sha256 matches\\)$`,
+        `^downloaded ${key.replaceAll(".", "\\.")} \\(\\d+ bytes, 0\\.0 h old, sha256 matches\\)$`,
       ),
     );
     expect(result.checks[0]).toMatch(/^migrations\|pass\|\d+ applied$/);
@@ -189,37 +189,58 @@ describe.skipIf(ON_WINDOWS)("[P0-15] backup:verify end to end (dev Postgres + Mi
   });
 
   it("[P0-15] fails when the newest dump is older than --max-age-hours", async () => {
-    await upload(hoursAgo(27), cipher);
-    const result = await verifyBackup(opts());
+    await upload(hoursAgo(0), cipher);
+    // The age comes from the server's upload time, so move the clock instead of back-dating the name.
+    const result = await verifyBackup(
+      opts({ now: new Date(Date.now() + 27 * 3_600_000 + 60_000) }),
+    );
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/is 27\.0 h old, more than 26 h$/);
   });
 
+  it("[P0-15] refuses a dump named in the future (it would stay newest for ever) or far from its upload time", async () => {
+    await upload(hoursAgo(-2), cipher);
+    expect((await verifyBackup(opts())).error).toMatch(/is named after a time in the future$/);
+    mc(`mc rm --recursive --force local/${BUCKET}/staging/ >/dev/null 2>&1; true`);
+    await upload(hoursAgo(2), cipher);
+    expect((await verifyBackup(opts())).error).toMatch(/more than 1 h from the time in its name$/);
+  });
+
+  it("[P0-15] removes what a killed run left behind (key directory, scratch container) before starting", async () => {
+    const stale = mkdtempSync(path.join(tmpdir(), "moz-backup-verify-"));
+    mkdirSync(path.join(stale, "gnupg"), { mode: 0o700 });
+    writeFileSync(path.join(stale, "moz.dump.gpg"), "left over");
+    must("docker", ["run", "-d", "--name", "moz-verify-staging-drill", "--network", "none", "--entrypoint", "sleep", IMAGE, "300"]); // prettier-ignore
+    await verifyBackup(opts());
+    expect(readdirSync(tmpdir())).not.toContain(path.basename(stale));
+    expect(containerGone()).toBe(true);
+  });
+
   it("[P0-15] fails before decrypting when the object differs from the sha256 recorded at upload", async () => {
     const tampered = Buffer.concat([cipher.subarray(0, cipher.length - 1), Buffer.from([0])]);
-    await upload(hoursAgo(1), tampered, { sha256: sha256(cipher) });
+    await upload(hoursAgo(0), tampered, { sha256: sha256(cipher) });
     const result = await verifyBackup(opts());
     expect(result.error).toMatch(/does not match the sha256 recorded at upload$/);
   });
 
   it("[P0-15] fails when no sha256 was recorded", async () => {
-    await upload(hoursAgo(1), cipher, {});
+    await upload(hoursAgo(0), cipher, {});
     expect((await verifyBackup(opts())).error).toMatch(/has no sha256 recorded at upload$/);
   });
 
   it("[P0-15] fails on a plaintext pg_dump archive", async () => {
-    await upload(hoursAgo(1), dump());
+    await upload(hoursAgo(0), dump());
     expect((await verifyBackup(opts())).error).toMatch(/is not an OpenPGP message$/);
   });
 
   it("[P0-15] fails when the private key is not the pinned backup key", async () => {
-    await upload(hoursAgo(1), cipher);
+    await upload(hoursAgo(0), cipher);
     const result = await verifyBackup(opts({ keyFile: path.join(T, "other.asc") }));
     expect(result.error).toBe(`the private key is not the backup key ${FPR}`);
   });
 
   it("[P0-15] fails with the read-only key's 403 when the credentials are wrong", async () => {
-    await upload(hoursAgo(1), cipher);
+    await upload(hoursAgo(0), cipher);
     const result = await verifyBackup(
       opts({
         credentials: {
@@ -245,7 +266,7 @@ describe.skipIf(ON_WINDOWS)("[P0-15] backup:verify end to end (dev Postgres + Mi
     const broken = encrypt(dump());
     await src.unsafe("ALTER TABLE shops FORCE ROW LEVEL SECURITY");
     await src.end();
-    await upload(hoursAgo(1), broken);
+    await upload(hoursAgo(0), broken);
     const result = await verifyBackup(opts());
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/backup check failed: rls \(missing on shops\)/);

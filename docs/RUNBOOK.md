@@ -87,10 +87,11 @@ host never holds the private key, so only this proves the uploaded dumps decrypt
 with `pnpm services:up` running:
 ```
 export B2_RESTORE_KEY_ID=… B2_RESTORE_KEY=…      # the read-only moz-backups-restore key, this shell only
-pnpm backup:verify --env staging --key-file -    # paste the backup private key (password manager), then Ctrl-D
-unset B2_RESTORE_KEY_ID B2_RESTORE_KEY
+pbpaste | pnpm backup:verify --env staging --key-file -   # key copied from the password manager (not typed: no scrollback)
+unset B2_RESTORE_KEY_ID B2_RESTORE_KEY; pbcopy </dev/null   # Windows: Get-Clipboard | …, then Set-Clipboard $null
 ```
-gpg asks for the key's passphrase. It lists `<env>/dumps/`, takes the newest dump (fails if older than 26 h,
+gpg asks for the key's passphrase. `--env production` (real customer data) refuses unless the disk is encrypted:
+FileVault (macOS) or LUKS (Linux) is checked; on Windows add `--disk-encrypted` only with BitLocker on. It lists `<env>/dumps/`, takes the newest dump (fails if older than 26 h by the server's upload time, or named in the future,
 `--max-age-hours` to change), checks its size, the sha256 recorded at upload and the OpenPGP header, imports the
 key into a throwaway GNUPGHOME (must be the pinned fingerprint), decrypts straight into `pg_restore` in a
 `--network none` scratch container and runs `infra/backup/checks.sql`. **Worked when:** the last line is

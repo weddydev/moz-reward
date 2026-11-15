@@ -4,6 +4,7 @@
  *
  *   export B2_RESTORE_KEY_ID=… B2_RESTORE_KEY=…      # read-only `moz-backups-restore` key, this shell only
  *   pnpm backup:verify --key-file <private key .asc | -> [--env staging|production] [--max-age-hours 26]
+ *     [--disk-encrypted]   (production only, where the disk can't be checked: Windows/BitLocker)
  *
  * Steps: list `<env>/dumps/`, take the newest dump of each database (moz; production also umami) and fail if it is
  * older than --max-age-hours; download into a 0700 temp dir checking size, the `x-amz-meta-sha256` the host
@@ -18,7 +19,14 @@
  */
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { createWriteStream, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  createWriteStream,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Transform, type Readable } from "node:stream";
@@ -58,25 +66,73 @@ export const databasesFor = (env: BackupEnv): string[] =>
 export interface Dump {
   db: string;
   key: string;
+  /** From the object name (written by the host, so not trusted on its own). */
   takenAt: Date;
+  /** The server's LastModified from the listing: what the age is measured from. */
+  uploadedAt?: Date | undefined;
+}
+
+export interface Listed {
+  key: string;
+  lastModified?: Date | undefined;
 }
 
 /** The newest dump per database among object keys `<env>/dumps/<YYYY-MM-DD>/<db>-<YYYYMMDDTHHMMSSZ>.dump.gpg`. */
-export function newestDumps(keys: string[], env: BackupEnv): Map<string, Dump> {
+export function newestDumps(objects: Listed[], env: BackupEnv): Map<string, Dump> {
   const pattern = new RegExp(
     `^${env}/dumps/\\d{4}-\\d{2}-\\d{2}/([a-z]+)-(\\d{4})(\\d{2})(\\d{2})T(\\d{2})(\\d{2})(\\d{2})Z\\.dump\\.gpg$`,
   );
   const newest = new Map<string, Dump>();
-  for (const key of keys) {
+  for (const { key, lastModified } of objects) {
     const m = pattern.exec(key);
     if (!m) continue;
     const [, db = "", y, mo, d, h, mi, s] = m;
     const takenAt = new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}Z`);
     if (Number.isNaN(takenAt.getTime())) continue;
     const seen = newest.get(db);
-    if (!seen || takenAt > seen.takenAt) newest.set(db, { db, key, takenAt });
+    if (!seen || takenAt > seen.takenAt)
+      newest.set(db, { db, key, takenAt, uploadedAt: lastModified });
   }
   return newest;
+}
+
+const FUTURE_SLACK_MS = 10 * 60_000;
+const NAME_VS_UPLOAD_MS = 60 * 60_000;
+
+/**
+ * Null when the dump is fresh enough, else why not. The age comes from the server's upload time, and the name must
+ * agree with it: a write key can upload a dump named in the future that would otherwise stay "newest" for ever.
+ */
+export function dumpTimeProblem(dump: Dump, now: Date, maxAgeHours: number): string | null {
+  if (dump.takenAt.getTime() > now.getTime() + FUTURE_SLACK_MS) {
+    return `${dump.key} is named after a time in the future`;
+  }
+  if (!dump.uploadedAt) return `${dump.key} has no upload time in the listing`;
+  if (Math.abs(dump.uploadedAt.getTime() - dump.takenAt.getTime()) > NAME_VS_UPLOAD_MS) {
+    return `${dump.key} was uploaded at ${dump.uploadedAt.toISOString()}, more than 1 h from the time in its name`;
+  }
+  const ageHours = (now.getTime() - dump.uploadedAt.getTime()) / 3_600_000;
+  if (ageHours > maxAgeHours) {
+    return `the newest ${dump.db} dump (${dump.key}) is ${ageHours.toFixed(1)} h old, more than ${String(maxAgeHours)} h`;
+  }
+  return null;
+}
+
+/**
+ * What a failed restore may print: only our own messages (`moz-backup: …` from die, `backup check failed: …`
+ * from checks.sql, whose details are names and counts). Postgres' DETAIL/CONTEXT/COPY lines can quote row values
+ * (emails, phone numbers), so they never reach the output.
+ */
+export function failureReason(stderr: string, status: number | null): string {
+  const check = /backup check failed: [^\n]*/.exec(stderr)?.[0];
+  if (check) return check.trim();
+  const ours = stderr
+    .split("\n")
+    .filter((line) => line.startsWith("moz-backup: "))
+    .at(-1);
+  return ours
+    ? ours.slice("moz-backup: ".length).trim()
+    : `the restore failed (exit ${String(status)})`;
 }
 
 /** OpenPGP message, first packet a PKESK (old format 0x84–0x87 or new 0xC1), as moz-backup's is_openpgp. */
@@ -167,6 +223,15 @@ async function download(
   return { size, first };
 }
 
+function pick(env: NodeJS.ProcessEnv, names: string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const name of names) {
+    const value = env[name];
+    if (value !== undefined) out[name] = value;
+  }
+  return out;
+}
+
 // Runs in bash with infra/host/moz-backup sourced: the drill's scratch container and bootstrap, then
 // gpg → pg_restore per database and checks.sql. stdout carries only the check lines.
 const RESTORE = String.raw`set -Eeuo pipefail
@@ -174,7 +239,9 @@ source "$SCRIPT"
 eval "$TEST_PRELUDE"
 DRILL_READY_SECONDS=$READY
 trap 'docker rm -f "$DRILL_CONTAINER" >/dev/null 2>&1 || true' EXIT
-export GPG_TTY=$(tty 2>/dev/null || true)
+# With the key piped in (pbpaste | …) stdin is not a terminal: pinentry then asks on the controlling one.
+GPG_TTY=$(tty 2>/dev/null) || GPG_TTY=$( (: </dev/tty) 2>/dev/null && echo /dev/tty || true)
+export GPG_TTY
 start_scratch "verify-$VERIFY_ENV" "$IMAGE"
 drill_bootstrap "$VERIFY_ENV" "$INFRA"
 for db in $DBS; do
@@ -190,16 +257,29 @@ scratch_psql -d moz <"$INFRA/backup/checks.sql"`;
 
 function restore(
   o: VerifyOptions,
+  bash: string,
   work: string,
   home: string,
   dbs: string[],
 ): Promise<{ status: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const child = spawn(findBash(), ["-c", RESTORE], {
+    const child = spawn(bash, ["-c", RESTORE], {
       // stdin stays the terminal so gpg-agent's pinentry can ask for the key's passphrase.
       stdio: ["inherit", "pipe", "pipe"],
+      // An allowlist, not the caller's environment: no B2 key, no BASH_ENV or exported bash functions.
       env: {
-        ...process.env,
+        ...pick(process.env, [
+          "PATH",
+          "HOME",
+          "TMPDIR",
+          "TERM",
+          "LANG",
+          "LC_ALL",
+          "DOCKER_HOST",
+          "DOCKER_CONTEXT",
+          "DOCKER_CONFIG",
+        ]),
+        NODE_ENV: "production",
         SCRIPT: path.join(o.repoRoot, "infra", "host", "moz-backup"),
         INFRA: path.join(o.repoRoot, "infra"),
         VERIFY_ENV: o.env,
@@ -222,25 +302,53 @@ function restore(
   });
 }
 
+const WORK_PREFIX = "moz-backup-verify-";
+
+function removeRun(work: string, container: string): void {
+  spawnSync("docker", ["rm", "-f", container], { stdio: "ignore" });
+  // gpg ≥ 2.4 may start keyboxd as well as gpg-agent in a new homedir.
+  spawnSync("gpgconf", ["--homedir", path.join(work, "gnupg"), "--kill", "all"], {
+    stdio: "ignore",
+  });
+  rmSync(work, { recursive: true, force: true });
+}
+
+export function removeLeftovers(container: string): void {
+  for (const name of readdirSync(tmpdir())) {
+    if (name.startsWith(WORK_PREFIX)) removeRun(path.join(tmpdir(), name), container);
+  }
+  spawnSync("docker", ["rm", "-f", container], { stdio: "ignore" });
+}
+
 export async function verifyBackup(o: VerifyOptions): Promise<VerifyResult> {
   const log = o.log ?? (() => {});
   const now = o.now ?? new Date();
   const dbs = databasesFor(o.env);
-  const work = mkdtempSync(path.join(tmpdir(), "moz-backup-verify-"));
-  const home = path.join(work, "gnupg");
   const container = `moz-verify-${o.env}-drill`;
+  // A run killed hard (SIGKILL, power loss) leaves its key, agent and container: remove them first.
+  removeLeftovers(container);
+  const work = mkdtempSync(path.join(tmpdir(), WORK_PREFIX));
+  const home = path.join(work, "gnupg");
+  let cleaned = false;
   const cleanup = () => {
-    spawnSync("docker", ["rm", "-f", container], { stdio: "ignore" });
-    spawnSync("gpgconf", ["--homedir", home, "--kill", "gpg-agent"], { stdio: "ignore" });
-    rmSync(work, { recursive: true, force: true });
+    if (cleaned) return;
+    cleaned = true;
+    removeRun(work, container);
   };
   const onSignal = (signal: NodeJS.Signals) => {
     cleanup();
-    process.exit(signal === "SIGINT" ? 130 : 143);
+    process.exit(signal === "SIGINT" ? 130 : signal === "SIGHUP" ? 129 : 143);
   };
-  process.once("SIGINT", onSignal);
-  process.once("SIGTERM", onSignal);
+  const signals: NodeJS.Signals[] = ["SIGINT", "SIGTERM", "SIGHUP"];
+  // on, not once: a second Ctrl-C during cleanup must not kill the process half-way.
+  for (const signal of signals) process.on(signal, onSignal);
   try {
+    let bash: string;
+    try {
+      bash = findBash();
+    } catch (e) {
+      return fail((e as Error).message);
+    }
     mkdirSync(home, { mode: 0o700 });
     const s3 = new S3Client({
       endpoint: o.constants.endpoint,
@@ -249,7 +357,7 @@ export async function verifyBackup(o: VerifyOptions): Promise<VerifyResult> {
       credentials: o.credentials,
     });
 
-    const keys: string[] = [];
+    const objects: Listed[] = [];
     let token: string | undefined;
     do {
       const page = await s3.send(
@@ -259,19 +367,18 @@ export async function verifyBackup(o: VerifyOptions): Promise<VerifyResult> {
           ContinuationToken: token,
         }),
       );
-      for (const item of page.Contents ?? []) if (item.Key) keys.push(item.Key);
+      for (const item of page.Contents ?? []) {
+        if (item.Key) objects.push({ key: item.Key, lastModified: item.LastModified });
+      }
       token = page.IsTruncated ? page.NextContinuationToken : undefined;
     } while (token);
-    const newest = newestDumps(keys, o.env);
+    const newest = newestDumps(objects, o.env);
 
     for (const db of dbs) {
       const dump = newest.get(db) ?? fail(`no ${db} dump under ${o.env}/dumps/`);
-      const ageHours = (now.getTime() - dump.takenAt.getTime()) / 3_600_000;
-      if (ageHours > o.maxAgeHours) {
-        fail(
-          `the newest ${db} dump (${dump.key}) is ${ageHours.toFixed(1)} h old, more than ${String(o.maxAgeHours)} h`,
-        );
-      }
+      const problem = dumpTimeProblem(dump, now, o.maxAgeHours);
+      if (problem) fail(problem);
+      const ageHours = (now.getTime() - (dump.uploadedAt ?? dump.takenAt).getTime()) / 3_600_000;
       const { size, first } = await download(
         s3,
         o.constants.bucket,
@@ -290,17 +397,10 @@ export async function verifyBackup(o: VerifyOptions): Promise<VerifyResult> {
     }
     log(`private key ${o.constants.fingerprint} imported into a throwaway GNUPGHOME`);
 
-    const r = await restore(o, work, home, dbs);
+    const r = await restore(o, bash, work, home, dbs);
     const checks = r.stdout.split("\n").filter((line) => /^[a-z_]+\|pass\|/.test(line));
     if (r.status !== 0) {
-      const reason = r.stderr
-        .trim()
-        .split("\n")
-        .filter(Boolean)
-        .slice(-3)
-        .join(" ")
-        .replace(/^.*ERROR: +/, "");
-      return { ok: false, checks, error: reason || `restore exited ${String(r.status)}` };
+      return { ok: false, checks, error: failureReason(r.stderr, r.status) };
     }
     if (!checks.at(-1)?.startsWith("all|pass|")) {
       return { ok: false, checks, error: "checks.sql did not report a pass" };
@@ -311,14 +411,21 @@ export async function verifyBackup(o: VerifyOptions): Promise<VerifyResult> {
     const message = e instanceof Error ? e.message : String(e);
     return { ok: false, checks: [], error: `B2/S3: ${message}` };
   } finally {
-    process.removeListener("SIGINT", onSignal);
-    process.removeListener("SIGTERM", onSignal);
+    for (const signal of signals) process.removeListener(signal, onSignal);
     cleanup();
   }
 }
 
-function parseArgs(argv: string[]): { env: BackupEnv; keyFile: string; maxAgeHours: number } {
+interface Args {
+  env: BackupEnv;
+  keyFile: string;
+  maxAgeHours: number;
+  diskEncrypted: boolean;
+}
+
+function parseArgs(argv: string[]): Args {
   let env: BackupEnv = "staging";
+  let diskEncrypted = false;
   let keyFile = "";
   let maxAgeHours = 26;
   for (let i = 0; i < argv.length; i++) {
@@ -330,6 +437,7 @@ function parseArgs(argv: string[]): { env: BackupEnv; keyFile: string; maxAgeHou
         throw new Error("--env must be staging or production");
       env = v;
     } else if (arg === "--key-file") keyFile = next();
+    else if (arg === "--disk-encrypted") diskEncrypted = true;
     else if (arg === "--max-age-hours") {
       maxAgeHours = Number(next());
       if (!Number.isFinite(maxAgeHours) || maxAgeHours <= 0)
@@ -337,7 +445,20 @@ function parseArgs(argv: string[]): { env: BackupEnv; keyFile: string; maxAgeHou
     } else throw new Error(`unknown argument ${String(arg)}`);
   }
   if (!keyFile) throw new Error("--key-file <private key .asc, or - for stdin> is required");
-  return { env, keyFile, maxAgeHours };
+  return { env, keyFile, maxAgeHours, diskEncrypted };
+}
+
+/** FileVault on (macOS) or a LUKS device (Linux). Other systems can't be checked without admin rights. */
+function diskIsEncrypted(): boolean {
+  if (process.platform === "darwin") {
+    const r = spawnSync("fdesetup", ["isactive"], { encoding: "utf8" });
+    return r.status === 0 && r.stdout.trim() === "true";
+  }
+  if (process.platform === "linux") {
+    const r = spawnSync("lsblk", ["-rno", "TYPE"], { encoding: "utf8" });
+    return r.status === 0 && r.stdout.split("\n").includes("crypt");
+  }
+  return false;
 }
 
 const say = (line: string): void => {
@@ -351,6 +472,13 @@ async function main(): Promise<number> {
     args = parseArgs(process.argv.slice(2));
   } catch (e) {
     console.error(`backup:verify: ${(e as Error).message}`);
+    return 64;
+  }
+  // Production holds real customer data: only onto an encrypted disk (DPIA/ROPA, C-45).
+  if (args.env === "production" && !diskIsEncrypted() && !args.diskEncrypted) {
+    console.error(
+      "backup:verify: --env production decrypts customer data: this disk is not shown as encrypted (macOS: FileVault on; Linux: a LUKS volume). On Windows with BitLocker on, add --disk-encrypted",
+    );
     return 64;
   }
   const accessKeyId = process.env.B2_RESTORE_KEY_ID ?? "";
