@@ -67,7 +67,10 @@ test.describe("[P0-12] portal shells", () => {
     await page.goto("/wallet");
     const rail = page.locator('[data-portal-nav="side"]');
     const isOpen = () => rail.evaluate((el) => getComputedStyle(el).clipPath.includes("-40px"));
-    expect(await isOpen()).toBe(false);
+    // Precondition made explicit (CI 43731891806 found it open once on desktop1440, cause not reproduced in 20
+    // local runs): the pointer is over the content, not the rail, and nothing in the rail has focus.
+    await page.mouse.move(720, 450);
+    await expect.poll(isOpen).toBe(false);
     // The role switcher's popover lives in <body>; the rail must stay open behind it.
     await rail.getByRole("button", { name: "Switch portal" }).click();
     await expect(page.getByRole("dialog", { name: "Switch portal" })).toBeVisible();
