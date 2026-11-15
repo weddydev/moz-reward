@@ -251,8 +251,9 @@ jobs:
           set -uo pipefail
           fail=0
           for url in "https://$VPS_HOST/" "http://$VPS_HOST:80/"; do
-            curl -sS -k -o /dev/null --connect-timeout 8 --max-time 10 "$url" 2>/dev/null
-            code=$?
+            # The step shell is bash -e: the expected exit 28 must not end it (deploy 43736940964).
+            code=0
+            curl -sS -k -o /dev/null --connect-timeout 8 --max-time 10 "$url" 2>/dev/null || code=$?
             if [ "$code" = 28 ]; then
               echo "$url: dropped (curl 28)"
             else
