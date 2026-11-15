@@ -28,7 +28,7 @@ This folder contains everything Claude Code needs to build Moz Rewards from scra
 
 1. Create an empty folder (e.g. `moz-rewards`) and copy **all** files from this kit into it, including the hidden `.claude/` folder, `.gitignore` and `.env.example`.
 2. Put your reference images in `design/reference/` using the names described there.
-3. Install Node.js LTS, pnpm (`npm i -g pnpm`, or `brew install pnpm` on macOS), Docker Desktop, Git and the GitHub CLI (`brew install gh` / `winget install GitHub.cli`), then run `gh auth login` so Claude can watch CI and staging after every push.
+3. Install Node.js LTS, pnpm (`npm i -g pnpm`, or `brew install pnpm` on macOS), Docker Desktop, Git and the GitHub CLI (`brew install gh` / `winget install GitHub.cli`), then run `gh auth login` so Claude can watch CI and staging after every push. On macOS also `brew install bash coreutils gnu-sed openssl@3`: the host-script tests run the VPS scripts with the tools Ubuntu has (`scripts/lib/find-bash.ts`).
 4. `git init` and create a private GitHub repository; push the initial commit.
 5. Install the four Emil Kowalski design skills into this project (run inside the project folder; when asked, choose **Claude Code** and **project** scope so they land in `.claude/skills/` and get committed):
    ```

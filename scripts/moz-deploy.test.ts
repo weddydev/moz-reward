@@ -450,6 +450,37 @@ if command -v cygpath >/dev/null; then cygpath -m "$d"; else echo "$d"; fi`,
       expect(install(corrupt).stderr).toMatch(/malformed CERTIFICATE block/);
     });
 
+    /**
+     * The whole command on a fresh host (the first staging deploy, 15 Nov): no origin.crt/origin.key yet. Host
+     * paths point into a temp dir and ownership changes are no-ops (the tests don't run as root); no database
+     * and no running release, so the expiry isn't recorded and Caddy isn't recreated.
+     */
+    const writeOriginTls = (input: string): Run =>
+      run(
+        String.raw`t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
+etc_dir() { echo "$t/etc/$1"; }
+data_dir() { echo "$t/data/$1"; }
+chown() { :; }
+install() { local a=() o; while (($#)); do case $1 in -o | -g) shift 2 ;; *) a+=("$1"); shift ;; esac; done; command install "${"$"}{a[@]}"; }
+record_origin_cert_expiry() { return 1; }
+mkdir -p "$t/etc/staging/secrets" "$t/etc/staging/env"
+printf "APP_HOST='%s'\n" "$1" >"$t/etc/staging/env/caddy.env"
+cmd_write_origin_tls staging
+head -n 1 "$t/etc/staging/caddy-tls/origin.crt"`,
+        [HOST],
+        input,
+      );
+
+    it("[P0-15] write-env staging origin-tls installs the first certificate on a fresh host", () => {
+      const result = writeOriginTls(pem("ecc"));
+      expect(result.stderr).toMatch(
+        /^moz-deploy: wrote staging\/caddy-tls \(valid until \d{4}-\d{2}-\d{2}\)\n/,
+      );
+      expect(result.stderr).toMatch(/origin certificate expiry not recorded yet/);
+      expect(result.status).toBe(0);
+      expect(result.stdout).toBe("-----BEGIN CERTIFICATE-----\n");
+    });
+
     it("[P0-15] reads the certificate's expiry as epoch seconds (recorded for health.origin_firewall)", () => {
       const result = run('origin_cert_expiry "$1"', [
         path.join(fixtures, "ecc.crt").replaceAll("\\", "/"),

@@ -430,7 +430,9 @@ cmd_write_origin_tls() {
   origin_tls_check "$ORIGIN_TMP" "$host"
   dir=$etc/caddy-tls
   install -d -m 0750 -o root -g 1000 "$dir"
-  old=$(cat "$dir/origin.crt" "$dir/origin.key" 2>/dev/null | sha256sum | cut -d' ' -f1)
+  # First install: no pair yet. `cat` failing must not end the script (pipefail + set -e exit silently).
+  old=none
+  [[ -f $dir/origin.crt && -f $dir/origin.key ]] && old=$(cat "$dir/origin.crt" "$dir/origin.key" | sha256sum | cut -d' ' -f1)
   new=$(cat "$ORIGIN_TMP/origin.crt" "$ORIGIN_TMP/origin.key" | sha256sum | cut -d' ' -f1)
   write_file "$dir/origin.crt" 0640 root:1000 <"$ORIGIN_TMP/origin.crt"
   write_file "$dir/origin.key" 0640 root:1000 <"$ORIGIN_TMP/origin.key"

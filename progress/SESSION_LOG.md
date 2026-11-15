@@ -544,3 +544,8 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - VPS B2 run: runs 1–3 exposed fail2ban socket race + name-vs-numeric owner compare (`75fba2d`); runs 4–5 `harden: 0 changes`; reboot clean; firewall ok after docker restart; root SSH refused; `init-env staging` done.
 - iptables `-S` format confirmed on the host (`! --ctstate RELATED,ESTABLISHED`); VPS has IPv6 (nothing listens on [::]:443).
 - Handoff 18:30: review fixes `eca36ec`, CI fix `70bfba3` (caddy-mtls 502/503: CI 43714435786 got 503 after lb_try_duration); main fast-forwarded to `70bfba3`, gate:task PASS (unit 1343, int 1191, sast); CI `43716268878` queued → staging deploy follows automatically.
+
+## 2026-11-15 — P0 — P0-15 C2 first deploy (Mac, talha.syed)
+- CI `43716268878` on main green → Deploy `43717392756` red at `write-env staging origin-tls` (exit 1, no message): first install has no origin.crt/key, `old=$(cat … 2>/dev/null | sha256sum …)` failed under pipefail → set -e silent exit. Fix: `old=none` unless both files exist.
+- New test `write-env staging origin-tls installs the first certificate on a fresh host` (whole `cmd_write_origin_tls`, temp host dirs): failed with empty stderr before, passes after; moz-deploy 129/0.
+- Mac `pnpm check` had 12 host-script failures (BSD `head -n 0`/`sed -i`/`touch -d`/`stat -c`, LibreSSL fixtures): `findBash` now prefers Homebrew coreutils, gnu-sed, openssl@3 on macOS (clear `brew install` error if missing); README setup line. Host scripts 242/0, check PASS (unit 1365).

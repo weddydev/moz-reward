@@ -22,7 +22,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → P1-02 → P1-03 → P1-04. P0-E waits only on P0-15 (human tasks).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-15, Syedbadeshah76 (handoff: C1b done, VPS hardened, main `70bfba3` → first staging deploy in flight)
+- **Last updated:** 2026-11-15, talha.syed (first staging deploy failed at origin-tls on a fresh host; fixed, redeploy next)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, **hardened 15 Nov** (harden.sh, 0 changes on re-run; Docker 29.9.3; origin firewall on; `init-env staging` done); not deployed yet. Origin lock via Cloudflare proxy until launch (T-5)
 
 ## Now
@@ -71,6 +71,7 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (15 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
+- First staging deploy `43717392756` (CI `43716268878` green) failed silently at `write-env staging origin-tls`: on a fresh host `old=$(cat <missing> | sha256sum)` died under pipefail with no message. Fixed + end-to-end test of `cmd_write_origin_tls` on a fresh host (fails before, passes after). Mac: host-script tests needed GNU coreutils/sed + OpenSSL 3 (12 failures on BSD/LibreSSL) → `findBash` puts them on PATH; `pnpm check` PASS (unit 1365).
 - `main` `70bfba3` (Windows): pre-push gate:task PASS (unit 1343 + 21 skipped, int 1191, build, bundle, sast, lint:sh 7); CI `43716268878` queued at handoff. Targeted: moz-deploy + firewall 176/0, caddy-mtls 6/6, rls 29/0.
 - VPS (15 Nov): harden.sh runs 4–5 `harden: 0 changes`; after reboot docker/fail2ban/ufw/refresh timer active; `moz-origin-firewall check` ok (15 ranges), also after `systemctl restart docker`; `sshd -T`: permitrootlogin no, passwordauthentication no, AllowUsers deploy badeshah talha; root SSH refused, badeshah sudo OK.
 - `caddy adapt` both Caddyfiles (2.11.9) OK after `https_port`/`ocsp_stapling off`.
