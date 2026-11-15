@@ -520,4 +520,48 @@ describe("[P0-15] C1b review: staging Caddy starts only behind the firewall, and
   ])("[P0-15] mtls_probe_ok curl exit %s, HTTP %j → %s", (code, status, ok) => {
     expect(run('mtls_probe_ok "$1" "$2"', [code, status]).status === 0).toBe(ok);
   });
+
+  /**
+   * Staging deploy 43735134613 (15 Nov): Caddy has no healthcheck, so `up --wait` returned before it listened and
+   * the probe got curl exit 7. The probe waits while nothing listens (exit 7, up to MTLS_WAIT_SECONDS); any other
+   * answer is final. curl prints the code it is given in turn ($CODES), ip and sleep are faked.
+   */
+  const probe = (codes: string, wait = "5") =>
+    run(
+      String.raw`t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
+etc_dir() { echo "$t"; }
+mkdir -p "$t/env"; printf "APP_HOST='staging.example.com'\n" >"$t/env/caddy.env"
+ip() { echo "1.1.1.1 via 10.0.0.1 dev eth0 src 203.0.113.9 uid 0"; }
+sleep() { :; }
+# curl runs in $(…): count the calls in a file.
+echo 0 >"$t/n"
+IFS=, read -ra codes <<<"$1"
+curl() { local n; n=$(($(<"$t/n") + 1)); echo "$n" >"$t/n"; printf 000; return "${"$"}{codes[n - 1]}"; }
+MTLS_WAIT_SECONDS=$2
+check_origin_mtls staging
+echo "tries=$(<"$t/n")"`,
+      [codes, wait],
+    );
+
+  it("[P0-15] check_origin_mtls waits while Caddy is not listening yet (curl exit 7), then checks the refusal", () => {
+    const result = probe("7,7,56");
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("tries=3\n");
+    expect(result.stderr).toMatch(
+      /origin mTLS checked: refused without Cloudflare's client certificate \(curl exit 56\)/,
+    );
+  });
+
+  it("[P0-15] check_origin_mtls fails at once on any answer but a TLS refusal, and when Caddy never listens", () => {
+    const answered = probe("0,56");
+    expect(answered.status).toBe(1);
+    expect(answered.stderr).toMatch(
+      /Caddy answered a client without Cloudflare's certificate \(curl exit 0/,
+    );
+    const never = probe("7,7,7,7,7,7,7", "3");
+    expect(never.status).toBe(1);
+    expect(never.stderr).toMatch(
+      /Caddy did not accept connections on 203\.0\.113\.9:443 within 3 s/,
+    );
+  });
 });

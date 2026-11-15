@@ -36,6 +36,8 @@ readonly MAX_IMAGE_ZST=$((1024 * 1024 * 1024))
 readonly MAX_IMAGE_TAR=$((4 * 1024 * 1024 * 1024))
 readonly MAX_ENV_BYTES=65536
 readonly WAIT_SECONDS=180
+# How long the host mTLS probe waits for a just-started Caddy to listen (not readonly: the tests shorten it).
+MTLS_WAIT_SECONDS=30
 readonly EX_USAGE=64
 readonly EX_INPUT=65
 # The staging origin certificate (T-5): refused with less than this left; each release warns, and the health
@@ -668,13 +670,21 @@ mtls_probe_ok() {
 # check_origin_mtls <env>: from the host to its own public IPv4 (OUTPUT DNAT skips FORWARD, so the firewall is
 # not involved): the deployed Caddy, with the real origin-pull CA, must refuse a client without its certificate.
 check_origin_mtls() {
-  local env=$1 host ip code=0 status
+  local env=$1 host ip code=0 status i
   [[ $env == staging ]] || return 0
   host=$(sed -n "s/^APP_HOST='\([a-z0-9.-]*\)'\$/\1/p" "$(etc_dir "$env")/env/caddy.env")
   ip=$(ip -4 route get 1.1.1.1 | awk '{ for (i = 1; i < NF; i++) if ($i == "src") { print $(i + 1); exit } }')
   [[ -n $host && $ip =~ ^[0-9.]+$ ]] || die "check_origin_mtls: no APP_HOST or public IPv4"
-  status=$(curl -sS -k --http1.1 -o /dev/null -w '%{http_code}' --max-time 10 --resolve "$host:443:$ip" \
-    "https://$host/" 2>/dev/null) || code=$?
+  # Caddy has no healthcheck (`admin off`), so `up --wait` returns before it listens: wait while curl can't
+  # connect (exit 7). Any other answer is final (staging deploy 43735134613, 15 Nov).
+  for ((i = 0; ; i++)); do
+    code=0
+    status=$(curl -sS -k --http1.1 -o /dev/null -w '%{http_code}' --max-time 10 --resolve "$host:443:$ip" \
+      "https://$host/" 2>/dev/null) || code=$?
+    [[ $code == 7 ]] || break
+    ((i < MTLS_WAIT_SECONDS)) || die "Caddy did not accept connections on $ip:443 within $MTLS_WAIT_SECONDS s"
+    sleep 1
+  done
   mtls_probe_ok "$code" "$status" ||
     die "Caddy answered a client without Cloudflare's certificate (curl exit $code, HTTP ${status:-none})"
   log "origin mTLS checked: refused without Cloudflare's client certificate (curl exit $code)"
