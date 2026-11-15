@@ -47,7 +47,8 @@ export interface BackupConstants {
 /** The fixed values in infra/host/moz-backup (`S3_ENDPOINT=…` lines). */
 export function readBackupConstants(script: string): BackupConstants {
   const value = (name: string, pattern: RegExp): string => {
-    const found = new RegExp(`^${name}=(\\S+)$`, "m").exec(script)?.[1] ?? "";
+    const line = script.split("\n").find((l) => l.startsWith(`${name}=`)) ?? "";
+    const found = line.slice(name.length + 1);
     if (!pattern.test(found))
       throw new Error(`infra/host/moz-backup: ${name} is missing or malformed`);
     return found;
@@ -79,14 +80,13 @@ export interface Listed {
 
 /** The newest dump per database among object keys `<env>/dumps/<YYYY-MM-DD>/<db>-<YYYYMMDDTHHMMSSZ>.dump.gpg`. */
 export function newestDumps(objects: Listed[], env: BackupEnv): Map<string, Dump> {
-  const pattern = new RegExp(
-    `^${env}/dumps/\\d{4}-\\d{2}-\\d{2}/([a-z]+)-(\\d{4})(\\d{2})(\\d{2})T(\\d{2})(\\d{2})(\\d{2})Z\\.dump\\.gpg$`,
-  );
+  const pattern =
+    /^(staging|production)\/dumps\/\d{4}-\d{2}-\d{2}\/([a-z]+)-(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z\.dump\.gpg$/;
   const newest = new Map<string, Dump>();
   for (const { key, lastModified } of objects) {
     const m = pattern.exec(key);
-    if (!m) continue;
-    const [, db = "", y, mo, d, h, mi, s] = m;
+    if (m?.[1] !== env) continue;
+    const [, , db = "", y, mo, d, h, mi, s] = m;
     const takenAt = new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}Z`);
     if (Number.isNaN(takenAt.getTime())) continue;
     const seen = newest.get(db);

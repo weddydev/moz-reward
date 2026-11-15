@@ -31,9 +31,12 @@ describe("[P0-15] backup:verify pure parts", () => {
     ["", "S3_ENDPOINT"],
   ])("[P0-15] refuses a missing or malformed constant: %s", (bad, name) => {
     const text = bad
-      ? script.replace(new RegExp(`^${name}=.*$`, "m"), bad)
+      ? script
+          .split("\n")
+          .map((l) => (l.startsWith(`${name}=`) ? bad : l))
+          .join("\n")
       : script.replace(/^S3_ENDPOINT=.*$/m, "");
-    expect(() => readBackupConstants(text)).toThrow(new RegExp(name));
+    expect(() => readBackupConstants(text)).toThrow(name);
   });
 
   it("[P0-15] staging restores moz; production also umami (as moz-backup's databases)", () => {
