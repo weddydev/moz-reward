@@ -210,4 +210,4 @@ sudo docker exec moz-staging-worker-1 node cli/demo-credentials.mjs --codes   # 
 ```
 Customers sign in by email link (the shared inbox, `inbox+moz-…@`); staff and admins with password + code. Before a
 demo, reset the demo data: `sudo docker exec moz-staging-worker-1 node cli/seed.mjs --reset` (same passwords/keys).
-**Worked when:** each account signs in and lands in its own portal.
+**Worked when:** each account signs in and lands in its own portal. The presenter's step-by-step demo script is `docs/DEMO_GUIDE.md`.
