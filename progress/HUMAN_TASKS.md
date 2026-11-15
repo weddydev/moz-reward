@@ -31,6 +31,7 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 | H-14 | 🟢 | Send the client the demo notes and collect feedback | Every phase end | Client sign-off | — |
 | H-15 | 🟢 | Client's solicitor reviews the legal page drafts | P5 (by Tue 12 Jan 2027) | Launch | Client side |
 | H-38 | 🟢 | Delete the 8 merged branches + the throwaway `wip/h40-check` on GitHub (content verified on main, 14 Nov audit): `git push origin --delete wip/P0-08 wip/P0-09 wip/P0-10 wip/P0-12 wip/P0-12-b wip/P0-13 wip/P0-18 wip/P0-C-close wip/h40-check` — Claude's branch deletion is refused by the permission settings. Keep `wip/P0-15` | Any time | Tidy branch list; nobody switches to a stale branch | 2 min |
+| H-43 | 🟢 | **Confirm the VPS host key out of band** (steps below): one line in the Hostinger browser terminal, or on the Windows laptop | Before launch (P5); any time | Claude checked it from two networks (Mac + GitHub runner, 15 Nov) and saved it; the deploy job trusts these fingerprints, so one independent reading closes it | 2 min |
 | H-30 | 🟢 | On each laptop: `gh auth refresh -h github.com -s user` (adds the read-only billing scope) | Next sub-phase close (P0-E) | `pnpm ci:usage` then reads the exact Actions minutes instead of an estimate | 2 min |
 
 ## Steps
@@ -40,6 +41,10 @@ Claude keeps this list current. It is reviewed and updated at every sub-phase an
 2. In a normal PowerShell: `ssh-add $env:USERPROFILE\.ssh\id_ed25519` and type the key's passphrase at the prompt (never in chat). The agent keeps it across reboots.
 3. Tell Claude "H-39 done". Claude checks `ssh root@72.61.17.208` with Windows OpenSSH, then does the rest itself. **Claude's part:** if `DEPLOY_SSH_KEY` turns out to have a passphrase too (CI can't type one), Claude makes a new passphrase-less CI deploy key, installs its public half on the VPS for the `deploy` user only and replaces the GitHub secret with `gh secret set DEPLOY_SSH_KEY < file`, without displaying it. *(13 Nov: it does have a passphrase; the new key `~/.ssh/moz_ci_deploy` is made and its public half is in `infra/host/files/deploy_ci.pub`; the secret is replaced in step C.)*
 4. Good to know: after the hardening run, **root can no longer log in over SSH**. You log in as `badeshah@72.61.17.208`, the other developer as `talha@…` (the same keys as today, with `sudo`). Hostinger's browser console (hPanel → VPS → Browser terminal) stays the way in if SSH ever breaks.
+
+### H-43 — Confirm the VPS host key (any time; Claude already checked it from two networks)
+1. Either Hostinger hPanel → VPS → `72.61.17.208` → **Browser terminal**, run `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`; or on the Windows laptop (PowerShell) run `ssh-keygen -F 72.61.17.208 -l`.
+2. The line must contain `SHA256:cufEaKzIwDX5dUJqtLL8wdluH2IKPzmUw5fnTm8/PqI`. Tell Claude "H-43 matches" (or the line, which is not secret). A mismatch: stop using SSH to the server and tell Claude.
 
 ### H-40 — Cloudflare origin settings for staging (P0-15; replaces the Tunnel until launch, T-5)
 All in the normal Cloudflare dashboard → zone **mozrewards.com** (no Zero Trust, no card).
