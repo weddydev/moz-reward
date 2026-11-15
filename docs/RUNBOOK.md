@@ -161,6 +161,12 @@ Rotate first, investigate second. Inventory and rotation consequences: SECURITY 
 2. Restart `cloudflared`. If the tunnel token was revoked or leaked: create a new token, update the GitHub secret, redeploy (§9).
 3. **Worked when:** `https://<domain>/api/health/live` is 200 from outside and UptimeRobot recovers.
 
+**Staging until launch (T-5, C-44): no Tunnel; Cloudflare's proxy reaches Caddy on the VPS's 443.** Three walls: `moz-origin-firewall` (only Cloudflare's IPv4 ranges reach the ingress bridge), Authenticated Origin Pulls (Caddy requires Cloudflare's origin-pull client certificate) and basic auth.
+- **Cloudflare settings that must stay:** DNS `staging` = **proxied A record only** (orange cloud; no AAAA: Docker publishes 443 on IPv4 only); SSL/TLS mode **Full (strict)**; **Authenticated Origin Pulls on** (zone level). Check them after any DNS or SSL change.
+- **Symptoms:** 526 = Cloudflare doesn't accept the origin certificate (expired, wrong host, or mode not Full strict); 525/handshake errors = Caddy refused Cloudflare's client certificate (AOP off, or Cloudflare rotated its origin-pull CA: replace `infra/caddy/cloudflare-origin-pull-ca.pem` and redeploy); 522/timeouts = the firewall drops Cloudflare (`sudo moz-origin-firewall check`; System page "Origin firewall"; `journalctl -u moz-origin-firewall-refresh`).
+- **Origin certificate renewal** (System page "Origin certificate" turns red, and health.origin_firewall alerts, 30 days before expiry): Cloudflare → SSL/TLS → Origin Server → create a certificate for the staging host (ECC, 15 years), put the certificate and key in the GitHub secrets `CLOUDFLARE_ORIGIN_CERT_STAGING` / `CLOUDFLARE_ORIGIN_KEY_STAGING` (human, H-40 steps), redeploy staging. `write-env staging origin-tls` validates the pair, installs it and recreates Caddy.
+- **Worked when:** the deploy's smoke (200 via the hostname) and its direct-IP probes (curl exit 28 on 443 and 80) both pass.
+
 ## 14. Full VPS rebuild
 
 *(P0-15; rehearsed once in P5)* When the VPS is lost or untrustworthy. RTO target 2 h.

@@ -9,6 +9,10 @@
 	admin off
 	auto_https off
 	persist_config off
+	https_port 443
+	# The origin certificate is presented only to Cloudflare, which doesn't need stapled OCSP; no outbound OCSP
+	# fetches from the origin (Caddy has no way out through the ingress bridge anyway).
+	ocsp_stapling off
 	servers {
 		# HTTP/1.1 and HTTP/2 over TCP only: UDP 443 is not published, so no HTTP/3.
 		protocols h1 h2

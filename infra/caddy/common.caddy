@@ -1,7 +1,9 @@
 # Shared Caddy snippets for staging and production (P0-15; SECURITY §11). Imported by Caddyfile.<env> after
 # its global options block (which must come first in a Caddyfile, so each env file holds its own copy).
-# Caddy listens on plain HTTP inside the `edge` network only; TLS terminates at Cloudflare and cloudflared is
-# the only client. No host ports.
+# Production: Caddy listens on plain HTTP inside the `edge` network only; TLS terminates at Cloudflare and
+# cloudflared is the only client, no host ports. Staging until launch (T-5): Caddy terminates TLS itself on a
+# published 443 with the Cloudflare Origin CA certificate and requires Cloudflare's origin-pull client
+# certificate (Caddyfile.staging).
 
 # Access log for the System page aggregation (C-35): route, status and duration only. No query strings,
 # headers (cookies, Authorization, Set-Cookie) or client IPs ever reach the log (HIGH, P0-15 design check).
