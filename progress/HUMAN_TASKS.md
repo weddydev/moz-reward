@@ -60,6 +60,7 @@ All in the normal Cloudflare dashboard → zone **mozrewards.com** (no Zero Trus
 2. Open that file, copy its lines into a password-manager note "Moz Rewards staging secrets". `BASIC_AUTH_PASSWORD_STAGING` is your staging login (user `moz`) for https://staging.mozrewards.com.
 3. Delete the file with Shift+Delete (not the Recycle Bin).
 4. In a terminal in the repo: `gh secret set ALERT_EMAILS_STAGING`, then type both developers' email addresses separated by a comma at the prompt.
+   **Or, from the Mac (option (a), 14 Nov):** tell Claude "H-41: a". Claude deletes the 7 generated staging secrets (nothing has been deployed with them) and re-runs `node scripts/deploy-secrets.mjs staging`, which writes a new file in the Mac's home folder; you do steps 2–4 with that file, and the Windows file is just deleted as obsolete.
 5. Tell Claude "H-41 done".
 
 ### H-42 — Backblaze B2 for backups (P0-15 step D)

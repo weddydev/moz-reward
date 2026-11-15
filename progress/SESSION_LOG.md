@@ -506,3 +506,8 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Not done: 4 ghost "queued" runs from 11 Nov can't be cancelled (GitHub says completed / not queued); deleting the 8 merged remote wip branches was refused by the permission prompt (left as is).
 - Next: P0-15 D3 `pnpm backup:verify` (unchanged).
 
+## 2026-11-15 — P0 — handoff by talha.syed (Mac): human-task path to staging
+- H-39 done from the Mac (agent + Keychain, `~/.ssh/config`), root SSH verified. Human: no Cloudflare Tunnel for now (Zero Trust wants a card) → proxy origin lock (T-5, C-44, SECURITY §11 exception); H-40 rewritten; new step C1b in the P0-15 plan. `progress/TEMPORARY.md` register + CLAUDE.md §3 rule (gates P5-14).
+- Evidence: CI `43578704624` (`03e3afc`) and `43482813705` (`wip/P0-15` `25e05cf`) green.
+- Next: `wip/P0-15` C1b (no human input), then D3; human: H-40, H-41 (a/b), H-42.
+

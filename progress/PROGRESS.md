@@ -3,27 +3,26 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-13 17:08 UTC (Mac)
+Baton: free — last held by talha.syed, 2026-11-15 (Mac)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **14 Nov (talha.syed, Mac): process changes after the speed audit** (DECISIONS 14 Nov): `/autopilot` mode (off by default), never wait idle for CI, `wip/*` pushes run `pnpm check` in the hook, map → `progress/MAP.md`, LOW follow-ups → `progress/FOLLOWUPS.md`, Linux check for motion/visual specs, `/resume` fetches all branches and verifies the wip HEAD. Repo public until launch (C-43). P0-15 state below is unchanged.
-- **Checkpoint by talha.syed, 2026-11-13 (Mac); baton held.** P0-15 in progress; steps in **`progress/P0-15-plan.md`** (read its new **"Close plan"** line first).
-- **Human decision (13 Nov, this session):** close P0 now. Finish everything that needs no human task, then move all staging-only work (needs H-39/H-40/H-41/H-42) into one CARRIED row **C-42 "P0-15 staging"** targeting the P1-A close, tick P0-15/close P0, and start P1-02. Nothing is dropped (DECISIONS 13 Nov).
-- **Finished (on `wip/P0-15`, HEAD `25e05cf`, pushed):** A, B1, B2 files, C1, D1, **D2** (this session): `infra/postgres/moz-walg` wal-g wrapper, compose archive settings, key pin + archive-off lever + `walg.env` in moz-deploy, moz-backup `base`/`wal-on`/`wal-off` + storage/key-expiry metrics (migration **0017**), health rules (pg_stat_archiver, lever, base, storage, key), backup role in deploy.yml (secrets `B2_BACKUP_KEY_ID_<ENV>`/`B2_BACKUP_KEY_<ENV>`, as H-42 says).
-- **Half-done and how to continue:** **D3 next** (no human input): `git switch wip/P0-15 && pnpm install`; build `pnpm backup:verify` (`scripts/backup-verify.ts`, plan D bullet) incl. `--wal --target-time` PITR against MinIO in the amd64 image (reuse `tests/integration/walg-archive.test.ts` setup) = AC4 local proof; RUNBOOK §6/§12; then the Close plan order: E local parts → C-40 → C-17 → `/phase-complete` without staging → C-42 → P1-02.
-- **Tested (this session, Mac):** gate:task on `40769e9` PASS (unit 1260, int 1172, build, bundle, sast, lint:sh 5); pre-push gate on `25e05cf` PASS; wal-g e2e 3/3; actionlint clean. D1 push CI `43477028692` green.
-- **Not yet tested:** push CI for `40769e9`/`25e05cf` (check `gh run list --branch wip/P0-15 --limit 2`; the integration job now builds the amd64 Postgres image); everything on a real host (units, timers, harden, moz-deploy, lever bind mount, compose stacks); deploy.yml never run; B2 storage estimate (RESOURCES, NOT VERIFIED); Umami `read_only`; C-40; `global-error.tsx`; H-37 devices; staging (none).
-- **Do first:** nothing locally. **Migrations:** `wip/P0-15` adds 0016 + 0017; if main gets its own first (P1-02), renumber the wip ones before merging. Switching main ↔ `wip/P0-15` changes devDependencies (`pnpm install`). Progress files on **main** only; code on `wip/P0-15`. Host-script tests need bash ≥ 4 and gpg (`brew install bash gnupg`); gpg homes need a short path (agent socket). H-41's secrets file on the Windows laptop must be deleted by the human after import.
-- **Windows laptop notes:** low memory can crash a Vitest worker in the pre-push gate (re-run); `pnpm sast` takes 10–23 min; commit progress edits separately before pushing; no Python (use node); check `df -h /c` before big image pulls.
+- **Handed over by talha.syed, 2026-11-15 (Mac); baton free.** No task code changed this session (14–15 Nov): a speed audit, process changes, and the human-task path to staging. P0-15 code is still on **`wip/P0-15` HEAD `25e05cf`** (pushed, CI `43482813705` green). Steps: **`progress/P0-15-plan.md`** (read its "Close plan" line first).
+- **Finished this session (all on main):** `/autopilot` mode (off by default; `.claude/commands/autopilot.md`), never wait idle for CI, the pre-push hook runs `pnpm check` for pushes only to `wip/*` (`gateFor` in `scripts/pre-push.ts`), `/resume` fetches every branch and stops if the wip HEAD differs from this note, PROGRESS split (`progress/MAP.md`, `progress/FOLLOWUPS.md`), **`progress/TEMPORARY.md`** register of stopgaps (T-1…T-5; gates P5-14; standing rule in CLAUDE.md §3). H-39 done from the Mac (SSH as root verified). Issue #1 closed (H-35).
+- **Human decisions (14 Nov):** (1) repo public until launch (T-2, C-43). (2) **No Cloudflare Tunnel for now** (Zero Trust wants a card): staging origin lock = proxied `A` record + ufw 443 only from Cloudflare ranges + Authenticated Origin Pulls + Origin certificate, Full (strict); Tunnel back before launch (T-5, C-44 → P5-12, SECURITY §11 exception, DECISIONS 14 Nov). H-40 now has these dashboard steps.
+- **Half-done and how to continue:** `git switch wip/P0-15 && git merge --ff-only origin/wip/P0-15 && pnpm install` (HEAD must be `25e05cf`). Then, no human input needed: **(a) new step "C1b origin lock via proxy" (T-5)** on `wip/P0-15`: drop `cloudflared` from the staging stack, Caddy publishes 443 with the Origin certificate (secrets `CLOUDFLARE_ORIGIN_CERT_STAGING` / `CLOUDFLARE_ORIGIN_KEY_STAGING`, written by deploy.yml's caddy role) and requires Cloudflare's origin-pull client certificate, trusted proxies = Cloudflare ranges; harden.sh: ufw 443 only from Cloudflare's published ranges + a refresh timer, 80 closed; deploy.yml smoke via `https://staging.mozrewards.com`; deploy-env/deploy-secrets/tests/RUNBOOK §13 updated; test that a direct TLS hit on the VPS IP without the client cert fails. **(b) D3** `pnpm backup:verify` (+ `--wal --target-time` PITR vs MinIO). Then the Close plan: E local parts → C-40 → C-17.
+- **Waiting on the human:** H-40 (origin settings + two secrets), H-41 choice **(a) regenerate the staging secrets on the Mac** (nothing deployed with them; `gh secret delete` the 7 generated ones, then `node scripts/deploy-secrets.mjs staging` writes a new file in the Mac's home) **or (b)** import the Windows file — plus `ALERT_EMAILS_STAGING`; H-42 (B2). Open question to the human: close P0 without staging as decided on 13 Nov (C-42 → P1-A), or keep P0 open until the staging demo works.
+- **Tested (this session, Mac):** gate:task on `03e3afc` PASS (unit 1040, int 1134, build, bundle, sast); `scripts/pre-push.test.ts` 13/0 (3 new `gateFor` tests failed first); CI `43578704624` on `03e3afc` green; CI `43482813705` on `wip/P0-15` `25e05cf` green; `ssh root@72.61.17.208` from the Mac OK (Ubuntu 24.04.5, 15 GB RAM, 192 GB free, Docker not installed).
+- **Not yet tested:** the new `gateFor` path on a real `wip/*` push; `/autopilot` never run; everything on a real host (harden, moz-deploy, units, compose); deploy.yml never run; the proxy origin lock (not built); B2 storage estimate (NOT VERIFIED); C-40; H-37 devices; staging (none).
+- **Do first:** nothing new locally. Migrations: `wip/P0-15` adds 0016 + 0017 (renumber if main gets its own first). Host-script tests need bash ≥ 4 and gpg (`brew install bash gnupg`). Progress files on **main** only; code on `wip/P0-15`. **Windows laptop:** `/resume` renames the stale `..\CLAUDE.md`; before any VPS work there, load the key once (`ssh-add` in PowerShell, old H-39 steps); H-41's Windows secrets file must be deleted (after import, or as obsolete if H-41 (a)). Low memory can crash a Vitest worker in the pre-push gate (re-run); `pnpm sast` takes 10–23 min; no Python (use node).
 
 ## Status
 - **Phase:** P0 closing: **P0-15 on `wip/P0-15`** (A, B1, B2 files, C1, D1, D2 done); human 13 Nov: finish the non-human work, carry staging to P1 as C-42, close P0, then P1-02 (plan "Close plan").
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → P1-02 → P1-03 → P1-04. P0-E waits only on P0-15 (human tasks).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-14, talha.syed (process changes after the speed audit; P0-15 unchanged, D3 next; baton held)
-- **Staging and production:** one Hostinger VPS 72.61.17.208 (ready, not hardened; backups on B2) — not provisioned yet
+- **Last updated:** 2026-11-15, talha.syed (handoff; P0-15 next: C1b origin lock via proxy, then D3; baton free)
+- **Staging and production:** one Hostinger VPS 72.61.17.208 (SSH from the Mac works; not hardened; backups on B2) — not provisioned yet. Origin lock via Cloudflare proxy until launch (T-5)
 
 ## Now
 - **P0-C closed** (`576b73e`; 5-project run `43269125099` 675/0/0 flaky). C-40 quarantine open (P0 phase gate).
@@ -32,7 +31,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - P0-15 is the only P0-E task left: VPS (H-06) and domain (H-07) ready; backups bucket ready (B2); human inputs for staging now in place (H-04, H-27, H-28 staging done 13 Nov); H-34/H-36 leftovers after the first deploy.
 
 ## Next (top 3)
-1. **P0-15** D3 `pnpm backup:verify` (+ PITR vs MinIO) → E local parts + final security review → C-40 → C-17 → P0 phase gate without staging → open C-42 → tick P0-15, close P0 (human, 13 Nov). Staging work (B2 run, C2, D4, E staging) runs whenever H-39/H-40/H-41/H-42 land.
+1. **P0-15** C1b origin lock via proxy (T-5) → D3 `pnpm backup:verify` (+ PITR vs MinIO) → E local parts + final security review → C-40 → C-17 → P0 phase gate without staging → open C-42 → tick P0-15, close P0 (human, 13 Nov). Staging work: B2 run (hardening) can start now from the Mac (H-39 done); C2 first deploy needs H-40 + H-41; D4 needs H-42.
 2. **P1-02** shop landing page (closes C-15), then P1-03, P1-04 (P1-A; its close also closes C-42).
 3. P0-15 carries: C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38; wal-g write-only + public-key encryption proven vs MinIO (D2); B2 itself unproven until D4.
 
@@ -69,11 +68,11 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 ## Map of the codebase
 In **`progress/MAP.md`** (read when you need to locate code; add new important paths there).
 
-## Last verified (13 Nov 2026)
+## Last verified (15 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- `wip/P0-15` `4e25e42` (Mac): gate:task PASS (unit 1167, int 1139, build, bundle, sast, lint:sh); moz-deploy tests 70/0 under bash 5.3 (23/70 failed under macOS bash 3.2 before `scripts/lib/find-bash.ts`). `main` `6807a9c`: `pnpm check` PASS (unit 1037).
-- `wip/P0-15` `f144411` step C1 (Windows): gate:task PASS (unit 1167, int 1139, build, bundle, sast, lint:sh 3 scripts); new unit: migrate-stdin 12, deploy-env 9, deploy-secrets 5, moz-deploy 70 (per-env load/images; failed 4 before the fix); bundled `dist/cli/migrate.mjs --url-stdin` with `env -i` migrated the local test DB (exit 0) and refused a non-Postgres/empty input without echoing it; actionlint deploy.yml clean; host key fingerprint SHA256:cufEaKz… matches the laptop's trusted entry.
-- `wip/P0-15` `e5c0116` step B2 (Windows): gate:task PASS (unit 1134, int 1139, build, bundle, sast, lint:sh); moz-deploy tests 65/0 (a removed allowlist rule → 3 failures); ShellCheck clean; init-env in Ubuntu 24.04 idempotent; real Redis with the generated TLS/ACL: plaintext refused, default user off, CONFIG/FLUSHALL refused, health PING only, wrong SAN rejected; both compose stacks `config` OK.
+- `main` `03e3afc` (Mac): gate:task PASS (unit 1040, int 1134, build, bundle, sast); CI `43578704624` green. Later main commits are docs/progress only.
+- `wip/P0-15` `25e05cf`: pre-push gate PASS (13 Nov); CI `43482813705` green. `40769e9` gate:task PASS (unit 1260, int 1172, build, bundle, sast, lint:sh 5); wal-g e2e 3/3.
+- VPS: `ssh root@72.61.17.208` from the Mac (agent + Keychain) OK, 15 Nov.
 
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
