@@ -1,193 +1,264 @@
-# Demo guide — Phase 0 (foundation) on staging
+# Demo guide — step by step (Phase 0, staging)
 
-A step-by-step script for the person presenting. Follow it top to bottom. Each step has:
-**Do** (what you click), **You should see** (so you know it worked), **Say** (what to tell the client).
+Follow this from the top, one step at a time. Nothing is assumed: every link, every thing to type and where to
+find it is written out. Do **Part 1** once, **Part 2** alone as a practice run, and **Part 3** with the client.
 
-- **Length:** about 15–20 minutes of demo, plus 10 minutes of preparation the first time.
-- **Site:** `https://staging.mozrewards.com`
-- **What this demo is:** the foundation is finished and live: sign-in, security, the three apps (customer,
-  shop, admin), the design system and the server setup. The loyalty features themselves (shop pages, joining,
-  points, offers) are built in the next phase, so most menu pages are designed "coming soon" screens.
+The test website is: **https://staging.mozrewards.com**
 
 ---
 
-## Part A — Prepare (do this before the client joins)
+## Part 1 — One-time setup (about 15 minutes)
 
-### A1. Find your two logins (2 min)
-You need two separate things:
-1. **The staging gate** (the browser pop-up before the site loads): username `moz` + the password in your
-   password manager ("Moz staging basic auth").
-2. **The demo accounts** (inside the app): see A2.
+### 1.1 Get the list of demo accounts
 
-### A2. Get the demo accounts (5 min, first time only)
-In your own terminal (never paste the output into a chat, email or ticket):
-```
-ssh talha@72.61.17.208
-sudo docker exec moz-staging-worker-1 node cli/demo-credentials.mjs
-```
-It prints 7 accounts: **Customer**, **Shop staff** and **Shop owner** (Brew & Bloom Café), and four admins
-(**owner, support, moderator, finance**). Copy everything into your password manager entry
-"Moz Rewards staging demo accounts".
+You need the demo accounts' emails and passwords. They are printed by a command on the server.
 
-### A3. Set up the 6-digit codes (3 min, first time only)
-Staff and admins sign in with a password **and** a 6-digit code. Pick one:
-- **Authenticator app (best for a live demo):** add each account's "TOTP key" (or scan its TOTP URI as a QR code)
-  in Google Authenticator / 1Password / Authy. Done once; the keys never change.
-- **Or, just before each sign-in:** run
-  `sudo docker exec moz-staging-worker-1 node cli/demo-credentials.mjs --codes`
-  (codes change every 30 seconds, so sign in straight after).
+1. On your Mac, press **Cmd + Space**, type **Terminal**, press **Enter**. A black/white window opens.
+2. Type this and press **Enter**:
+   ```
+   ssh talha@72.61.17.208
+   ```
+   (The first time it may ask "Are you sure you want to continue connecting?": type `yes`, press Enter.)
+   You are now on the server. The line now starts with something like `talha@srv…`.
+3. Type this and press **Enter**:
+   ```
+   sudo docker exec moz-staging-worker-1 node cli/demo-credentials.mjs
+   ```
+4. You see a list like this (your values are different):
+   ```
+   Customer (email link)
+     email     yourinbox+moz-customer@gmail.com
+     sign in   email link
 
-### A4. Fresh demo data (1 min, before every demo)
+   Shop staff, Brew & Bloom Café
+     email     yourinbox+moz-staff@gmail.com
+     password  xxxxxxxxxxxxxxxx
+     TOTP key  ABCD EFGH IJKL ...
+     TOTP URI  otpauth://...
+     code now  123456
+   ...
+   ```
+   There are 7 blocks: **Customer**, **Shop staff**, **Shop owner**, **Admin: owner**, **Admin: support**,
+   **Admin: moderator**, **Admin: finance**.
+5. Select all of that text, copy it (**Cmd + C**) and paste it into a new **secure note** in your password manager
+   called **Moz Rewards staging demo accounts**. Don't paste it anywhere else (not in chat, email or Slack).
+6. Leave Terminal open; you'll use it in 1.2.
+
+### 1.2 Put the 6-digit codes on your phone
+
+Shop staff and admins sign in with a password **and** a 6-digit code from a phone app. You set this up once for
+the 6 accounts that have a "TOTP key".
+
+1. On your phone, install **Google Authenticator** (free, App Store / Play Store).
+2. Open it, tap **+** (bottom right), then **Enter a setup key**.
+3. Fill in:
+   - **Account name:** `Moz staff`
+   - **Your key:** the **TOTP key** from the **Shop staff** block (type it exactly; spaces don't matter)
+   - **Type of key:** Time based
+   - Tap **Add**.
+4. Repeat step 2–3 for the other five, naming them: `Moz owner`, `Moz admin owner`, `Moz admin support`,
+   `Moz admin moderator`, `Moz admin finance`, each with its own TOTP key.
+5. You now see six entries, each with a 6-digit code that changes every 30 seconds.
+
+> **No phone handy?** You can get the current codes in Terminal instead (on the server, as in 1.1):
+> `sudo docker exec moz-staging-worker-1 node cli/demo-credentials.mjs --codes`
+> It prints e.g. `staff  123456`. Codes last 30 seconds, so type them straight away.
+
+### 1.3 The two logins you'll use (read this once)
+
+There are **two different logins**, and they are easy to mix up:
+
+| Login | When it appears | What to enter |
+|---|---|---|
+| **The site gate** | A small browser pop-up the very first time you open the site | Username `moz` + the staging gate password from your password manager |
+| **A demo account** | The app's own sign-in page | The email (+ password + code) of one demo account from 1.1 |
+
+---
+
+## Part 2 — Practice run on your own (about 20 minutes)
+
+Do this once before the client demo, so nothing is a surprise. Part 3 is the same steps with talking points.
+
+### Before every practice or demo: refresh the demo data
+In Terminal on the server (1.1 steps 1–2), run:
 ```
 sudo docker exec moz-staging-worker-1 node cli/seed.mjs --reset
 ```
-Passwords and codes stay the same.
+It says `demo seed done`. Passwords and codes stay the same.
 
-### A5. Open these tabs
-1. `https://staging.mozrewards.com` (log in to the gate with `moz` + password).
-2. The **shared Gmail inbox** (the customer's sign-in email arrives there).
-3. Your password manager with the demo accounts.
-4. Optional: a **private/incognito window** for the second account, so you can show two roles side by side.
-5. Optional: your **phone** with the site open, to show the mobile app (Step 9).
+### Account cheat sheet
 
-### A6. Quick self-check (1 min)
-- The site loads after the gate → good.
-- If you get a Cloudflare error page or nothing loads, stop and check the troubleshooting table at the end.
+| Account (block in your secure note) | Sign in at | You land on | Sign out at |
+|---|---|---|---|
+| Customer | https://staging.mozrewards.com/sign-in | Wallet | https://staging.mozrewards.com/me/security → **Sign out** |
+| Shop staff | https://staging.mozrewards.com/staff/sign-in | Shop dashboard | https://staging.mozrewards.com/staff/security → **Sign out** |
+| Shop owner | https://staging.mozrewards.com/staff/sign-in | Shop dashboard | https://staging.mozrewards.com/staff/security → **Sign out** |
+| Admin: owner / support / moderator / finance | https://staging.mozrewards.com/staff/sign-in | Admin home | https://staging.mozrewards.com/staff/security → **Sign out** |
 
----
-
-## Part B — The demo, step by step
-
-### Step 1 — A private, locked site (1 min)
-**Do:** Open `https://staging.mozrewards.com` in a fresh private window.
-**You should see:** the browser asks for a username and password before anything loads.
-**Say:** "This is our private test site. Nobody can reach it without this login, search engines are told not to
-list it, and the server itself only accepts traffic that comes through Cloudflare's network. It runs on the same
-setup the live app will use."
-**Do:** Enter `moz` and the gate password.
-
-### Step 2 — Customer signs in without a password (3 min)
-**Do:**
-1. Go to `https://staging.mozrewards.com/sign-in`.
-2. Type the **Customer** email from your password manager (it looks like `yourinbox+moz-…@gmail.com`).
-3. If a small security check box appears, tick it.
-4. Click **Email me a sign-in link**.
-
-**You should see:** "Check your email".
-**Do:** Switch to the shared Gmail tab, open the new Moz Rewards email, click the sign-in link.
-**You should see:** a page with a **Continue** button. Click it. You land in the customer's **Wallet**.
-**Say:** "Customers never need a password. They type their email and tap the link. The link works once and
-expires, and the extra Continue tap stops email scanners from using the link before the customer does."
-**Optional extra:** click the same email link again. It no longer signs anyone in.
-
-### Step 3 — Tour the customer app (2 min)
-**Do:** Click through the menu: **Wallet, Offers, Scan, Market, Notifications, Me**.
-**You should see:**
-- On a laptop: a slim rail on the left. Hover over it and it opens with labels.
-- Each page has its title and a short message saying what will appear there.
-
-**Say:** "This is the real app frame the customer will use: navigation, layout, loading and error states. The
-content of these pages (cards, points, offers) arrives in the next phase."
-
-### Step 4 — The customer's security page (2 min, fully working)
-**Do:** Go to **Me**, then the security page (or open `/me/security`).
-**You should see:** **Signed-in devices**, with this device marked **This device**, and buttons to sign out.
-**Say:** "Customers can see every device signed in to their account and sign out the others: if a phone is lost,
-one tap and it's out."
-**Do (optional):** click **Sign out** at the end of this step to show a clean sign-out.
-
-### Step 5 — Shop staff sign in (3 min)
-**Do:**
-1. Open `https://staging.mozrewards.com/staff/sign-in` (use the private window if the customer is still signed in).
-2. Enter the **Shop staff** email and password, click **Sign in**.
-3. Enter the 6-digit code from your authenticator (or from `--codes`), click **Verify**.
-
-**You should see:** the shop dashboard for **Brew & Bloom Café** with its menu: Scan, Customers, Offers,
-Loyalty, Analytics and more.
-**Say:** "Shop teams sign in with a password and a code from an authenticator app, so a stolen password alone
-gets nobody in."
-**Do:** find **Switch portal** at the bottom of the menu.
-**Say:** "Staff are customers too, so they can switch between the shop dashboard and the customer app."
-
-### Step 6 — Owner versus staff (2 min)
-**Do:** Sign out, then sign in the same way as the **Shop owner**.
-**You should see:** the same dashboard plus **Staff** and **Settings**.
-**Do:** Sign back in as **Shop staff** (or use the other window) and paste
-`https://staging.mozrewards.com/dashboard/settings` into the address bar.
-**You should see:** a "not allowed" page, not the settings.
-**Say:** "Permissions are checked by the server on every page, not just by hiding buttons. A member of staff can't
-reach the owner's settings even by typing the address."
-
-### Step 7 — Admin roles (3 min)
-**Do:** At `/staff/sign-in`, sign in as **Admin: owner** (password + code).
-**You should see:** the full admin menu: Applications, Shops, Plans & payments, QR & NFC, Customers, Moderation,
-Fraud monitor, Featured slots, Content settings, Broadcasts, Audit log, Team, System.
-**Do:** Sign out and sign in as **Admin: support** (then moderator, finance if there's time).
-**You should see:** a shorter menu each time:
-- **Support:** Applications, Shops, QR & NFC, Customers, Fraud monitor.
-- **Moderator:** Moderation, Fraud monitor, Content settings.
-- **Finance:** Plans & payments, Featured slots.
-
-**Say:** "Your team gets exactly the access their job needs. Support can't change billing, finance can't
-moderate content, and only the owner sees the audit log and system health."
-
-### Step 8 — System health (2 min, fully working)
-**Do:** Signed in as **Admin: owner**, open **System** (`/admin/system`).
-**You should see:** live status rows for the real servers: database, queues, email, the server firewall,
-certificate expiry and more. Some rows (backups, uptime monitoring) show as not set up yet.
-**Say:** "This is the live health of the platform. If anything goes wrong, the team gets an email alert, and this
-page shows what and when. Backups and uptime monitoring are being switched on as the last foundation steps."
-
-### Step 9 — Look and feel, on a phone and a laptop (3 min)
-**Do:**
-1. Open `https://staging.mozrewards.com/dev/ui`: the gallery of every building block (buttons, forms, sheets,
-   pop-ups, messages).
-2. Open `https://staging.mozrewards.com/dev/motion`: page transitions and animations.
-3. On your phone (Safari on iPhone, Chrome on Android), sign in as the customer and show the **bottom tab bar**.
-4. Optional: turn on **Reduce motion** in the phone's accessibility settings and reload: the animations calm down.
-
-**Say:** "Everything is built from one design system, so every screen feels the same. It works on any phone, keeps
-clear of the notch, and respects people who switch off motion. These gallery pages exist only on the test site."
-
-### Step 10 — Wrap up (1 min)
-**Say:** "That's the foundation: secure sign-in for every role, the three apps, permissions, health monitoring and
-the live server. Next we build the shop pages, joining a shop, and collecting points."
-**Do:** Sign out of every account.
+**Always sign out before signing in as the next account.**
 
 ---
 
-## Part C — If the client asks…
+## Part 3 — The client demo, step by step
+
+Use **Google Chrome** on your laptop. Have your password manager and your phone (Google Authenticator) next to
+you. Each step: **Go to** (the link), **Do** (what to click or type), **Check** (what you should see), **Say**
+(what to tell the client).
+
+### Step 1 — Open the private test site (1 min)
+
+- **Go to:** https://staging.mozrewards.com
+- **Do:** a pop-up asks for a username and password. Type `moz` and the **site gate** password. Click **Sign in**.
+- **Check:** the Moz Rewards site opens.
+- **Say:** "This is our private test site. Nobody can open it without this login, search engines can't list it,
+  and the server only accepts visitors that come through Cloudflare. It runs on the same setup the real app will use."
+
+### Step 2 — Sign in as a customer (no password) (3 min)
+
+- **Go to:** https://staging.mozrewards.com/sign-in
+- **Do:**
+  1. In the email box, type the **Customer** email from your secure note (`…+moz-customer@…`).
+  2. If a small "verify you are human" box appears, tick it.
+  3. Click **Email me a sign-in link**.
+- **Check:** the page says **Check your email**.
+- **Do:**
+  4. Open the **shared Gmail inbox** in a new tab (the inbox the demo emails go to).
+  5. Open the newest email from Moz Rewards. Click the sign-in link in it.
+  6. A page with a **Continue** button opens. Click **Continue**.
+- **Check:** you are in the customer **Wallet**.
+- **Say:** "Customers never need a password. They type their email and tap the link. Each link works once and
+  expires, and the extra Continue tap stops email security scanners from using the link first."
+
+### Step 3 — Look around the customer app (2 min)
+
+- **Do:** click each item in the menu on the left: **Wallet**, **Offers**, **Scan**, **Market**, **Notifications**, **Me**.
+  Move the mouse over the narrow menu on the left: it slides open and shows the names.
+- **Check:** each page opens with its title and a short "what will appear here" message.
+- **Say:** "This is the real app frame customers will use: menus, layout, loading and error screens. The content
+  (your shop cards, points, offers) is added in the next phase."
+
+### Step 4 — The customer's security page (2 min)
+
+- **Go to:** https://staging.mozrewards.com/me/security
+- **Check:** a list called **Signed-in devices**, with your laptop marked **This device**.
+- **Say:** "Customers see every device signed in to their account and can sign the others out. Lost phone: one tap."
+- **Do:** click **Sign out**.
+- **Check:** you are signed out (you see the sign-in page).
+
+### Step 5 — Sign in as shop staff (3 min)
+
+- **Go to:** https://staging.mozrewards.com/staff/sign-in
+- **Do:**
+  1. **Email:** the **Shop staff** email (`…+moz-staff@…`).
+  2. **Password:** the **Shop staff** password.
+  3. If a "verify you are human" box appears, tick it. Click **Sign in**.
+  4. A box asks for a 6-digit code. On your phone, open Google Authenticator, read the code under **Moz staff**,
+     type it, click **Verify**.
+- **Check:** you are in the shop dashboard for **Brew & Bloom Café**, with a menu: Scan, Customers, Offers,
+  Loyalty, Analytics and more.
+- **Say:** "Shop teams sign in with a password and a code from their phone, so a stolen password alone is useless."
+- **Do:** at the bottom of the menu, click **Switch portal**.
+- **Check:** a small window lists the shop dashboard and the customer app.
+- **Say:** "Staff are customers too, so they can switch between the shop side and the customer side."
+- **Do:** press **Esc** to close it.
+
+### Step 6 — Show that staff can't open owner pages (1 min)
+
+- **Go to:** https://staging.mozrewards.com/dashboard/settings (type it in the address bar while still signed in as staff)
+- **Check:** a **"not allowed"** page appears instead of the settings.
+- **Say:** "Permissions are checked by the server on every page, not just by hiding buttons. Staff can't reach the
+  owner's settings even by typing the address."
+- **Do:** sign out: go to https://staging.mozrewards.com/staff/security and click **Sign out**.
+
+### Step 7 — Sign in as the shop owner (2 min)
+
+- **Go to:** https://staging.mozrewards.com/staff/sign-in
+- **Do:** sign in like Step 5, but with the **Shop owner** email + password, and the code under **Moz owner**.
+- **Check:** the same dashboard, plus two extra menu items: **Staff** and **Settings**.
+- **Do:** click **Settings**. It opens this time.
+- **Say:** "The owner sees everything staff see, plus managing the team and the shop's settings."
+- **Do:** sign out at https://staging.mozrewards.com/staff/security → **Sign out**.
+
+### Step 8 — Sign in as the admin owner (Moz Rewards' own team) (3 min)
+
+- **Go to:** https://staging.mozrewards.com/staff/sign-in
+- **Do:** sign in with the **Admin: owner** email + password, and the code under **Moz admin owner**.
+- **Check:** the admin area, with the full menu: Applications, Shops, Plans & payments, QR & NFC, Customers,
+  Moderation, Fraud monitor, Featured slots, Content settings, Broadcasts, Audit log, Team, System.
+- **Say:** "This is your team's control room for the whole platform."
+
+### Step 9 — The live System health page (2 min)
+
+- **Do:** still as Admin: owner, click **System** in the menu (or go to https://staging.mozrewards.com/admin/system).
+- **Check:** a list of live status rows: database, queues, email, the server firewall, certificate expiry and more.
+  Some rows (backups, uptime monitoring) say they aren't set up yet. That's expected.
+- **Say:** "This shows the live health of the platform. If something breaks, the team gets an email and this page
+  shows what and when. Backups and uptime checks are being switched on as the last foundation steps."
+- **Do:** sign out at https://staging.mozrewards.com/staff/security → **Sign out**.
+
+### Step 10 — Different admin jobs see different menus (3 min)
+
+Do this for **Admin: support**, then (if there's time) **Admin: moderator** and **Admin: finance**:
+- **Go to:** https://staging.mozrewards.com/staff/sign-in → sign in with that admin's email + password + its code.
+- **Check** the menu:
+  - **Support:** Applications, Shops, QR & NFC, Customers, Fraud monitor.
+  - **Moderator:** Moderation, Fraud monitor, Content settings.
+  - **Finance:** Plans & payments, Featured slots.
+- **Say:** "Each person on your team only gets what their job needs. Support can't touch billing, finance can't
+  moderate, and only the owner sees the audit log and system health."
+- **Do:** sign out at https://staging.mozrewards.com/staff/security → **Sign out** before the next one.
+
+### Step 11 — The design and animations (2 min)
+
+- **Go to:** https://staging.mozrewards.com/dev/ui
+- **Check:** a gallery of every building block (buttons, forms, pop-ups, messages). Scroll through it.
+- **Go to:** https://staging.mozrewards.com/dev/motion
+- **Check:** page transitions and animations; click around.
+- **Say:** "Every screen is built from this one design system, so the whole app looks and feels the same. These
+  gallery pages exist only on the test site."
+
+### Step 12 — On a phone (2 min, optional)
+
+- **Do:** on your phone, open https://staging.mozrewards.com (Safari on iPhone, Chrome on Android), enter the site
+  gate login, then sign in as the **Customer** (Step 2) using the same Gmail inbox.
+- **Check:** the menu is now a **tab bar at the bottom** of the screen, clear of the notch.
+- **Say:** "Same app on a phone, laid out for thumbs."
+- **Optional:** turn on **Reduce Motion** (iPhone: Settings → Accessibility → Motion) and reload: the animations
+  become calmer. "We respect people who switch off motion."
+
+### Step 13 — Wrap up (1 min)
+
+- **Say:** "That's the foundation: secure sign-in for every role, the customer, shop and admin apps, permissions,
+  health monitoring and the live server. Next we build the shop pages, joining a shop and collecting points."
+- **Do:** sign out of any account still signed in.
+
+---
+
+## If the client asks…
 
 | Question | Answer |
 |---|---|
-| "Can I try it myself?" | Yes: give them the gate login and one demo account **through a password manager share**, never by email or chat. |
-| "Why are most pages empty?" | This phase built the foundation every feature stands on. Features fill these pages from the next phase. |
-| "Is this real data?" | No. Shops and people are invented demo data, reset before each demo. |
-| "Will it work on iPhone?" | Yes, in Safari. Installing it on the home screen and the Android Play Store app come in a later phase. |
-| "What's coming next?" | Shop landing pages (scan a shop's code), the welcome animation, joining a shop and your member card. |
+| "Can I try it myself?" | Yes. Share the gate login and one demo account **through your password manager's share feature**, never by email or chat. |
+| "Why are most pages empty?" | This phase built the foundation every feature stands on. The features fill these pages from the next phase. |
+| "Is this real data?" | No. The shops and people are invented, and we reset them before every demo. |
+| "Does it work on iPhone?" | Yes, in Safari. Installing it on the home screen and the Android Play Store app come in a later phase. |
+| "What's next?" | Shop pages (scan a shop's code), the welcome animation, joining a shop and your member card. |
 | "Is it secure?" | Two-step sign-in for staff, permissions checked on every request, encrypted backups, and a private server reachable only through Cloudflare. |
 
-**Don't promise yet:** points, rewards, offers, notifications, payments, the Android app or a launch date. They
-are later phases.
+**Don't promise yet:** points, rewards, offers, notifications, payments, the Android app or a launch date.
 
 ---
 
-## Part D — After the demo
+## When something goes wrong
 
-1. Sign out of every account and close the private windows.
-2. Write down the client's feedback and questions, and tell Claude (it goes into the project notes).
-3. Nothing to clean up: the next demo starts with step A4 (fresh demo data).
-
----
-
-## Troubleshooting
-
-| Problem | Fix |
+| What happens | What to do |
 |---|---|
-| The browser keeps rejecting the gate login | Use a new private window (browsers remember old logins). Still failing: the password was changed; check the password manager. |
-| No sign-in email | Wait 30 seconds and check the shared inbox's spam and "All mail". Make sure you typed the full `…+moz-…@` address. |
-| "Link expired" | Links are single-use and short-lived. Request a new one (Step 2). |
-| The 6-digit code is refused | Codes last 30 seconds: wait for a fresh one. Check the phone's clock is set automatically. |
-| "Too many attempts" | Wait a minute; sign-in is rate-limited on purpose. |
-| Cloudflare error page (52x) | Tell Claude: the server or firewall needs a look (RUNBOOK §13). |
-| A page shows "not allowed" unexpectedly | You're signed in as a role that can't open it: check which account you're in. |
+| The gate pop-up keeps coming back | Close Chrome completely and open it again, or use a new Incognito window (Cmd + Shift + N). Check the gate password in your password manager. |
+| "Email or password is incorrect" | Copy the email and password again from your secure note (no spaces at the start or end). Make sure you're using the right block. |
+| No email arrives (Step 2) | Wait 30 seconds, then look in Spam and "All mail" in Gmail. Check you used the `…+moz-customer@…` address. |
+| "Link expired" | Each link works once and only for a short time. Go back to Step 2 and send a new one. |
+| The 6-digit code is refused | Wait for the next code (they change every 30 s) and type it quickly. Make sure you're reading the right account in the app. |
+| "Too many attempts" | Wait one minute, then try again (sign-in is slowed down on purpose after mistakes). |
+| You land in the wrong area | You're still signed in as the previous account. Sign out (cheat sheet) and sign in again. |
+| A Cloudflare error page (520–526) or the site doesn't load | Tell Claude: the server needs a look. |
+| Terminal says `Permission denied` on `ssh` | Your Mac's SSH key isn't loaded: tell Claude. |
