@@ -150,10 +150,13 @@ function request(o: Opts, attempt = 0): Promise<Outcome> {
 }
 
 describe("[P0-15] staging Caddy: Cloudflare-only TLS (origin-pull client certificate, SNI = Host)", () => {
-  it("[P0-15] with the origin-pull certificate, the app's name reaches basic auth (401), then the app (502: no upstream here)", async () => {
+  it("[P0-15] with the origin-pull certificate, the app's name reaches basic auth (401), then the app proxy (502/503: no upstream here)", async () => {
     expect(await request({ sni: APP })).toEqual({ status: 401 });
-    expect(await request({ sni: APP, auth: true })).toEqual({ status: 502 });
-  });
+    // No web-1/web-2 in this test: Caddy answers 502 when the names don't resolve at once, 503 after its
+    // lb_try_duration (10 s) when DNS is slow (CI). Either way the request got past basic auth to the app proxy.
+    const passed = await request({ sni: APP, auth: true });
+    expect([502, 503]).toContain("status" in passed ? passed.status : passed.error);
+  }, 30_000);
 
   it("[P0-15] a Host that differs from the TLS server name is refused (421)", async () => {
     expect(await request({ sni: APP, host: "other.test" })).toEqual({ status: 421 });
