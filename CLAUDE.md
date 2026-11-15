@@ -18,9 +18,11 @@ This file is loaded every session, so it stays short and points to the single so
 1. Test first for logic (TESTING §7). Build.
 2. `pnpm gate:task` (TESTING §4 is the single source for every gate). Security-relevant tasks also run `security-reviewer` on the task diff.
 3. Walk the Acceptance criteria and incoming CARRIED rows one by one with evidence. Unmet → keep working, or move it to a CARRIED row **and** the target task's criteria.
-4. **One commit per task:** code + tests + progress files (PROGRESS Now/Next, PHASES tick, ≤ 5 evidence lines in SESSION_LOG). Conventional Commit message. Merge per the **GitHub mode** in PROGRESS (`GITHUB_MODE`): `pro` → branch `t/<task-id>`, PR, `gh pr merge --auto --squash` (branch protection requires CI); `free` → push to `main` through the committed pre-push hook (it runs `pnpm gate:task` and refuses force-pushes); CI runs on every push either way.
+4. **One commit per task:** code + tests + progress files (PROGRESS Now/Next, PHASES tick, ≤ 5 evidence lines in SESSION_LOG). Conventional Commit message. Merge per the **GitHub mode** in PROGRESS (`GITHUB_MODE`): `pro` → branch `t/<task-id>`, PR, `gh pr merge --auto --squash` (branch protection requires CI); `free` → push to `main` through the committed pre-push hook (it runs `pnpm gate:task` and refuses force-pushes); CI runs on every push either way. Pushes only to `wip/*` checkpoint branches run the fast `pnpm check` in the hook instead; CI still runs the full set on them, and the task-closing push keeps the full gate (DECISIONS 14 Nov).
 5. Sound: `node .claude/hooks/notify.mjs task "<task ID> done: <name>" < /dev/null`
-6. Start the next task. Check the previous push's CI result before the next push; red CI is fixed first.
+6. Start the next task. Check the previous push's CI result before the next push; red CI is fixed first. **Never wait idle for CI** (human, 14 Nov): no `sleep`/`until`/`gh run watch` loops; push, carry on, and look at the result before the next push (or let a background command notify you).
+
+**Autopilot mode (human's standing rule, 14 Nov 2026) — off by default.** The default protocol above is the normal way of working. Autopilot switches on only when the human says "switch to autopilot" or runs `/autopilot` (or `/resume autopilot`), and off when they say "autopilot off" or the session ends. Rules: `.claude/commands/autopilot.md`. In short: the main session only orchestrates and every task step runs in a fresh subagent that returns a short summary, so the main context stays small and the 5-hour limit isn't burned on re-reading; same gates, reviews, progress files and commits as the default protocol; it keeps going through the Cadence review stops but stops for a 🔴 blocker with nothing else to do, a decision only the human can make, an open HIGH/BLOCK finding it can't fix, or main context ≥ ~150k (then `/checkpoint` and "Run `/clear`, then `/resume autopilot`").
 
 **Standing rules from the human apply on both laptops.** When the human gives a rule meant to last ("from now on", "always", "never", "every time"), write it into this file (or the doc it belongs to) in the same session, commit and push it — never only into Claude's local memory or local settings, which exist on one laptop only. On `/resume`, rules in this file are the full set; if the human mentions a rule that isn't here, add it.
 
@@ -57,6 +59,7 @@ This file is loaded every session, so it stays short and points to the single so
 - **Minimise human work; track the rest in `progress/HUMAN_TASKS.md`** (ID, 🔴/🟠/🟢, needed by, why, time, exact steps). Add tasks as early as you can foresee them. Review the list at every sub-phase and phase close.
 - **Do it yourself (human's standing rule, 12 Nov 2026):** every command, script, CLI, SSH or config step Claude can run, Claude runs itself (key generation, `ssh` to the VPS, `gh secret set` piped from a local file without displaying it, installs via `winget`/`brew`). Ask the human only for what needs them: account sign-ups, payments, identity verification, browser dashboards Claude can't reach, typing a passphrase into a prompt, copying a secret that exists only in a provider dashboard into the password manager, approval prompts and decisions. Write HUMAN_TASKS steps that way: the human's part only, with Claude's part named as Claude's.
 - **Don't invent scope.** If PRODUCT.md is silent, choose the simplest sensible behaviour, record it in DECISIONS.md, move on.
+- **Temporary choices are tracked (human's standing rule, 14 Nov 2026):** whenever we do something "for now" that production must not keep (a provider swapped, a security control replaced by a weaker equivalent, a setting relaxed), add a line to `progress/TEMPORARY.md` in the same commit (what we did, why, the real fix, by when), plus a DECISIONS entry and a CARRIED row to the resolving task. P5-14 can't be ticked while a line is open; every `/phase-complete` reply lists the open lines.
 - **Carried work is tracked, not remembered:** CARRIED table in PROGRESS.md; a task can't be ticked with an open incoming carry.
 
 ### Debugging: root cause before fixes
@@ -70,7 +73,7 @@ Never report done without evidence from this session (command + result, screensh
 - Read by section, not whole files; grep/glob before opening. Don't re-read a file you just wrote.
 - Long suites (sub-phase QA, phase gate) run in a background subagent that returns a compact summary; pipe command output through `tail`/`grep`.
 - Gate scripts print per-suite counts only. Don't paste logs.
-- PROGRESS.md ≤ 120 lines of current state; SESSION_LOG ≤ 5 evidence lines per task; AUDIT.md is frozen history.
+- PROGRESS.md ≤ 120 lines (~12 KB) of current state — the map lives in `progress/MAP.md`, LOW follow-ups in `progress/FOLLOWUPS.md`, old evidence in SESSION_LOG; SESSION_LOG ≤ 5 evidence lines per task; AUDIT.md is frozen history.
 - Reviews at sub-phase close cover only commits not already reviewed at task level.
 - Skills are loaded only when they add something (§6).
 
@@ -80,6 +83,7 @@ Never report done without evidence from this session (command + result, screensh
 - **Quiet hooks:** lefthook prints failures only.
 - **`pnpm fix` before checks:** run it (ESLint autofix + Prettier) before `typecheck`/`gate:task`, so import-order and format nits don't cost a round trip.
 - **Security design check first:** for a security-relevant task, `security-reviewer` checks the plan (data flows, limits, defaults, failure modes) before building; the full review of the final diff stays, and so does a re-review after any HIGH.
+- **Linux check for motion and visual specs (14 Nov):** a change to a motion, overlay or `@visual` spec (or the CSS/components they cover) runs those specs in `mcr.microsoft.com/playwright:v<installed version>-noble` against the production build before pushing; Linux-only flakes otherwise surface only in CI.
 - **Full 5-project E2E** at sub-phase close and in nightly CI, as TESTING §4 says — **plus immediately** for any change that affects every page (root layout, global CSS, `tests/e2e/support` fixtures, proxy/headers). Per task otherwise: `gate:task` only.
 - **Screenshots:** customer screens at 320, 390 (iPhone) and 1440, all inspected; admin and developer pages at 320 and 1440.
 - **QA agent stays on Opus, high effort** (`.claude/agents/qa-engineer.md`), never a cheaper model.
@@ -88,7 +92,7 @@ Never report done without evidence from this session (command + result, screensh
 - **Fresh context per task.** Most of a session's usage is the conversation being re-read on every step, so keep it short. After every task, and at each lettered step (A, B, C…) of a task with more than three steps: `/checkpoint`, play the `task` sound, and stop with one line: "Checkpoint saved. Run `/clear`, then `/resume`." The review stop every 3–5 tasks (Cadence, §1) is unchanged. After a `/clear`, `/resume` takes its light path (baton already yours, nothing new pulled).
 - **Security-relevant task = a task on this list** (this replaces the "touches auth, authz, sessions, rate limits, payments, uploads, crypto or PII" wording wherever it appears): P0-12, P0-15 · P1-04, P1-10, P1-12, P1-14, P1-16 · P2-03, P2-04, P2-05, P2-09, P2-12, P2-13, P2-15 · P3-02, P3-06, P3-07 · P4-03, P4-07, P4-08 · P5-01, P5-02, P5-07. Only these get the `security-reviewer` design check and the task-level review. Every other task's diff is reviewed once, at the sub-phase close, with the other unreviewed commits (`/subphase-complete` step 4). A re-review after a HIGH checks the fix's diff only; it is not a fresh full review.
 - **No full E2E at task level** beyond the every-page exception above: not after review fixes and not "before the tick". CI's full run on the push is the evidence. **Flake limit:** a failure that passes when its spec is re-run alone gets 20 minutes of root-cause work; if the cause isn't found, quarantine it (TESTING §7: PROGRESS note + CARRIED row; it blocks the phase gate) and carry on.
-- **Findings policy:** BLOCK/HIGH → fixed before the tick, test first. MEDIUM / should-fix → collected and fixed together in one batch before the sub-phase closes (one commit, one gate run), not one by one. LOW / nits → one line each in PROGRESS follow-ups, not fixed, unless the line is already being changed.
+- **Findings policy:** BLOCK/HIGH → fixed before the tick, test first. MEDIUM / should-fix → collected and fixed together in one batch before the sub-phase closes (one commit, one gate run), not one by one. LOW / nits → one line each in `progress/FOLLOWUPS.md`, not fixed, unless the line is already being changed.
 
 ## 5. Non-negotiables
 
@@ -148,7 +152,10 @@ Until P0-14 lands `gate:task`/`gate:phase` and the production-build `pnpm e2e`, 
 
 | File | Read when |
 |---|---|
-| `progress/PROGRESS.md` | Start of every session (state, CARRIED table, open follow-ups) |
+| `progress/PROGRESS.md` | Start of every session (state, handoff, CARRIED table) |
+| `progress/MAP.md` | Locating code (instead of scanning the repo) |
+| `progress/TEMPORARY.md` | Before any stopgap/workaround; every phase close; P5 |
+| `progress/FOLLOWUPS.md` | When a follow-up's owner task starts; every sub-phase close |
 | `progress/HUMAN_TASKS.md` | Start of session (🔴 items), every close, whenever a new human dependency appears |
 | `docs/PHASES.md` | Finding the next task; ticking finished ones |
 | `docs/phases/<phase>.md` | The current task's section + phase header |

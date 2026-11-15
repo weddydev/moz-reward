@@ -450,3 +450,90 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - C-33 + review MEDIUM: boot requires each URL's login to be a member of its data role only; refuses CREATEROLE/CREATEDB/REPLICATION, pg_* server-file/program/all-data roles, moz_rls with LOGIN. Integration boot-db-role 9/0, worker-process source + bundle 2/0; unit bundle-cli 5/0; `pnpm check` PASS (unit 1041).
 - Security design check of P0-15 (security-reviewer): step A OK (MEDIUM fixed; LOWs in the plan file); 7 HIGH design requirements for B/C recorded in `progress/P0-15-plan.md`.
 - Blocked for the VPS: both laptop SSH keys need a passphrase (server accepts them; batch ssh can't sign) → H-39; tunnel token → H-40.
+
+## 2026-11-13 — P0 — P0-15 step B1 (Syedbadeshah76, Windows)
+- Infra as code on `wip/P0-15` (`2bfae3a`): Postgres image (PostGIS 17-3.6 by digest + wal-g v3.0.9 sha256 + ca-certificates + gnupg), pg_hba (superuser socket-only, scram), bootstrap.sql; Redis TLS + ACL configs; Caddy staging/production (C-23 id overwrite, log filter, exact Umami paths, basic auth + noindex); compose base + staging/production (limits = RESOURCES.md, staging CPU 1.5, no ports, cap_drop ALL, read-only, worker 90 s grace).
+- Evidence: infra lint 27/0 (and 3 failures on an injected host port + wrong limit); `caddy validate` + `docker compose config` both envs; Postgres image run as uid 999 read-only without caps: bootstrap ×3 exit 0, 16 migrations as non-superuser moz_owner (0009 needed a self-closing shim, DECISIONS), C-32 privileges checked with has_*_privilege, app boot role checks OK for app/auth/worker, owner refused; `pnpm check` PASS (unit 1069).
+- New 🟠 H-41 (staging basic-auth password). Drive C filled during image pulls (Docker Desktop stopped; the human freed space).
+- Exact next step: `/resume` → `git switch wip/P0-15` → P0-15 **B2** per `progress/P0-15-plan.md` (harden.sh + host files + `moz-deploy` helper + helper test).
+
+## 2026-11-13 — P0 — P0-15 step B2 files (Syedbadeshah76, Windows)
+- `wip/P0-15` `e5c0116`: `infra/host/harden.sh` (idempotent, ok/CHANGED count; admin sudo users, `deploy` forced command, sshd drop-in checked by `sshd -T`, ufw 22/tcp only, fail2ban, unattended upgrades, Docker CE by key fingerprint) + `infra/host/moz-deploy` (CI allowlist load/release/rollback/write-env; secrets on stdin; per-env CA, Redis certs/ACLs; rolling web with put-back); `/app/infra` in the image; daemon.json live-restore/no-new-privileges/userland-proxy off, logs 50 MB × 5.
+- Evidence: gate:task PASS (unit 1134, int 1139, sast, lint:sh); `scripts/moz-deploy.test.ts` 65/0 and fails on an injected allowlist change; ShellCheck clean; init-env twice in Ubuntu 24.04 (no file changes); Redis with the generated files: TLS-only, ACL rules hold, SAN checked.
+- New passphrase-less CI deploy key `~/.ssh/moz_ci_deploy` (H-39 Claude's part; GitHub secret replaced in step C). gid 999 on Ubuntu 24.04 = systemd-journal (DECISIONS).
+- Exact next step: after H-39, the plan file's "B2 run" bullet; otherwise start step C's code.
+
+## 2026-11-13 — P0 — P0-15 step C1 (Syedbadeshah76, Windows)
+- `wip/P0-15` `f144411`: `migrate --url-stdin`; `.github/workflows/deploy.yml` (staging after green main CI/on demand, production on demand with re-scan, rollback); per-env images (`load <env> <sha>`: same-SHA staging/prod images differ by build args); `scripts/image-check.sh` shared with CI; `deploy-env.mjs` + `infra/deploy/<env>.env`; `deploy-secrets.mjs`; pinned `known_hosts`.
+- Evidence: gate:task PASS (unit 1167, int 1139, sast, lint:sh 3); bundled migrate CLI via stdin migrated the local test DB and refused bad input without echo; actionlint clean; moz-deploy tests failed 4 before the per-env fix.
+- Claude's part of H-41: 7 staging secrets generated into GitHub (values only in `C:\Users\DELL\moz-secrets-staging-2026-11-13.env` for the password manager); `DEPLOY_SSH_KEY` replaced with `moz_ci_deploy` (matched `deploy_ci.pub`). H-41 row was missing from HUMAN_TASKS: added.
+- Exact next step: B2 run after H-39; else step D's code. C2 (first deploy) needs merge to main + H-40 + H-41.
+- Handoff 14:10 UTC: push CI `43436273032` on `f144411` green (image job skipped off main); baton freed.
+
+## 2026-11-13 — P0 — P0-15 step D design (talha.syed, Mac)
+- `wip/P0-15` `4e25e42`: Mac admin key `talha.pub`; `scripts/lib/find-bash.ts` (host-script tests need bash ≥ 4; first Mac push failed 23 moz-deploy tests under bash 3.2). gate:task PASS (unit 1167, int 1139, sast, lint:sh).
+- Step D designed in `progress/P0-15-plan.md` (host `moz-backup` + timers, prefix per env, list+write keys, gpg to the pinned fingerprint, drill on the 1st, wal-g, `pnpm backup:verify`); security-reviewer design check: 5 HIGH folded in (Object Lock, WAL never in clear, lever on RO mount + alert, `backup:base` heartbeat, PIPESTATUS + dump-failed). DECISIONS + new 🟠 H-42.
+- Exact next step: `/resume` → `git switch wip/P0-15` → D1 per the plan's D bullet and "D design check".
+
+## 2026-11-13 — P0 — P0-15 step D1 (talha.syed, Mac)
+- `wip/P0-15` `eea8672`: `infra/host/moz-backup` (dump | gpg → sigv4 upload → size/ETag/version check; monthly drill into a `--network none` tmpfs scratch Postgres + `infra/backup/checks.sql`), migration 0016 `record_backup_heartbeat`, `health.backup` alerts on `*-failed` newer than success, systemd units + harden.sh/init-env, `write-env <env> backup`.
+- Evidence: gate:task PASS (unit 1218, int 1160, build, bundle, sast, lint:sh 4); backup e2e vs MinIO + dev Postgres 9/9 (decrypts with the private key to a full archive; list+write-only user gets 403 on read; tamper, wrong key, pg_dump failure and failed drill all caught with `*-failed` heartbeats).
+- Found on the way: MinIO escapes ETag quotes as `&#34;` (parser now strips all forms); rls.test definer inventory updated for the new function.
+- Exact next step: D2 on `wip/P0-15` (WAL + `backup` role wiring in deploy.yml; see plan "Moved to D2").
+
+## 2026-11-13 — P0 — P0-15 step D2 (talha.syed, Mac)
+- `wip/P0-15` `40769e9` + `25e05cf`: `infra/postgres/moz-walg` (wal-push/backup-push, pinned key, lever, timeout), compose archive settings + mounts, moz-deploy key pin + lever + walg.env, moz-backup base/wal-on/wal-off + storage/key-expiry metrics (0017), health rules (archiver, lever, base, storage, key), backup role in deploy.yml/deploy-env.
+- Evidence: gate:task PASS on `40769e9` (unit 1260, int 1172, build, bundle, sast, lint:sh 5); wal-g e2e in the amd64 image vs MinIO list+write user 3/3 (objects 0xC1, decrypt to zstd, no plaintext marker, lever, wrong pin fails then retries); actionlint deploy.yml clean.
+- Found on the way: bash 5.2 `patsub_replacement` turned `&amp;`→`&` into a no-op (fixed); backticks in a moz-deploy log line would have run a command (ShellCheck); empty listing aborted under pipefail (fixed); workflow secret names aligned with H-42.
+- Human (13 Nov): close P0 now, carry the staging work to P1 (DECISIONS). Exact next step: D3 `pnpm backup:verify` (+ `--wal --target-time` PITR vs MinIO).
+
+## 2026-11-14 — P0 — audit; older "Last verified" lines archived from PROGRESS
+- `wip/P0-15` step B1 (Windows): `pnpm check` PASS (unit 1069); infra lint 27/0 (fails on an injected host port + wrong limit); `caddy validate` both envs; `docker compose config` both envs; Postgres image as uid 999, read-only, no caps: bootstrap ×3 exit 0, 16 migrations as non-superuser moz_owner, privileges as C-32, boot role checks OK for app/auth/worker. Step A: Trivy no skips, CLIs + web + worker drain in the image.
+- P1-01 push CI `43377454009` on `f5c8495`: success (all 3 jobs).
+- P1-01 (Windows, before commit): unit open-status 17/0, codes 14/0, shop-links 4/0, shop-qr 4/0 (PNG decodes to the exact URL), check-migrations 47/0, eslint scope + admin-read rules 21/0; integration shop-details 16/0, membership-guard 7/0; `pnpm fix` clean (eslint incl. moz/admin-read). gate:task (pre-push) on `f5c8495` PASS: unit 1037, int 1134, build, bundle, sast.
+- `main` `af3aa57` (P0-D fixes): gate:task PASS (unit 998, int 1111 incl. route matrix 613, build, sast); shells spec 63/0 on 5 projects; visual baselines regenerated and inspected; CI `43364016465` on `f91af95` green.
+- `main` P0-12 squash (Mac): `pnpm check` PASS (unit 998, titles strict); route authz matrix 562/0; full 5-project E2E on the production build 826 passed + the 5 failures (rls.spec, unscoped list) fixed and re-run 5/5; shells 56/0 on 5 projects; visual baselines (6) inspected; gate:task on the push (see SESSION_LOG).
+- `main` `576b73e` (P0-C flaky fixes): gate:task PASS (unit 838, int 475, build, bundle, sast); toast + overlay specs 27/0 (3 skipped: pixel7 quarantine) on 5 projects; routes-axe motion 18/0 (Chromium + WebKit ×3). 5-project run `43221794416` on `6ad688a`: 674 passed, 0 failed, 1 flaky (fixed in `576b73e`). `wip/P0-12-b`: unit portal 29/0, proxy 7/0; CI `43226256972` green on `341433e`.
+- `main` `72b668a` (P0-11): gate:task P0-11 PASS (unit 818, int 475, build, bundle, sast, E2E 6/0); full 5-project E2E 646/0 (169 skipped by design); CI workflow_dispatch `43129226265`: success.
+- P0-C close: gate:task PASS on `4a8851e` (unit 834, int 475, build, bundle, sast); push CI `43194017373` green; 5-project Linux E2E `43194053878` on `4a8851e`: 675 passed, 0 failed, 1 flaky (AC5, fixed after). After the last fixes: Linux WebKit + iPhone 14 in the Playwright image 12/0; Chromium 3/0; unit toast 16/0. `main` `32c0513`: gate:task PASS (unit 836, int 475, sast, E2E 39/0); push CI `43206390543` green; 5-project Linux E2E `43206412851`: 674 passed, 0 failed, 2 flaky (NOT green). `wip/P0-12` `faabf3b`: gate:task PASS.
+- `main` `ee83173` (P0-10): gate:task P0-10 PASS (E2E 46/0); motion specs 109/0 on 5 projects; full E2E 616/0; AC5 popover flake fixed at the cause (120/0 ×3 after).
+- P0-09 and P0-08: see SESSION_LOG (12 Nov).
+- Mutation 90.1% · `test:live`: storage ✅, email NOT VERIFIED (keys set 13 Nov; runs on staging in P0-15). Staging: none yet.
+
+## 2026-11-14 — P0 — speed audit and process changes (no task work)
+- Audit (this Mac's 22 session logs, 313 commits, 111 CI runs): 776 M tokens re-read vs 2.8 M written; two 5-hour-limit stalls (3.8 h, 5.3 h); 36/111 CI runs red (8 deliberate red-CI proofs, ~16 flaky E2E, 5 scheduled, 4 local-gate gaps since fixed); no handover ever built on a stale branch.
+- Changes: `/autopilot` (+ CLAUDE.md §1), `gateFor` in `scripts/pre-push.ts` (unit pre-push 13/0, the 3 new tests failed first), `/resume` fetch + wip HEAD check, PROGRESS split (MAP.md, FOLLOWUPS.md), DECISIONS ×2, C-43; issue #1 closed (13 Nov scheduled run green); `../CLAUDE.md` renamed `.stale` on the Mac.
+- Not done: 4 ghost "queued" runs from 11 Nov can't be cancelled (GitHub says completed / not queued); deleting the 8 merged remote wip branches was refused by the permission prompt (left as is).
+- Next: P0-15 D3 `pnpm backup:verify` (unchanged).
+
+## 2026-11-15 — P0 — handoff by talha.syed (Mac): human-task path to staging
+- H-39 done from the Mac (agent + Keychain, `~/.ssh/config`), root SSH verified. Human: no Cloudflare Tunnel for now (Zero Trust wants a card) → proxy origin lock (T-5, C-44, SECURITY §11 exception); H-40 rewritten; new step C1b in the P0-15 plan. `progress/TEMPORARY.md` register + CLAUDE.md §3 rule (gates P5-14).
+- Evidence: CI `43578704624` (`03e3afc`) and `43482813705` (`wip/P0-15` `25e05cf`) green.
+- Next: `wip/P0-15` C1b (no human input), then D3; human: H-40, H-41 (a/b), H-42.
+
+
+## 2026-11-15 — P0 — H-40 checked (Mac, baton free)
+- DNS `staging` → Cloudflare IPs only; HTTPS 522 (origin firewalled, pre-deploy), HTTP 301; secrets `CLOUDFLARE_ORIGIN_{CERT,KEY}_STAGING` set 07:32.
+- Throwaway workflow on `wip/h40-check` (run `43690841831`, metadata only; its CI run cancelled): Cloudflare Origin CA ECC cert, SAN `staging.mozrewards.com`, to 11 Nov 2041, P-256 key matches; key has CRLF (strip in deploy).
+- NOT VERIFIED: Full (strict), Authenticated Origin Pulls (dashboard-only; C1b smoke + direct-IP test prove them).
+- VPS host keys: GitHub runner (run `43691848477`) and the Mac read the same fingerprints (ED25519 `cufEaKzI…`, ECDSA `v7WRKFd7…`, RSA `WDrsbNIB…`); saved to the Mac's known_hosts, strict SSH as root OK. Out-of-band check still open (H-43).
+- Next: `wip/P0-15` C1b, then D3.
+- H-41 (a): 7 `_STAGING` generated secrets deleted and re-set by `deploy-secrets.mjs staging` (values only in the password manager; file deleted, checked). `ALERT_EMAILS_STAGING` set (shared inbox). H-44 added (delete the Windows file).
+- H-42 check (read-only workflow, runs `43696401422`, `43696525533`): both key values valid (25/31 chars), prefixes right, but keys not bucket-restricted and have `deleteFiles`+`bypassGovernance` (staging near-master); Object Lock on but default retention unset; lifecycle rules right. Keys had been pasted on the command line (zsh history, cleaned; never left the laptop). H-42 reopened: CLI fix steps; `b2` installed.
+- H-42 fix (b2 CLI, temp admin key deleted after): 3 old keys deleted; default retention governance 35 d; new keys bucket-only + prefix, `listFiles,writeFiles` (restore: `listFiles,readFiles`); GitHub secrets replaced without display; v4 authorize check `43697242708` OK. NOTE for D4: no per-object retention in moz-backup and the host key lacks writeFileRetentions, so staging objects get the bucket's 35 d (not 7 d): adjust the plan/HUMAN_TASKS wording or accept the storage; S3 PutObject/ListObjectVersions with these 2 capabilities is proven only by D4.
+- H-42: the human imported the 3 new keys into the password manager; Claude checked the file is gone (not in Trash), history clean, clipboard cleared. Left: delete `moz-backups` after D4.
+- Handoff (talha.syed, Mac): human request "close P0 completely + demo guide" → DECISIONS 15 Nov (staging inside P0); next B2 run → C1b → C2 → D3/D4 → E → P0 close + `/demo`. Main code unchanged since `03e3afc` (CI `43578704624` green).
+
+## 2026-11-15 — P0 — P0-15 C1b part 1 (Windows, Syedbadeshah76)
+- `wip/P0-15` `7a05aa5`: staging origin via Cloudflare proxy: compose (cloudflared → production.yml; staging caddy 0.0.0.0:443/tcp on `moz-stg-in`, no masquerade), Caddyfile.staging mTLS (Cloudflare AOP CA sha256 9A:1A:C2:B4…A2:B9), site-level access_log; compose lint 32/32; `caddy adapt` both OK.
+- Windows-only skips: moz-walg unit, moz-backup D2, walg-archive + backup-pipeline integration (Git for Windows gpg reads C: paths as relative; `install -m 0700` fails on NTFS); they run in CI/Mac.
+- Security design check C1b: no BLOCK/HIGH; MEDIUM 1–4, 7, 8 required (DOCKER-USER backend pin, fail-closed firewall, CIDR checks, exit-28 probes, host mTLS curl) → P0-15-plan "C1b to do".
+- `6bcba7a` pre-push gate:task PASS (unit 1243, int 1160, sast, lint:sh). H-28 done (prod Google secrets seen), H-39 Windows done (batch SSH root OK), H-43 done (Windows known_hosts match).
+- Next: finish C1b, then the B2 hardening run from Windows.
+
+## 2026-11-15 — P0 — P0-15 C1b part 2 (Windows, Syedbadeshah76)
+- CI `43704895776` red on `6bcba7a`: `*.pem` in .gitignore dropped `infra/caddy/cloudflare-origin-pull-ca.pem` (public AOP CA, 1 cert, no key) → negation rule, `dddc6ce`; CI `43706521177` green.
+- `30f21f5`: moz-origin-firewall fail-closed + CIDR checks + rule pinning + backend asserts (C1b items 1–5); alert path heartbeat 0018 `record_host_heartbeat` → `health.origin_firewall` (ORIGIN_FIREWALL_ENABLED, staging worker) + System row; harden.sh/drop-in/timer; daemon.json `firewall-backend: iptables` (dockerd 29 --validate OK).
+- Tests: firewall unit 47 (Windows; jq case CI-only), host-heartbeat int 13, health int + rls definer list updated. Gate runs: 1st FAIL (rls definer allowlist missing `record_host_heartbeat`), 2nd FAIL (firewall test timed out at 5 s under full parallel load on Windows → per-file 30 s), 3rd PASS (unit 1293, int 1175, build, bundle, sast, lint:sh, e2e).
+- Older Last-verified line moved here: `wip/P0-15` `25e05cf` pre-push gate PASS (13 Nov), CI `43482813705` green; `40769e9` gate:task PASS (unit 1260, int 1172), wal-g e2e 3/3.
+- Next: C1b 2c (origin-tls role, per-env roles, exit-28 probes), then 2d (Caddy mTLS test, docs, security review), then B2 run.
