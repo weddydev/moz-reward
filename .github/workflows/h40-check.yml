@@ -1,5 +1,5 @@
-# Temporary (H-40 check, 15 Nov 2026): validates the two origin secrets, printing metadata only. Never merged.
-name: H-40 secret check
+# Temporary (15 Nov 2026): reads the VPS SSH host key fingerprints from GitHub's network, to compare with the Mac's reading. Never merged.
+name: VPS host key check
 on:
   push:
     branches: [wip/h40-check]
@@ -9,24 +9,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     steps:
-      - name: Validate origin certificate and key (no values printed)
-        env:
-          CERT: ${{ secrets.CLOUDFLARE_ORIGIN_CERT_STAGING }}
-          KEY: ${{ secrets.CLOUDFLARE_ORIGIN_KEY_STAGING }}
+      - name: Host key fingerprints of 72.61.17.208
         run: |
-          set -u
-          umask 077
-          d=$(mktemp -d)
-          printf '%s\n' "$CERT" > "$d/cert.pem"
-          printf '%s\n' "$KEY" > "$d/key.pem"
-          yn() { if "$@" >/dev/null 2>&1; then echo yes; else echo NO; fi; }
-          echo "cert: bytes=$(wc -c < "$d/cert.pem") certificate_blocks=$(grep -c 'BEGIN CERTIFICATE' "$d/cert.pem") private_key_marker=$(grep -c 'PRIVATE KEY' "$d/cert.pem") CR=$(tr -cd '\r' < "$d/cert.pem" | wc -c) first_line_is_header=$(head -1 "$d/cert.pem" | grep -qx -- '-----BEGIN CERTIFICATE-----' && echo yes || echo NO)"
-          echo "key:  bytes=$(wc -c < "$d/key.pem") header=$(grep -m1 -o 'BEGIN [A-Z ]*PRIVATE KEY' "$d/key.pem" || echo none) certificate_marker=$(grep -c 'BEGIN CERTIFICATE' "$d/key.pem") CR=$(tr -cd '\r' < "$d/key.pem" | wc -c) first_line_is_header=$(head -1 "$d/key.pem" | grep -q -- '^-----BEGIN .*PRIVATE KEY-----$' && echo yes || echo NO)"
-          echo "cert parses: $(yn openssl x509 -in "$d/cert.pem" -noout)"
-          openssl x509 -in "$d/cert.pem" -noout -subject -issuer -startdate -enddate -ext subjectAltName 2>&1 || true
-          echo "key parses: $(yn openssl pkey -in "$d/key.pem" -noout)"
-          openssl pkey -in "$d/key.pem" -pubout 2>/dev/null | openssl pkey -pubin -noout -text 2>/dev/null | grep -E 'Public-Key|ASN1 OID|NIST' || echo "key type: unknown"
-          a=$(openssl pkey -in "$d/key.pem" -pubout 2>/dev/null | sha256sum | cut -c1-64)
-          b=$(openssl x509 -in "$d/cert.pem" -pubkey -noout 2>/dev/null | sha256sum | cut -c1-64)
-          if [ -n "$a" ] && [ "$a" = "$b" ] && [ "$a" != "$(printf '' | sha256sum | cut -c1-64)" ]; then echo "key matches cert: yes"; else echo "key matches cert: NO"; fi
-          rm -rf "$d"
+          for t in ed25519 ecdsa rsa; do ssh-keyscan -T 10 -t "$t" 72.61.17.208 2>/dev/null | ssh-keygen -lf - || echo "$t: none"; done
