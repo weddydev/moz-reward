@@ -530,3 +530,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Security design check C1b: no BLOCK/HIGH; MEDIUM 1–4, 7, 8 required (DOCKER-USER backend pin, fail-closed firewall, CIDR checks, exit-28 probes, host mTLS curl) → P0-15-plan "C1b to do".
 - `6bcba7a` pre-push gate:task PASS (unit 1243, int 1160, sast, lint:sh). H-28 done (prod Google secrets seen), H-39 Windows done (batch SSH root OK), H-43 done (Windows known_hosts match).
 - Next: finish C1b, then the B2 hardening run from Windows.
+
+## 2026-11-15 — P0 — P0-15 C1b part 2 (Windows, Syedbadeshah76)
+- CI `43704895776` red on `6bcba7a`: `*.pem` in .gitignore dropped `infra/caddy/cloudflare-origin-pull-ca.pem` (public AOP CA, 1 cert, no key) → negation rule, `dddc6ce`; CI `43706521177` green.
+- `30f21f5`: moz-origin-firewall fail-closed + CIDR checks + rule pinning + backend asserts (C1b items 1–5); alert path heartbeat 0018 `record_host_heartbeat` → `health.origin_firewall` (ORIGIN_FIREWALL_ENABLED, staging worker) + System row; harden.sh/drop-in/timer; daemon.json `firewall-backend: iptables` (dockerd 29 --validate OK).
+- Tests: firewall unit 47 (Windows; jq case CI-only), host-heartbeat int 13, health int + rls definer list updated. Gate runs: 1st FAIL (rls definer allowlist missing `record_host_heartbeat`), 2nd FAIL (firewall test timed out at 5 s under full parallel load on Windows → per-file 30 s), 3rd PASS (unit 1293, int 1175, build, bundle, sast, lint:sh, e2e).
+- Older Last-verified line moved here: `wip/P0-15` `25e05cf` pre-push gate PASS (13 Nov), CI `43482813705` green; `40769e9` gate:task PASS (unit 1260, int 1172), wal-g e2e 3/3.
+- Next: C1b 2c (origin-tls role, per-env roles, exit-28 probes), then 2d (Caddy mTLS test, docs, security review), then B2 run.
