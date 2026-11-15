@@ -511,3 +511,9 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Evidence: CI `43578704624` (`03e3afc`) and `43482813705` (`wip/P0-15` `25e05cf`) green.
 - Next: `wip/P0-15` C1b (no human input), then D3; human: H-40, H-41 (a/b), H-42.
 
+
+## 2026-11-15 — P0 — H-40 checked (Mac, baton free)
+- DNS `staging` → Cloudflare IPs only; HTTPS 522 (origin firewalled, pre-deploy), HTTP 301; secrets `CLOUDFLARE_ORIGIN_{CERT,KEY}_STAGING` set 07:32.
+- Throwaway workflow on `wip/h40-check` (run `43690841831`, metadata only; its CI run cancelled): Cloudflare Origin CA ECC cert, SAN `staging.mozrewards.com`, to 11 Nov 2041, P-256 key matches; key has CRLF (strip in deploy).
+- NOT VERIFIED: Full (strict), Authenticated Origin Pulls (dashboard-only; C1b smoke + direct-IP test prove them). Mac `known_hosts` has no VPS host key (live ed25519 `SHA256:cufEaKzI…`); confirm before B2 SSH.
+- Next: `wip/P0-15` C1b, then D3.
