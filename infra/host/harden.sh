@@ -32,6 +32,11 @@ readonly SWAPFILE=/swapfile
 readonly SWAP_SIZE=4G
 
 CHANGES=0
+# mode_owner <path> <owner>: "<mode> <owner>" in the form <owner> is given: numeric ids (65534:1000, where gid
+# 1000 has no name on the host) or names (root:root).
+mode_owner() {
+  if [[ $2 =~ ^[0-9]+:[0-9]+$ ]]; then stat -c '%a %u:%g' "$1"; else stat -c '%a %U:%G' "$1"; fi
+}
 LAST_CHANGED=0
 changed() {
   CHANGES=$((CHANGES + 1))
@@ -51,7 +56,7 @@ trap 'die "line $LINENO: $BASH_COMMAND"' ERR
 # install_file <src> <dest> <mode> [owner:group] — copies only when content, mode or owner differ.
 install_file() {
   local src=$1 dest=$2 mode=$3 owner=${4:-root:root}
-  if [[ -f $dest ]] && cmp -s "$src" "$dest" && [[ $(stat -c '%a %U:%G' "$dest") == "${mode#0} $owner" ]]; then
+  if [[ -f $dest ]] && cmp -s "$src" "$dest" && [[ $(mode_owner "$dest" "$owner") == "${mode#0} $owner" ]]; then
     ok "$dest"
     return 0
   fi
@@ -71,7 +76,7 @@ install_content() {
 # ensure_dir <path> <mode> <owner:group>
 ensure_dir() {
   local path=$1 mode=$2 owner=$3
-  if [[ -d $path && $(stat -c '%a %U:%G' "$path") == "${mode#0} $owner" ]]; then
+  if [[ -d $path && $(mode_owner "$path" "$owner") == "${mode#0} $owner" ]]; then
     ok "$path/"
     return 0
   fi
@@ -328,6 +333,11 @@ rules=$(ufw status | awk '/^[0-9A-Za-z]/ && !/^Status|^To/' | awk '{ print $1 }'
 install_file "$FILES/fail2ban/moz.local" /etc/fail2ban/jail.d/moz.local 0644
 ((LAST_CHANGED)) && systemctl restart fail2ban
 ensure_service fail2ban
+# The control socket appears a moment after a (re)start: wait for the jail rather than racing it.
+for _ in {1..15}; do
+  fail2ban-client status sshd >/dev/null 2>&1 && break
+  sleep 1
+done
 fail2ban-client status sshd >/dev/null || die "fail2ban's sshd jail is not running"
 
 install_file "$FILES/apt/20auto-upgrades" /etc/apt/apt.conf.d/20auto-upgrades 0644
