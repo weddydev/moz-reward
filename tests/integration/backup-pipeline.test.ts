@@ -111,7 +111,11 @@ const listKeys = (): string[] => {
     .map((k) => `staging/${k}`);
 };
 
+// Git for Windows' gpg reads `C:\…` home directories as relative paths: this suite runs in CI (Linux) and on macOS.
+const ON_WINDOWS = process.platform === "win32";
+
 beforeAll(async () => {
+  if (ON_WINDOWS) return;
   for (const tool of [
     ["gpg", "--version"],
     ["curl", "--version"],
@@ -183,6 +187,7 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
+  if (ON_WINDOWS) return;
   sh("docker", ["rm", "-f", "moz-staging-drill"]);
   await src.end();
   await admin.unsafe(`DROP DATABASE IF EXISTS ${SRC_DB} WITH (FORCE)`);
@@ -190,7 +195,7 @@ afterAll(async () => {
   rmSync(T, { recursive: true, force: true });
 });
 
-describe("[P0-15] moz-backup end to end (dev Postgres + MinIO)", () => {
+describe.skipIf(ON_WINDOWS)("[P0-15] moz-backup end to end (dev Postgres + MinIO)", () => {
   let key = "";
   let cipher: Buffer = Buffer.alloc(0);
 
