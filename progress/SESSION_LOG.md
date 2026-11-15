@@ -537,3 +537,9 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Tests: firewall unit 47 (Windows; jq case CI-only), host-heartbeat int 13, health int + rls definer list updated. Gate runs: 1st FAIL (rls definer allowlist missing `record_host_heartbeat`), 2nd FAIL (firewall test timed out at 5 s under full parallel load on Windows → per-file 30 s), 3rd PASS (unit 1293, int 1175, build, bundle, sast, lint:sh, e2e).
 - Older Last-verified line moved here: `wip/P0-15` `25e05cf` pre-push gate PASS (13 Nov), CI `43482813705` green; `40769e9` gate:task PASS (unit 1260, int 1172), wal-g e2e 3/3.
 - Next: C1b 2c (origin-tls role, per-env roles, exit-28 probes), then 2d (Caddy mTLS test, docs, security review), then B2 run.
+
+## 2026-11-15 — P0 — P0-15 C1b done + B2 run (Windows, Syedbadeshah76)
+- C1b 2c `e66d9ac`, 2d `58a9c63`, review fixes `eca36ec`: moz-deploy 116→176 incl. origin-TLS validation (14 refusal cases), caddy-mtls 6/6 (no/foreign client cert → no answer, 421, 404, 401, 502, TLS 1.1 refused), 0019 + host-heartbeat 34/0, rls 29/0.
+- Security review (task level): no BLOCK/HIGH; MEDIUM 1–2 + LOW 3, 5 fixed; LOW 4, 6 → DECISIONS 15 Nov; LOW 6, 7 → FOLLOWUPS.
+- VPS B2 run: runs 1–3 exposed fail2ban socket race + name-vs-numeric owner compare (`75fba2d`); runs 4–5 `harden: 0 changes`; reboot clean; firewall ok after docker restart; root SSH refused; `init-env staging` done.
+- iptables `-S` format confirmed on the host (`! --ctstate RELATED,ESTABLISHED`); VPS has IPv6 (nothing listens on [::]:443).

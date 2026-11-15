@@ -16,3 +16,5 @@ _CLAUDE.md §4 findings policy: LOW findings and nits get one line here, are not
 - [P1] Toast: the same message twice within a second outside a burst leaves the status text unchanged, so the second is not announced (alternate a trailing U+00A0, or accept in DECISIONS); a later error replaces an earlier one still being spoken (normal for `role=alert`).
 - [P0-C close] Reduced-motion watcher on the morph (fade-only enter) and the `role=status` text repeat (same text pressed twice is not re-read).
 - Safari streamed-content check on customer pages. Safe-area padding only checkable on a real iPhone.
+- [P0-15 C1b review LOW 6] `origin_tls_check` matches the issuer DN text only; optionally pin Cloudflare's Origin CA roots (RSA + ECC) and `openssl verify` (impact: availability only, Full strict would answer 526).
+- [P0-15 C1b review LOW 7] `check_published_ports` runs after `record_release` (a wrong port is caught live); optionally check `compose config` ports before rolling (compose lint already guards it statically).

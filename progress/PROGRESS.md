@@ -7,22 +7,21 @@ Baton: held by Syedbadeshah76 since 2026-11-15 14:44 (Windows)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by Syedbadeshah76, 2026-11-15 ~17:45 (Windows); baton held.** P0-15 code on **`wip/P0-15` HEAD `30f21f5`** (pushed; pre-push gate:task PASS: unit 1293, int 1175, build, bundle, sast, lint:sh, e2e P0-15). Steps: **`progress/P0-15-plan.md`**: read "C1b part 2 done" and the open items it lists from "C1b to do".
-- **Human request (15 Nov, standing for this run):** close P0 completely **with** staging and the client demo, plus a demo guide for the client (= `/demo` notes in DEMO_NOTES.md after the staging rehearsal; outline already given to the human: staging link + basic auth `moz`, H-36 demo accounts, click-through script, known limits such as Google sign-in for listed test users only).
-- **Finished this session (2nd checkpoint):** CI red on `6bcba7a` fixed (`dddc6ce`: `*.pem` in .gitignore had kept `infra/caddy/cloudflare-origin-pull-ca.pem` out of git; negation rule, CI `43706521177` green). C1b part 2 (`30f21f5`): firewall items 1–5 + alert path (heartbeat 0018, `health.origin_firewall`, System row), harden.sh/drop-in/timer, daemon.json; details in the plan line.
-- **Finished earlier this session:** C1b part 1 (`7a05aa5`): cloudflared → production.yml; staging Caddy publishes `0.0.0.0:443/tcp` on bridge `moz-stg-in` (no masquerade), `client_auth require_and_verify` with committed Cloudflare AOP CA; site-level `access_log` (both Caddyfiles adapt); compose lint 32/32; draft `infra/host/moz-origin-firewall` (`6bcba7a` IFS fix). Windows-only skips of the Linux host-script/gpg suites (`3530d59` and two test commits; they run in CI and on the Mac). Security design check of C1b: no BLOCK/HIGH, findings 1–14 written into the plan (MEDIUM 1–4, 7, 8 required). H-28 done (production Google client secrets set; staging redirect checked) → H-28b branding; H-39 done on Windows (Claude's batch SSH as root works); H-43 done (Windows known_hosts matches).
-- **Half-done and how to continue:** `git switch wip/P0-15 && git merge --ff-only origin/wip/P0-15` (HEAD `30f21f5`). Then **(1) finish C1b**: next = **2c** items 11 + 12 (`write-env staging origin-tls` with cert/key validation, caddy-tls 0750 root:1000, recreate caddy on cert change, 30 d expiry alert; `is_role` env-aware, `roll_rest` per env; deploy-env/deploy.yml staging roles `web worker caddy origin-tls backup`, cert/key `tr -d ''`) + item 7 (deploy.yml direct-IP probes require curl exit 28, `http://IP:80` → 28, `docker port` only 0.0.0.0:443); then **2d** items 8 (host `curl --resolve` + Docker integration test of Caddy mTLS), 9, 13, 14, 6 (DECISIONS), SECURITY §11 note, task-level security review of the whole C1b diff; **(2) B2 run** from Windows: `ssh root@72.61.17.208` works (agent holds the key); `scp -r infra` + `bash harden.sh` twice (2nd = 0 changes), then a NEW session as `badeshah` + `sudo -n true` before closing root; reboot pending on the VPS ("System restart required"); do NOT `do-release-upgrade` (26.04 offered; harden.sh requires 24.04); **(3) C2** → D3 → D4 → E → C-40 → C-17 → `/subphase-complete` → `/phase-complete` → `/demo`.
-- **Tested:** see Last verified. `caddy adapt` both Caddyfiles (pinned 2.11.9). moz-origin-firewall against a fake netfilter only (unit tests); the jq filter test runs only where jq exists (CI/Mac).
-- **Not yet tested:** CI for `30f21f5` was queued at checkpoint (check first: `gh run list --branch wip/P0-15 --limit 1`; red → fix first); moz-origin-firewall, drop-in, timer and harden.sh changes on a real host (B2 run); iptables `-S` output format assumed (ctstate order RELATED,ESTABLISHED; `-p tcp -m tcp`) — confirm on the VPS; Caddy mTLS behaviour (needs the integration test); everything on a real host; deploy.yml never run; Full (strict) + AOP (dashboard-only).
-- **Do first:** nothing locally. Windows laptop: Docker Desktop must be running for the gitleaks hook (start `C:UsersDELLAppDataLocalProgramsDockerDesktopDocker Desktop.exe`); no Python (use node for scripted edits); `git worktree` breaks the gitleaks hook; pre-push on `wip/*` runs the full gate:task here (~25 min, sast ~19 min).
+- **Checkpoint by Syedbadeshah76, 2026-11-15 ~18:45 (Windows); baton held.** **C1b done and the VPS is hardened (B2 run).** `wip/P0-15` `eca36ec` (+ this progress commit) is about to fast-forward `main` for **C2** (first staging deploy: deploy.yml runs automatically after green CI on a push to main).
+- **Human request (15 Nov, standing for this run):** close P0 completely **with** staging and the client demo, plus a demo guide for the client (= `/demo` notes in DEMO_NOTES.md after the staging rehearsal). The human wants it fast (same quality).
+- **Finished this session:** C1b 2c `e66d9ac`, 2d `58a9c63`, task-level security review fixes `eca36ec` (plan "C1b done"); B2 run on the VPS + `harden.sh` fixes `75fba2d` (plan "B2 run"); `init-env staging`; merged origin/main into wip (`4210aea`, progress files = main's).
+- **Half-done and how to continue:** C2: if main is not yet at the wip head, `git switch main && git merge --ff-only wip/P0-15 && git push` (pre-push runs gate:task); then watch CI on main → Deploy (staging) run: write-env (incl. origin-tls) → load → release (firewall check, migrations, seed, rolling web, host mTLS probe, port check) → smoke via hostname → direct-IP probes (exit 28). Then rollback once (`gh workflow run deploy.yml -f environment=staging -f action=rollback`) and redeploy (C-37 §5); collect C-19/C-21/C-27/C-32/C-33/C-38 evidence. Then D3 → D4 → E → C-40 → C-17 → `/subphase-complete` → `/phase-complete` → `/demo`.
+- **SSH from Windows:** use `C:/Windows/System32/OpenSSH/ssh.exe` (holds the agent key; Git Bash's ssh can't). Root SSH is now refused: `ssh badeshah@72.61.17.208` + sudo. CI key: `~/.ssh/moz_ci_deploy` → forced command.
+- **Not yet tested:** everything on the deployed stack (first deploy pending); Cloudflare Full (strict) + AOP end to end; CI for `58a9c63` was running (`43714435786`) at this checkpoint, `eca36ec` not yet in CI.
+- **Do first:** nothing locally. Windows: Docker Desktop must run (gitleaks hook); no Python (node for scripted edits); `git worktree` breaks the gitleaks hook.
 
 ## Status
 - **Phase:** P0 closing: **P0-15 on `wip/P0-15`** (A, B1, B2 files, C1, C1b parts 1–2, D1, D2 done); human 15 Nov: close P0 **with** staging and the client demo (DECISIONS 15 Nov), then P1-02.
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → P1-02 → P1-03 → P1-04. P0-E waits only on P0-15 (human tasks).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-15, Syedbadeshah76 (checkpoint: C1b part 2 on wip/P0-15 `30f21f5`; CI red fixed)
-- **Staging and production:** one Hostinger VPS 72.61.17.208 (SSH from the Mac works, host keys pinned; not hardened; B2 keys + retention ready) — not provisioned yet. Origin lock via Cloudflare proxy until launch (T-5)
+- **Last updated:** 2026-11-15, Syedbadeshah76 (C1b done, VPS hardened; C2 next)
+- **Staging and production:** one Hostinger VPS 72.61.17.208, **hardened 15 Nov** (harden.sh, 0 changes on re-run; Docker 29.9.3; origin firewall on; `init-env staging` done); not deployed yet. Origin lock via Cloudflare proxy until launch (T-5)
 
 ## Now
 - **P0-C closed** (`576b73e`; 5-project run `43269125099` 675/0/0 flaky). C-40 quarantine open (P0 phase gate).
@@ -31,9 +30,10 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - P0-15 is the only P0-E task left: VPS (H-06) and domain (H-07) ready; backups bucket ready (B2); human inputs for staging now in place (H-04, H-27, H-28 staging done 13 Nov); H-34/H-36 leftovers after the first deploy.
 
 ## Next (top 3)
-1. **P0-15 staging**: finish C1b origin lock via proxy (T-5; plan "C1b to do") → B2 run (hardening) → C2 first staging deploy (closes C-19, C-21, C-27, C-32, C-33, C-38 with evidence) → D3 `backup:verify` → D4 first B2 backup + restore drill → E (request logs, UptimeRobot monitors, ZAP/k6, RUNBOOK walks; C-23, C-35, C-36, C-37).
+1. **P0-15 C2**: fast-forward main to wip → CI → automatic staging deploy → rollback once + redeploy (closes C-19, C-21, C-27, C-32, C-33, C-38 with evidence) → D3 `backup:verify` → D4 first B2 backup + restore drill → E (request logs, UptimeRobot, ZAP/k6, RUNBOOK walks; C-23, C-35, C-36, C-37).
 2. C-40 (quarantined Pixel 7 motion test) → C-17 (mutants) → `/subphase-complete` P0-E → `/phase-complete` → `/demo` (client notes in DEMO_NOTES.md).
 3. Then **P1-02** shop landing page (closes C-15), P1-03, P1-04.
+
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
@@ -69,11 +69,11 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (15 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- `wip/P0-15` `30f21f5` (Windows): pre-push gate:task PASS (unit 1293 + 21 skipped on Windows, int 1175, build, bundle, sast, lint:sh 7, e2e P0-15); `dddc6ce` CI `43706521177` green; `dockerd --validate` (docker:29-dind) accepts daemon.json.
-- VPS: `ssh -o BatchMode=yes root@72.61.17.208` from Windows OK with strict host keys (15 Nov); still unhardened (no Docker, ufw inactive).
-- `main` `03e3afc` (Mac): gate:task PASS (unit 1040, int 1134, build, bundle, sast); CI `43578704624` green. Later main commits are docs/progress only.
-- VPS: `ssh root@72.61.17.208` from the Mac OK with strict host keys (fingerprints matched from a GitHub runner, run `43691848477`), 15 Nov.
-- Staging inputs: origin cert/key (run `43690841831`) and B2 keys (run `43697242708`) checked by read-only workflows, 15 Nov.
+- `wip/P0-15` (Windows): `pnpm check` PASS on `58a9c63` (unit 1327 + 21 skipped); targeted after `eca36ec`: moz-deploy + moz-origin-firewall 176/0 (1 skipped: jq), caddy-mtls 6/6, host-heartbeat + health 34/0, rls 29/0, lint:sh 7 clean; `30f21f5` CI `43710655447` green.
+- VPS (15 Nov): harden.sh runs 4–5 `harden: 0 changes`; after reboot docker/fail2ban/ufw/refresh timer active; `moz-origin-firewall check` ok (15 ranges), also after `systemctl restart docker`; `sshd -T`: permitrootlogin no, passwordauthentication no, AllowUsers deploy badeshah talha; root SSH refused, badeshah sudo OK.
+- `caddy adapt` both Caddyfiles (2.11.9) OK after `https_port`/`ocsp_stapling off`.
+- Staging inputs: origin cert/key (run `43690841831`: issuer CloudFlare Origin SSL ECC CA, P-256, SAN staging.mozrewards.com, to 11 Nov 2041) and B2 keys (run `43697242708`); every staging secret deploy.yml reads is set (`gh secret list`, names only).
+
 
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).

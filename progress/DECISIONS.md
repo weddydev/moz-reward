@@ -16,8 +16,13 @@ Decision: P0 is closed only after staging is live (P0-15 B2 run, C1b, C2, D3, D4
 Why: human, 15 Nov: "close the P0 completely" and make it demo ready; every human input staging needed (H-40, H-41, H-42) was done and checked that day.
 Consequence / revisit when: P1-02 starts after the P0 phase gate; if a staging step stalls on something outside our control, ask the human before falling back to C-42.
 
+## 2026-11-15 — Staging origin pulls use Cloudflare's shared CA, not a zone-level custom CA (P0-15 C1b item 6)
+Decision: Authenticated Origin Pulls at zone level with Cloudflare's shared origin-pull certificate (committed `infra/caddy/cloudflare-origin-pull-ca.pem`), not our own CA uploaded through the API.
+Why: the custom-CA route needs an API token with SSL write access and a certificate lifecycle of our own, for a temporary staging-only setup; the shared CA's gap (any Cloudflare zone can present it) is closed by the other walls: firewall to Cloudflare ranges, strict SNI = Host (another zone's name → 404, mismatch → 421, `tests/integration/caddy-mtls.test.ts`), and basic auth.
+Consequence / revisit when: production goes back to the Tunnel (C-44, P5-12); if staging keeps the proxy past launch, move to a zone-level custom CA first.
+
 ## 2026-11-14 — Origin lock without the Tunnel until launch (human)
-Decision: staging uses Cloudflare's proxy instead of Cloudflare Tunnel: proxied `A` record to the VPS, ufw allows 443 only from Cloudflare's published IP ranges (refreshed by a timer; 80 closed), Caddy requires Cloudflare's origin-pull client certificate and serves a Cloudflare Origin certificate (SSL Full strict). The Tunnel design (SECURITY §11) comes back before launch.
+Decision: staging uses Cloudflare's proxy instead of Cloudflare Tunnel: proxied `A` record to the VPS, 443 admitted only from Cloudflare's published IPv4 ranges by `moz-origin-firewall` in DOCKER-USER (ufw never sees Docker-published ports; daily refresh, fails closed; 80 closed), Caddy requires Cloudflare's origin-pull client certificate and serves a Cloudflare Origin certificate (SSL Full strict). The Tunnel design (SECURITY §11) comes back before launch.
 Why: Cloudflare Zero Trust (Tunnel, Access) asks for a card even on the Free plan; the human chose not to add one now. The proxy design keeps "only Cloudflare reaches the origin" without it.
 Consequence / revisit when: 443 is open on the host (Cloudflare ranges only); the shared origin-pull certificate proves "via Cloudflare", not "via our zone", so staging also keeps basic auth. Tracked as T-5 / C-44 → P5-12 (PROGRESS, TEMPORARY.md).
 
