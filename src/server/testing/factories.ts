@@ -267,6 +267,7 @@ export async function makeOpsSnapshot(now = new Date()): Promise<HealthSnapshot>
       storageBudgetBytes: 2_000_000_000,
       keyExpiresAt: null,
     },
+    originFirewall: { enabled: false, lastOkAt: null, lastFailedAt: null },
     email: { sentToday: 12, cap: 400 },
     sentry: { sentThisMonth: 3, quota: 5000 },
     sse: { connections: null },

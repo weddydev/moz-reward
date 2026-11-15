@@ -31,6 +31,7 @@ const snapshot = (over: Partial<HealthSnapshot> = {}): HealthSnapshot => ({
     storageBudgetBytes: 2_000_000_000,
     keyExpiresAt: null,
   },
+  originFirewall: { enabled: false, lastOkAt: null, lastFailedAt: null },
   email: { sentToday: 290, cap: 400 },
   sentry: { sentThisMonth: null, quota: 5000 },
   sse: { connections: null },
@@ -93,6 +94,28 @@ describe("[P0-13] System page view model", () => {
       "Last restore drill: 24 h",
     ]);
     expect(rows(true)).toContain("WAL archiving: off (archive-off lever)");
+  });
+
+  it("[P0-15] the origin firewall shows as a status row only where it runs, with the alert's rule", () => {
+    const row = (f: Partial<HealthSnapshot["originFirewall"]>) =>
+      systemView(
+        snapshot({
+          originFirewall: { enabled: true, lastOkAt: ago(3 * 3600), lastFailedAt: null, ...f },
+        }),
+        NOW,
+      ).status.find((s) => s.label === "Origin firewall");
+    expect(systemView(snapshot(), NOW).status.map((s) => s.label)).not.toContain("Origin firewall");
+    expect(row({})).toEqual({ label: "Origin firewall", ok: true, detail: "last refresh 3 h ago" });
+    expect(row({ lastOkAt: ago(37 * 3600) })).toMatchObject({
+      ok: false,
+      detail: "last refresh 37 h ago",
+    });
+    expect(row({ lastOkAt: null })).toMatchObject({ ok: false, detail: "last refresh never" });
+    expect(row({ lastFailedAt: ago(600) })).toEqual({
+      label: "Origin firewall",
+      ok: false,
+      detail: "last refresh failed 10 min ago",
+    });
   });
 
   it("stored snapshots are validated before rendering", () => {

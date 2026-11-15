@@ -54,6 +54,12 @@ export type HealthSnapshot = {
     /** Expiry of the backup encryption key (nightly `backup:key-expiry`); null = never expires or not known. */
     keyExpiresAt: string | null;
   };
+  /**
+   * The staging origin lock (P0-15 C1b, infra/host/moz-origin-firewall): its daily refresh writes
+   * `host:origin-firewall`, or `host:origin-firewall-failed` (suspicious or stale range list, failed apply or
+   * check). Checked only when ORIGIN_FIREWALL_ENABLED.
+   */
+  originFirewall: { enabled: boolean; lastOkAt: string | null; lastFailedAt: string | null };
   email: { sentToday: number | null; cap: number };
   sentry: { sentThisMonth: number | null; quota: number };
   /** SSE connections (P1-10 adds the counter). */
@@ -92,6 +98,10 @@ export const healthSnapshotSchema: z.ZodType<HealthSnapshot> = z.object({
     storageBudgetBytes: n.default(0),
     keyExpiresAt: iso.default(null),
   }),
+  // Added in P0-15 C1b: snapshots stored before then have no such field.
+  originFirewall: z
+    .object({ enabled: z.boolean(), lastOkAt: iso, lastFailedAt: iso })
+    .default({ enabled: false, lastOkAt: null, lastFailedAt: null }),
   email: z.object({ sentToday: nn, cap: n }),
   sentry: z.object({ sentThisMonth: nn, quota: n }),
   sse: z.object({ connections: nn }),
@@ -108,6 +118,8 @@ export const THRESHOLDS = {
   drillMaxDays: 35,
   baseMaxDays: 8,
   keyExpiryWarnDays: 30,
+  /** Daily timer (05:20 + up to 30 min) with room for one late run. */
+  originFirewallMaxHours: 36,
 } as const;
 
 /**
@@ -123,7 +135,7 @@ const ageSec = (iso: string | null, now: Date): number | null =>
   iso === null ? null : Math.floor((now.getTime() - new Date(iso).getTime()) / 1000);
 
 /** A failure heartbeat counts until a success newer than it is recorded. */
-const failedSinceSuccess = (failedAt: string | null, okAt: string | null): boolean =>
+export const failedSinceSuccess = (failedAt: string | null, okAt: string | null): boolean =>
   failedAt !== null && (okAt === null || new Date(failedAt).getTime() > new Date(okAt).getTime());
 
 const pct = (used: number | null, cap: number): number | null =>
@@ -227,6 +239,17 @@ export function evaluateHealth(s: HealthSnapshot, now: Date): Alert[] {
         archiveOff,
         storagePct: storagePct === null ? null : Math.round(storagePct),
         keyExpiresInDays: keyLeftSec === null ? null : Math.floor(keyLeftSec / 86400),
+      });
+    }
+  }
+
+  if (s.originFirewall.enabled) {
+    const okAge = ageSec(s.originFirewall.lastOkAt, now);
+    const failed = failedSinceSuccess(s.originFirewall.lastFailedAt, s.originFirewall.lastOkAt);
+    if (failed || okAge === null || okAge > THRESHOLDS.originFirewallMaxHours * 3600) {
+      ops("health.origin_firewall", {
+        lastRefreshAgeHours: okAge === null ? null : Math.floor(okAge / 3600),
+        failed,
       });
     }
   }

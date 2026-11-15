@@ -1,0 +1,22 @@
+# Daily refresh of Cloudflare's IPv4 ranges for the staging origin lock (P0-15 C1b, T-5): fetch, validate, keep
+# the last good list, apply, check (infra/host/moz-origin-firewall). Installed and enabled (timer) by harden.sh.
+# Results: `journalctl -u moz-origin-firewall-refresh`; heartbeat host:origin-firewall (or -failed = alert).
+[Unit]
+Description=Moz Rewards origin firewall: refresh Cloudflare's ranges
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/moz-origin-firewall refresh
+UMask=0077
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/moz -/run/xtables.lock
+ProtectHome=yes
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+TimeoutStartSec=5min

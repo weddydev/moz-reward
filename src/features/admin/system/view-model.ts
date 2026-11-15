@@ -1,5 +1,10 @@
 import { formatDateTime } from "@/lib/format-date";
-import { evaluateHealth, type HealthSnapshot, THRESHOLDS } from "@/server/ops/health-rules";
+import {
+  evaluateHealth,
+  failedSinceSuccess,
+  type HealthSnapshot,
+  THRESHOLDS,
+} from "@/server/ops/health-rules";
 
 /**
  * What the admin System page shows (P0-13, ARCHITECTURE §11), derived from the health monitor's latest snapshot.
@@ -58,6 +63,23 @@ export type SystemView = {
   alerts: string[];
 };
 
+/** The staging origin lock's daily refresh (P0-15 C1b); same rule as health.origin_firewall. */
+function originFirewallStatus(
+  f: HealthSnapshot["originFirewall"],
+  now: Date,
+): SystemView["status"][number] {
+  const okAge = ageOf(f.lastOkAt, now);
+  const failed = failedSinceSuccess(f.lastFailedAt, f.lastOkAt);
+  const late = okAge === null || okAge > THRESHOLDS.originFirewallMaxHours * 3600;
+  return {
+    label: "Origin firewall",
+    ok: !failed && !late,
+    detail: failed
+      ? `last refresh failed ${ageText(ageOf(f.lastFailedAt, now))} ago`
+      : `last refresh ${ageText(okAge)}${okAge === null ? "" : " ago"}`,
+  };
+}
+
 export function systemView(s: HealthSnapshot, now: Date): SystemView {
   const takenAge = ageOf(s.takenAt, now) ?? 0;
   const schedulerAge = ageOf(s.scheduler.lastRunAt, now);
@@ -88,6 +110,7 @@ export function systemView(s: HealthSnapshot, now: Date): SystemView {
         ok: schedulerAge !== null && schedulerAge <= THRESHOLDS.schedulerStaleSec,
         detail: `last heartbeat ${ageText(schedulerAge)}${schedulerAge === null ? "" : " ago"}`,
       },
+      ...(s.originFirewall.enabled ? [originFirewallStatus(s.originFirewall, now)] : []),
     ],
     queues: s.queues.map((q) => ({
       ...q,

@@ -13,6 +13,8 @@ export const ALERT_KINDS = [
   "health.failed_jobs",
   "health.disk",
   "health.backup",
+  /** P0-15 C1b: the staging origin lock's daily refresh failed, alerted or stopped running. */
+  "health.origin_firewall",
   "quota.email",
   "quota.sentry",
   /** C-24: an admin account was refused from an address outside ADMIN_IP_ALLOWLIST. */

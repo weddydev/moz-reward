@@ -2,23 +2,32 @@
 # moz-origin-firewall: only Cloudflare reaches the staging origin (P0-15 C1b; T-5, DECISIONS 14 Nov "Origin lock
 # without the Tunnel until launch", SECURITY §11). Staging Caddy publishes 443 on the `moz-stg-in` bridge
 # (infra/compose/staging.yml). ufw never sees Docker-published ports (Docker DNATs them in PREROUTING and forwards
-# them before ufw's chains), so the filter lives in DOCKER-USER, which Docker evaluates first and never flushes:
+# them before ufw's chains), so the filter lives in DOCKER-USER, which Docker evaluates first and never flushes.
+# Docker must use its iptables backend (infra/docker/daemon.json `firewall-backend`) on the nf_tables variant of
+# iptables, and nftables.service must stay disabled (its `flush ruleset` would wipe these rules); harden.sh and
+# this script assert both.
 #
-#   DOCKER-USER  -o moz-stg-in  ctstate NEW  → MOZ-ORIGIN  (RETURN for each Cloudflare IPv4 range, else DROP)
-#   DOCKER-USER  -i moz-stg-in  ctstate NEW  → DROP        (Caddy opens nothing through its ingress bridge)
+#   DOCKER-USER 1  -o moz-stg-in → MOZ-ORIGIN   (every packet towards Caddy: RETURN for Cloudflare → tcp/443 and
+#                                                for RELATED ICMP errors (path MTU); anything else DROP)
+#   DOCKER-USER 2  -i moz-stg-in, not ESTABLISHED/RELATED → DROP   (Caddy opens nothing through its bridge)
 #
 # Installed root-owned at /usr/local/sbin/moz-origin-firewall by infra/host/harden.sh (never by a release or CI).
 #
-#   moz-origin-firewall apply     load the rules from the last good range list (no network needed). Run by
-#                                 moz-origin-firewall.service before docker.service at boot, and by harden.sh.
+#   moz-origin-firewall apply     load the rules from the last good range list (no network needed). Run by the
+#                                 docker.service drop-in before dockerd starts, and by harden.sh. Fails closed:
+#                                 with no valid list MOZ-ORIGIN is a single DROP and the exit code is 1.
 #   moz-origin-firewall refresh   fetch Cloudflare's ranges from its API, validate them, keep them as the last
-#                                 good list, then apply. Daily by moz-origin-firewall-refresh.timer. A failed or
-#                                 implausible fetch keeps the last good list (and exits 1, so the unit shows failed).
-#   moz-origin-firewall check     exit 0 only when the chain and both DOCKER-USER rules are in place. moz-deploy
-#                                 refuses to start staging Caddy otherwise.
+#                                 good list, apply, check, and record heartbeat host:origin-firewall (staging
+#                                 DB, 0018). Daily by moz-origin-firewall-refresh.timer. A suspicious list
+#                                 (invalid, or > 25% different from the last good one), a failed apply/check, or
+#                                 a last good list older than 7 days records host:origin-firewall-failed (an
+#                                 alert, health rule `health.origin_firewall`) and keeps the old list.
+#   moz-origin-firewall check     exit 0 only when FORWARD jumps to DOCKER-USER, our two rules are rules 1–2 of
+#                                 DOCKER-USER and MOZ-ORIGIN holds ranges and ends in DROP. moz-deploy refuses to
+#                                 start staging Caddy otherwise; the drop-in runs it after dockerd starts.
 #
 # The second wall is Caddy itself: it requires Cloudflare's origin-pull client certificate on every handshake, so
-# a gap here (the seconds between boot and this unit, or a mistake) still refuses everyone but Cloudflare.
+# a gap here (a mistake, or the moment before the drop-in runs) still refuses everyone but Cloudflare.
 set -Eeuo pipefail
 umask 077
 export LC_ALL=C
@@ -30,6 +39,22 @@ readonly CHAIN=MOZ-ORIGIN
 readonly API_URL=https://api.cloudflare.com/client/v4/ips
 readonly MIN_RANGES=5
 readonly MAX_RANGES=64
+# Cloudflare publishes /13–/22 today; wider than /11 or narrower than /24 is not a plausible edge range.
+readonly MIN_PREFIX=11
+readonly MAX_PREFIX=24
+readonly MAX_CHANGE_PCT=25
+readonly MAX_AGE_DAYS=7
+readonly HEARTBEAT_ENV=staging
+# Never acceptable as an "edge range": this network, private, CGNAT, loopback, link-local, multicast, reserved.
+readonly RESERVED=(0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 172.16.0.0/12 192.168.0.0/16
+  224.0.0.0/4 240.0.0.0/4)
+# The rules exactly as `iptables -S` prints them (ctstate in iptables' canonical order), so `-C`, `-D` and the
+# position check compare like with like.
+readonly INBOUND=(-o "$BRIDGE" -j "$CHAIN")
+# shellcheck disable=SC2054 # RELATED,ESTABLISHED is one iptables argument
+readonly OUTBOUND=(-i "$BRIDGE" -m conntrack ! --ctstate RELATED,ESTABLISHED -j DROP)
+# Last resort when the chain can't be loaded: drop everything towards Caddy (pin_top_rules removes it again).
+readonly EMERGENCY=(-o "$BRIDGE" -j DROP)
 # Fixed at install time. Not readonly only because scripts/moz-origin-firewall.test.ts sources this file and
 # points them at a temp dir.
 STATE=/var/lib/moz/cloudflare-ips-v4
@@ -41,94 +66,178 @@ die() {
   exit 1
 }
 
+# ip_to_int <a.b.c.d> → the address as an integer in IP_INT (octets already validated). A variable, not
+# output: command substitution forks, and this runs ~10 times per range.
+ip_to_int() {
+  local a b c d
+  IFS=. read -r a b c d <<<"$1"
+  IP_INT=$(((10#$a << 24) | (10#$b << 16) | (10#$c << 8) | 10#$d))
+}
+
+# overlaps_reserved <network as int> <prefix> → exit 0 if the range touches any RESERVED block.
+overlaps_reserved() {
+  local start=$1 prefix=$2 end r rend
+  end=$((start + (1 << (32 - prefix)) - 1))
+  for r in "${RESERVED[@]}"; do
+    ip_to_int "${r%/*}"
+    rend=$((IP_INT + (1 << (32 - ${r#*/})) - 1))
+    if ((start <= rend && IP_INT <= end)); then return 0; fi
+  done
+  return 1
+}
+
 # valid_ranges < list → the IPv4 CIDRs, one per line, sorted and unique; exit 1 if any line is not a plain IPv4
-# CIDR with a /8–/32 prefix, or the count is outside MIN_RANGES..MAX_RANGES. `#` comments and blank lines are
-# skipped (the seed file has a header).
+# CIDR with a MIN_PREFIX–MAX_PREFIX prefix and no host bits, touches RESERVED space, or the count is outside
+# MIN_RANGES..MAX_RANGES. `#` comments and blank lines are skipped (the seed file has a header).
 valid_ranges() {
-  local line ip prefix o octets=() out=()
+  local line ip prefix o net octets=() out=()
   while IFS= read -r line || [[ -n $line ]]; do
     line=${line%%#*}
     line=${line//[[:space:]]/}
     [[ -z $line ]] && continue
-    [[ $line =~ ^([0-9]{1,3}(\.[0-9]{1,3}){3})/([0-9]{1,2})$ ]] || {
+    if ! [[ $line =~ ^([0-9]{1,3}(\.[0-9]{1,3}){3})/([0-9]{1,2})$ ]]; then
       log "not an IPv4 CIDR: ${line:0:64}"
       return 1
-    }
+    fi
     ip=${BASH_REMATCH[1]}
-    prefix=${BASH_REMATCH[3]}
-    ((10#$prefix >= 8 && 10#$prefix <= 32)) || {
-      log "prefix out of range: $line"
+    prefix=$((10#${BASH_REMATCH[3]}))
+    if ((prefix < MIN_PREFIX || prefix > MAX_PREFIX)); then
+      log "prefix out of range (/$MIN_PREFIX–/$MAX_PREFIX): $line"
       return 1
-    }
+    fi
     IFS=. read -r -a octets <<<"$ip"
     for o in "${octets[@]}"; do
-      [[ $o == 0 || $o != 0* ]] || {
-        log "leading zero: $line"
+      if [[ $o != 0 && $o == 0* ]] || ((10#$o > 255)); then
+        log "bad octet: $line"
         return 1
-      }
-      ((10#$o <= 255)) || {
-        log "octet out of range: $line"
-        return 1
-      }
+      fi
     done
-    out+=("$ip/$((10#$prefix))")
+    ip_to_int "$ip"
+    net=$IP_INT
+    if ((net & ((1 << (32 - prefix)) - 1))); then
+      log "host bits set: $line"
+      return 1
+    fi
+    if overlaps_reserved "$net" "$prefix"; then
+      log "private or reserved range: $line"
+      return 1
+    fi
+    out+=("$ip/$prefix")
   done
-  ((${#out[@]} >= MIN_RANGES && ${#out[@]} <= MAX_RANGES)) || {
+  if ((${#out[@]} < MIN_RANGES || ${#out[@]} > MAX_RANGES)); then
     log "${#out[@]} ranges (expected $MIN_RANGES–$MAX_RANGES)"
     return 1
-  }
+  fi
   printf '%s\n' "${out[@]}" | sort -u
 }
 
-# render_rules < valid ranges → iptables-restore input that replaces MOZ-ORIGIN in one transaction (`--noflush`
-# leaves every other chain alone; declaring the chain flushes only it).
+# change_pct <old list> <new list> → ranges added plus removed, as a whole percentage of the old count.
+change_pct() {
+  local diff old_count
+  old_count=$(grep -c . <<<"$1")
+  diff=$(comm -3 <(sort <<<"$1") <(sort <<<"$2") | grep -c . || true)
+  echo $((diff * 100 / old_count))
+}
+
+# render_rules open|closed < valid ranges → iptables-restore input that replaces MOZ-ORIGIN in one transaction
+# (`--noflush` leaves every other chain alone; declaring the chain flushes only it). closed → a single DROP.
 render_rules() {
-  local cidr
+  local mode=$1 cidr
   printf '*filter\n:%s - [0:0]\n' "$CHAIN"
-  while IFS= read -r cidr; do
-    printf -- '-A %s -s %s -p tcp --dport 443 -j RETURN\n' "$CHAIN" "$cidr"
-  done
+  if [[ $mode == open ]]; then
+    while IFS= read -r cidr; do
+      [[ -n $cidr ]] && printf -- '-A %s -s %s -p tcp -m tcp --dport 443 -j RETURN\n' "$CHAIN" "$cidr"
+    done
+    # Path-MTU and other ICMP errors about a connection Cloudflare already opened.
+    printf -- '-A %s -p icmp -m conntrack --ctstate RELATED -j RETURN\n' "$CHAIN"
+  fi
   printf -- '-A %s -j DROP\nCOMMIT\n' "$CHAIN"
 }
 
-# The two DOCKER-USER rules, as iptables arguments (also what `check` looks for).
-inbound_rule() { echo "-o $BRIDGE -m conntrack --ctstate NEW -j $CHAIN"; }
-outbound_rule() { echo "-i $BRIDGE -m conntrack --ctstate NEW -j DROP"; }
-
-# ensure_rule <rule…>: insert at the top of DOCKER-USER unless it is already there.
-ensure_rule() {
-  # shellcheck disable=SC2046 # the rule is a fixed word list
-  iptables -w 10 -C DOCKER-USER "$@" 2>/dev/null || iptables -w 10 -I DOCKER-USER 1 "$@"
+# top_rules_ok → exit 0 if DOCKER-USER's rules 1 and 2 are INBOUND and OUTBOUND, in that order.
+top_rules_ok() {
+  local rules
+  rules=$(iptables -w 10 -S DOCKER-USER 2>/dev/null | sed -n '2,3p')
+  [[ $rules == "-A DOCKER-USER ${INBOUND[*]}"$'\n'"-A DOCKER-USER ${OUTBOUND[*]}" ]]
 }
 
+# pin_top_rules: put INBOUND and OUTBOUND at positions 1–2 of DOCKER-USER (insert first, then delete older
+# copies and any EMERGENCY rule further down, so there is never a moment without them). Every step is checked
+# explicitly: callers use it in `||` lists, where bash ignores errexit.
+pin_top_rules() {
+  local n spec=()
+  if ! top_rules_ok; then
+    iptables -w 10 -I DOCKER-USER 1 "${OUTBOUND[@]}" || return 1
+    iptables -w 10 -I DOCKER-USER 1 "${INBOUND[@]}" || return 1
+  fi
+  mapfile -t spec < <(iptables -w 10 -S DOCKER-USER | tail -n +2)
+  # Rules 1–2 are ours; walk the rest from the bottom so the numbers stay valid while deleting.
+  for ((n = ${#spec[@]}; n >= 3; n--)); do
+    case ${spec[n - 1]} in
+      "-A DOCKER-USER ${INBOUND[*]}" | "-A DOCKER-USER ${OUTBOUND[*]}" | "-A DOCKER-USER ${EMERGENCY[*]}")
+        iptables -w 10 -D DOCKER-USER "$n" || return 1
+        ;;
+    esac
+  done
+  top_rules_ok
+}
+
+# assert_backend → exit 0 only on iptables-nft, the only variant these rules are written for.
+assert_backend() {
+  if iptables -V 2>/dev/null | grep -q '(nf_tables)'; then return 0; fi
+  log "iptables is not the nf_tables variant: $(iptables -V 2>&1 || true)"
+  return 1
+}
+
+# cmd_apply: see the header. Returns 1 on any failure; every step is checked explicitly because callers use it
+# in `||` lists, where errexit is off.
 cmd_apply() {
-  local list ranges
-  list=$STATE
-  [[ -s $list ]] || list=$SEED
-  [[ -s $list ]] || die "no range list ($STATE or $SEED)"
-  ranges=$(valid_ranges <"$list") || die "$list is not a valid range list"
+  local list="" ranges="" mode=open status=0
+  assert_backend || return 1
+  if [[ -s $STATE ]]; then
+    list=$STATE
+  elif [[ -s $SEED ]]; then
+    list=$SEED
+  fi
+  if [[ -z $list ]]; then
+    log "no range list ($STATE or $SEED): failing closed"
+    status=1
+  elif ! ranges=$(valid_ranges <"$list"); then
+    log "$list is not a valid range list: failing closed"
+    ranges=""
+    status=1
+  fi
+  [[ -n $ranges ]] || mode=closed
   # Docker creates DOCKER-USER at start and keeps what it finds; at boot this runs first, so create it.
   iptables -w 10 -N DOCKER-USER 2>/dev/null || true
-  render_rules <<<"$ranges" | iptables-restore -w 10 --noflush
-  # Order matters only between our two rules and Docker's; both sit above anything Docker adds.
-  # shellcheck disable=SC2046
-  ensure_rule $(outbound_rule)
-  # shellcheck disable=SC2046
-  ensure_rule $(inbound_rule)
+  if ! render_rules "$mode" <<<"$ranges" | iptables-restore -w 10 --noflush; then
+    log "iptables-restore failed; $CHAIN keeps whatever it had"
+    status=1
+  fi
+  if ! pin_top_rules; then
+    log "could not pin the DOCKER-USER rules: dropping all traffic to $BRIDGE"
+    iptables -w 10 -C DOCKER-USER "${EMERGENCY[@]}" 2>/dev/null ||
+      iptables -w 10 -I DOCKER-USER 1 "${EMERGENCY[@]}" || log "could not insert the emergency DROP either"
+    status=1
+  fi
   # No IPv6 listener exists (the port is published on 0.0.0.0 only); refuse IPv6 to the bridge all the same.
   if ip6tables -w 10 -L DOCKER-USER -n >/dev/null 2>&1; then
-    ip6tables -w 10 -C DOCKER-USER -o "$BRIDGE" -j DROP 2>/dev/null || ip6tables -w 10 -I DOCKER-USER 1 -o "$BRIDGE" -j DROP
+    ip6tables -w 10 -C DOCKER-USER -o "$BRIDGE" -j DROP 2>/dev/null ||
+      ip6tables -w 10 -I DOCKER-USER 1 -o "$BRIDGE" -j DROP || status=1
   fi
-  log "applied $(wc -l <<<"$ranges") Cloudflare ranges from $list"
+  if ((status)); then
+    [[ $mode == closed ]] && log "$CHAIN drops everything"
+    return 1
+  fi
+  log "applied $(grep -c . <<<"$ranges") Cloudflare ranges from $list"
 }
 
 cmd_check() {
   local returns
-  # shellcheck disable=SC2046
-  iptables -w 10 -C DOCKER-USER $(inbound_rule) 2>/dev/null || die "DOCKER-USER has no inbound rule for $BRIDGE"
-  # shellcheck disable=SC2046
-  iptables -w 10 -C DOCKER-USER $(outbound_rule) 2>/dev/null || die "DOCKER-USER has no outbound rule for $BRIDGE"
-  returns=$(iptables -w 10 -S "$CHAIN" 2>/dev/null | grep -c -- '-j RETURN$' || true)
+  assert_backend || exit 1
+  iptables -w 10 -C FORWARD -j DOCKER-USER 2>/dev/null || die "FORWARD does not jump to DOCKER-USER"
+  top_rules_ok || die "DOCKER-USER rules 1–2 are not the $BRIDGE rules"
+  returns=$(iptables -w 10 -S "$CHAIN" 2>/dev/null | grep -c -- '--dport 443 -j RETURN$' || true)
   ((returns >= MIN_RANGES)) || die "$CHAIN has $returns ranges"
   iptables -w 10 -S "$CHAIN" | tail -n1 | grep -qx -- "-A $CHAIN -j DROP" || die "$CHAIN does not end in DROP"
   log "ok ($returns ranges)"
@@ -137,34 +246,72 @@ cmd_check() {
 # fetch_ranges → Cloudflare's IPv4 CIDRs from its API (JSON `result.ipv4_cidrs`), or exit 1.
 fetch_ranges() {
   curl --proto '=https' --tlsv1.2 -fsS --max-time 20 --retry 2 --retry-delay 5 --max-filesize 65536 "$API_URL" |
-    jq -er 'select(.success == true) | .result.ipv4_cidrs | if type == "array" then .[] else error("no list") end'
+    jq -er 'select(.success == true) | .result.ipv4_cidrs
+      | if type == "array" and length > 0 then .[] else error("no list") end'
+}
+
+# list_age_days → whole days since the last good list was fetched and confirmed (STATE's mtime); 9999 if none.
+list_age_days() {
+  if [[ -s $STATE ]]; then
+    echo $((($(date +%s) - $(stat -c %Y "$STATE")) / 86400))
+  else
+    echo 9999
+  fi
+}
+
+# heartbeat origin-firewall|origin-firewall-failed: host:<name> in the staging DB through record_host_heartbeat
+# (0018), as the superuser over the container's socket. Best effort: staging may not be running (logged).
+heartbeat() {
+  local name=$1
+  [[ $name =~ ^origin-firewall(-failed)?$ ]] || die "unknown heartbeat $name"
+  docker exec -i -u postgres "moz-$HEARTBEAT_ENV-postgres-1" psql -X -q -v ON_ERROR_STOP=1 -d moz \
+    -c "SELECT public.record_host_heartbeat('host:$name')" >/dev/null 2>&1 ||
+    log "could not record heartbeat host:$name (is staging running?)"
+}
+
+# alert <message…>: re-apply the last good list, record the failure heartbeat, exit 1.
+alert() {
+  (cmd_apply) || true
+  heartbeat origin-firewall-failed
+  die "$*"
 }
 
 cmd_refresh() {
-  local fetched ranges tmp
+  local fetched ranges old="" age pct tmp
   if ! fetched=$(fetch_ranges); then
-    cmd_apply
-    die "could not fetch $API_URL; kept the last good list"
+    age=$(list_age_days)
+    ((age <= MAX_AGE_DAYS)) || alert "could not fetch $API_URL and the last good list is $age days old"
+    (cmd_apply) || true
+    die "could not fetch $API_URL; kept the last good list ($age days old)"
   fi
-  if ! ranges=$(valid_ranges <<<"$fetched"); then
-    cmd_apply
-    die "Cloudflare's list failed validation; kept the last good list"
+  ranges=$(valid_ranges <<<"$fetched") || alert "Cloudflare's list failed validation; kept the last good list"
+  if [[ -s $STATE ]] && old=$(valid_ranges <"$STATE" 2>/dev/null); then
+    pct=$(change_pct "$old" "$ranges")
+    ((pct <= MAX_CHANGE_PCT)) || alert "Cloudflare's list changed by $pct% (> $MAX_CHANGE_PCT%); kept the" \
+      "last good list. If https://www.cloudflare.com/ips-v4 confirms it, write it to $STATE and run apply"
+  else
+    old=""
   fi
-  if [[ ! -s $STATE ]] || [[ $ranges != "$(valid_ranges <"$STATE" 2>/dev/null)" ]]; then
+  if [[ $ranges != "$old" ]]; then
     tmp=$(mktemp "$(dirname "$STATE")/.ranges.XXXXXX")
     printf '%s\n' "$ranges" >"$tmp"
     chmod 0644 "$tmp"
     mv -f "$tmp" "$STATE"
-    log "range list changed: $(tr '\n' ' ' <<<"$ranges")"
+    log "range list changed: $(comm -3 <(printf '%s\n' "$old") <(printf '%s\n' "$ranges") | tr -s '\t\n' '  ')"
+  else
+    # Same list: the mtime records when it was last confirmed (list_age_days).
+    touch "$STATE"
   fi
-  cmd_apply
+  (cmd_apply) || alert "apply failed"
+  (cmd_check) || alert "check failed after apply"
+  heartbeat origin-firewall
 }
 
 main() {
   export PATH=$SAFE_PATH
   ((EUID == 0)) || die "run as root"
   case ${1:-} in
-    apply) cmd_apply ;;
+    apply) cmd_apply || exit 1 ;;
     refresh) cmd_refresh ;;
     check) cmd_check ;;
     *)

@@ -53,6 +53,12 @@ export const BACKUP_HEARTBEATS = {
   keyExpiry: "backup:key-expiry",
 } as const;
 
+/** Written by infra/host/moz-origin-firewall's daily refresh (0018; health.origin_firewall). */
+export const HOST_HEARTBEATS = {
+  originFirewall: "host:origin-firewall",
+  originFirewallFailed: "host:origin-firewall-failed",
+} as const;
+
 /**
  * The archive-off lever (P0-15 D2, RUNBOOK §6): a root-owned file on a read-only mount (`/etc/moz/<env>/backup-lever`
  * on the host). While it exists the Postgres wrapper skips WAL archiving, so health.backup alerts.
@@ -205,6 +211,11 @@ export async function collectHealth(deps: MonitorDeps = {}): Promise<HealthSnaps
           : BACKUP_STORAGE_BUDGET_BYTES.staging,
       // 0 = the key never expires.
       keyExpiresAt: keyExpiry ? new Date(keyExpiry * 1000).toISOString() : null,
+    },
+    originFirewall: {
+      enabled: e.ORIGIN_FIREWALL_ENABLED,
+      lastOkAt: beat(HOST_HEARTBEATS.originFirewall),
+      lastFailedAt: beat(HOST_HEARTBEATS.originFirewallFailed),
     },
     email: { sentToday: usageValue?.emailToday ?? null, cap: e.EMAIL_DAILY_CAP },
     sentry: { sentThisMonth: usageValue?.sentryMonth ?? null, quota: e.SENTRY_MONTHLY_QUOTA },

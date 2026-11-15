@@ -7,5 +7,6 @@
   },
   "live-restore": true,
   "no-new-privileges": true,
-  "userland-proxy": false
+  "userland-proxy": false,
+  "firewall-backend": "iptables"
 }

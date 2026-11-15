@@ -1,0 +1,11 @@
+# Daily, a little after Cloudflare's usual change window; Persistent catches up after downtime (P0-15 C1b).
+[Unit]
+Description=Moz Rewards origin firewall: daily refresh of Cloudflare's ranges
+
+[Timer]
+OnCalendar=*-*-* 05:20:00
+RandomizedDelaySec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

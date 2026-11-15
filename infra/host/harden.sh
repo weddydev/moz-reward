@@ -11,9 +11,12 @@
 # What it does: package updates; Docker CE from Docker's signed repository + daemon.json; 4 GB swap; kernel
 # sysctls; admin users (key-only, sudo) and the CI user `deploy` (forced command → sudo moz-deploy, not in the
 # docker group); sshd policy (keys only, no root, AllowUsers) checked with `sshd -t` and `sshd -T`; ufw
-# default-deny with SSH rate-limited as the only inbound rule (the app is reachable only through the Cloudflare
-# Tunnel); fail2ban; unattended upgrades; the root helper /usr/local/sbin/moz-deploy and its directories.
-# Also the backup job: /usr/local/sbin/moz-backup, its systemd units and the backup public key (P0-15 D).
+# default-deny with SSH rate-limited as the only inbound rule; fail2ban; unattended upgrades; the root helper
+# /usr/local/sbin/moz-deploy and its directories. Also the backup job: /usr/local/sbin/moz-backup, its systemd
+# units and the backup public key (P0-15 D). And the staging origin lock (P0-15 C1b, T-5): staging Caddy
+# publishes 443, which ufw never sees, so /usr/local/sbin/moz-origin-firewall lets only Cloudflare's ranges
+# reach it from DOCKER-USER (docker.service drop-in at every Docker start, daily refresh timer); nftables.service
+# must stay off. Production stays behind the Cloudflare Tunnel (no published port).
 set -Eeuo pipefail
 # `… | install_content` must run in this shell, or its change count is lost.
 shopt -s lastpipe
@@ -151,6 +154,12 @@ if [[ -f /var/run/reboot-required ]]; then
 fi
 
 # --- 3. Docker daemon ---------------------------------------------------------------------------------------------
+# Docker's iptables backend on iptables-nft is what moz-origin-firewall's DOCKER-USER rules are written for, and
+# nftables.service's `flush ruleset` (at its start or reload) would wipe Docker's and the origin lock's rules.
+if systemctl is-enabled --quiet nftables.service 2>/dev/null || systemctl is-active --quiet nftables.service; then
+  die "nftables.service is enabled or running; its 'flush ruleset' would wipe Docker's rules (systemctl disable --now nftables)"
+fi
+iptables -V | grep -q '(nf_tables)' || die "iptables is not the nf_tables variant: $(iptables -V)"
 dockerd --validate --config-file "$DAEMON_JSON" >/dev/null
 install_file "$DAEMON_JSON" /etc/docker/daemon.json 0644
 if ((LAST_CHANGED)); then
@@ -243,11 +252,26 @@ install_file "$HERE/moz-backup" /usr/local/sbin/moz-backup 0755
 ensure_dir /etc/moz/backup 0755 root:root
 install_file "$HERE/../backup/moz-backup-public.asc" /etc/moz/backup/public.asc 0644
 units_changed=0
-for unit in moz-backup@.service moz-backup@.timer moz-basebackup@.service moz-basebackup@.timer; do
+for unit in moz-backup@.service moz-backup@.timer moz-basebackup@.service moz-basebackup@.timer \
+  moz-origin-firewall-refresh.service moz-origin-firewall-refresh.timer; do
   install_file "$FILES/systemd/$unit" "/etc/systemd/system/$unit" 0644
   if ((LAST_CHANGED)); then units_changed=1; fi
 done
+
+# Staging origin lock (P0-15 C1b): the script, the seed list it falls back to before its first refresh, the
+# docker.service drop-in (apply before dockerd, check after) and the daily refresh timer. Applied here too, so
+# the lock holds before the first staging release publishes 443.
+install_file "$HERE/moz-origin-firewall" /usr/local/sbin/moz-origin-firewall 0755
+install_file "$FILES/cloudflare-ips-v4.txt" /etc/moz/cloudflare-ips-v4.seed 0644
+install_file "$FILES/systemd/docker-moz-origin.conf" /etc/systemd/system/docker.service.d/moz-origin.conf 0644
+if ((LAST_CHANGED)); then units_changed=1; fi
 if ((units_changed)); then systemctl daemon-reload; fi
+fw_before=$({ iptables -S DOCKER-USER && iptables -S MOZ-ORIGIN; } 2>/dev/null || true)
+/usr/local/sbin/moz-origin-firewall apply || die "moz-origin-firewall apply failed (staging origin fails closed)"
+/usr/local/sbin/moz-origin-firewall check || die "moz-origin-firewall check failed"
+fw_after=$({ iptables -S DOCKER-USER && iptables -S MOZ-ORIGIN; } 2>/dev/null || true)
+if [[ $fw_before == "$fw_after" ]]; then ok "origin firewall"; else changed "origin firewall (DOCKER-USER → MOZ-ORIGIN)"; fi
+ensure_service moz-origin-firewall-refresh.timer
 
 # --- 7. SSH -------------------------------------------------------------------------------------------------------
 grep -qE '^Include /etc/ssh/sshd_config\.d/\*\.conf' /etc/ssh/sshd_config ||

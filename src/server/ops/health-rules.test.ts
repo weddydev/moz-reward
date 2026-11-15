@@ -35,6 +35,7 @@ function healthy(): HealthSnapshot {
       storageBudgetBytes: 2_000_000_000,
       keyExpiresAt: null,
     },
+    originFirewall: { enabled: false, lastOkAt: null, lastFailedAt: null },
     email: { sentToday: 10, cap: 400 },
     sentry: { sentThisMonth: 100, quota: 5000 },
     sse: { connections: null },
@@ -258,6 +259,40 @@ describe("[P0-13] health thresholds (ARCHITECTURE §11)", () => {
       storageBytes: null,
       storageBudgetBytes: 0,
       keyExpiresAt: null,
+    });
+  });
+
+  it("[P0-15] the origin firewall is checked only when enabled: failed since the last success, or no success in 36 h", () => {
+    const firewall = (
+      f: Partial<HealthSnapshot["originFirewall"]>,
+    ): Record<string, unknown> | undefined => {
+      const s = healthy();
+      s.originFirewall = { enabled: true, lastOkAt: ago(3600), lastFailedAt: null, ...f };
+      return evaluateHealth(s, NOW).find((a) => a.kind === "health.origin_firewall")?.detail;
+    };
+    const off = healthy();
+    off.originFirewall = { enabled: false, lastOkAt: null, lastFailedAt: ago(60) };
+    expect(kinds(off)).toEqual([]);
+    expect(firewall({})).toBeUndefined();
+    expect(firewall({ lastOkAt: ago(35 * 3600) })).toBeUndefined();
+    expect(firewall({ lastOkAt: ago(37 * 3600) })).toEqual({
+      lastRefreshAgeHours: 37,
+      failed: false,
+    });
+    expect(firewall({ lastOkAt: null })).toEqual({ lastRefreshAgeHours: null, failed: false });
+    // A failure counts until a newer success.
+    expect(firewall({ lastFailedAt: ago(60) })).toEqual({ lastRefreshAgeHours: 1, failed: true });
+    expect(firewall({ lastFailedAt: ago(7200) })).toBeUndefined();
+    expect(THRESHOLDS.originFirewallMaxHours).toBe(36);
+  });
+
+  it("[P0-15] a snapshot stored before the C1b origin-firewall field existed still parses (off)", () => {
+    const old = JSON.parse(JSON.stringify(healthy())) as Record<string, unknown>;
+    delete old.originFirewall;
+    expect(healthSnapshotSchema.parse(old).originFirewall).toEqual({
+      enabled: false,
+      lastOkAt: null,
+      lastFailedAt: null,
     });
   });
 

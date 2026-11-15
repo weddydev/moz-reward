@@ -155,6 +155,14 @@ export const serverEnvSchema = z
       .enum(["true", "false"])
       .default("false")
       .transform((v) => v === "true"),
+    /**
+     * P0-15 C1b: the host runs moz-origin-firewall (staging, until C-44), whose daily refresh writes the
+     * host:origin-firewall heartbeats; health.origin_firewall alerts on them only when this is on.
+     */
+    ORIGIN_FIREWALL_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
     /** Release tag (git SHA, set by the deploy in P0-15): on every Sentry event. Not SENTRY_*: the browser SDK contains that name. */
     APP_RELEASE: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(64).optional()),
     /** Share of error events sent (0–1). Errors stay under ~4,000/month with this and the per-process cap. */

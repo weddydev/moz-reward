@@ -180,3 +180,27 @@ describe("[P0-15] D2: the health monitor reads the backup measurements and the a
     }
   });
 });
+
+describe("[P0-15] C1b: the health monitor reads the origin firewall's heartbeats", () => {
+  it("[P0-15] host:origin-firewall and -failed reach the snapshot (off unless ORIGIN_FIREWALL_ENABLED)", async () => {
+    const alerter = createAlerter({
+      redis: limiterRedis,
+      keyPrefix: `t-${newId()}`,
+      send: () => Promise.resolve(),
+    });
+    try {
+      const none = (await healthTick({ alerter })).snapshot.originFirewall;
+      expect(none).toEqual({ enabled: false, lastOkAt: null, lastFailedAt: null });
+      await db().execute(sql`SELECT public.record_host_heartbeat('host:origin-firewall')`);
+      await db().execute(sql`SELECT public.record_host_heartbeat('host:origin-firewall-failed')`);
+      const { snapshot, raised } = await healthTick({ alerter });
+      expect(snapshot.originFirewall.enabled).toBe(false);
+      expect(snapshot.originFirewall.lastOkAt).not.toBeNull();
+      expect(snapshot.originFirewall.lastFailedAt).not.toBeNull();
+      // Not enabled in the test env: a failure heartbeat raises nothing.
+      expect(raised.map((a) => a.kind)).not.toContain("health.origin_firewall");
+    } finally {
+      await db().execute(sql`DELETE FROM job_heartbeats WHERE name LIKE 'host:%'`);
+    }
+  });
+});
