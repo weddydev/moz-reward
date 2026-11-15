@@ -53,10 +53,14 @@ export const BACKUP_HEARTBEATS = {
   keyExpiry: "backup:key-expiry",
 } as const;
 
-/** Written by infra/host/moz-origin-firewall's daily refresh (0018; health.origin_firewall). */
+/**
+ * Written by infra/host/moz-origin-firewall's daily refresh (0018), and the origin certificate's expiry (epoch
+ * seconds) by moz-deploy (0019); health.origin_firewall.
+ */
 export const HOST_HEARTBEATS = {
   originFirewall: "host:origin-firewall",
   originFirewallFailed: "host:origin-firewall-failed",
+  originCertExpiry: "host:origin-cert-expiry",
 } as const;
 
 /**
@@ -173,6 +177,7 @@ export async function collectHealth(deps: MonitorDeps = {}): Promise<HealthSnaps
   const measured = (name: string): number | null => valueOr(beats, null)?.get(name)?.value ?? null;
   const archiverValue = valueOr(archiver, null);
   const keyExpiry = measured(BACKUP_HEARTBEATS.keyExpiry);
+  const certExpiry = measured(HOST_HEARTBEATS.originCertExpiry);
   const outboxValue = valueOr(outbox, null);
   const failedValue = valueOr(failed, null);
   const usageValue = valueOr(usage, null);
@@ -216,6 +221,7 @@ export async function collectHealth(deps: MonitorDeps = {}): Promise<HealthSnaps
       enabled: e.ORIGIN_FIREWALL_ENABLED,
       lastOkAt: beat(HOST_HEARTBEATS.originFirewall),
       lastFailedAt: beat(HOST_HEARTBEATS.originFirewallFailed),
+      certExpiresAt: certExpiry ? new Date(certExpiry * 1000).toISOString() : null,
     },
     email: { sentToday: usageValue?.emailToday ?? null, cap: e.EMAIL_DAILY_CAP },
     sentry: { sentThisMonth: usageValue?.sentryMonth ?? null, quota: e.SENTRY_MONTHLY_QUOTA },

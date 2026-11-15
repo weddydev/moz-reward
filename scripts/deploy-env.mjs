@@ -10,8 +10,10 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// Staging has no Tunnel until launch (T-5): Cloudflare's proxy reaches Caddy, which presents the Origin CA
+// certificate (origin-tls). Production keeps the Tunnel.
 export const ROLES = {
-  staging: ["web", "worker", "caddy", "cloudflared", "backup"],
+  staging: ["web", "worker", "caddy", "origin-tls", "backup"],
   production: ["web", "worker", "caddy", "cloudflared", "umami", "backup"],
 };
 
@@ -68,11 +70,40 @@ const SECRET_KEYS = {
   backup: { required: ["B2_KEY_ID", "B2_APP_KEY"], optional: [], stagingRequired: [] },
 };
 
+/** origin-tls is PEM, not KEY=value: the certificate and its key, from CLOUDFLARE_ORIGIN_{CERT,KEY}_<ENV> (H-40). */
+const ORIGIN_TLS_KEYS = ["CLOUDFLARE_ORIGIN_CERT", "CLOUDFLARE_ORIGIN_KEY"];
+
 export const ALL_SECRET_KEYS = [
-  ...new Set(
-    Object.values(SECRET_KEYS).flatMap((r) => [...r.required, ...r.optional, ...r.stagingRequired]),
-  ),
+  ...new Set([
+    ...Object.values(SECRET_KEYS).flatMap((r) => [
+      ...r.required,
+      ...r.optional,
+      ...r.stagingRequired,
+    ]),
+    ...ORIGIN_TLS_KEYS,
+  ]),
 ];
+
+/**
+ * The body for `moz-deploy write-env <env> origin-tls`: the certificate, then the key. Carriage returns are
+ * dropped (the key secret was pasted with CRLF endings, H-40); the root helper does the real validation
+ * (one CERTIFICATE + one unencrypted PRIVATE KEY, issuer, key match, host, expiry). Errors name keys only.
+ * @param {string} suffix
+ * @param {Readonly<Record<string, string | undefined>>} secrets
+ * @returns {string}
+ */
+function buildOriginTls(suffix, secrets) {
+  const [cert, key] = ORIGIN_TLS_KEYS.map((name) => {
+    const value = (secrets[name] ?? "").replaceAll("\r", "").trim();
+    if (value === "") throw new Error(`${name}_${suffix} is not set`);
+    return value;
+  });
+  if (!cert.startsWith("-----BEGIN CERTIFICATE-----"))
+    throw new Error(`CLOUDFLARE_ORIGIN_CERT_${suffix} is not a PEM certificate`);
+  if (!key.startsWith("-----BEGIN PRIVATE KEY-----"))
+    throw new Error(`CLOUDFLARE_ORIGIN_KEY_${suffix} is not an unencrypted PEM private key`);
+  return `${cert}\n${key}\n`;
+}
 
 /**
  * KEY=value lines → Map. Comments and blank lines are skipped; the value is everything after the first `=`.
@@ -104,9 +135,10 @@ const UNSAFE = /[\r\n']/;
  */
 export function buildEnv(env, role, config, secrets) {
   if (!Object.hasOwn(ROLES, env)) throw new Error(`unknown environment (staging or production)`);
-  if (!Object.hasOwn(SECRET_KEYS, role)) throw new Error(`unknown role`);
-  if (!ROLES[env].includes(role)) throw new Error(`${role} runs in production only`);
+  if (!Object.hasOwn(SECRET_KEYS, role) && role !== "origin-tls") throw new Error(`unknown role`);
+  if (!ROLES[env].includes(role)) throw new Error(`${role} does not run in ${env}`);
   const suffix = env.toUpperCase();
+  if (role === "origin-tls") return buildOriginTls(suffix, secrets);
   const lines = [];
   for (const key of CONFIG_KEYS[role]) {
     const value = config.get(key);

@@ -171,6 +171,9 @@ jobs:
           BASIC_AUTH_PASSWORD: ${{ secrets[format('BASIC_AUTH_PASSWORD_{0}', needs.resolve.outputs.suffix)] }}
           B2_KEY_ID: ${{ secrets[format('B2_BACKUP_KEY_ID_{0}', needs.resolve.outputs.suffix)] }}
           B2_APP_KEY: ${{ secrets[format('B2_BACKUP_KEY_{0}', needs.resolve.outputs.suffix)] }}
+          # Staging's Cloudflare Origin CA certificate + key (H-40; T-5). deploy-env.mjs drops the key's CRs.
+          CLOUDFLARE_ORIGIN_CERT: ${{ secrets[format('CLOUDFLARE_ORIGIN_CERT_{0}', needs.resolve.outputs.suffix)] }}
+          CLOUDFLARE_ORIGIN_KEY: ${{ secrets[format('CLOUDFLARE_ORIGIN_KEY_{0}', needs.resolve.outputs.suffix)] }}
         run: |
           set -euo pipefail
           if [ "$ENV" = staging ]; then
@@ -180,7 +183,9 @@ jobs:
               docker run --rm -i --network none caddy:2.11.9-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0 caddy hash-password)
             echo "::add-mask::$BASIC_AUTH_HASH"
             export BASIC_AUTH_HASH
-            roles="web worker caddy cloudflared"
+            # No Tunnel on staging until launch (T-5): Caddy presents the origin certificate. caddy before
+            # origin-tls: the helper checks the certificate against caddy.env's APP_HOST.
+            roles="web worker caddy origin-tls"
           else
             roles="web worker caddy cloudflared umami"
           fi
@@ -210,7 +215,7 @@ jobs:
           [ -n "$DB_OWNER_PASSWORD" ] || { echo "::error::DB_OWNER_PASSWORD_${ENV^^} is not set"; exit 1; }
           printf '%s\n' "$DB_OWNER_PASSWORD" | ssh -F "$SSH_CONFIG" vps "release $ENV $SHA"
 
-      - name: smoke through the Tunnel (staging; production shows the maintenance page until launch)
+      - name: smoke via the public hostname (staging; production shows the maintenance page until launch)
         if: needs.resolve.outputs.env == 'staging'
         env:
           BASIC_AUTH_PASSWORD: ${{ secrets.BASIC_AUTH_PASSWORD_STAGING }}
@@ -227,6 +232,27 @@ jobs:
           release=$(curl -fsS --netrc-file "$netrc" -D - -o /dev/null "https://$host/api/health/live" | tr -d '\r' | sed -n 's/^x-app-release: //Ip')
           echo "live; release header: ${release:-not exposed}"
           rm -f "$netrc"
+
+      # T-5 origin lock, checked from outside (the runner is not a Cloudflare address): the host firewall must
+      # DROP direct traffic, so curl times out (exit 28). A refusal, a TLS error or any HTTP answer means the
+      # origin is reachable around Cloudflare and fails the deploy. The release already checked that only Caddy
+      # publishes a port, on 0.0.0.0:443/tcp (no IPv6 listener).
+      - name: direct-IP probes must time out (staging origin lock)
+        if: needs.resolve.outputs.env == 'staging'
+        run: |
+          set -uo pipefail
+          fail=0
+          for url in "https://$VPS_HOST/" "http://$VPS_HOST:80/"; do
+            curl -sS -k -o /dev/null --connect-timeout 8 --max-time 10 "$url" 2>/dev/null
+            code=$?
+            if [ "$code" = 28 ]; then
+              echo "$url: dropped (curl 28)"
+            else
+              echo "::error::$url answered or was refused (curl exit $code); the origin must drop non-Cloudflare traffic"
+              fail=1
+            fi
+          done
+          exit "$fail"
 
       - name: clean up the key
         if: always()

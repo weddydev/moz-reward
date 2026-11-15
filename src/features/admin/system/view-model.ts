@@ -1,8 +1,9 @@
-import { formatDateTime } from "@/lib/format-date";
+import { formatDate, formatDateTime } from "@/lib/format-date";
 import {
   evaluateHealth,
   failedSinceSuccess,
   type HealthSnapshot,
+  secondsUntil,
   THRESHOLDS,
 } from "@/server/ops/health-rules";
 
@@ -80,6 +81,22 @@ function originFirewallStatus(
   };
 }
 
+/** The staging origin certificate (P0-15 C1b, recorded at each release); same rule as health.origin_firewall. */
+function originCertStatus(
+  f: HealthSnapshot["originFirewall"],
+  now: Date,
+): SystemView["status"][number] {
+  if (f.certExpiresAt === null) {
+    return { label: "Origin certificate", ok: true, detail: "expiry not recorded yet" };
+  }
+  const left = secondsUntil(f.certExpiresAt, now) ?? 0;
+  return {
+    label: "Origin certificate",
+    ok: left >= THRESHOLDS.originCertWarnDays * 86400,
+    detail: `expires ${formatDate(new Date(f.certExpiresAt))}`,
+  };
+}
+
 export function systemView(s: HealthSnapshot, now: Date): SystemView {
   const takenAge = ageOf(s.takenAt, now) ?? 0;
   const schedulerAge = ageOf(s.scheduler.lastRunAt, now);
@@ -110,7 +127,9 @@ export function systemView(s: HealthSnapshot, now: Date): SystemView {
         ok: schedulerAge !== null && schedulerAge <= THRESHOLDS.schedulerStaleSec,
         detail: `last heartbeat ${ageText(schedulerAge)}${schedulerAge === null ? "" : " ago"}`,
       },
-      ...(s.originFirewall.enabled ? [originFirewallStatus(s.originFirewall, now)] : []),
+      ...(s.originFirewall.enabled
+        ? [originFirewallStatus(s.originFirewall, now), originCertStatus(s.originFirewall, now)]
+        : []),
     ],
     queues: s.queues.map((q) => ({
       ...q,

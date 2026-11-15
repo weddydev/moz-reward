@@ -134,6 +134,13 @@
       "when": 1794740240477,
       "tag": "0018_host_heartbeat",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794743972722,
+      "tag": "0019_host_metric",
+      "breakpoints": true
     }
   ]
 }

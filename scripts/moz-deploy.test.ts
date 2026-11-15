@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { findBash } from "./lib/find-bash";
 
 /**
@@ -46,7 +46,8 @@ describe("[P0-15] moz-deploy request validation", () => {
     "write-env staging web",
     "write-env staging worker",
     "write-env staging caddy",
-    "write-env staging cloudflared",
+    "write-env staging origin-tls",
+    "write-env production cloudflared",
     "write-env production umami",
   ])("[P0-15] CI may run %s", (request) => {
     const result = check("ci", request);
@@ -78,6 +79,8 @@ describe("[P0-15] moz-deploy request validation", () => {
     [` load staging ${SHA}`, "leading space"],
     [`load staging ${SHA} `, "trailing space"],
     ["write-env staging umami", "Umami on staging"],
+    ["write-env staging cloudflared", "no Tunnel on staging until launch (T-5)"],
+    ["write-env production origin-tls", "production is reached through the Tunnel"],
     ["write-env staging ../web", "path in role"],
     ["write-env staging postgres", "unknown role"],
     ["rollback", "missing environment"],
@@ -311,3 +314,150 @@ describe("[P0-15] D2: wal-g settings are built on the host from the B2 key pair 
     expect(init).toContain("for unit in moz-backup moz-basebackup; do");
   });
 });
+
+describe("[P0-15] C1b: only staging's Caddy publishes a port, and only IPv4 TCP 443", () => {
+  it.each([
+    ["staging", "caddy", "443/tcp -> 0.0.0.0:443"],
+    ["staging", "web-1", ""],
+    ["staging", "postgres", ""],
+    ["production", "caddy", ""],
+    ["production", "cloudflared", ""],
+  ])("[P0-15] %s %s → %j", (env, svc, expected) => {
+    const result = run('expected_ports "$1" "$2"', [env, svc]);
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim()).toBe(expected);
+  });
+});
+
+/**
+ * C1b item 11: `write-env staging origin-tls` takes the Cloudflare Origin CA certificate and its key on stdin.
+ * Fixtures are made with OpenSSL here: CAs named like Cloudflare's two Origin CAs (the issuer the real staging
+ * certificate has: O=CloudFlare, Inc., OU=CloudFlare Origin SSL ECC Certificate Authority), and an unrelated CA.
+ */
+describe(
+  "[P0-15] C1b: the staging origin certificate is validated before Caddy gets it",
+  { timeout: 60_000 },
+  () => {
+    const HOST = "staging.example.com";
+    let fixtures = "";
+    beforeAll(() => {
+      const made = spawnSync(
+        bash,
+        [
+          "-c",
+          String.raw`set -euo pipefail
+export MSYS_NO_PATHCONV=1
+d=$(mktemp -d); cd "$d"
+cf="/C=US/ST=California/L=San Francisco/O=CloudFlare, Inc."
+ca() { openssl req -x509 -new -nodes -newkey "$2" $3 -days 3650 -subj "$4" -keyout "$1.key" -out "$1.crt" 2>/dev/null; }
+ca cfecc ec "-pkeyopt ec_paramgen_curve:P-256" "$cf/OU=CloudFlare Origin SSL ECC Certificate Authority"
+ca cfrsa rsa:2048 "" "$cf/OU=CloudFlare Origin SSL Certificate Authority/CN=CloudFlare Origin Certificate"
+ca other ec "-pkeyopt ec_paramgen_curve:P-256" "/O=Example/OU=CloudFlare Origin SSL Certificate Authority"
+# leaf <name> <ca> <days> <host> <keygen args…>
+leaf() {
+  local name=$1 ca=$2 days=$3 host=$4; shift 4
+  openssl genpkey "$@" -out "$name.key" 2>/dev/null
+  openssl req -new -key "$name.key" -subj "/O=CloudFlare, Inc./OU=CloudFlare Origin CA/CN=CloudFlare Origin Certificate" -out "$name.csr" 2>/dev/null
+  printf 'subjectAltName=DNS:%s\n' "$host" > "$name.ext"
+  openssl x509 -req -in "$name.csr" -CA "$ca.crt" -CAkey "$ca.key" -CAcreateserial -days "$days" -extfile "$name.ext" -out "$name.crt" 2>/dev/null
+  cat "$name.crt" "$name.key" > "$name.pem"
+}
+ec256="-algorithm EC -pkeyopt ec_paramgen_curve:P-256"
+leaf ecc cfecc 100 ${HOST} $ec256
+leaf p384 cfecc 100 ${HOST} -algorithm EC -pkeyopt ec_paramgen_curve:P-384
+leaf rsa cfrsa 100 ${HOST} -algorithm RSA -pkeyopt rsa_keygen_bits:2048
+leaf rsa1024 cfrsa 100 ${HOST} -algorithm RSA -pkeyopt rsa_keygen_bits:1024
+leaf p521 cfecc 100 ${HOST} -algorithm EC -pkeyopt ec_paramgen_curve:P-521
+leaf ed cfecc 100 ${HOST} -algorithm ED25519
+leaf short cfecc 20 ${HOST} $ec256
+leaf wronghost cfecc 100 other.example.com $ec256
+leaf wrongca other 100 ${HOST} $ec256
+cat ecc.crt p384.key > mismatch.pem
+openssl pkcs8 -topk8 -in ecc.key -v2 aes-256-cbc -passout pass:secret -out ecc.enc 2>/dev/null
+cat ecc.crt ecc.enc > encrypted.pem
+openssl pkey -in ecc.key -traditional -out ecc.trad 2>/dev/null
+cat ecc.crt ecc.trad > traditional.pem
+cat ecc.crt cfecc.crt ecc.key > chain.pem
+cat ecc.crt ecc.key ecc.key > twokeys.pem
+{ echo "subject=whatever"; cat ecc.pem; } > text.pem
+head -n 3 ecc.crt > unterminated.pem
+sed 's/$/\r/' ecc.pem > crlf.pem
+cat ecc.key ecc.crt > keyfirst.pem
+{ cat ecc.crt; echo; cat ecc.key; echo; } > blanks.pem
+# Node needs a native path on Windows (Git Bash); cygpath does not exist elsewhere.
+if command -v cygpath >/dev/null; then cygpath -m "$d"; else echo "$d"; fi`,
+        ],
+        { encoding: "utf8" },
+      );
+      if (made.status !== 0) throw new Error(`fixtures: ${made.stderr}`);
+      fixtures = made.stdout.trim();
+    }, 120_000);
+    // OpenSSL on Windows writes CRLF; the host (Linux) and CI write LF. Only the "crlf" fixture keeps its CRs.
+    const pem = (name: string): string => {
+      const text = readFileSync(path.join(fixtures, `${name}.pem`), "utf8");
+      return name === "crlf" ? text : text.replaceAll("\r\n", "\n");
+    };
+    afterAll(() => {
+      rmSync(fixtures, { recursive: true, force: true });
+    });
+    const install = (input: string, host = HOST): Run =>
+      run(
+        `d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; origin_tls_split "$d"; origin_tls_check "$d" "$1"; head -n 1 "$d/origin.crt" "$d/origin.key"`,
+        [host],
+        input,
+      );
+
+    it.each(["ecc", "p384", "rsa", "keyfirst", "blanks"])(
+      "[P0-15] accepts a Cloudflare Origin CA certificate with its own key: %s",
+      (name) => {
+        const result = install(pem(name));
+        expect(result.stderr).toBe("");
+        expect(result.status).toBe(0);
+        expect(result.stdout).toContain("-----BEGIN CERTIFICATE-----");
+        // Built from parts so the secret scanner doesn't take the PEM header for a key.
+        expect(result.stdout).toContain(["-----BEGIN", "PRIVATE", "KEY-----"].join(" "));
+      },
+    );
+
+    it.each([
+      ["rsa1024", "the RSA key is shorter than 2048 bits"],
+      ["p521", "the key must be RSA (2048 bits or more) or EC P-256/P-384"],
+      ["ed", "the key must be RSA (2048 bits or more) or EC P-256/P-384"],
+      ["short", "the certificate expires within 30 days"],
+      ["wronghost", "the certificate does not name staging.example.com"],
+      ["wrongca", "the certificate is not issued by the Cloudflare Origin CA"],
+      ["mismatch", "the key does not match the certificate"],
+      ["encrypted", "only one CERTIFICATE and one unencrypted PRIVATE KEY block are accepted"],
+      ["traditional", "only one CERTIFICATE and one unencrypted PRIVATE KEY block are accepted"],
+      ["chain", "exactly one CERTIFICATE and one PRIVATE KEY block are required"],
+      ["twokeys", "exactly one CERTIFICATE and one PRIVATE KEY block are required"],
+      ["text", "text outside the PEM blocks"],
+      ["unterminated", "unterminated CERTIFICATE block"],
+      ["crlf", "carriage return in input"],
+    ])("[P0-15] refuses %s: %s", (name, message) => {
+      const result = install(pem(name));
+      expect(result.status).toBe(EX_INPUT);
+      expect(result.stderr).toBe(`moz-deploy: bad input: ${message}\n`);
+      // Nothing of the key ever reaches the output.
+      expect(result.stdout).toBe("");
+    });
+
+    it("[P0-15] refuses empty input, a key alone and a corrupted block", () => {
+      expect(install("").status).toBe(EX_INPUT);
+      const key = pem("ecc").slice(pem("ecc").indexOf("-----BEGIN PRIVATE KEY-----"));
+      expect(install(key).stderr).toMatch(/exactly one CERTIFICATE/);
+      const corrupt = pem("ecc").replace(/\n[A-Za-z0-9+/]{10}/, "\n!!!!!!!!!!");
+      expect(install(corrupt).stderr).toMatch(/malformed CERTIFICATE block/);
+    });
+
+    it("[P0-15] reads the certificate's expiry as epoch seconds (recorded for health.origin_firewall)", () => {
+      const result = run('origin_cert_expiry "$1"', [
+        path.join(fixtures, "ecc.crt").replaceAll("\\", "/"),
+      ]);
+      expect(result.status).toBe(0);
+      const days = (Number(result.stdout.trim()) * 1000 - Date.now()) / 86_400_000;
+      expect(days).toBeGreaterThan(98);
+      expect(days).toBeLessThan(101);
+    });
+  },
+);

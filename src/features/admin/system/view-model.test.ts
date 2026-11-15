@@ -31,7 +31,7 @@ const snapshot = (over: Partial<HealthSnapshot> = {}): HealthSnapshot => ({
     storageBudgetBytes: 2_000_000_000,
     keyExpiresAt: null,
   },
-  originFirewall: { enabled: false, lastOkAt: null, lastFailedAt: null },
+  originFirewall: { enabled: false, lastOkAt: null, lastFailedAt: null, certExpiresAt: null },
   email: { sentToday: 290, cap: 400 },
   sentry: { sentThisMonth: null, quota: 5000 },
   sse: { connections: null },
@@ -100,7 +100,13 @@ describe("[P0-13] System page view model", () => {
     const row = (f: Partial<HealthSnapshot["originFirewall"]>) =>
       systemView(
         snapshot({
-          originFirewall: { enabled: true, lastOkAt: ago(3 * 3600), lastFailedAt: null, ...f },
+          originFirewall: {
+            enabled: true,
+            lastOkAt: ago(3 * 3600),
+            lastFailedAt: null,
+            certExpiresAt: null,
+            ...f,
+          },
         }),
         NOW,
       ).status.find((s) => s.label === "Origin firewall");
@@ -116,6 +122,30 @@ describe("[P0-13] System page view model", () => {
       ok: false,
       detail: "last refresh failed 10 min ago",
     });
+  });
+
+  it("[P0-15] the origin certificate row sits next to the firewall row and turns red 30 days before expiry", () => {
+    const cert = (certExpiresAt: string | null) =>
+      systemView(
+        snapshot({
+          originFirewall: { enabled: true, lastOkAt: ago(3600), lastFailedAt: null, certExpiresAt },
+        }),
+        NOW,
+      ).status.find((s) => s.label === "Origin certificate");
+    expect(systemView(snapshot(), NOW).status.map((s) => s.label)).not.toContain(
+      "Origin certificate",
+    );
+    expect(cert(null)).toEqual({
+      label: "Origin certificate",
+      ok: true,
+      detail: "expiry not recorded yet",
+    });
+    expect(cert("2041-11-11T07:26:00Z")).toEqual({
+      label: "Origin certificate",
+      ok: true,
+      detail: "expires 11 Nov 2041",
+    });
+    expect(cert(ago(-29 * 86400))).toMatchObject({ ok: false, detail: "expires 9 Dec 2026" });
   });
 
   it("stored snapshots are validated before rendering", () => {

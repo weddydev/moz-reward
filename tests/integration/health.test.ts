@@ -190,13 +190,23 @@ describe("[P0-15] C1b: the health monitor reads the origin firewall's heartbeats
     });
     try {
       const none = (await healthTick({ alerter })).snapshot.originFirewall;
-      expect(none).toEqual({ enabled: false, lastOkAt: null, lastFailedAt: null });
+      expect(none).toEqual({
+        enabled: false,
+        lastOkAt: null,
+        lastFailedAt: null,
+        certExpiresAt: null,
+      });
       await db().execute(sql`SELECT public.record_host_heartbeat('host:origin-firewall')`);
+      // 2041-11-11T07:26:00Z, the staging certificate's real expiry (0019, epoch seconds).
+      await db().execute(
+        sql`SELECT public.record_host_metric('host:origin-cert-expiry', 2267767560)`,
+      );
       await db().execute(sql`SELECT public.record_host_heartbeat('host:origin-firewall-failed')`);
       const { snapshot, raised } = await healthTick({ alerter });
       expect(snapshot.originFirewall.enabled).toBe(false);
       expect(snapshot.originFirewall.lastOkAt).not.toBeNull();
       expect(snapshot.originFirewall.lastFailedAt).not.toBeNull();
+      expect(snapshot.originFirewall.certExpiresAt).toBe("2041-11-11T07:26:00.000Z");
       // Not enabled in the test env: a failure heartbeat raises nothing.
       expect(raised.map((a) => a.kind)).not.toContain("health.origin_firewall");
     } finally {

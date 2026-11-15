@@ -57,9 +57,15 @@ export type HealthSnapshot = {
   /**
    * The staging origin lock (P0-15 C1b, infra/host/moz-origin-firewall): its daily refresh writes
    * `host:origin-firewall`, or `host:origin-firewall-failed` (suspicious or stale range list, failed apply or
-   * check). Checked only when ORIGIN_FIREWALL_ENABLED.
+   * check). `certExpiresAt`: the staging origin certificate's expiry (`host:origin-cert-expiry`, recorded by
+   * moz-deploy at each release); null = not known. Checked only when ORIGIN_FIREWALL_ENABLED.
    */
-  originFirewall: { enabled: boolean; lastOkAt: string | null; lastFailedAt: string | null };
+  originFirewall: {
+    enabled: boolean;
+    lastOkAt: string | null;
+    lastFailedAt: string | null;
+    certExpiresAt: string | null;
+  };
   email: { sentToday: number | null; cap: number };
   sentry: { sentThisMonth: number | null; quota: number };
   /** SSE connections (P1-10 adds the counter). */
@@ -100,8 +106,14 @@ export const healthSnapshotSchema: z.ZodType<HealthSnapshot> = z.object({
   }),
   // Added in P0-15 C1b: snapshots stored before then have no such field.
   originFirewall: z
-    .object({ enabled: z.boolean(), lastOkAt: iso, lastFailedAt: iso })
-    .default({ enabled: false, lastOkAt: null, lastFailedAt: null }),
+    .object({
+      enabled: z.boolean(),
+      lastOkAt: iso,
+      lastFailedAt: iso,
+      // Added with 0019: snapshots stored before then have no such field.
+      certExpiresAt: iso.default(null),
+    })
+    .default({ enabled: false, lastOkAt: null, lastFailedAt: null, certExpiresAt: null }),
   email: z.object({ sentToday: nn, cap: n }),
   sentry: z.object({ sentThisMonth: nn, quota: n }),
   sse: z.object({ connections: nn }),
@@ -120,6 +132,8 @@ export const THRESHOLDS = {
   keyExpiryWarnDays: 30,
   /** Daily timer (05:20 + up to 30 min) with room for one late run. */
   originFirewallMaxHours: 36,
+  /** infra/host/moz-deploy ORIGIN_MIN_DAYS: the same 30 days (it refuses a certificate with less left). */
+  originCertWarnDays: 30,
 } as const;
 
 /**
@@ -133,6 +147,10 @@ export const BACKUP_STORAGE_BUDGET_BYTES = {
 
 const ageSec = (iso: string | null, now: Date): number | null =>
   iso === null ? null : Math.floor((now.getTime() - new Date(iso).getTime()) / 1000);
+
+/** Seconds from now until an ISO time (negative once past); null when unknown. */
+export const secondsUntil = (iso: string | null, now: Date): number | null =>
+  iso === null ? null : Math.floor((new Date(iso).getTime() - now.getTime()) / 1000);
 
 /** A failure heartbeat counts until a success newer than it is recorded. */
 export const failedSinceSuccess = (failedAt: string | null, okAt: string | null): boolean =>
@@ -246,10 +264,19 @@ export function evaluateHealth(s: HealthSnapshot, now: Date): Alert[] {
   if (s.originFirewall.enabled) {
     const okAge = ageSec(s.originFirewall.lastOkAt, now);
     const failed = failedSinceSuccess(s.originFirewall.lastFailedAt, s.originFirewall.lastOkAt);
-    if (failed || okAge === null || okAge > THRESHOLDS.originFirewallMaxHours * 3600) {
+    const certLeftSec = secondsUntil(s.originFirewall.certExpiresAt, now);
+    const certExpiring =
+      certLeftSec !== null && certLeftSec < THRESHOLDS.originCertWarnDays * 86400;
+    if (
+      failed ||
+      certExpiring ||
+      okAge === null ||
+      okAge > THRESHOLDS.originFirewallMaxHours * 3600
+    ) {
       ops("health.origin_firewall", {
         lastRefreshAgeHours: okAge === null ? null : Math.floor(okAge / 3600),
         failed,
+        certExpiresInDays: certLeftSec === null ? null : Math.floor(certLeftSec / 86400),
       });
     }
   }

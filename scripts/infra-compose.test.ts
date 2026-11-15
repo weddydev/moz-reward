@@ -110,6 +110,19 @@ describe("[P0-15] compose stacks", () => {
     expect(prod.caddy?.networks).toEqual(["edge", "app"]);
   });
 
+  it("[P0-15] the origin certificate's key (caddy-tls) is mounted into staging's Caddy only, read-only", () => {
+    // Caddy runs as gid 1000, the app's gid too: the files are 0640 root:1000, so a mount anywhere else would
+    // hand the key to the app (C1b item 14).
+    for (const env of ENVS) {
+      for (const [name, s] of Object.entries(stack(env))) {
+        const mounts = (s.volumes ?? []).filter((v) => v.includes("caddy-tls"));
+        expect(mounts, `${env} ${name}`).toEqual(
+          env === "staging" && name === "caddy" ? ["${MOZ_ETC:?}/caddy-tls:/etc/caddy/tls:ro"] : [],
+        );
+      }
+    }
+  });
+
   for (const env of ENVS) {
     const services = stack(env);
 

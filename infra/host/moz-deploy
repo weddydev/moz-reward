@@ -8,7 +8,9 @@
 #       load <env> <sha>            stdin: `docker save | zstd` of moz-rewards-<env>:<sha>
 #       release <env> <sha>        stdin: the migration owner's password (one line)
 #       rollback <env>
-#       write-env <env> <role>     stdin: KEY=value lines (role: web worker caddy cloudflared umami backup)
+#       write-env <env> <role>     stdin: KEY=value lines (role: web worker caddy backup; production also
+#                                  cloudflared umami); for `write-env staging origin-tls` the Cloudflare Origin
+#                                  CA certificate followed by its unencrypted PKCS#8 key (PEM)
 #   - A developer's sudo user (or root) with arguments: the CI commands plus
 #       init-env <env>  bootstrap-db <env>  status <env>
 # <env> is staging|production, <sha> 40 lower-case hex. Secrets arrive on stdin only: never argv, -e, --env-file
@@ -36,6 +38,9 @@ readonly MAX_ENV_BYTES=65536
 readonly WAIT_SECONDS=180
 readonly EX_USAGE=64
 readonly EX_INPUT=65
+# The staging origin certificate (T-5): refused with less than this left; each release warns, and the health
+# monitor alerts (health.origin_firewall), from the same point.
+readonly ORIGIN_MIN_DAYS=30
 # Backups (P0-15 D2). The same values as infra/host/moz-backup (scripts/moz-deploy.test.ts keeps them equal):
 # wal-g's settings are built here, so CI only ever supplies the B2 key pair.
 readonly B2_ENDPOINT=https://s3.eu-central-003.backblazeb2.com
@@ -63,7 +68,7 @@ log() { printf 'moz-deploy: %s\n' "$*" >&2; }
 # ---------------------------------------------------------------------------------------------------------------
 is_env() { [[ $1 == staging || $1 == production ]]; }
 is_sha() { [[ $1 =~ ^[0-9a-f]{40}$ ]]; }
-is_role() { [[ $1 =~ ^(web|worker|caddy|cloudflared|umami|backup)$ ]]; }
+is_role() { [[ $1 =~ ^(web|worker|caddy|cloudflared|umami|backup|origin-tls)$ ]]; }
 
 # check_request <ci|admin> <request string>
 check_request() {
@@ -87,6 +92,10 @@ check_request() {
     write-env)
       if ! { ((n == 3)) && is_env "${w[1]}" && is_role "${w[2]}"; }; then usage_error "usage: write-env <env> <role>"; fi
       [[ ${w[2]} != umami || ${w[1]} == production ]] || usage_error "umami runs in production only"
+      # Until launch Cloudflare's proxy reaches staging directly (T-5): no Tunnel there, and only staging has an
+      # origin certificate of its own.
+      [[ ${w[2]} != cloudflared || ${w[1]} == production ]] || usage_error "cloudflared runs in production only"
+      [[ ${w[2]} != origin-tls || ${w[1]} == staging ]] || usage_error "origin-tls is for staging only"
       ;;
     init-env | bootstrap-db | status)
       [[ $mode == admin ]] || usage_error "$cmd is for developers, not CI"
@@ -154,6 +163,79 @@ render_env() {
 }
 
 # ---------------------------------------------------------------------------------------------------------------
+# Staging origin certificate (T-5, tested). Caddy presents it to Cloudflare (SSL Full strict).
+# ---------------------------------------------------------------------------------------------------------------
+# origin_tls_split <dir> < PEM: writes <dir>/origin.crt and <dir>/origin.key. Accepts exactly one CERTIFICATE
+# block and one unencrypted PKCS#8 PRIVATE KEY block, base64 lines only inside them and blank lines between;
+# anything else (an encrypted or legacy key, a chain, text) is refused.
+origin_tls_split() {
+  local dir=$1 input line label="" out="" certs=0 keys=0
+  input=$(head -c $((MAX_ENV_BYTES + 1)); printf x)
+  input=${input%x}
+  ((${#input} <= MAX_ENV_BYTES)) || input_error "more than $MAX_ENV_BYTES bytes"
+  [[ $input != *$'\r'* ]] || input_error "carriage return in input"
+  : >"$dir/origin.crt"
+  : >"$dir/origin.key"
+  while IFS= read -r line || [[ -n $line ]]; do
+    if [[ -z $label ]]; then
+      [[ -z $line ]] && continue
+      case $line in
+        '-----BEGIN CERTIFICATE-----') label=CERTIFICATE out=$dir/origin.crt certs=$((certs + 1)) ;;
+        '-----BEGIN PRIVATE KEY-----') label='PRIVATE KEY' out=$dir/origin.key keys=$((keys + 1)) ;;
+        -----BEGIN*) input_error "only one CERTIFICATE and one unencrypted PRIVATE KEY block are accepted" ;;
+        *) input_error "text outside the PEM blocks" ;;
+      esac
+    elif [[ $line == "-----END $label-----" ]]; then
+      label=""
+    elif [[ ! $line =~ ^[A-Za-z0-9+/=]{1,76}$ ]]; then
+      input_error "malformed $label block"
+    fi
+    printf '%s\n' "$line" >>"$out"
+  done < <(printf '%s' "$input")
+  [[ -z $label ]] || input_error "unterminated $label block"
+  ((certs == 1 && keys == 1)) || input_error "exactly one CERTIFICATE and one PRIVATE KEY block are required"
+}
+
+# origin_tls_check <dir> <host>: the pair is a Cloudflare Origin CA certificate for <host>, with ≥ ORIGIN_MIN_DAYS
+# left, and its own RSA ≥ 2048 or EC P-256/P-384 key. Output is parsed as text (`-checkhost` exit codes differ
+# between OpenSSL versions); `tr -d '\r'` only matters where the tests run OpenSSL on Windows.
+origin_tls_check() {
+  local dir=$1 host=$2 crt=$1/origin.crt key=$1/origin.key text a b issuer hostcheck
+  openssl x509 -in "$crt" -noout 2>/dev/null || input_error "the certificate does not parse"
+  openssl pkey -in "$key" -noout -passin pass: 2>/dev/null || input_error "the private key does not parse"
+  text=$(openssl pkey -in "$key" -pubout 2>/dev/null | openssl pkey -pubin -noout -text 2>/dev/null | tr -d '\r') ||
+    input_error "the private key does not parse"
+  if [[ $text == *Modulus:* ]]; then
+    if ! [[ $text =~ \(([0-9]+)\ bit\) ]] || ((BASH_REMATCH[1] < 2048)); then
+      input_error "the RSA key is shorter than 2048 bits"
+    fi
+  elif [[ $text != *$'\nASN1 OID: prime256v1'* && $text != *$'\nASN1 OID: secp384r1'* ]]; then
+    input_error "the key must be RSA (2048 bits or more) or EC P-256/P-384"
+  fi
+  a=$(openssl pkey -in "$key" -pubout -outform DER 2>/dev/null | sha256sum | cut -d' ' -f1)
+  b=$(openssl x509 -in "$crt" -noout -pubkey 2>/dev/null | openssl pkey -pubin -outform DER 2>/dev/null |
+    sha256sum | cut -d' ' -f1)
+  [[ $a == "$b" && $a != "$(printf '' | sha256sum | cut -d' ' -f1)" ]] || input_error "the key does not match the certificate"
+  issuer=$(openssl x509 -in "$crt" -noout -issuer -nameopt sep_multiline,utf8 2>/dev/null | tr -d '\r')
+  if [[ $issuer != *$'\n    O=CloudFlare, Inc.'* ]] ||
+    [[ $issuer != *$'\n    OU=CloudFlare Origin SSL Certificate Authority'* &&
+      $issuer != *$'\n    OU=CloudFlare Origin SSL ECC Certificate Authority'* ]]; then
+    input_error "the certificate is not issued by the Cloudflare Origin CA"
+  fi
+  openssl x509 -in "$crt" -noout -checkend $((ORIGIN_MIN_DAYS * 86400)) >/dev/null 2>&1 ||
+    input_error "the certificate expires within $ORIGIN_MIN_DAYS days"
+  hostcheck=$(openssl x509 -in "$crt" -noout -checkhost "$host" 2>/dev/null | tr -d '\r' || true)
+  [[ $hostcheck == "Hostname $host does match certificate" ]] || input_error "the certificate does not name $host"
+}
+
+# origin_cert_expiry <crt>: notAfter as epoch seconds.
+origin_cert_expiry() {
+  local end
+  end=$(openssl x509 -in "$1" -noout -enddate 2>/dev/null | tr -d '\r')
+  date -u -d "${end#notAfter=}" +%s
+}
+
+# ---------------------------------------------------------------------------------------------------------------
 # Host state
 # ---------------------------------------------------------------------------------------------------------------
 etc_dir() { echo "$MOZ_ETC_ROOT/$1"; }
@@ -189,6 +271,8 @@ cmd_init_env() {
     "$etc/redis-queue/tls" "$etc/redis-queue/acl" "$etc/redis-cache/tls" "$etc/redis-cache/acl"
   install -d -m 0755 -o root -g root "$MOZ_DATA_ROOT" "$data" "$RELEASES" "$RELEASES/$env"
   install -d -m 2750 -o 65534 -g 1000 "$data/caddy-logs"
+  # Staging's origin certificate and key (`write-env staging origin-tls`), readable by Caddy's group 1000 only.
+  [[ $env == staging ]] && install -d -m 0750 -o root -g 1000 "$etc/caddy-tls"
 
   # Passwords (hex: no URL escaping). Never printed.
   for name in db-app db-auth db-worker redis-queue-web redis-queue-worker redis-cache-web redis-cache-worker; do
@@ -324,8 +408,50 @@ generated_env() {
   esac
 }
 
+# The origin certificate's expiry for health.origin_firewall (0019), as the superuser over the socket.
+record_origin_cert_expiry() {
+  local env=$1 epoch
+  epoch=$(origin_cert_expiry "$(etc_dir "$env")/caddy-tls/origin.crt") || return 1
+  [[ $epoch =~ ^[0-9]{9,11}$ ]] || return 1
+  psql_super "$env" -d moz -c "SELECT public.record_host_metric('host:origin-cert-expiry', $epoch)" >/dev/null
+}
+
+# write-env staging origin-tls: validate in a private temp dir, install for Caddy, and recreate Caddy when the
+# pair changed (it reads the files only at start: `admin off`, no reload).
+cmd_write_origin_tls() {
+  local env=$1 etc host dir old new cur
+  etc=$(etc_dir "$env")
+  [[ -d $etc/secrets ]] || die "run init-env $env first"
+  host=$(sed -n "s/^APP_HOST='\([a-z0-9.-]*\)'\$/\1/p" "$etc/env/caddy.env" 2>/dev/null || true)
+  [[ -n $host ]] || die "write-env $env caddy first (the certificate is checked against APP_HOST)"
+  ORIGIN_TMP=$(mktemp -d)
+  trap 'rm -rf "$ORIGIN_TMP"' EXIT
+  origin_tls_split "$ORIGIN_TMP"
+  origin_tls_check "$ORIGIN_TMP" "$host"
+  dir=$etc/caddy-tls
+  install -d -m 0750 -o root -g 1000 "$dir"
+  old=$(cat "$dir/origin.crt" "$dir/origin.key" 2>/dev/null | sha256sum | cut -d' ' -f1)
+  new=$(cat "$ORIGIN_TMP/origin.crt" "$ORIGIN_TMP/origin.key" | sha256sum | cut -d' ' -f1)
+  write_file "$dir/origin.crt" 0640 root:1000 <"$ORIGIN_TMP/origin.crt"
+  write_file "$dir/origin.key" 0640 root:1000 <"$ORIGIN_TMP/origin.key"
+  rm -rf "$ORIGIN_TMP"
+  trap - EXIT
+  log "wrote $env/caddy-tls (valid until $(date -u -d "@$(origin_cert_expiry "$dir/origin.crt")" +%F))"
+  # Best effort here (staging may not be running yet); every release records it and fails if it can't.
+  record_origin_cert_expiry "$env" 2>/dev/null || log "origin certificate expiry not recorded yet (no database)"
+  cur=$(current_release "$env")
+  if [[ $old != "$new" && -n $cur && -n $(container_of "$env" "$cur" caddy 2>/dev/null) ]]; then
+    compose "$env" "$cur" up -d --no-deps --force-recreate --wait --wait-timeout "$WAIT_SECONDS" caddy
+    log "recreated caddy with the new origin certificate"
+  fi
+}
+
 cmd_write_env() {
   local env=$1 role=$2 etc body
+  if [[ $role == origin-tls ]]; then
+    cmd_write_origin_tls "$env"
+    return
+  fi
   etc=$(etc_dir "$env")
   [[ -d $etc/secrets ]] || die "run init-env $env first"
   body=$(render_env "$env" "$role")
@@ -510,8 +636,30 @@ roll_rest() {
   compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" worker
   if [[ $env == production ]]; then
     compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" umami
+    compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" caddy cloudflared
+  else
+    # Staging has no Tunnel until launch (T-5): Cloudflare's proxy reaches Caddy's published 443.
+    compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" caddy
   fi
-  compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" caddy cloudflared
+}
+
+# expected_ports <env> <service>: what `docker port` must print for it (C1b item 7). Only staging's Caddy
+# publishes anything, and only IPv4 TCP 443.
+expected_ports() {
+  [[ $1 == staging && $2 == caddy ]] && echo "443/tcp -> 0.0.0.0:443"
+  return 0
+}
+
+check_published_ports() {
+  local env=$1 sha=$2 id svc ports
+  while read -r id; do
+    [[ -n $id ]] || continue
+    svc=$(docker inspect -f '{{index .Config.Labels "com.docker.compose.service"}}' "$id")
+    ports=$(docker port "$id")
+    [[ $ports == "$(expected_ports "$env" "$svc")" ]] ||
+      die "$env $svc publishes '$(tr '\n' ' ' <<<"$ports")', expected '$(expected_ports "$env" "$svc")'"
+  done < <(compose "$env" "$sha" ps -q)
+  log "published ports checked ($env)"
 }
 
 current_release() { cat "$(data_dir "$1")/release-current" 2>/dev/null || true; }
@@ -549,11 +697,18 @@ cert_warnings() {
     openssl x509 -checkend $((60 * 86400)) -noout -in "$(etc_dir "$env")/$svc/tls/server.crt" >/dev/null ||
       log "WARNING: the $env $svc certificate expires within 60 days: run 'sudo moz-deploy init-env $env' and restart $svc"
   done
+  if [[ $env == staging ]]; then
+    openssl x509 -checkend $((ORIGIN_MIN_DAYS * 86400)) -noout -in "$(etc_dir "$env")/caddy-tls/origin.crt" >/dev/null ||
+      log "WARNING: the staging origin certificate expires within $ORIGIN_MIN_DAYS days: issue a new one (RUNBOOK §13)"
+  fi
 }
 
 cmd_release() {
   local env=$1 sha=$2 infra prev
   [[ -d $(etc_dir "$env")/secrets ]] || die "run init-env $env first"
+  if [[ $env == staging && ! (-s $(etc_dir "$env")/caddy-tls/origin.crt && -s $(etc_dir "$env")/caddy-tls/origin.key) ]]; then
+    die "no origin certificate: write-env staging origin-tls first"
+  fi
   read_owner_password
   prev=$(current_release "$env")
   infra=$(release_infra "$env" "$sha")
@@ -571,6 +726,7 @@ cmd_release() {
   run_migrations "$env" "$sha"
   run_bootstrap "$env" "$infra"
   if [[ $env == staging ]]; then
+    record_origin_cert_expiry "$env" || die "could not record the origin certificate's expiry"
     log "demo seed"
     compose "$env" "$sha" run --rm --no-deps -T worker node cli/seed.mjs
   fi
@@ -579,6 +735,7 @@ cmd_release() {
   roll_web "$env" "$sha" "$prev" || die "release $sha aborted; ${prev:-nothing} keeps serving"
   roll_rest "$env" "$sha"
   record_release "$env" "$sha" "$prev"
+  check_published_ports "$env" "$sha"
   prune "$env"
   log "release $env $sha: done"
 }
@@ -595,6 +752,7 @@ cmd_rollback() {
   roll_web "$env" "$prev" "$cur" || die "rollback aborted; ${cur:-nothing} keeps serving"
   roll_rest "$env" "$prev"
   record_release "$env" "$prev" "$cur"
+  check_published_ports "$env" "$prev"
   log "rollback $env: now on $prev"
 }
 

@@ -17,8 +17,12 @@ const CONFIG = parseConfig(
   ].join("\n"),
 );
 
-const fullSecrets = (): Record<string, string> =>
-  Object.fromEntries(ALL_SECRET_KEYS.map((k) => [k, `value-of-${k}`]));
+const fullSecrets = (): Record<string, string> => ({
+  ...Object.fromEntries(ALL_SECRET_KEYS.map((k) => [k, `value-of-${k}`])),
+  // origin-tls is PEM (the root helper does the full validation).
+  CLOUDFLARE_ORIGIN_CERT: "-----BEGIN CERTIFICATE-----\nvalue\n-----END CERTIFICATE-----",
+  CLOUDFLARE_ORIGIN_KEY: "-----BEGIN PRIVATE KEY-----\nvalue\n-----END PRIVATE KEY-----",
+});
 
 const keysOf = (body: string): string[] =>
   body
@@ -64,7 +68,7 @@ describe("[P0-15] deploy env files", () => {
     expect(keysOf(buildEnv("staging", "caddy", CONFIG, fullSecrets())).sort()).toEqual(
       ["APP_HOST", "BASIC_AUTH_HASH", "BASIC_AUTH_USER"].sort(),
     );
-    expect(keysOf(buildEnv("staging", "cloudflared", CONFIG, fullSecrets()))).toEqual([
+    expect(keysOf(buildEnv("production", "cloudflared", CONFIG, fullSecrets()))).toEqual([
       "TUNNEL_TOKEN",
     ]);
     expect(keysOf(buildEnv("production", "umami", CONFIG, fullSecrets()))).toEqual(["APP_SECRET"]);
@@ -81,6 +85,33 @@ describe("[P0-15] deploy env files", () => {
     expect(() =>
       buildEnv("staging", "backup", CONFIG, { ...fullSecrets(), B2_APP_KEY: "" }),
     ).toThrow("B2_APP_KEY_STAGING is not set");
+  });
+
+  it("[P0-15] origin-tls (staging) is the certificate then the key, CRs dropped, and refuses anything else", () => {
+    const cert = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----";
+    const key = "-----BEGIN PRIVATE KEY-----\nMIGH\n-----END PRIVATE KEY-----";
+    // The key secret was pasted with CRLF endings (H-40).
+    const secrets = {
+      CLOUDFLARE_ORIGIN_CERT: `${cert}\n`,
+      CLOUDFLARE_ORIGIN_KEY: key.replaceAll("\n", "\r\n"),
+    };
+    expect(ROLES.staging).toEqual(["web", "worker", "caddy", "origin-tls", "backup"]);
+    expect(buildEnv("staging", "origin-tls", CONFIG, secrets)).toBe(`${cert}\n${key}\n`);
+    expect(() =>
+      buildEnv("staging", "origin-tls", CONFIG, { ...secrets, CLOUDFLARE_ORIGIN_KEY: "" }),
+    ).toThrow("CLOUDFLARE_ORIGIN_KEY_STAGING is not set");
+    expect(() =>
+      buildEnv("staging", "origin-tls", CONFIG, { ...secrets, CLOUDFLARE_ORIGIN_CERT: key }),
+    ).toThrow("CLOUDFLARE_ORIGIN_CERT_STAGING is not a PEM certificate");
+    const encrypted = key.replaceAll("PRIVATE KEY", "ENCRYPTED PRIVATE KEY");
+    let message = "";
+    try {
+      buildEnv("staging", "origin-tls", CONFIG, { ...secrets, CLOUDFLARE_ORIGIN_KEY: encrypted });
+    } catch (e) {
+      message = (e as Error).message;
+    }
+    expect(message).toBe("CLOUDFLARE_ORIGIN_KEY_STAGING is not an unencrypted PEM private key");
+    expect(message).not.toContain("MIGH");
   });
 
   it("a missing or blank required secret fails, naming the key and not any value", () => {
@@ -116,8 +147,17 @@ describe("[P0-15] deploy env files", () => {
   it("refuses an unknown environment or role and a role the environment doesn't run", () => {
     expect(() => buildEnv("dev", "web", CONFIG, fullSecrets())).toThrow(/environment/);
     expect(() => buildEnv("staging", "postgres", CONFIG, fullSecrets())).toThrow(/role/);
-    expect(() => buildEnv("staging", "umami", CONFIG, fullSecrets())).toThrow(/production only/);
+    expect(() => buildEnv("staging", "umami", CONFIG, fullSecrets())).toThrow(
+      "umami does not run in staging",
+    );
     expect(ROLES.staging).not.toContain("umami");
+    // T-5: no Tunnel on staging until launch; production has no origin certificate of its own.
+    expect(() => buildEnv("staging", "cloudflared", CONFIG, fullSecrets())).toThrow(
+      "cloudflared does not run in staging",
+    );
+    expect(() => buildEnv("production", "origin-tls", CONFIG, fullSecrets())).toThrow(
+      "origin-tls does not run in production",
+    );
   });
 
   it("the committed settings files hold no secret key", async () => {

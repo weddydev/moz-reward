@@ -16,7 +16,8 @@ services:
     volumes:
       - ${MOZ_INFRA:?}/caddy/Caddyfile.staging:/etc/caddy/Caddyfile:ro
       - ${MOZ_INFRA:?}/caddy/cloudflare-origin-pull-ca.pem:/etc/caddy/cloudflare-origin-pull-ca.pem:ro
-      # Cloudflare Origin CA certificate + key (`moz-deploy write-env staging origin-tls`; key 0640 root:1000).
+      # Cloudflare Origin CA certificate + key (`moz-deploy write-env staging origin-tls`; 0640 root:1000). Caddy's
+      # gid 1000 is also the app's gid: never mount caddy-tls into web or worker (infra-compose test).
       - ${MOZ_ETC:?}/caddy-tls:/etc/caddy/tls:ro
 
   web-1:

@@ -598,6 +598,7 @@ describe("[P0-20] re-review (0011): admin writes bound to the admin role; define
       "record_backup_heartbeat",
       "record_backup_metric",
       "record_host_heartbeat",
+      "record_host_metric",
       "revoke_sessions_on_privilege_change",
     ]);
     for (const f of fns) {

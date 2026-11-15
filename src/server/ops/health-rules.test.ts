@@ -35,7 +35,7 @@ function healthy(): HealthSnapshot {
       storageBudgetBytes: 2_000_000_000,
       keyExpiresAt: null,
     },
-    originFirewall: { enabled: false, lastOkAt: null, lastFailedAt: null },
+    originFirewall: { enabled: false, lastOkAt: null, lastFailedAt: null, certExpiresAt: null },
     email: { sentToday: 10, cap: 400 },
     sentry: { sentThisMonth: 100, quota: 5000 },
     sse: { connections: null },
@@ -267,23 +267,66 @@ describe("[P0-13] health thresholds (ARCHITECTURE §11)", () => {
       f: Partial<HealthSnapshot["originFirewall"]>,
     ): Record<string, unknown> | undefined => {
       const s = healthy();
-      s.originFirewall = { enabled: true, lastOkAt: ago(3600), lastFailedAt: null, ...f };
+      s.originFirewall = {
+        enabled: true,
+        lastOkAt: ago(3600),
+        lastFailedAt: null,
+        certExpiresAt: null,
+        ...f,
+      };
       return evaluateHealth(s, NOW).find((a) => a.kind === "health.origin_firewall")?.detail;
     };
     const off = healthy();
-    off.originFirewall = { enabled: false, lastOkAt: null, lastFailedAt: ago(60) };
+    off.originFirewall = {
+      enabled: false,
+      lastOkAt: null,
+      lastFailedAt: ago(60),
+      certExpiresAt: ago(60),
+    };
     expect(kinds(off)).toEqual([]);
     expect(firewall({})).toBeUndefined();
     expect(firewall({ lastOkAt: ago(35 * 3600) })).toBeUndefined();
     expect(firewall({ lastOkAt: ago(37 * 3600) })).toEqual({
       lastRefreshAgeHours: 37,
       failed: false,
+      certExpiresInDays: null,
     });
-    expect(firewall({ lastOkAt: null })).toEqual({ lastRefreshAgeHours: null, failed: false });
+    expect(firewall({ lastOkAt: null })).toEqual({
+      lastRefreshAgeHours: null,
+      failed: false,
+      certExpiresInDays: null,
+    });
     // A failure counts until a newer success.
-    expect(firewall({ lastFailedAt: ago(60) })).toEqual({ lastRefreshAgeHours: 1, failed: true });
+    expect(firewall({ lastFailedAt: ago(60) })).toEqual({
+      lastRefreshAgeHours: 1,
+      failed: true,
+      certExpiresInDays: null,
+    });
     expect(firewall({ lastFailedAt: ago(7200) })).toBeUndefined();
     expect(THRESHOLDS.originFirewallMaxHours).toBe(36);
+  });
+
+  it("[P0-15] the origin certificate alerts from 30 days before it expires (and once expired), never while unknown", () => {
+    const cert = (leftSec: number | null): Record<string, unknown> | undefined => {
+      const s = healthy();
+      s.originFirewall = {
+        enabled: true,
+        lastOkAt: ago(3600),
+        lastFailedAt: null,
+        certExpiresAt: leftSec === null ? null : ago(-leftSec),
+      };
+      return evaluateHealth(s, NOW).find((a) => a.kind === "health.origin_firewall")?.detail;
+    };
+    expect(cert(null)).toBeUndefined();
+    expect(cert(30 * 86400)).toBeUndefined();
+    expect(cert(400 * 86400)).toBeUndefined();
+    expect(cert(30 * 86400 - 1)).toEqual({
+      lastRefreshAgeHours: 1,
+      failed: false,
+      certExpiresInDays: 29,
+    });
+    expect(cert(-86400)).toMatchObject({ certExpiresInDays: -1 });
+    expect(THRESHOLDS.originCertWarnDays).toBe(30);
   });
 
   it("[P0-15] a snapshot stored before the C1b origin-firewall field existed still parses (off)", () => {
@@ -293,7 +336,16 @@ describe("[P0-13] health thresholds (ARCHITECTURE §11)", () => {
       enabled: false,
       lastOkAt: null,
       lastFailedAt: null,
+      certExpiresAt: null,
     });
+  });
+
+  it("[P0-15] a snapshot stored before 0019 (no certExpiresAt) still parses, expiry unknown", () => {
+    const old = JSON.parse(JSON.stringify(healthy())) as {
+      originFirewall: Record<string, unknown>;
+    };
+    old.originFirewall = { enabled: true, lastOkAt: null, lastFailedAt: null };
+    expect(healthSnapshotSchema.parse(old).originFirewall.certExpiresAt).toBeNull();
   });
 
   it("unknown values (a check that could not run) never raise a false alarm by themselves", () => {
