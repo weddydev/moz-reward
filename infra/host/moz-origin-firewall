@@ -1,0 +1,180 @@
+#!/bin/bash -p
+# moz-origin-firewall: only Cloudflare reaches the staging origin (P0-15 C1b; T-5, DECISIONS 14 Nov "Origin lock
+# without the Tunnel until launch", SECURITY §11). Staging Caddy publishes 443 on the `moz-stg-in` bridge
+# (infra/compose/staging.yml). ufw never sees Docker-published ports (Docker DNATs them in PREROUTING and forwards
+# them before ufw's chains), so the filter lives in DOCKER-USER, which Docker evaluates first and never flushes:
+#
+#   DOCKER-USER  -o moz-stg-in  ctstate NEW  → MOZ-ORIGIN  (RETURN for each Cloudflare IPv4 range, else DROP)
+#   DOCKER-USER  -i moz-stg-in  ctstate NEW  → DROP        (Caddy opens nothing through its ingress bridge)
+#
+# Installed root-owned at /usr/local/sbin/moz-origin-firewall by infra/host/harden.sh (never by a release or CI).
+#
+#   moz-origin-firewall apply     load the rules from the last good range list (no network needed). Run by
+#                                 moz-origin-firewall.service before docker.service at boot, and by harden.sh.
+#   moz-origin-firewall refresh   fetch Cloudflare's ranges from its API, validate them, keep them as the last
+#                                 good list, then apply. Daily by moz-origin-firewall-refresh.timer. A failed or
+#                                 implausible fetch keeps the last good list (and exits 1, so the unit shows failed).
+#   moz-origin-firewall check     exit 0 only when the chain and both DOCKER-USER rules are in place. moz-deploy
+#                                 refuses to start staging Caddy otherwise.
+#
+# The second wall is Caddy itself: it requires Cloudflare's origin-pull client certificate on every handshake, so
+# a gap here (the seconds between boot and this unit, or a mistake) still refuses everyone but Cloudflare.
+set -Eeuo pipefail
+umask 077
+export LC_ALL=C
+
+readonly SAFE_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+readonly EX_USAGE=64
+readonly BRIDGE=moz-stg-in
+readonly CHAIN=MOZ-ORIGIN
+readonly API_URL=https://api.cloudflare.com/client/v4/ips
+readonly MIN_RANGES=5
+readonly MAX_RANGES=64
+# Fixed at install time. Not readonly only because scripts/moz-origin-firewall.test.ts sources this file and
+# points them at a temp dir.
+STATE=/var/lib/moz/cloudflare-ips-v4
+SEED=/etc/moz/cloudflare-ips-v4.seed
+
+log() { printf 'moz-origin-firewall: %s\n' "$*" >&2; }
+die() {
+  log "$*"
+  exit 1
+}
+
+# valid_ranges < list → the IPv4 CIDRs, one per line, sorted and unique; exit 1 if any line is not a plain IPv4
+# CIDR with a /8–/32 prefix, or the count is outside MIN_RANGES..MAX_RANGES. `#` comments and blank lines are
+# skipped (the seed file has a header).
+valid_ranges() {
+  local line ip prefix o out=() IFS
+  while IFS= read -r line || [[ -n $line ]]; do
+    line=${line%%#*}
+    line=${line//[[:space:]]/}
+    [[ -z $line ]] && continue
+    [[ $line =~ ^([0-9]{1,3}(\.[0-9]{1,3}){3})/([0-9]{1,2})$ ]] || {
+      log "not an IPv4 CIDR: ${line:0:64}"
+      return 1
+    }
+    ip=${BASH_REMATCH[1]}
+    prefix=${BASH_REMATCH[3]}
+    ((10#$prefix >= 8 && 10#$prefix <= 32)) || {
+      log "prefix out of range: $line"
+      return 1
+    }
+    IFS=.
+    for o in $ip; do
+      [[ $o == 0 || $o != 0* ]] || {
+        log "leading zero: $line"
+        return 1
+      }
+      ((10#$o <= 255)) || {
+        log "octet out of range: $line"
+        return 1
+      }
+    done
+    unset IFS
+    out+=("$ip/$((10#$prefix))")
+  done
+  ((${#out[@]} >= MIN_RANGES && ${#out[@]} <= MAX_RANGES)) || {
+    log "${#out[@]} ranges (expected $MIN_RANGES–$MAX_RANGES)"
+    return 1
+  }
+  printf '%s\n' "${out[@]}" | sort -u
+}
+
+# render_rules < valid ranges → iptables-restore input that replaces MOZ-ORIGIN in one transaction (`--noflush`
+# leaves every other chain alone; declaring the chain flushes only it).
+render_rules() {
+  local cidr
+  printf '*filter\n:%s - [0:0]\n' "$CHAIN"
+  while IFS= read -r cidr; do
+    printf -- '-A %s -s %s -p tcp --dport 443 -j RETURN\n' "$CHAIN" "$cidr"
+  done
+  printf -- '-A %s -j DROP\nCOMMIT\n' "$CHAIN"
+}
+
+# The two DOCKER-USER rules, as iptables arguments (also what `check` looks for).
+inbound_rule() { echo "-o $BRIDGE -m conntrack --ctstate NEW -j $CHAIN"; }
+outbound_rule() { echo "-i $BRIDGE -m conntrack --ctstate NEW -j DROP"; }
+
+# ensure_rule <rule…>: insert at the top of DOCKER-USER unless it is already there.
+ensure_rule() {
+  # shellcheck disable=SC2046 # the rule is a fixed word list
+  iptables -w 10 -C DOCKER-USER "$@" 2>/dev/null || iptables -w 10 -I DOCKER-USER 1 "$@"
+}
+
+cmd_apply() {
+  local list ranges
+  list=$STATE
+  [[ -s $list ]] || list=$SEED
+  [[ -s $list ]] || die "no range list ($STATE or $SEED)"
+  ranges=$(valid_ranges <"$list") || die "$list is not a valid range list"
+  # Docker creates DOCKER-USER at start and keeps what it finds; at boot this runs first, so create it.
+  iptables -w 10 -N DOCKER-USER 2>/dev/null || true
+  render_rules <<<"$ranges" | iptables-restore -w 10 --noflush
+  # Order matters only between our two rules and Docker's; both sit above anything Docker adds.
+  # shellcheck disable=SC2046
+  ensure_rule $(outbound_rule)
+  # shellcheck disable=SC2046
+  ensure_rule $(inbound_rule)
+  # No IPv6 listener exists (the port is published on 0.0.0.0 only); refuse IPv6 to the bridge all the same.
+  if ip6tables -w 10 -L DOCKER-USER -n >/dev/null 2>&1; then
+    ip6tables -w 10 -C DOCKER-USER -o "$BRIDGE" -j DROP 2>/dev/null || ip6tables -w 10 -I DOCKER-USER 1 -o "$BRIDGE" -j DROP
+  fi
+  log "applied $(wc -l <<<"$ranges") Cloudflare ranges from $list"
+}
+
+cmd_check() {
+  local returns
+  # shellcheck disable=SC2046
+  iptables -w 10 -C DOCKER-USER $(inbound_rule) 2>/dev/null || die "DOCKER-USER has no inbound rule for $BRIDGE"
+  # shellcheck disable=SC2046
+  iptables -w 10 -C DOCKER-USER $(outbound_rule) 2>/dev/null || die "DOCKER-USER has no outbound rule for $BRIDGE"
+  returns=$(iptables -w 10 -S "$CHAIN" 2>/dev/null | grep -c -- '-j RETURN$' || true)
+  ((returns >= MIN_RANGES)) || die "$CHAIN has $returns ranges"
+  iptables -w 10 -S "$CHAIN" | tail -n1 | grep -qx -- "-A $CHAIN -j DROP" || die "$CHAIN does not end in DROP"
+  log "ok ($returns ranges)"
+}
+
+# fetch_ranges → Cloudflare's IPv4 CIDRs from its API (JSON `result.ipv4_cidrs`), or exit 1.
+fetch_ranges() {
+  curl --proto '=https' --tlsv1.2 -fsS --max-time 20 --retry 2 --retry-delay 5 --max-filesize 65536 "$API_URL" |
+    jq -er 'select(.success == true) | .result.ipv4_cidrs | if type == "array" then .[] else error("no list") end'
+}
+
+cmd_refresh() {
+  local fetched ranges tmp
+  if ! fetched=$(fetch_ranges); then
+    cmd_apply
+    die "could not fetch $API_URL; kept the last good list"
+  fi
+  if ! ranges=$(valid_ranges <<<"$fetched"); then
+    cmd_apply
+    die "Cloudflare's list failed validation; kept the last good list"
+  fi
+  if [[ ! -s $STATE ]] || [[ $ranges != "$(valid_ranges <"$STATE" 2>/dev/null)" ]]; then
+    tmp=$(mktemp "$(dirname "$STATE")/.ranges.XXXXXX")
+    printf '%s\n' "$ranges" >"$tmp"
+    chmod 0644 "$tmp"
+    mv -f "$tmp" "$STATE"
+    log "range list changed: $(tr '\n' ' ' <<<"$ranges")"
+  fi
+  cmd_apply
+}
+
+main() {
+  export PATH=$SAFE_PATH
+  ((EUID == 0)) || die "run as root"
+  case ${1:-} in
+    apply) cmd_apply ;;
+    refresh) cmd_refresh ;;
+    check) cmd_check ;;
+    *)
+      log "usage: moz-origin-firewall apply|refresh|check"
+      exit "$EX_USAGE"
+      ;;
+  esac
+}
+
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+  main "$@"
+fi

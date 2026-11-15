@@ -54,6 +54,7 @@ http://{$APP_HOST} {
 			status 503
 		}
 	}
+	import access_log
 	import app_common
 }
 

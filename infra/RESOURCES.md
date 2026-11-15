@@ -20,8 +20,7 @@ One Hostinger KVM 4: **4 vCPU, 16 GB RAM, 200 GB NVMe**. Production and staging 
 | Staging | worker | 768 MB | |
 | Staging | redis-queue | 256 MB | `maxmemory 192mb`, `noeviction`, AOF |
 | Staging | redis-cache | 192 MB | `maxmemory 128mb`, `allkeys-lru` |
-| Staging | caddy | 64 MB | basic auth, noindex |
-| Staging | cloudflared | 64 MB | Tunnel for `staging.<domain>` |
+| Staging | caddy | 64 MB | basic auth, noindex; Cloudflare proxy on 443 until launch (no Tunnel, T-5) |
 | **Staging total** | | **≈ 3.3 GB** | may be stopped after launch when not in use |
 | Host | OS, Docker, page cache, backup jobs (pg_dump \| gpg, wal-g) | ≈ 3.2 GB headroom | 4 GB swap configured; alert if swap use > 1 GB sustained. The monthly restore drill (1st, ~02:30, minutes) runs a scratch Postgres capped at 1.5 GB with its data in a 1 GB tmpfs inside that cap (`infra/host/moz-backup` DRILL_MEMORY/DRILL_TMPFS); when the app database outgrows ~800 MB, move the scratch data to a disk volume |
 | **Total limits** | | **≈ 12.8 GB of 16 GB** | |
@@ -31,7 +30,7 @@ Connection budget (checked at boot, ENGINEERING §6; per-role pools since P0-20)
 ## CPU
 
 - Production: no CPU limits (it owns the host).
-- Staging: `cpus` 1.5 in total across its containers (web 0.4 each, worker 0.25, postgres 0.25, caddy/cloudflared/redis-queue/redis-cache 0.05 each; `infra/compose/staging.yml`); k6 smoke against staging never runs while production serves real users.
+- Staging: `cpus` 1.5 in total across its containers (web 0.4 each, worker 0.25, postgres 0.25, caddy/redis-queue/redis-cache 0.05 each; `infra/compose/staging.yml`); k6 smoke against staging never runs while production serves real users.
 
 ## Disk (200 GB)
 

@@ -8,8 +8,8 @@
 #   MOZ_ETC       /etc/moz/<env>      root-only env files, TLS material, ACL files, Postgres superuser password
 #   MOZ_DATA      /var/lib/moz/<env>  Caddy access logs (System page aggregation, C-35)
 #   MOZ_INFRA     the release's infra/ directory (configs are read-only bind mounts)
-# Rules (checked by infra/compose.test.ts): no `ports:` anywhere (the origin is reachable only through the
-# Tunnel); every service has a memory limit, drops all capabilities, sets no-new-privileges and a pids limit.
+# Rules (checked by infra/compose.test.ts): no `ports:` anywhere except staging Caddy's 443 (staging.yml: until
+# launch the staging origin is locked by firewall + origin-pull certificate instead of the Tunnel, T-5); every service has a memory limit, drops all capabilities, sets no-new-privileges and a pids limit.
 
 x-hardened: &hardened
   restart: unless-stopped
@@ -62,17 +62,6 @@ x-web: &web
     redis-cache: { condition: service_healthy }
 
 services:
-  cloudflared:
-    <<: *hardened
-    image: cloudflare/cloudflared:2026.10.7@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
-    # Remote-managed tunnel: ingress (hostname → http://caddy:80, catch-all 404) lives in the Cloudflare
-    # dashboard. TUNNEL_TOKEN comes from the root-only env file.
-    command: ["tunnel", "--no-autoupdate", "--metrics", "127.0.0.1:2000", "run"]
-    env_file: [{ path: "${MOZ_ETC:?}/env/cloudflared.env", required: true }]
-    user: "65532:65532"
-    networks: [edge, tunnel_egress]
-    depends_on: [caddy]
-
   caddy:
     <<: *hardened
     image: caddy:2.11.9-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0
@@ -91,7 +80,9 @@ services:
       - ${MOZ_DATA:?}/caddy-logs:/var/log/caddy
     tmpfs:
       - /tmp:size=16m,mode=1777
-    networks: [edge, app]
+    # Each environment adds how Cloudflare reaches it: production the Tunnel (edge network), staging a published
+    # 443 on the ingress network (staging.yml, T-5).
+    networks: [app]
     depends_on: [web-1, web-2]
 
   web-1:
@@ -190,11 +181,6 @@ volumes:
   redisqueue:
 
 networks:
-  # cloudflared ↔ Caddy only.
-  edge:
-    internal: true
-  # cloudflared → Cloudflare.
-  tunnel_egress: {}
   # Caddy → web replicas (and Umami in production).
   app:
     internal: true

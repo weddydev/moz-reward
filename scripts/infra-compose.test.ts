@@ -11,6 +11,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const read = (file: string): string => readFileSync(path.join(root, file), "utf8");
 
 type Service = Record<string, unknown> & {
+  ports?: string[];
   environment?: Record<string, string>;
   volumes?: string[];
   networks?: string[];
@@ -71,11 +72,42 @@ function budget(env: Env): Record<string, number> {
 }
 
 describe("[P0-15] compose stacks", () => {
-  it("[P0-15] publishes no host port and never uses host networking or privileged mode", () => {
+  it("[P0-15] never uses host networking or privileged mode; no host port except staging Caddy's 443 (T-5)", () => {
     for (const file of ["compose.yml", "staging.yml", "production.yml"]) {
       const text = read(`infra/compose/${file}`);
-      expect(text, file).not.toMatch(/^\s*(ports|network_mode|privileged|cap_add|devices):/m);
+      expect(text, file).not.toMatch(/^\s*(network_mode|privileged|cap_add|devices):/m);
+      if (file !== "staging.yml") expect(text, file).not.toMatch(/^\s*ports:/m);
     }
+    expect(read("infra/compose/staging.yml").match(/^\s*ports:/gm)).toHaveLength(1);
+    const staging = stack("staging");
+    for (const [name, s] of Object.entries(staging)) {
+      if (name !== "caddy") expect(s.ports, name).toBeUndefined();
+    }
+    // IPv4 TCP 443 only: no port 80, no UDP (HTTP/3), no IPv6 listener the IPv4 firewall wouldn't cover.
+    expect(staging.caddy?.ports).toEqual(["0.0.0.0:443:443/tcp"]);
+    expect(stack("production").caddy?.ports).toBeUndefined();
+  });
+
+  it("[P0-15] staging's ingress bridge has a fixed name for the firewall and no masquerade (Caddy can't get out)", () => {
+    const nets = load("infra/compose/staging.yml").networks as Record<
+      string,
+      { driver_opts?: Record<string, string> }
+    >;
+    expect(Object.keys(nets)).toEqual(["ingress"]);
+    expect(nets.ingress?.driver_opts).toEqual({
+      "com.docker.network.bridge.name": "moz-stg-in",
+      "com.docker.network.bridge.enable_ip_masquerade": "false",
+    });
+    expect(read("infra/host/moz-origin-firewall")).toContain("readonly BRIDGE=moz-stg-in");
+    expect(stack("staging").caddy?.networks).toEqual(["ingress", "app"]);
+  });
+
+  it("[P0-15] the Tunnel (cloudflared) runs in production only; staging has no Tunnel until launch (T-5)", () => {
+    expect(base.services.cloudflared).toBeUndefined();
+    expect(load("infra/compose/staging.yml").services.cloudflared).toBeUndefined();
+    const prod = stack("production");
+    expect(prod.cloudflared?.networks).toEqual(["edge", "tunnel_egress"]);
+    expect(prod.caddy?.networks).toEqual(["edge", "app"]);
   });
 
   for (const env of ENVS) {
@@ -111,12 +143,17 @@ describe("[P0-15] compose stacks", () => {
     });
 
     it(`[P0-15] ${env}: data services sit only on internal networks (Postgres also on its wal-g egress)`, () => {
-      const internal = (n: string): boolean => base.networks?.[n]?.internal === true;
+      const nets = { ...base.networks, ...load(`infra/compose/${env}.yml`).networks };
+      const internal = (n: string): boolean => nets[n]?.internal === true;
       for (const name of ["redis-queue", "redis-cache"]) {
         expect(services[name]?.networks?.every(internal), name).toBe(true);
       }
       expect(services.postgres?.networks?.filter((n) => !internal(n))).toEqual(["pg_egress"]);
-      expect(services.caddy?.networks?.every(internal)).toBe(true);
+      // Caddy's only non-internal network is how Cloudflare reaches it: none in production (the Tunnel's edge
+      // network is internal), the ingress bridge on staging (no masquerade, firewalled to Cloudflare's ranges).
+      expect(services.caddy?.networks?.filter((n) => !internal(n))).toEqual(
+        env === "staging" ? ["ingress"] : [],
+      );
       for (const [name, s] of Object.entries(services)) {
         if (name !== "postgres") expect(s.networks, name).not.toContain("pg_egress");
       }
@@ -230,8 +267,24 @@ describe("[P0-15] Caddy", () => {
     for (const file of [staging, production]) {
       expect(file).toContain("admin off");
       expect(file).toContain("auto_https off");
-      expect(file).toMatch(/^http:\/\/ \{\n\trespond 404\n\}/m);
     }
+    expect(production).toMatch(/^http:\/\/ \{\n\trespond 404\n\}/m);
+    // Staging: one https site for every name (client cert on every handshake); only APP_HOST reaches the app.
+    expect(staging).toMatch(/^\t@app host \{\$APP_HOST\}\n\thandle @app \{/m);
+    expect(staging).toMatch(/^\thandle \{\n\t\trespond 404\n\t\}/m);
+  });
+
+  it("[P0-15] staging: Cloudflare origin-pull client certificate required, Origin certificate, TLS ≥ 1.2", () => {
+    expect(staging).toMatch(/^https:\/\/:443 \{/m);
+    expect(staging).toContain("tls /etc/caddy/tls/origin.crt /etc/caddy/tls/origin.key {");
+    expect(staging).toContain("mode require_and_verify");
+    expect(staging).toContain("trust_pool file /etc/caddy/cloudflare-origin-pull-ca.pem");
+    expect(staging).toContain("protocols tls1.2 tls1.3");
+    expect(staging).toContain("strict_sni_host on");
+    expect(staging).not.toMatch(/^http:\/\//m);
+    expect(read("infra/caddy/cloudflare-origin-pull-ca.pem")).toMatch(
+      /^-----BEGIN CERTIFICATE-----\n[\s\S]+\n-----END CERTIFICATE-----\n$/,
+    );
   });
 
   it("[P0-15] staging: basic auth, noindex, credentials stripped before the app, no Umami", () => {

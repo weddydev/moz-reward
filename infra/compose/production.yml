@@ -4,13 +4,30 @@
 # Change this file and RESOURCES.md together (infra/compose.test.ts compares them).
 
 services:
+  # Production only: the Tunnel is production's origin lock (SECURITY §11). Staging uses Cloudflare's proxy until
+  # launch (T-5, staging.yml). Hardening spelled out: YAML anchors in compose.yml don't reach this file.
   cloudflared:
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+    image: cloudflare/cloudflared:2026.10.7@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
+    # Remote-managed tunnel: ingress (hostname → http://caddy:80, catch-all 404) lives in the Cloudflare
+    # dashboard. TUNNEL_TOKEN comes from the root-only env file.
+    command: ["tunnel", "--no-autoupdate", "--metrics", "127.0.0.1:2000", "run"]
+    env_file: [{ path: "${MOZ_ETC:?}/env/cloudflared.env", required: true }]
+    user: "65532:65532"
+    networks: [edge, tunnel_egress]
+    depends_on: [caddy]
     mem_limit: 128m
     memswap_limit: 128m
 
   caddy:
     mem_limit: 128m
     memswap_limit: 128m
+    networks: [edge, app]
     volumes:
       - ${MOZ_INFRA:?}/caddy/Caddyfile.production:/etc/caddy/Caddyfile:ro
     depends_on: [web-1, web-2, umami]
@@ -96,3 +113,10 @@ services:
     memswap_limit: 384m
     depends_on:
       postgres: { condition: service_healthy }
+
+networks:
+  # cloudflared ↔ Caddy only.
+  edge:
+    internal: true
+  # cloudflared → Cloudflare.
+  tunnel_egress: {}

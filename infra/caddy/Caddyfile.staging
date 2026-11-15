@@ -1,13 +1,19 @@
-# Staging Caddy (P0-15): staging.<domain> through the staging Tunnel only. Basic auth + noindex on everything;
-# no Umami on staging. Env (root-only caddy.env, written by `moz-deploy`): APP_HOST, BASIC_AUTH_USER,
-# BASIC_AUTH_HASH (bcrypt from `caddy hash-password`, never the plain password).
+# Staging Caddy (P0-15 C1b; T-5, DECISIONS 14 Nov "Origin lock without the Tunnel until launch"): Cloudflare's
+# proxy reaches this server directly on 443. Three walls: the host firewall admits only Cloudflare's IP ranges
+# (moz-origin-firewall), TLS requires Cloudflare's origin-pull client certificate (Authenticated Origin Pulls),
+# and basic auth covers everything. The server certificate is the Cloudflare Origin CA certificate (SSL Full
+# strict). No Umami on staging. Env (root-only caddy.env, written by `moz-deploy`): APP_HOST, BASIC_AUTH_USER,
+# BASIC_AUTH_HASH (bcrypt from `caddy hash-password`, never the plain password). TLS files: `moz-deploy write-env
+# staging origin-tls` → /etc/moz/staging/caddy-tls (mounted read-only at /etc/caddy/tls).
 {
 	admin off
 	auto_https off
 	persist_config off
 	servers {
-		trusted_proxies static private_ranges
-		client_ip_headers Cf-Connecting-Ip
+		# HTTP/1.1 and HTTP/2 over TCP only: UDP 443 is not published, so no HTTP/3.
+		protocols h1 h2
+		# With client certificates, the Host header must match the TLS server name.
+		strict_sni_host on
 		timeouts {
 			read_header 10s
 			idle 2m
@@ -25,17 +31,31 @@
 
 import common.caddy
 
-http://{$APP_HOST} {
-	header X-Robots-Tag "noindex, nofollow"
-	basic_auth {
-		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+# One site for every name on 443, so the client-certificate requirement applies to every handshake; requests for
+# any host other than APP_HOST get a 404. The app takes the visitor's IP from CF-Connecting-IP, which Cloudflare
+# always sets and only Cloudflare can send here (no trusted_proxies needed: Caddy's own client_ip is never logged).
+https://:443 {
+	import access_log
+	tls /etc/caddy/tls/origin.crt /etc/caddy/tls/origin.key {
+		protocols tls1.2 tls1.3
+		client_auth {
+			mode require_and_verify
+			trust_pool file /etc/caddy/cloudflare-origin-pull-ca.pem
+		}
 	}
-	# The app never sees the basic-auth credentials.
-	request_header -Authorization
-	import app_common
-}
 
-# Any other host name gets nothing.
-http:// {
-	respond 404
+	@app host {$APP_HOST}
+	handle @app {
+		header X-Robots-Tag "noindex, nofollow"
+		basic_auth {
+			{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+		}
+		# The app never sees the basic-auth credentials.
+		request_header -Authorization
+		import app_common
+	}
+
+	handle {
+		respond 404
+	}
 }

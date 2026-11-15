@@ -27,7 +27,7 @@
 }
 
 (app_common) {
-	import access_log
+	# The site block imports access_log itself (`log` is site-level, so it can't sit inside a handle).
 	# C-23: every request gets Caddy's id; a client-sent X-Request-Id is overwritten, never trusted.
 	request_header X-Request-Id {http.request.uuid}
 	header -Server

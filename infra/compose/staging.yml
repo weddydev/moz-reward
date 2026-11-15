@@ -3,17 +3,21 @@
 # Change this file and RESOURCES.md together (infra/compose.test.ts compares them).
 
 services:
-  cloudflared:
-    mem_limit: 64m
-    memswap_limit: 64m
-    cpus: 0.05
-
+  # Until launch, Cloudflare's proxy reaches staging directly (T-5, DECISIONS 14 Nov): Caddy publishes 443 on IPv4
+  # TCP only. The host firewall (moz-origin-firewall, DOCKER-USER) admits only Cloudflare's ranges to the ingress
+  # bridge, and Caddy requires Cloudflare's origin-pull client certificate. The only `ports:` in the stacks.
   caddy:
     mem_limit: 64m
     memswap_limit: 64m
     cpus: 0.05
+    ports:
+      - "0.0.0.0:443:443/tcp"
+    networks: [ingress, app]
     volumes:
       - ${MOZ_INFRA:?}/caddy/Caddyfile.staging:/etc/caddy/Caddyfile:ro
+      - ${MOZ_INFRA:?}/caddy/cloudflare-origin-pull-ca.pem:/etc/caddy/cloudflare-origin-pull-ca.pem:ro
+      # Cloudflare Origin CA certificate + key (`moz-deploy write-env staging origin-tls`; key 0640 root:1000).
+      - ${MOZ_ETC:?}/caddy-tls:/etc/caddy/tls:ro
 
   web-1:
     mem_limit: 512m
@@ -79,3 +83,12 @@ services:
     memswap_limit: 192m
     cpus: 0.05
     command: ["redis-server", "/etc/redis/redis.conf", "--maxmemory", "128mb"]
+
+networks:
+  # Cloudflare → Caddy. A fixed bridge name, so moz-origin-firewall can match it in DOCKER-USER; no masquerade,
+  # so Caddy has no way out to the internet through it.
+  ingress:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: moz-stg-in
+      com.docker.network.bridge.enable_ip_masquerade: "false"
