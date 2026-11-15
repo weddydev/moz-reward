@@ -14,7 +14,10 @@ import { findBash } from "./lib/find-bash";
 const root = path.resolve(import.meta.dirname, "..");
 const fwd = (p: string): string => p.replaceAll("\\", "/");
 const script = fwd(path.join(root, "infra", "postgres", "moz-walg"));
-const bash = findBash();
+// Git for Windows can't run these: its gpg reads `C:\…` paths as relative and its `install` can't make 0700
+// directories. They run in CI (Linux, like the VPS) and on macOS.
+const ON_WINDOWS = process.platform === "win32";
+const bash = ON_WINDOWS ? "" : findBash();
 const tmp = mkdtempSync(path.join(tmpdir(), "moz-walg-unit-"));
 const conf = path.join(tmp, "conf");
 const gnupg = path.join(tmp, "g");
@@ -42,6 +45,7 @@ const newKey = (uid: string): string => {
 };
 
 beforeAll(() => {
+  if (ON_WINDOWS) return;
   mkdirSync(gnupg, { mode: 0o700 });
   mkdirSync(conf);
   FPR = newKey("Walg Unit <walg-unit@example.invalid>");
@@ -81,7 +85,7 @@ function run(body: string, opts: { confDir?: string; lever?: boolean } = {}): Ru
   return { status: r.status, stdout: r.stdout, stderr: r.stderr };
 }
 
-describe("[P0-15] moz-walg arguments", () => {
+describe.skipIf(ON_WINDOWS)("[P0-15] moz-walg arguments", () => {
   it("[P0-15] accepts only wal-push <path> and backup-push", () => {
     expect(run("main").status).toBe(64);
     expect(run("main wal-push").status).toBe(64);
@@ -115,99 +119,105 @@ describe("[P0-15] moz-walg arguments", () => {
   });
 });
 
-describe("[P0-15] moz-walg runs wal-g only with fixed, allowlisted settings and encryption forced on", () => {
-  it("[P0-15] passes the six settings, the pinned key path and the fixed options, and nothing from its own environment", () => {
-    const r = run(
-      `export AWS_SHARED_CREDENTIALS_FILE=/x WALG_LIBSODIUM_KEY=y; cmd_wal_push pg_wal/000000010000000000000001`,
-    );
-    expect(r.status).toBe(0);
-    expect(r.stdout).toContain("ARGS wal-push pg_wal/000000010000000000000001");
-    for (const line of [
-      "AWS_ACCESS_KEY_ID=0031a2b3c4d5e6f70000000001",
-      "AWS_ENDPOINT=https://s3.eu-central-003.backblazeb2.com",
-      "AWS_S3_FORCE_PATH_STYLE=true",
-      "WALG_S3_PREFIX=s3://mozrewards-backups-dfd829/staging/wal",
-      `WALG_PGP_KEY_PATH=${fwd(conf)}/public.asc`,
-      "WALG_COMPRESSION_METHOD=zstd",
-      "WALG_DELTA_MAX_STEPS=0",
-      "WALG_PREVENT_WAL_OVERWRITE=false",
-    ]) {
-      expect(r.stdout).toContain(line);
-    }
-    expect(r.stdout).not.toContain("WALG_LIBSODIUM_KEY");
-    expect(r.stdout).not.toContain("AWS_SHARED_CREDENTIALS_FILE");
-  });
+describe.skipIf(ON_WINDOWS)(
+  "[P0-15] moz-walg runs wal-g only with fixed, allowlisted settings and encryption forced on",
+  () => {
+    it("[P0-15] passes the six settings, the pinned key path and the fixed options, and nothing from its own environment", () => {
+      const r = run(
+        `export AWS_SHARED_CREDENTIALS_FILE=/x WALG_LIBSODIUM_KEY=y; cmd_wal_push pg_wal/000000010000000000000001`,
+      );
+      expect(r.status).toBe(0);
+      expect(r.stdout).toContain("ARGS wal-push pg_wal/000000010000000000000001");
+      for (const line of [
+        "AWS_ACCESS_KEY_ID=0031a2b3c4d5e6f70000000001",
+        "AWS_ENDPOINT=https://s3.eu-central-003.backblazeb2.com",
+        "AWS_S3_FORCE_PATH_STYLE=true",
+        "WALG_S3_PREFIX=s3://mozrewards-backups-dfd829/staging/wal",
+        `WALG_PGP_KEY_PATH=${fwd(conf)}/public.asc`,
+        "WALG_COMPRESSION_METHOD=zstd",
+        "WALG_DELTA_MAX_STEPS=0",
+        "WALG_PREVENT_WAL_OVERWRITE=false",
+      ]) {
+        expect(r.stdout).toContain(line);
+      }
+      expect(r.stdout).not.toContain("WALG_LIBSODIUM_KEY");
+      expect(r.stdout).not.toContain("AWS_SHARED_CREDENTIALS_FILE");
+    });
 
-  it("[P0-15] refuses a settings file with any other key, a bad prefix or a missing value", () => {
-    const cases: Array<[string, string]> = [
-      [
-        `${GOOD_ENV}\nWALG_PGP_KEY_PATH='/tmp/other.asc'`,
-        "WALG_PGP_KEY_PATH is not an allowed setting",
-      ],
-      [`${GOOD_ENV}\nWALG_LIBSODIUM_KEY='x'`, "WALG_LIBSODIUM_KEY is not an allowed setting"],
-      [GOOD_ENV.replace("staging/wal", "staging/dumps"), "WALG_S3_PREFIX missing or malformed"],
-      [GOOD_ENV.replace("/staging/wal", "/other/wal"), "WALG_S3_PREFIX missing or malformed"],
-      [GOOD_ENV.replace("'true'", "'false'"), "AWS_S3_FORCE_PATH_STYLE must be true"],
-      [GOOD_ENV.replace(/^AWS_SECRET.*$/m, ""), "AWS_SECRET_ACCESS_KEY missing or malformed"],
-      [
-        GOOD_ENV.replace("AWS_REGION='eu-central-003'", "AWS_REGION=eu-central-003"),
-        "unexpected line",
-      ],
-    ];
-    for (const [body, message] of cases) {
-      const dir = mkdtempSync(path.join(tmp, "conf-"));
-      writeFileSync(path.join(dir, "walg.env"), `${body}\n`);
-      writeFileSync(path.join(dir, "public.asc"), gpg(["--armor", "--export", FPR]));
-      writeFileSync(path.join(dir, "fingerprint"), FPR);
-      const r = run("cmd_wal_push pg_wal/000000010000000000000001", { confDir: dir });
-      expect(r.status, message).toBe(1);
-      expect(r.stderr, message).toContain(message);
-      expect(r.stdout, message).not.toContain("ARGS");
-    }
-  });
+    it("[P0-15] refuses a settings file with any other key, a bad prefix or a missing value", () => {
+      const cases: Array<[string, string]> = [
+        [
+          `${GOOD_ENV}\nWALG_PGP_KEY_PATH='/tmp/other.asc'`,
+          "WALG_PGP_KEY_PATH is not an allowed setting",
+        ],
+        [`${GOOD_ENV}\nWALG_LIBSODIUM_KEY='x'`, "WALG_LIBSODIUM_KEY is not an allowed setting"],
+        [GOOD_ENV.replace("staging/wal", "staging/dumps"), "WALG_S3_PREFIX missing or malformed"],
+        [GOOD_ENV.replace("/staging/wal", "/other/wal"), "WALG_S3_PREFIX missing or malformed"],
+        [GOOD_ENV.replace("'true'", "'false'"), "AWS_S3_FORCE_PATH_STYLE must be true"],
+        [GOOD_ENV.replace(/^AWS_SECRET.*$/m, ""), "AWS_SECRET_ACCESS_KEY missing or malformed"],
+        [
+          GOOD_ENV.replace("AWS_REGION='eu-central-003'", "AWS_REGION=eu-central-003"),
+          "unexpected line",
+        ],
+      ];
+      for (const [body, message] of cases) {
+        const dir = mkdtempSync(path.join(tmp, "conf-"));
+        writeFileSync(path.join(dir, "walg.env"), `${body}\n`);
+        writeFileSync(path.join(dir, "public.asc"), gpg(["--armor", "--export", FPR]));
+        writeFileSync(path.join(dir, "fingerprint"), FPR);
+        const r = run("cmd_wal_push pg_wal/000000010000000000000001", { confDir: dir });
+        expect(r.status, message).toBe(1);
+        expect(r.stderr, message).toContain(message);
+        expect(r.stdout, message).not.toContain("ARGS");
+      }
+    });
 
-  it("[P0-15] fails (Postgres keeps the segment and retries) when archiving is not configured yet", () => {
-    const empty = mkdtempSync(path.join(tmp, "empty-"));
-    const r = run("cmd_wal_push pg_wal/000000010000000000000001", { confDir: empty });
-    expect(r.status).toBe(1);
-    expect(r.stderr).toContain("archiving is not configured");
-  });
-});
+    it("[P0-15] fails (Postgres keeps the segment and retries) when archiving is not configured yet", () => {
+      const empty = mkdtempSync(path.join(tmp, "empty-"));
+      const r = run("cmd_wal_push pg_wal/000000010000000000000001", { confDir: empty });
+      expect(r.status).toBe(1);
+      expect(r.stderr).toContain("archiving is not configured");
+    });
+  },
+);
 
-describe("[P0-15] moz-walg never uploads without the pinned key (design check HIGH 2)", () => {
-  const withKey = (armored: string, pinned: string): Run => {
-    const dir = mkdtempSync(path.join(tmp, "key-"));
-    writeFileSync(path.join(dir, "walg.env"), `${GOOD_ENV}\n`);
-    writeFileSync(path.join(dir, "public.asc"), armored);
-    writeFileSync(path.join(dir, "fingerprint"), pinned);
-    return run("cmd_wal_push pg_wal/000000010000000000000001; cmd_backup_push", { confDir: dir });
-  };
+describe.skipIf(ON_WINDOWS)(
+  "[P0-15] moz-walg never uploads without the pinned key (design check HIGH 2)",
+  () => {
+    const withKey = (armored: string, pinned: string): Run => {
+      const dir = mkdtempSync(path.join(tmp, "key-"));
+      writeFileSync(path.join(dir, "walg.env"), `${GOOD_ENV}\n`);
+      writeFileSync(path.join(dir, "public.asc"), armored);
+      writeFileSync(path.join(dir, "fingerprint"), pinned);
+      return run("cmd_wal_push pg_wal/000000010000000000000001; cmd_backup_push", { confDir: dir });
+    };
 
-  it("[P0-15] refuses another key, two keys, a non-key file, a missing pin or a short pin", () => {
-    const cases: Array<[string, string, string]> = [
-      [gpg(["--armor", "--export", OTHER]), FPR, "not the pinned"],
-      [gpg(["--armor", "--export", FPR, OTHER]), FPR, "exactly one key (found 2)"],
-      ["not a key\n", FPR, "is not an OpenPGP key"],
-      [gpg(["--armor", "--export", FPR]), "", "not a full key fingerprint"],
-      [gpg(["--armor", "--export", FPR]), FPR.slice(-16), "not a full key fingerprint"],
-    ];
-    for (const [armored, pinned, message] of cases) {
-      const r = withKey(armored, pinned);
-      expect(r.status, message).toBe(1);
-      expect(r.stderr, message).toContain(message);
-      expect(r.stdout, message).not.toContain("ARGS");
-    }
-  });
+    it("[P0-15] refuses another key, two keys, a non-key file, a missing pin or a short pin", () => {
+      const cases: Array<[string, string, string]> = [
+        [gpg(["--armor", "--export", OTHER]), FPR, "not the pinned"],
+        [gpg(["--armor", "--export", FPR, OTHER]), FPR, "exactly one key (found 2)"],
+        ["not a key\n", FPR, "is not an OpenPGP key"],
+        [gpg(["--armor", "--export", FPR]), "", "not a full key fingerprint"],
+        [gpg(["--armor", "--export", FPR]), FPR.slice(-16), "not a full key fingerprint"],
+      ];
+      for (const [armored, pinned, message] of cases) {
+        const r = withKey(armored, pinned);
+        expect(r.status, message).toBe(1);
+        expect(r.stderr, message).toContain(message);
+        expect(r.stdout, message).not.toContain("ARGS");
+      }
+    });
 
-  it("[P0-15] the pinned key passes for both wal-push and backup-push", () => {
-    const r = withKey(gpg(["--armor", "--export", FPR]), FPR);
-    expect(r.status).toBe(0);
-    expect(r.stdout).toContain("ARGS wal-push pg_wal/000000010000000000000001");
-    expect(r.stdout).toContain(`ARGS backup-push ${fwd(tmp)}`);
-  });
-});
+    it("[P0-15] the pinned key passes for both wal-push and backup-push", () => {
+      const r = withKey(gpg(["--armor", "--export", FPR]), FPR);
+      expect(r.status).toBe(0);
+      expect(r.stdout).toContain("ARGS wal-push pg_wal/000000010000000000000001");
+      expect(r.stdout).toContain(`ARGS backup-push ${fwd(tmp)}`);
+    });
+  },
+);
 
-describe("[P0-15] the archive-off lever (design check HIGH 3)", () => {
+describe.skipIf(ON_WINDOWS)("[P0-15] the archive-off lever (design check HIGH 3)", () => {
   it("[P0-15] wal-push reports success without running wal-g, even with no settings at all", () => {
     const empty = mkdtempSync(path.join(tmp, "empty-"));
     const r = run("cmd_wal_push pg_wal/000000010000000000000001", { confDir: empty, lever: true });
