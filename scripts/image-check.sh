@@ -4,7 +4,8 @@
 #   1. Trivy (binary pinned by checksum, not the trivy-action: its tags were hijacked in 2026): blocks HIGH/CRITICAL
 #      with a fix available, like OSV. No --skip-dirs: the runtime is Next standalone + bundled CLIs; packages
 #      bundled into cli/*.mjs carry no package.json, so the lockfile OSV gate covers them (DECISIONS).
-#   2. Slim runtime: the bundles parse, no package managers or dev dependencies, the release config is inside.
+#   2. Slim runtime: the bundles parse, APP_ENV is staging or production, no package managers or dev dependencies,
+#      the release config is inside.
 set -Eeuo pipefail
 image=${1:?usage: image-check.sh <image>}
 tmp=${RUNNER_TEMP:-$(mktemp -d)}
@@ -20,6 +21,10 @@ docker run --rm --network none --entrypoint sh "$image" -c '
   for f in cli/worker.mjs cli/relay.mjs cli/migrate.mjs cli/seed.mjs cli/demo-credentials.mjs server.js; do
     node --check "$f"
   done
+  case "${APP_ENV:-}" in
+    staging | production) ;;
+    *) echo "APP_ENV is \"${APP_ENV:-}\" in the runtime image (build arg not carried into the runtime stage?)"; exit 1 ;;
+  esac
   for t in npm npx pnpm corepack yarn tsx; do
     if command -v "$t" >/dev/null; then echo "unexpected tool in the runtime: $t"; exit 1; fi
   done

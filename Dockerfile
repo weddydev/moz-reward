@@ -35,7 +35,11 @@ ENV APP_ENV=$APP_ENV \
 RUN pnpm exec next build && pnpm exec tsx scripts/bundle-cli.ts
 
 FROM node AS runtime
-ENV NODE_ENV=production \
+# A build ARG is scoped to its stage and Next inlines only NEXT_PUBLIC_*: the server, worker and CLIs read APP_ENV
+# at run time, so the runtime stage sets it again (first staging release, 15 Nov: seed failed "APP_ENV: missing").
+ARG APP_ENV=production
+ENV APP_ENV=$APP_ENV \
+    NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0
