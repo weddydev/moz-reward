@@ -259,7 +259,16 @@ describe("[P0-15] moz-origin-firewall refresh", () => {
     expect(fileLines("docker")![0]).toMatch(
       /^exec -i -u postgres moz-staging-postgres-1 psql .* -d moz /,
     );
-    expect(result.stderr).toMatch(/range list changed/);
+    expect(result.stderr).toMatch(/stored the first range list/);
+  });
+
+  it("[P0-15] the first refresh is held to the seed: a list > 25% different is refused and alerted", () => {
+    const result = refresh(`${FORWARD_IN}; ${SEED_IN}`, swapped(4));
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/changed by 53%/);
+    expect(state()).toBeNull();
+    expect(ranges443()).toHaveLength(15);
+    expect(heartbeats()).toBe("host:origin-firewall-failed");
   });
 
   it("[P0-15] confirms an unchanged list by renewing its age", () => {

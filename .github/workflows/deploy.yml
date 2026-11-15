@@ -236,7 +236,9 @@ jobs:
       # T-5 origin lock, checked from outside (the runner is not a Cloudflare address): the host firewall must
       # DROP direct traffic, so curl times out (exit 28). A refusal, a TLS error or any HTTP answer means the
       # origin is reachable around Cloudflare and fails the deploy. The release already checked that only Caddy
-      # publishes a port, on 0.0.0.0:443/tcp (no IPv6 listener).
+      # publishes a port, on 0.0.0.0:443/tcp (no IPv6 listener), and from the host that Caddy refuses a client
+      # without Cloudflare's certificate. IPv6 (the VPS has an address; GitHub runners have none): nothing listens
+      # on [::]:443 (check_published_ports) and ufw denies IPv6 inbound except SSH.
       - name: direct-IP probes must time out (staging origin lock)
         if: needs.resolve.outputs.env == 'staging'
         run: |

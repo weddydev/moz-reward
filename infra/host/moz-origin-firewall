@@ -285,19 +285,26 @@ cmd_refresh() {
     die "could not fetch $API_URL; kept the last good list ($age days old)"
   fi
   ranges=$(valid_ranges <<<"$fetched") || alert "Cloudflare's list failed validation; kept the last good list"
-  if [[ -s $STATE ]] && old=$(valid_ranges <"$STATE" 2>/dev/null); then
+  # The first refresh (no last good list yet) is held to the committed seed, so it can't accept any list.
+  local base=$STATE
+  [[ -s $base ]] || base=$SEED
+  if [[ -s $base ]] && old=$(valid_ranges <"$base" 2>/dev/null); then
     pct=$(change_pct "$old" "$ranges")
     ((pct <= MAX_CHANGE_PCT)) || alert "Cloudflare's list changed by $pct% (> $MAX_CHANGE_PCT%); kept the" \
       "last good list. If https://www.cloudflare.com/ips-v4 confirms it, write it to $STATE and run apply"
   else
     old=""
   fi
-  if [[ $ranges != "$old" ]]; then
+  if [[ $ranges != "$old" || ! -s $STATE ]]; then
     tmp=$(mktemp "$(dirname "$STATE")/.ranges.XXXXXX")
     printf '%s\n' "$ranges" >"$tmp"
     chmod 0644 "$tmp"
     mv -f "$tmp" "$STATE"
-    log "range list changed: $(comm -3 <(printf '%s\n' "$old") <(printf '%s\n' "$ranges") | tr -s '\t\n' '  ')"
+    if [[ $ranges == "$old" ]]; then
+      log "stored the first range list (same as the seed)"
+    else
+      log "range list changed: $(comm -3 <(printf '%s\n' "$old") <(printf '%s\n' "$ranges") | tr -s '\t\n' '  ')"
+    fi
   else
     # Same list: the mtime records when it was last confirmed (list_age_days).
     touch "$STATE"

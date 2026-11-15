@@ -461,3 +461,32 @@ if command -v cygpath >/dev/null; then cygpath -m "$d"; else echo "$d"; fi`,
     });
   },
 );
+
+describe("[P0-15] C1b review: staging Caddy starts only behind the firewall, and refuses clients without the origin-pull certificate", () => {
+  it.each([
+    ["staging", "false", 1],
+    ["staging", "true", 0],
+    ["production", "false", 0],
+  ])(
+    "[P0-15] require_origin_firewall %s with a check that runs %s → exit %d",
+    (env, bin, status) => {
+      const result = run('require_origin_firewall "$1" "$2"', [env, bin]);
+      expect(result.status).toBe(status);
+      if (status) expect(result.stderr).toMatch(/the origin firewall is not in place/);
+    },
+  );
+
+  it.each([
+    ["35", "000", true],
+    ["56", "000", true],
+    ["56", "", true],
+    ["0", "401", false],
+    ["22", "421", false],
+    ["7", "000", false],
+    ["28", "000", false],
+    ["60", "000", false],
+    ["56", "200", false],
+  ])("[P0-15] mtls_probe_ok curl exit %s, HTTP %j → %s", (code, status, ok) => {
+    expect(run('mtls_probe_ok "$1" "$2"', [code, status]).status === 0).toBe(ok);
+  });
+});

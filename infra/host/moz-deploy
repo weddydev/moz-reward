@@ -441,7 +441,9 @@ cmd_write_origin_tls() {
   record_origin_cert_expiry "$env" 2>/dev/null || log "origin certificate expiry not recorded yet (no database)"
   cur=$(current_release "$env")
   if [[ $old != "$new" && -n $cur && -n $(container_of "$env" "$cur" caddy 2>/dev/null) ]]; then
+    require_origin_firewall "$env"
     compose "$env" "$cur" up -d --no-deps --force-recreate --wait --wait-timeout "$WAIT_SECONDS" caddy
+    check_origin_mtls "$env"
     log "recreated caddy with the new origin certificate"
   fi
 }
@@ -639,8 +641,41 @@ roll_rest() {
     compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" caddy cloudflared
   else
     # Staging has no Tunnel until launch (T-5): Cloudflare's proxy reaches Caddy's published 443.
+    require_origin_firewall "$env"
     compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" caddy
+    check_origin_mtls "$env"
   fi
+}
+
+# require_origin_firewall <env> [binary]: staging's Caddy publishes 443, so it may only start while the host
+# firewall admits Cloudflare alone (rules lost after a rebuild, `ufw reset` or a flush would otherwise open 443 to
+# the internet). The drop-in's check at Docker start is advisory; this one stops the deploy.
+require_origin_firewall() {
+  local env=$1 bin=${2:-/usr/local/sbin/moz-origin-firewall}
+  [[ $env == staging ]] || return 0
+  "$bin" check >/dev/null 2>&1 ||
+    die "the origin firewall is not in place: run 'sudo moz-origin-firewall apply' and check (RUNBOOK §13)"
+}
+
+# mtls_probe_ok <curl exit> <http code>: a handshake without Cloudflare's client certificate must end in a TLS
+# error (35, or 56 when TLS 1.3 reports the refusal on the first read) with no HTTP status at all.
+mtls_probe_ok() {
+  [[ $1 == 35 || $1 == 56 ]] && [[ -z $2 || $2 == 000 ]]
+}
+
+# check_origin_mtls <env>: from the host to its own public IPv4 (OUTPUT DNAT skips FORWARD, so the firewall is
+# not involved): the deployed Caddy, with the real origin-pull CA, must refuse a client without its certificate.
+check_origin_mtls() {
+  local env=$1 host ip code=0 status
+  [[ $env == staging ]] || return 0
+  host=$(sed -n "s/^APP_HOST='\([a-z0-9.-]*\)'\$/\1/p" "$(etc_dir "$env")/env/caddy.env")
+  ip=$(ip -4 route get 1.1.1.1 | awk '{ for (i = 1; i < NF; i++) if ($i == "src") { print $(i + 1); exit } }')
+  [[ -n $host && $ip =~ ^[0-9.]+$ ]] || die "check_origin_mtls: no APP_HOST or public IPv4"
+  status=$(curl -sS -k --http1.1 -o /dev/null -w '%{http_code}' --max-time 10 --resolve "$host:443:$ip" \
+    "https://$host/" 2>/dev/null) || code=$?
+  mtls_probe_ok "$code" "$status" ||
+    die "Caddy answered a client without Cloudflare's certificate (curl exit $code, HTTP ${status:-none})"
+  log "origin mTLS checked: refused without Cloudflare's client certificate (curl exit $code)"
 }
 
 # expected_ports <env> <service>: what `docker port` must print for it (C1b item 7). Only staging's Caddy
@@ -709,6 +744,8 @@ cmd_release() {
   if [[ $env == staging && ! (-s $(etc_dir "$env")/caddy-tls/origin.crt && -s $(etc_dir "$env")/caddy-tls/origin.key) ]]; then
     die "no origin certificate: write-env staging origin-tls first"
   fi
+  # Before anything changes: a release must not start staging's Caddy on an open host.
+  require_origin_firewall "$env"
   read_owner_password
   prev=$(current_release "$env")
   infra=$(release_infra "$env" "$sha")
