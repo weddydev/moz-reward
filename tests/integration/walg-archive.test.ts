@@ -89,7 +89,11 @@ const writeConf = (pinned: string): void => {
   writeFileSync(path.join(CONF, "fingerprint"), `${pinned}\n`, { mode: 0o644 });
 };
 
+// Git for Windows' gpg reads `C:\…` home directories as relative paths: this suite runs in CI (Linux) and on macOS.
+const ON_WINDOWS = process.platform === "win32";
+
 beforeAll(async () => {
+  if (ON_WINDOWS) return;
   must("gpg", ["--version"]);
   must("docker", [
     "build",
@@ -164,60 +168,21 @@ beforeAll(async () => {
 }, 600_000);
 
 afterAll(() => {
+  if (ON_WINDOWS) return;
   sh("docker", ["rm", "-f", PG]);
   sh("gpgconf", ["--homedir", GNUPG, "--kill", "all"]);
   rmSync(T, { recursive: true, force: true });
 });
 
-describe("[P0-15] WAL archiving and base backups through moz-walg (production image, MinIO)", () => {
-  it("[P0-15] archives WAL and takes a base backup with a list+write-only key; every data object is OpenPGP to the pinned key and holds no plaintext", async () => {
-    psql(
-      `CREATE TABLE secret_rows AS SELECT '${MARKER}' || g AS v FROM generate_series(1, 20000) g`,
-    );
-    psql("SELECT pg_switch_wal()");
-    await until(() => archiver().archived >= 1, "the first archived segment");
-    const base = sh("docker", [
-      "exec",
-      "-u",
-      "postgres",
-      PG,
-      "/usr/local/bin/moz-walg",
-      "backup-push",
-    ]);
-    expect(base.status, base.stderr.toString().slice(-600)).toBe(0);
-
-    const keys = objects("staging/wal/");
-    const data = keys.filter((k) => k.endsWith(".zst"));
-    expect(keys.some((k) => k.startsWith("staging/wal/wal_005/"))).toBe(true);
-    expect(data.some((k) => k.includes("basebackups_005/") && k.includes("tar_partitions/"))).toBe(
-      true,
-    );
-    // Everything else is wal-g's own metadata (LSNs, file names and sizes): JSON, never table contents.
-    expect(keys.filter((k) => !k.endsWith(".zst")).every((k) => k.endsWith(".json"))).toBe(true);
-
-    for (const key of keys) {
-      const body = read(key);
-      expect(body.includes(MARKER), key).toBe(false);
-    }
-    for (const key of data) {
-      const body = read(key);
-      // New-format PKESK (0xC1) or old-format (0x84-0x87): a message encrypted to a public key.
-      const first = body[0] ?? 0;
-      expect(first === 0xc1 || (first >= 0x84 && first <= 0x87), key).toBe(true);
-      const plain = must("gpg", ["--homedir", GNUPG, "--batch", "--quiet", "--decrypt"], body);
-      expect(plain.subarray(0, 4).toString("hex"), key).toBe("28b52ffd"); // zstd frame
-    }
-  }, 300_000);
-
-  it("[P0-15] the archive-off lever: segments are reported archived but nothing is uploaded; a base backup is refused", async () => {
-    const before = objects("staging/wal/wal_005/").length;
-    const { archived } = archiver();
-    writeFileSync(path.join(LEVER_DIR, "archive-off"), "", { mode: 0o644 });
-    try {
-      psql("CREATE TABLE lever_rows AS SELECT g FROM generate_series(1, 1000) g");
+describe.skipIf(ON_WINDOWS)(
+  "[P0-15] WAL archiving and base backups through moz-walg (production image, MinIO)",
+  () => {
+    it("[P0-15] archives WAL and takes a base backup with a list+write-only key; every data object is OpenPGP to the pinned key and holds no plaintext", async () => {
+      psql(
+        `CREATE TABLE secret_rows AS SELECT '${MARKER}' || g AS v FROM generate_series(1, 20000) g`,
+      );
       psql("SELECT pg_switch_wal()");
-      await until(() => archiver().archived > archived, "the segment to be passed over");
-      expect(objects("staging/wal/wal_005/").length).toBe(before);
+      await until(() => archiver().archived >= 1, "the first archived segment");
       const base = sh("docker", [
         "exec",
         "-u",
@@ -226,31 +191,74 @@ describe("[P0-15] WAL archiving and base backups through moz-walg (production im
         "/usr/local/bin/moz-walg",
         "backup-push",
       ]);
-      expect(base.status).toBe(1);
-      expect(base.stderr.toString()).toContain("archive-off lever is set");
-    } finally {
-      rmSync(path.join(LEVER_DIR, "archive-off"), { force: true });
-    }
-  }, 120_000);
+      expect(base.status, base.stderr.toString().slice(-600)).toBe(0);
 
-  it("[P0-15] a pinned fingerprint that doesn't match the key stops archiving with a failure pg_stat_archiver reports", async () => {
-    const before = objects("staging/wal/wal_005/").length;
-    const { failed } = archiver();
-    writeConf("0".repeat(40));
-    try {
-      psql("CREATE TABLE pin_rows AS SELECT g FROM generate_series(1, 1000) g");
-      psql("SELECT pg_switch_wal()");
-      await until(() => archiver().failed > failed, "the archive failure");
-      expect(objects("staging/wal/wal_005/").length).toBe(before);
-      expect(logs()).toContain("not the pinned");
-    } finally {
-      writeConf(FPR);
-    }
-    // Restored pin: Postgres retries the same segment and it goes up.
-    await until(
-      () => objects("staging/wal/wal_005/").length > before,
-      "the retried segment",
-      90_000,
-    );
-  }, 180_000);
-});
+      const keys = objects("staging/wal/");
+      const data = keys.filter((k) => k.endsWith(".zst"));
+      expect(keys.some((k) => k.startsWith("staging/wal/wal_005/"))).toBe(true);
+      expect(
+        data.some((k) => k.includes("basebackups_005/") && k.includes("tar_partitions/")),
+      ).toBe(true);
+      // Everything else is wal-g's own metadata (LSNs, file names and sizes): JSON, never table contents.
+      expect(keys.filter((k) => !k.endsWith(".zst")).every((k) => k.endsWith(".json"))).toBe(true);
+
+      for (const key of keys) {
+        const body = read(key);
+        expect(body.includes(MARKER), key).toBe(false);
+      }
+      for (const key of data) {
+        const body = read(key);
+        // New-format PKESK (0xC1) or old-format (0x84-0x87): a message encrypted to a public key.
+        const first = body[0] ?? 0;
+        expect(first === 0xc1 || (first >= 0x84 && first <= 0x87), key).toBe(true);
+        const plain = must("gpg", ["--homedir", GNUPG, "--batch", "--quiet", "--decrypt"], body);
+        expect(plain.subarray(0, 4).toString("hex"), key).toBe("28b52ffd"); // zstd frame
+      }
+    }, 300_000);
+
+    it("[P0-15] the archive-off lever: segments are reported archived but nothing is uploaded; a base backup is refused", async () => {
+      const before = objects("staging/wal/wal_005/").length;
+      const { archived } = archiver();
+      writeFileSync(path.join(LEVER_DIR, "archive-off"), "", { mode: 0o644 });
+      try {
+        psql("CREATE TABLE lever_rows AS SELECT g FROM generate_series(1, 1000) g");
+        psql("SELECT pg_switch_wal()");
+        await until(() => archiver().archived > archived, "the segment to be passed over");
+        expect(objects("staging/wal/wal_005/").length).toBe(before);
+        const base = sh("docker", [
+          "exec",
+          "-u",
+          "postgres",
+          PG,
+          "/usr/local/bin/moz-walg",
+          "backup-push",
+        ]);
+        expect(base.status).toBe(1);
+        expect(base.stderr.toString()).toContain("archive-off lever is set");
+      } finally {
+        rmSync(path.join(LEVER_DIR, "archive-off"), { force: true });
+      }
+    }, 120_000);
+
+    it("[P0-15] a pinned fingerprint that doesn't match the key stops archiving with a failure pg_stat_archiver reports", async () => {
+      const before = objects("staging/wal/wal_005/").length;
+      const { failed } = archiver();
+      writeConf("0".repeat(40));
+      try {
+        psql("CREATE TABLE pin_rows AS SELECT g FROM generate_series(1, 1000) g");
+        psql("SELECT pg_switch_wal()");
+        await until(() => archiver().failed > failed, "the archive failure");
+        expect(objects("staging/wal/wal_005/").length).toBe(before);
+        expect(logs()).toContain("not the pinned");
+      } finally {
+        writeConf(FPR);
+      }
+      // Restored pin: Postgres retries the same segment and it goes up.
+      await until(
+        () => objects("staging/wal/wal_005/").length > before,
+        "the retried segment",
+        90_000,
+      );
+    }, 180_000);
+  },
+);
