@@ -148,6 +148,12 @@ jobs:
             UserKnownHostsFile $GITHUB_WORKSPACE/infra/host/known_hosts
             ServerAliveInterval 30
             ConnectTimeout 20
+            # One TCP connection for the whole job: the host's ufw "limit 22/tcp" drops a 6th connection
+            # within 30 s (first staging deploy, 15 Nov: blocked at load after five write-env calls). Every
+            # session still runs the forced command.
+            ControlMaster auto
+            ControlPath $d/cm-%C
+            ControlPersist 20m
           EOF
           echo "SSH_CONFIG=$d/config" >> "$GITHUB_ENV"
 
