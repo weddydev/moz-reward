@@ -523,3 +523,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - H-42 fix (b2 CLI, temp admin key deleted after): 3 old keys deleted; default retention governance 35 d; new keys bucket-only + prefix, `listFiles,writeFiles` (restore: `listFiles,readFiles`); GitHub secrets replaced without display; v4 authorize check `43697242708` OK. NOTE for D4: no per-object retention in moz-backup and the host key lacks writeFileRetentions, so staging objects get the bucket's 35 d (not 7 d): adjust the plan/HUMAN_TASKS wording or accept the storage; S3 PutObject/ListObjectVersions with these 2 capabilities is proven only by D4.
 - H-42: the human imported the 3 new keys into the password manager; Claude checked the file is gone (not in Trash), history clean, clipboard cleared. Left: delete `moz-backups` after D4.
 - Handoff (talha.syed, Mac): human request "close P0 completely + demo guide" → DECISIONS 15 Nov (staging inside P0); next B2 run → C1b → C2 → D3/D4 → E → P0 close + `/demo`. Main code unchanged since `03e3afc` (CI `43578704624` green).
+
+## 2026-11-15 — P0 — P0-15 C1b part 1 (Windows, Syedbadeshah76)
+- `wip/P0-15` `7a05aa5`: staging origin via Cloudflare proxy: compose (cloudflared → production.yml; staging caddy 0.0.0.0:443/tcp on `moz-stg-in`, no masquerade), Caddyfile.staging mTLS (Cloudflare AOP CA sha256 9A:1A:C2:B4…A2:B9), site-level access_log; compose lint 32/32; `caddy adapt` both OK.
+- Windows-only skips: moz-walg unit, moz-backup D2, walg-archive + backup-pipeline integration (Git for Windows gpg reads C: paths as relative; `install -m 0700` fails on NTFS); they run in CI/Mac.
+- Security design check C1b: no BLOCK/HIGH; MEDIUM 1–4, 7, 8 required (DOCKER-USER backend pin, fail-closed firewall, CIDR checks, exit-28 probes, host mTLS curl) → P0-15-plan "C1b to do".
+- `6bcba7a` pre-push gate:task PASS (unit 1243, int 1160, sast, lint:sh). H-28 done (prod Google secrets seen), H-39 Windows done (batch SSH root OK), H-43 done (Windows known_hosts match).
+- Next: finish C1b, then the B2 hardening run from Windows.
