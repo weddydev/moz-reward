@@ -3,37 +3,36 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-15 18:05 (Mac)
+Baton: free — last held by talha.syed, 2026-11-15 23:30 IST (Mac)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 2026-11-15 ~22:45 IST (Mac); baton held by talha.syed.** **P0-15 C2 DONE: staging is live** at `https://staging.mozrewards.com` (basic auth `moz`), release `4c3d240`; deploy → rollback → redeploy all green. D3 done; D3b open.
-- **Human request (15 Nov, standing for this run):** close P0 completely **with** staging and the client demo, plus a client demo guide (`/demo` notes in DEMO_NOTES.md after the staging rehearsal). Fast, same quality.
-- **Finished this session:** six deploy blockers fixed in turn (origin-tls on a fresh host `1219f7d`; ufw SSH limit → CI multiplexing `4f7f0e9`; runtime APP_ENV `cc2c8b2`; H-36 secret (human); Caddy listen wait `5f7a25d`; probe step under bash -e `4c3d240`). D3 `pnpm backup:verify` + security-review fixes. Mac host-script tests use GNU tools. CARRIED closed: C-19, C-21, C-27, C-33; C-32/C-37/C-38 partly (see rows).
-- **Next step (exact):** (1) C-23/C-38 staging curls need basic auth: add a manual `workflow_dispatch` job (or deploy smoke lines) using `BASIC_AUTH_PASSWORD_STAGING`: `X-Request-Id: chosen-by-client` not reflected (C-23), `/u/` + `/u/login` 404 behind auth (C-36), demo owner password alone → two-step challenge and `/api/auth/two-factor/enable` 401 (C-38); (2) C-32 RLS EXPLAIN on staging (`docker exec … node cli/…` or psql as moz_app) → DECISIONS; (3) H-36 steps 3–5 (demo TOTP, human) and UptimeRobot (H-27); (4) **D3b** PITR (plan line 36) → D4 (first backups on staging, `BACKUPS_ENABLED=true`) → E → C-40 → C-17 → `/subphase-complete` → `/phase-complete` → `/demo`.
-- **Host scripts:** a change to `infra/host/*` needs `scp -r infra talha@72.61.17.208:moz-infra && ssh talha@… 'sudo -n bash ~/moz-infra/host/harden.sh'` before a deploy uses it (CI never updates host scripts). Run long gates under `caffeinate -i` (sleep broke a gate run).
-- **Dispatching a deploy by hand:** pass `-f sha=<commit with green push CI>`; HEAD may be a progress-only commit without CI (refused, by design).
-- **Not yet tested:** backup:verify's passphrase prompt with a piped key; worker healthcheck status on staging (shows no health state); SSE/realtime through Cloudflare.
+- **Handoff by talha.syed, 2026-11-15 23:30 IST (Mac); baton free.** **P0-15 C2 done: staging is live** at `https://staging.mozrewards.com` (gate user `moz`; password rotated 15 Nov, in the human's password manager), release `4c3d240`. Work is on `main` (`wip/P0-15` is stale, unused). Last CI `43737509611` on `4c3d240` green; later commits are docs/progress only. gate:task PASS on `87cf27d` at handoff.
+- **Human request (15 Nov, standing for this run):** close P0 completely **with** staging and the client demo, plus a client demo guide. Guide written: `docs/DEMO_GUIDE.md` (click-by-click; Part 1 setup, Part 2 practice, Part 3 13-step demo). `/demo` still writes the client-facing DEMO_NOTES.md at the phase close.
+- **Finished this session:** six staging deploy blockers fixed (origin-tls on a fresh host `1219f7d`; ufw SSH limit → CI SSH multiplexing `4f7f0e9`; runtime APP_ENV `cc2c8b2`; H-36 secret (human); Caddy listen wait `5f7a25d`; probe step under bash -e `4c3d240`); deploy → rollback → redeploy green; RUNBOOK §9 rotation walked (basic-auth password); D3 `pnpm backup:verify` + security-review fixes (`7ccc6d6`, `68e25e8`, `bc431d6`); RUNBOOK §6 (backup:verify) + §16 (demo accounts); Mac host-script tests use GNU tools; CI E2E flake precondition `2fa398c`. CARRIED closed: C-19, C-21, C-27, C-33; C-32/C-37/C-38 partly; C-45 added.
+- **Half-done / exactly how to continue (P0-15):** (1) **C-23/C-36/C-38 staging checks behind basic auth:** add a manual `workflow_dispatch` job (deploy.yml or a small staging-check.yml) that reads `BASIC_AUTH_PASSWORD_STAGING` into a netrc and curls: `-H 'X-Request-Id: chosen-by-client'` not reflected (C-23); `/u/` and `/u/login` → 404 (C-36); demo owner password alone → two-step challenge, `/api/auth/two-factor/enable` → 401 (C-38). (2) C-32 RLS EXPLAIN on staging data (psql as moz_app in `moz-staging-postgres-1`) → DECISIONS. (3) C-38 weekly `seed --reset` schedule: check it exists (timer/scheduled job), else add. (4) **D3b** PITR (`progress/P0-15-plan.md` line 36) → **D4** first backups on staging + `BACKUPS_ENABLED=true` → **E** (request logs C-35, UptimeRobot, ZAP/k6, RUNBOOK §12/§13 walks C-37) → C-40 → C-17 → `/subphase-complete` → `/phase-complete` → `/demo`.
+- **Tested:** gate:task PASS on `87cf27d` (unit 1378, int 1214, sast, lint:sh 7); staging deploy `43738380893` (migrations over the previous release + seed, rolling web, mTLS refusal curl 56, smoke ready, direct-IP 443/80 curl 28), rollback `43738687616`, redeploy `43738782802`, password-rotation redeploy `43742044923`: all green. From the Mac: VPS IP 443/80 dropped; hostname 401 via Cloudflare with `x-robots-tag: noindex`. Host: web has no DATABASE_URL_WORKER, max_connections 80, worker stop grace 90 s; `demo-credentials.mjs` (+ `--codes`) exit 0 in the slim image. backup:verify unit 10 + integration 11.
+- **Not yet tested:** the demo guide's clicks on staging (written from the code; the human runs Part 2); backup:verify's passphrase prompt with a piped key; worker container health state (shows none); SSE/realtime through Cloudflare; Sentry release events from staging.
+- **Do first:** `git pull`; nothing new to install (Mac: `brew install bash coreutils gnu-sed openssl@3` for host-script tests). A change to `infra/host/*` needs `scp -r infra <you>@72.61.17.208:moz-infra && ssh <you>@… 'sudo -n bash ~/moz-infra/host/harden.sh'` before a deploy uses it. Manual deploy dispatch: pass `-f sha=<commit with green push CI>`. Mac: run long gates under `caffeinate -i`.
 - **VPS access:** root SSH off. Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`; `sudo -n` works. CI: `deploy@` forced command only.
 
 ## Status
-- **Phase:** P0 closing: **P0-15 on `wip/P0-15`** (A, B1, B2 files, C1, C1b parts 1–2, D1, D2 done); human 15 Nov: close P0 **with** staging and the client demo (DECISIONS 15 Nov), then P1-02.
+- **Phase:** P0 closing: **P0-15 on `main`** (A, B, C1, C1b, **C2**, D1, D2, **D3** done; D3b, D4, E open); human 15 Nov: close P0 **with** staging and the client demo (DECISIONS 15 Nov), then P1-02.
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → P1-02 → P1-03 → P1-04. P0-E waits only on P0-15 (human tasks).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-15, talha.syed (checkpoint: staging live, C2 done; deploy/rollback/redeploy green)
+- **Last updated:** 2026-11-15, talha.syed (handoff: staging live, demo guide written)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `4c3d240`; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
-- **P0-C closed** (`576b73e`; 5-project run `43269125099` 675/0/0 flaky). C-40 quarantine open (P0 phase gate).
-- **P0-D closed** (P0-12 + fixes; staging smoke pending until P0-15). P1 brief reviewed.
-- **P1-A started:** P1-01 done (13 Nov); C-34 closed.
-- P0-15 is the only P0-E task left: VPS (H-06) and domain (H-07) ready; backups bucket ready (B2); human inputs for staging now in place (H-04, H-27, H-28 staging done 13 Nov); H-34/H-36 leftovers after the first deploy.
+- **Staging live 15 Nov** (release `4c3d240`): deploy, rollback, redeploy green; origin lock proven from outside. Demo guide `docs/DEMO_GUIDE.md`.
+- **P0-C closed** (C-40 quarantine open, P0 phase gate). **P0-D closed.** **P1-A started:** P1-01 done (13 Nov).
+- P0-15 is the only P0-E task left: D3 done; D3b, D4, E and the staging curls (C-23/C-36/C-38) remain.
 
 ## Next (top 3)
-1. **P0-15 C2**: fast-forward main to wip → CI → automatic staging deploy → rollback once + redeploy (closes C-19, C-21, C-27, C-32, C-33, C-38 with evidence) → D3 `backup:verify` → D4 first B2 backup + restore drill → E (request logs, UptimeRobot, ZAP/k6, RUNBOOK walks; C-23, C-35, C-36, C-37).
-2. C-40 (quarantined Pixel 7 motion test) → C-17 (mutants) → `/subphase-complete` P0-E → `/phase-complete` → `/demo` (client notes in DEMO_NOTES.md).
-3. Then **P1-02** shop landing page (closes C-15), P1-03, P1-04.
+1. **P0-15 staging checks:** auth-gated curl job (C-23, C-36, C-38), C-32 RLS EXPLAIN → DECISIONS, C-38 weekly reset check.
+2. **D3b** PITR → **D4** first B2 backups on staging + restore drill + `BACKUPS_ENABLED=true` → **E** (C-35 request logs, UptimeRobot, ZAP/k6, RUNBOOK §12/§13).
+3. C-40 → C-17 → `/subphase-complete` P0-E → `/phase-complete` → `/demo`; then **P1-02** (closes C-15).
 
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -67,11 +66,10 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (15 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- First staging deploy `43717392756` (CI `43716268878` green) failed silently at `write-env staging origin-tls`: on a fresh host `old=$(cat <missing> | sha256sum)` died under pipefail with no message. Fixed + end-to-end test of `cmd_write_origin_tls` on a fresh host (fails before, passes after). Mac: host-script tests needed GNU coreutils/sed + OpenSSL 3 (12 failures on BSD/LibreSSL) → `findBash` puts them on PATH; `pnpm check` PASS (unit 1365).
-- `main` `70bfba3` (Windows): pre-push gate:task PASS (unit 1343 + 21 skipped, int 1191, build, bundle, sast, lint:sh 7); CI `43716268878` queued at handoff. Targeted: moz-deploy + firewall 176/0, caddy-mtls 6/6, rls 29/0.
-- VPS (15 Nov): harden.sh runs 4–5 `harden: 0 changes`; after reboot docker/fail2ban/ufw/refresh timer active; `moz-origin-firewall check` ok (15 ranges), also after `systemctl restart docker`; `sshd -T`: permitrootlogin no, passwordauthentication no, AllowUsers deploy badeshah talha; root SSH refused, badeshah sudo OK.
-- `caddy adapt` both Caddyfiles (2.11.9) OK after `https_port`/`ocsp_stapling off`.
-- Staging inputs: origin cert/key (run `43690841831`: issuer CloudFlare Origin SSL ECC CA, P-256, SAN staging.mozrewards.com, to 11 Nov 2041) and B2 keys (run `43697242708`); every staging secret deploy.yml reads is set (`gh secret list`, names only).
+- `main` `87cf27d` (Mac): gate:task PASS (unit 1378, int 1214, build reused, bundle, sast, lint:sh 7). Last CI `43737509611` (`4c3d240`) green.
+- Staging: deploy `43738380893` → rollback `43738687616` → redeploy `43738782802` → rotation redeploy `43742044923`, all green (migrations, seed, rolling web, mTLS curl 56, smoke ready, direct-IP curl 28).
+- From outside (Mac): `https://72.61.17.208/` and `:80` curl 28; `https://staging.mozrewards.com/` 401 via Cloudflare, `x-robots-tag: noindex, nofollow`.
+- Host: web env without DATABASE_URL_WORKER/_MIGRATIONS; max_connections 80; worker StopTimeout 90; demo-credentials exit 0 in the slim image; host scripts = repo (harden.sh 1 change, hashes match).
 
 
 ## Follow-ups (LOW)
