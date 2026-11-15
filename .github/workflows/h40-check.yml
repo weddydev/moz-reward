@@ -17,7 +17,7 @@ jobs:
           ID_PRODUCTION: ${{ secrets.B2_BACKUP_KEY_ID_PRODUCTION }}
           KEY_PRODUCTION: ${{ secrets.B2_BACKUP_KEY_PRODUCTION }}
         run: |
-          set -u
+          set -u +e
           for env in STAGING PRODUCTION; do
             id_var="ID_$env"; key_var="KEY_$env"; id="${!id_var}"; key="${!key_var}"
             echo "=== $env: keyID length=${#id} key length=${#key} whitespace_in_values=$(printf '%s%s' "$id" "$key" | tr -cd ' \t\r\n' | wc -c)"
@@ -25,8 +25,8 @@ jobs:
             tok=$(jq -r '.authorizationToken // empty' <<<"$auth"); [ -n "$tok" ] && echo "::add-mask::$tok"
             if [ -z "$tok" ]; then echo "authorize FAILED: $(jq -c '{status,code,message}' <<<"$auth")"; continue; fi
             echo "authorize: ok"
-            jq -c '.apiInfo.storageApi.allowed | {buckets: [.buckets[]?.name], namePrefix, capabilities: (.capabilities|sort)}' <<<"$auth"
-            api=$(jq -r '.apiInfo.storageApi.apiUrl' <<<"$auth"); acct=$(jq -r '.accountId' <<<"$auth"); bid=$(jq -r '.apiInfo.storageApi.allowed.buckets[0].id // empty' <<<"$auth")
+            jq -c '.apiInfo.storageApi.allowed' <<<"$auth" || true
+            api=$(jq -r '.apiInfo.storageApi.apiUrl' <<<"$auth"); acct=$(jq -r '.accountId' <<<"$auth"); bid=$(jq -r '(.apiInfo.storageApi.allowed.buckets[0].id // .apiInfo.storageApi.allowed.bucketId) // empty' <<<"$auth" || true)
             lb=$(curl -sS --max-time 20 -H "Authorization: $tok" -d "{\"accountId\":\"$acct\",\"bucketId\":\"$bid\"}" "$api/b2api/v3/b2_list_buckets")
-            jq -c 'if .buckets then .buckets[] | {bucket: .bucketName, objectLock: .fileLockConfiguration, lifecycleRules} else {list_buckets: {status,code,message}} end' <<<"$lb"
+            jq -c 'if .buckets then .buckets[] | {bucket: .bucketName, objectLock: .fileLockConfiguration, lifecycleRules} else {list_buckets: {status,code,message}} end' <<<"$lb" || true
           done
