@@ -11,6 +11,11 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-15 — `pnpm backup:verify` restores into the drill's scratch container
+Decision: backup:verify (D3) restores into the same `--network none`, tmpfs, read-only scratch Postgres the monthly drill uses (moz-backup `start_scratch` + `drill_bootstrap`, the dev services' image), not a scratch database inside the dev Postgres; gpg decrypts straight into `pg_restore` (no plaintext file); the newest dump must be ≤ 26 h old (`--max-age-hours`); checks.sql runs without an expected migration count (the laptop's checkout may be ahead of the backup), so the migrations check proves only that migrations are present. The private key goes into a throwaway GNUPGHOME and must have the pinned fingerprint.
+Why: customer data never lands in the dev volume, one implementation of restore + checks, and nothing persists after the run (container, agent, files removed on any exit incl. Ctrl-C).
+Consequence / revisit when: the restore key `moz-backups-restore` (H-42) is exported for the shell only; the CLI takes no endpoint/fingerprint overrides (tests call `verifyBackup()` with MinIO values).
+
 ## 2026-11-15 — P0 closes with staging and the client demo
 Decision: P0 is closed only after staging is live (P0-15 B2 run, C1b, C2, D3, D4, E) and the Demo 1 script runs on staging; this supersedes the 13 Nov plan to close P0 without staging and carry it to P1 as C-42 (C-42 is not opened).
 Why: human, 15 Nov: "close the P0 completely" and make it demo ready; every human input staging needed (H-40, H-41, H-42) was done and checked that day.

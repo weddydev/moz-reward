@@ -82,6 +82,20 @@ When data is lost or corrupted (or after §14). Targets: RPO ≤ 5 min (WAL), RT
    More than 24 h back needs `--force` (a typo there re-sends days of side effects).
 5. Start the worker, then the web. **Worked when:** System page fresh with no alerts, outbox waiting = 0, a test sign-in email arrives.
 
+**Prove a backup restores: `pnpm backup:verify` (P0-15 D3; every phase end, H-29; monthly after launch).** The
+host never holds the private key, so only this proves the uploaded dumps decrypt. On an encrypted laptop disk,
+with `pnpm services:up` running:
+```
+export B2_RESTORE_KEY_ID=… B2_RESTORE_KEY=…      # the read-only moz-backups-restore key, this shell only
+pnpm backup:verify --env staging --key-file -    # paste the backup private key (password manager), then Ctrl-D
+unset B2_RESTORE_KEY_ID B2_RESTORE_KEY
+```
+gpg asks for the key's passphrase. It lists `<env>/dumps/`, takes the newest dump (fails if older than 26 h,
+`--max-age-hours` to change), checks its size, the sha256 recorded at upload and the OpenPGP header, imports the
+key into a throwaway GNUPGHOME (must be the pinned fingerprint), decrypts straight into `pg_restore` in a
+`--network none` scratch container and runs `infra/backup/checks.sql`. **Worked when:** the last line is
+`backup:verify: PASS`; everything (container, key, files) is removed even on Ctrl-C. Note the result in SESSION_LOG.
+
 **Replay limits (C-31).**
 - Replay re-dispatches outbox rows that still exist after the restore. Jobs are idempotent inside our database (a completed row is skipped), so repeats there are harmless.
 - A side effect that happened **after** the restore point, recorded only in data the restore threw away, can run **again**: e.g. an email sent at 14:07 whose outbox row (completed at 14:07) was lost when restoring to 14:05 is sent a second time. Internal effects re-run idempotently; external ones (emails, push, payments later) need provider-side idempotency keys (P2 adds them for payments). Tell the client if customers may have received duplicates.
