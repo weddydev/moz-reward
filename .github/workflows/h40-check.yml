@@ -27,6 +27,6 @@ jobs:
             echo "authorize: ok"
             jq -c '{expires: .applicationKeyExpirationTimestamp} + (.apiInfo.storageApi | {bucketName, namePrefix, capabilities: ((.capabilities // [])|sort)})' <<<"$auth" || true
             api=$(jq -r '.apiInfo.storageApi.apiUrl' <<<"$auth"); acct=$(jq -r '.accountId' <<<"$auth"); bid=$(jq -r '.apiInfo.storageApi.bucketId // empty' <<<"$auth" || true)
-            lb=$(curl -sS --max-time 20 -H "Authorization: $tok" -d "{\"accountId\":\"$acct\",\"bucketId\":\"$bid\"}" "$api/b2api/v3/b2_list_buckets")
+            lb=$(curl -sS --max-time 20 -H "Authorization: $tok" -d "{\"accountId\":\"$acct\",\"bucketName\":\"mozrewards-backups-dfd829\"}" "$api/b2api/v3/b2_list_buckets")
             jq -c 'if .buckets then .buckets[] | {bucket: .bucketName, objectLock: .fileLockConfiguration, lifecycleRules} else {list_buckets: {status,code,message}} end' <<<"$lb" || true
           done
