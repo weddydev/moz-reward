@@ -198,3 +198,16 @@ Rotate first, investigate second. Inventory and rotation consequences: SECURITY 
 - Never logged: tokens, cookies, emails, phone numbers, codes (redaction, SECURITY §12). Better Auth's own logs go through the same logger (`src: "better-auth"`).
 - Repeated identical worker errors (e.g. Redis down) are logged once per 30 s per queue with `repeated: n`, so an outage doesn't flood the log.
 - Retention: Docker's `json-file` driver with rotation from `infra/docker/daemon.json` (100 MB × 30 files per container ≈ 30 days at launch volumes); installed on the host by P0-15. Spikes rotate out early rather than filling the disk.
+
+## 16. Demo accounts on staging
+
+*(P0-16, H-36)* Sign-in details are derived on the host, never stored. Run in **your own terminal** (never through
+Claude), then copy the output into the password manager entry "Moz Rewards staging demo accounts":
+```
+ssh <you>@72.61.17.208
+sudo docker exec moz-staging-worker-1 node cli/demo-credentials.mjs           # emails, passwords, TOTP keys/URIs
+sudo docker exec moz-staging-worker-1 node cli/demo-credentials.mjs --codes   # the current 6-digit codes (30 s)
+```
+Customers sign in by email link (the shared inbox, `inbox+moz-…@`); staff and admins with password + code. Before a
+demo, reset the demo data: `sudo docker exec moz-staging-worker-1 node cli/seed.mjs --reset` (same passwords/keys).
+**Worked when:** each account signs in and lands in its own portal.
