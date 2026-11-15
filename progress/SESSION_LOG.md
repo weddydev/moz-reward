@@ -518,3 +518,4 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - NOT VERIFIED: Full (strict), Authenticated Origin Pulls (dashboard-only; C1b smoke + direct-IP test prove them).
 - VPS host keys: GitHub runner (run `43691848477`) and the Mac read the same fingerprints (ED25519 `cufEaKzI…`, ECDSA `v7WRKFd7…`, RSA `WDrsbNIB…`); saved to the Mac's known_hosts, strict SSH as root OK. Out-of-band check still open (H-43).
 - Next: `wip/P0-15` C1b, then D3.
+- H-41 (a): 7 `_STAGING` generated secrets deleted and re-set by `deploy-secrets.mjs staging` (values only in the password manager; file deleted, checked). `ALERT_EMAILS_STAGING` set (shared inbox). H-44 added (delete the Windows file).
