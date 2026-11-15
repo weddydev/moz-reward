@@ -18,6 +18,8 @@ twa/*.jks
 .pnp
 .pnp.*
 *.pem
+# Cloudflare's public Authenticated Origin Pull CA (no key); staging Caddy verifies client certs against it
+!infra/caddy/cloudflare-origin-pull-ca.pem
 *.tsbuildinfo
 next-env.d.ts
 .vercel
