@@ -3,26 +3,25 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: free — last held by talha.syed, 2026-11-15 (Mac)
+Baton: free — last held by talha.syed, 2026-11-15 10:00 (Mac)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handed over by talha.syed, 2026-11-15 (Mac); baton free.** No task code changed this session (14–15 Nov): a speed audit, process changes, and the human-task path to staging. P0-15 code is still on **`wip/P0-15` HEAD `25e05cf`** (pushed, CI `43482813705` green). Steps: **`progress/P0-15-plan.md`** (read its "Close plan" line first).
-- **Finished this session (all on main):** `/autopilot` mode (off by default; `.claude/commands/autopilot.md`), never wait idle for CI, the pre-push hook runs `pnpm check` for pushes only to `wip/*` (`gateFor` in `scripts/pre-push.ts`), `/resume` fetches every branch and stops if the wip HEAD differs from this note, PROGRESS split (`progress/MAP.md`, `progress/FOLLOWUPS.md`), **`progress/TEMPORARY.md`** register of stopgaps (T-1…T-5; gates P5-14; standing rule in CLAUDE.md §3). H-39 done from the Mac (SSH as root verified). Issue #1 closed (H-35).
-- **Human decisions (14 Nov):** (1) repo public until launch (T-2, C-43). (2) **No Cloudflare Tunnel for now** (Zero Trust wants a card): staging origin lock = proxied `A` record + ufw 443 only from Cloudflare ranges + Authenticated Origin Pulls + Origin certificate, Full (strict); Tunnel back before launch (T-5, C-44 → P5-12, SECURITY §11 exception, DECISIONS 14 Nov). H-40 now has these dashboard steps. **H-40 done 15 Nov** (checked by Claude; Full strict + AOP proven in C1b). **H-41 done 15 Nov** (fresh staging secrets from the Mac; alert emails = shared inbox). VPS host key checked from two networks (H-43 later). **H-42 done 15 Nov** (narrow B2 keys + 35 d retention by Claude via b2 CLI; human: import the keys file, later delete `moz-backups`).
-- **Half-done and how to continue:** `git switch wip/P0-15 && git merge --ff-only origin/wip/P0-15 && pnpm install` (HEAD must be `25e05cf`). Then, no human input needed: **(a) new step "C1b origin lock via proxy" (T-5)** on `wip/P0-15`: drop `cloudflared` from the staging stack, Caddy publishes 443 with the Origin certificate (secrets `CLOUDFLARE_ORIGIN_CERT_STAGING` / `CLOUDFLARE_ORIGIN_KEY_STAGING`, written by deploy.yml's caddy role) and requires Cloudflare's origin-pull client certificate, trusted proxies = Cloudflare ranges; harden.sh: ufw 443 only from Cloudflare's published ranges + a refresh timer, 80 closed; deploy.yml smoke via `https://staging.mozrewards.com`; deploy-env/deploy-secrets/tests/RUNBOOK §13 updated; test that a direct TLS hit on the VPS IP without the client cert fails. **(b) D3** `pnpm backup:verify` (+ `--wal --target-time` PITR vs MinIO). Then the Close plan: E local parts → C-40 → C-17.
-- **Waiting on the human:** H-40 (origin settings + two secrets), H-41 choice **(a) regenerate the staging secrets on the Mac** (nothing deployed with them; `gh secret delete` the 7 generated ones, then `node scripts/deploy-secrets.mjs staging` writes a new file in the Mac's home) **or (b)** import the Windows file — plus `ALERT_EMAILS_STAGING`; H-42 (B2). Open question to the human: close P0 without staging as decided on 13 Nov (C-42 → P1-A), or keep P0 open until the staging demo works.
-- **Tested (this session, Mac):** gate:task on `03e3afc` PASS (unit 1040, int 1134, build, bundle, sast); `scripts/pre-push.test.ts` 13/0 (3 new `gateFor` tests failed first); CI `43578704624` on `03e3afc` green; CI `43482813705` on `wip/P0-15` `25e05cf` green; `ssh root@72.61.17.208` from the Mac OK (Ubuntu 24.04.5, 15 GB RAM, 192 GB free, Docker not installed).
-- **Not yet tested:** the new `gateFor` path on a real `wip/*` push; `/autopilot` never run; everything on a real host (harden, moz-deploy, units, compose); deploy.yml never run; the proxy origin lock (not built); B2 storage estimate (NOT VERIFIED); C-40; H-37 devices; staging (none).
-- **Do first:** nothing new locally. Migrations: `wip/P0-15` adds 0016 + 0017 (renumber if main gets its own first). Host-script tests need bash ≥ 4 and gpg (`brew install bash gnupg`). Progress files on **main** only; code on `wip/P0-15`. **Windows laptop:** `/resume` renames the stale `..\CLAUDE.md`; before any VPS work there, load the key once (`ssh-add` in PowerShell, old H-39 steps); H-41's Windows secrets file must be deleted (after import, or as obsolete if H-41 (a)). Low memory can crash a Vitest worker in the pre-push gate (re-run); `pnpm sast` takes 10–23 min; no Python (use node).
+- **Handed over by talha.syed, 2026-11-15 ~10:00 (Mac); baton free.** No code changed this session: all **human tasks blocking staging are done and checked by Claude**. P0-15 code is still on **`wip/P0-15` HEAD `25e05cf`** (pushed, CI `43482813705` green). Steps: **`progress/P0-15-plan.md`** (read the "Close plan" line first: it now says staging is part of the P0 close).
+- **Human request (15 Nov, interrupted by this handoff):** "continue and close P0 completely and make it demo ready", plus a guide for demoing to the client. Read as: staging + demo inside P0 (DECISIONS 15 Nov supersedes the 13 Nov "carry staging to P1"; C-42 is not opened if staging lands). The client demo guide = `/demo` at the phase close (rehearsal on staging → `progress/DEMO_NOTES.md`); give the human the presenter notes then (staging basic-auth user `moz`, password in "Moz Rewards staging secrets"; demo accounts' TOTP from H-36; Google consent screen may still be in Testing mode → only listed test users can sign in with Google).
+- **Finished this session (main, progress only):** H-40 checked (DNS proxied; secrets parse, Cloudflare Origin CA ECC cert, SAN `staging.mozrewards.com`, to 2041, key matches; key has CRLF → strip `\r` in deploy); VPS host keys checked from the Mac and a GitHub runner, saved to the Mac's known_hosts (fingerprints in P0-15-plan step C); H-41 (a) fresh staging secrets + `ALERT_EMAILS_STAGING` (shared inbox); H-42 fixed by Claude with the b2 CLI: default retention governance 35 d, host keys bucket-only + prefix + `listFiles,writeFiles`, restore key bucket-only `listFiles,readFiles`; v4 authorize check OK. H-43, H-44 added (🟢).
+- **Half-done and how to continue:** `git switch wip/P0-15 && git merge --ff-only origin/wip/P0-15 && pnpm install` (HEAD must be `25e05cf`). Then: **(1) B2 run** hardening from the Mac (`ssh root@72.61.17.208`, strict host keys work); **(2) C1b** origin lock via proxy (T-5; write the Origin key with `tr -d '\r'`; commit known_hosts with the recorded fingerprints); **(3) C2** first staging deploy; **(4) D3** `pnpm backup:verify`; **(5) D4** first B2 backup: proves `listFiles,writeFiles` suffice for PutObject/ListObjectVersions and decides staging retention (objects get 35 d, not 7 d: moz-backup sets no per-object retention); **(6) E** + C-40 + C-17 → `/subphase-complete` P0-E → `/phase-complete` + `/demo`. Suggest `/resume autopilot` to the human for this run.
+- **Tested (this session):** read-only GitHub workflows on the throwaway branch `wip/h40-check` (never merge; deletion is in H-38): runs `43690841831` (origin cert/key metadata), `43691848477` (host keys), `43697242708` (B2 keys v4 authorize: bucket, prefix, caps). `ssh root@…` with strict host checking OK. HTTPS `staging.mozrewards.com` → 522 (origin firewalled, expected). Main code unchanged since `03e3afc` (gate:task PASS, CI `43578704624` green).
+- **Not yet tested:** SSL Full (strict) and Authenticated Origin Pulls (dashboard-only; proven by C1b smoke + direct-IP test); B2 uploads with the new keys (D4); Backblaze's native v3 API rejects the new multi-bucket-format keys (S3 API unaffected; any native-API tool must use v4); the restore key's password-manager copy (first `pnpm backup:verify`, H-29); everything on a real host; deploy.yml never run.
+- **Do first:** nothing new locally. `b2` CLI 5.0.3 installed on the Mac (signed out; `~/.b2_account_info` empty). Migrations: `wip/P0-15` adds 0016 + 0017. Host-script tests need bash ≥ 4 and gpg. Progress files on **main** only; code on `wip/P0-15`. **Windows laptop:** delete the obsolete `C:\Users\DELL\moz-secrets-staging-2026-11-13.env` (H-44); `ssh-add` once before VPS work; its known_hosts can confirm the host key (H-43). This terminal is zsh: unquoted `${x:+a b}` doesn't split (write bash scripts for multi-arg commands).
 
 ## Status
-- **Phase:** P0 closing: **P0-15 on `wip/P0-15`** (A, B1, B2 files, C1, D1, D2 done); human 13 Nov: finish the non-human work, carry staging to P1 as C-42, close P0, then P1-02 (plan "Close plan").
+- **Phase:** P0 closing: **P0-15 on `wip/P0-15`** (A, B1, B2 files, C1, D1, D2 done); human 15 Nov: close P0 **with** staging and the client demo (DECISIONS 15 Nov), then P1-02.
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → P1-02 → P1-03 → P1-04. P0-E waits only on P0-15 (human tasks).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-15, talha.syed (H-40 checked; P0-15 next: C1b origin lock via proxy, then D3; baton free)
-- **Staging and production:** one Hostinger VPS 72.61.17.208 (SSH from the Mac works; not hardened; backups on B2) — not provisioned yet. Origin lock via Cloudflare proxy until launch (T-5)
+- **Last updated:** 2026-11-15, talha.syed (handoff: human tasks for staging done; next B2 run → C1b → C2 → D3/D4 → E → P0 close + demo; baton free)
+- **Staging and production:** one Hostinger VPS 72.61.17.208 (SSH from the Mac works, host keys pinned; not hardened; B2 keys + retention ready) — not provisioned yet. Origin lock via Cloudflare proxy until launch (T-5)
 
 ## Now
 - **P0-C closed** (`576b73e`; 5-project run `43269125099` 675/0/0 flaky). C-40 quarantine open (P0 phase gate).
@@ -31,9 +30,9 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - P0-15 is the only P0-E task left: VPS (H-06) and domain (H-07) ready; backups bucket ready (B2); human inputs for staging now in place (H-04, H-27, H-28 staging done 13 Nov); H-34/H-36 leftovers after the first deploy.
 
 ## Next (top 3)
-1. **P0-15** C1b origin lock via proxy (T-5) → D3 `pnpm backup:verify` (+ PITR vs MinIO) → E local parts + final security review → C-40 → C-17 → P0 phase gate without staging → open C-42 → tick P0-15, close P0 (human, 13 Nov). Staging work: B2 run (hardening) can start now from the Mac (H-39 done); C2 first deploy needs H-40 + H-41; D4 needs H-42.
-2. **P1-02** shop landing page (closes C-15), then P1-03, P1-04 (P1-A; its close also closes C-42).
-3. P0-15 carries: C-19, C-21, C-23, C-27, C-32, C-33, C-35, C-36, C-37, C-38; wal-g write-only + public-key encryption proven vs MinIO (D2); B2 itself unproven until D4.
+1. **P0-15 staging**: B2 run (hardening) → C1b origin lock via proxy (T-5) → C2 first staging deploy (closes C-19, C-21, C-27, C-32, C-33, C-38 with evidence) → D3 `backup:verify` → D4 first B2 backup + restore drill → E (request logs, UptimeRobot monitors, ZAP/k6, RUNBOOK walks; C-23, C-35, C-36, C-37).
+2. C-40 (quarantined Pixel 7 motion test) → C-17 (mutants) → `/subphase-complete` P0-E → `/phase-complete` → `/demo` (client notes in DEMO_NOTES.md).
+3. Then **P1-02** shop landing page (closes C-15), P1-03, P1-04.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
@@ -61,9 +60,8 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-17 | Stryker | P0 phase gate | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 
 ## Blockers
-- Human 🔴: **H-40** (Cloudflare origin settings: proxied DNS, Full strict, origin pulls, Origin certificate secrets; no Tunnel until launch, T-5) blocks the first staging deploy (C2). H-39 done 14 Nov from the Mac: the VPS hardening run (B2 run) is unblocked from the Mac; the Windows laptop needs its one-time `ssh-add` before it does VPS work.
-- 🟠 for P0-15: **H-42** (B2 Object Lock + per-env keys, before D4); **H-41** (secrets file into the password manager + `ALERT_EMAILS_STAGING`) before the first deploy; after it: H-34 leftovers, H-36 steps 3–5. **Start now:** H-12 Play organisation account. **H-37** (🟠, before P1-06): iPhone + Android listen and vibrate check.
-- Technical: C-40 (quarantined test) blocks the P0 phase gate. Known risk for P0-15: wal-g `wal-push` hangs against R2 without `ca-certificates` in the Postgres image (wal-g #2550).
+- Human: **none blocking** the next steps (H-40, H-41, H-42 done 15 Nov). Needed later: H-36 steps 3–5 after the first deploy (demo TOTP keys, needed for the demo); at the P0 close H-29 (`backup:verify`), H-13 (real devices), H-23 (drafts to the solicitor), H-14 (send demo notes). H-42 tail (delete `moz-backups` after D4).
+- Technical: C-40 (quarantined test) blocks the P0 phase gate. Known risk: wal-g `wal-push` hangs without `ca-certificates` in the Postgres image (wal-g #2550).
 
 ## Map of the codebase
 In **`progress/MAP.md`** (read when you need to locate code; add new important paths there).
@@ -72,7 +70,8 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
 - `main` `03e3afc` (Mac): gate:task PASS (unit 1040, int 1134, build, bundle, sast); CI `43578704624` green. Later main commits are docs/progress only.
 - `wip/P0-15` `25e05cf`: pre-push gate PASS (13 Nov); CI `43482813705` green. `40769e9` gate:task PASS (unit 1260, int 1172, build, bundle, sast, lint:sh 5); wal-g e2e 3/3.
-- VPS: `ssh root@72.61.17.208` from the Mac (agent + Keychain) OK, 15 Nov.
+- VPS: `ssh root@72.61.17.208` from the Mac OK with strict host keys (fingerprints matched from a GitHub runner, run `43691848477`), 15 Nov.
+- Staging inputs: origin cert/key (run `43690841831`) and B2 keys (run `43697242708`) checked by read-only workflows, 15 Nov.
 
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).

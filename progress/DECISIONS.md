@@ -11,6 +11,11 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-15 — P0 closes with staging and the client demo
+Decision: P0 is closed only after staging is live (P0-15 B2 run, C1b, C2, D3, D4, E) and the Demo 1 script runs on staging; this supersedes the 13 Nov plan to close P0 without staging and carry it to P1 as C-42 (C-42 is not opened).
+Why: human, 15 Nov: "close the P0 completely" and make it demo ready; every human input staging needed (H-40, H-41, H-42) was done and checked that day.
+Consequence / revisit when: P1-02 starts after the P0 phase gate; if a staging step stalls on something outside our control, ask the human before falling back to C-42.
+
 ## 2026-11-14 — Origin lock without the Tunnel until launch (human)
 Decision: staging uses Cloudflare's proxy instead of Cloudflare Tunnel: proxied `A` record to the VPS, ufw allows 443 only from Cloudflare's published IP ranges (refreshed by a timer; 80 closed), Caddy requires Cloudflare's origin-pull client certificate and serves a Cloudflare Origin certificate (SSL Full strict). The Tunnel design (SECURITY §11) comes back before launch.
 Why: Cloudflare Zero Trust (Tunnel, Access) asks for a card even on the Free plan; the human chose not to add one now. The proxy design keeps "only Cloudflare reaches the origin" without it.
