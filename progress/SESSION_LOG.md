@@ -543,3 +543,4 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Security review (task level): no BLOCK/HIGH; MEDIUM 1–2 + LOW 3, 5 fixed; LOW 4, 6 → DECISIONS 15 Nov; LOW 6, 7 → FOLLOWUPS.
 - VPS B2 run: runs 1–3 exposed fail2ban socket race + name-vs-numeric owner compare (`75fba2d`); runs 4–5 `harden: 0 changes`; reboot clean; firewall ok after docker restart; root SSH refused; `init-env staging` done.
 - iptables `-S` format confirmed on the host (`! --ctstate RELATED,ESTABLISHED`); VPS has IPv6 (nothing listens on [::]:443).
+- Handoff 18:30: review fixes `eca36ec`, CI fix `70bfba3` (caddy-mtls 502/503: CI 43714435786 got 503 after lb_try_duration); main fast-forwarded to `70bfba3`, gate:task PASS (unit 1343, int 1191, sast); CI `43716268878` queued → staging deploy follows automatically.

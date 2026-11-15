@@ -3,24 +3,26 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by Syedbadeshah76 since 2026-11-15 14:44 (Windows)
+Baton: free — last held by Syedbadeshah76, 2026-11-15 18:30 (Windows)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by Syedbadeshah76, 2026-11-15 ~18:45 (Windows); baton held.** **C1b done and the VPS is hardened (B2 run).** `wip/P0-15` `eca36ec` (+ this progress commit) is about to fast-forward `main` for **C2** (first staging deploy: deploy.yml runs automatically after green CI on a push to main).
-- **Human request (15 Nov, standing for this run):** close P0 completely **with** staging and the client demo, plus a demo guide for the client (= `/demo` notes in DEMO_NOTES.md after the staging rehearsal). The human wants it fast (same quality).
-- **Finished this session:** C1b 2c `e66d9ac`, 2d `58a9c63`, task-level security review fixes `eca36ec` (plan "C1b done"); B2 run on the VPS + `harden.sh` fixes `75fba2d` (plan "B2 run"); `init-env staging`; merged origin/main into wip (`4210aea`, progress files = main's).
-- **Half-done and how to continue:** C2: if main is not yet at the wip head, `git switch main && git merge --ff-only wip/P0-15 && git push` (pre-push runs gate:task); then watch CI on main → Deploy (staging) run: write-env (incl. origin-tls) → load → release (firewall check, migrations, seed, rolling web, host mTLS probe, port check) → smoke via hostname → direct-IP probes (exit 28). Then rollback once (`gh workflow run deploy.yml -f environment=staging -f action=rollback`) and redeploy (C-37 §5); collect C-19/C-21/C-27/C-32/C-33/C-38 evidence. Then D3 → D4 → E → C-40 → C-17 → `/subphase-complete` → `/phase-complete` → `/demo`.
-- **SSH from Windows:** use `C:/Windows/System32/OpenSSH/ssh.exe` (holds the agent key; Git Bash's ssh can't). Root SSH is now refused: `ssh badeshah@72.61.17.208` + sudo. CI key: `~/.ssh/moz_ci_deploy` → forced command.
-- **Not yet tested:** everything on the deployed stack (first deploy pending); Cloudflare Full (strict) + AOP end to end; CI for `58a9c63` was running (`43714435786`) at this checkpoint, `eca36ec` not yet in CI.
-- **Do first:** nothing locally. Windows: Docker Desktop must run (gitleaks hook); no Python (node for scripted edits); `git worktree` breaks the gitleaks hook.
+- **Handoff by Syedbadeshah76, 2026-11-15 ~18:30 (Windows); baton free.** **P0-15: C1b done, VPS hardened (B2 run), `wip/P0-15` merged into `main` (`70bfba3`, pre-push gate:task PASS).** This pushes C2: CI `43716268878` on main was **queued** at handoff; when it is green, **Deploy (staging) starts automatically** (`workflow_run`). Nobody watched it.
+- **Human request (15 Nov, standing for this run):** close P0 completely **with** staging and the client demo, plus a client demo guide (`/demo` notes in DEMO_NOTES.md after the staging rehearsal). Fast, same quality.
+- **Finished this session:** C1b 2c `e66d9ac` (origin-tls role + validation, env-aware roles, 0019 cert-expiry alert + System row, direct-IP probes, published-port check), 2d `58a9c63` (Caddy mTLS integration test, `https_port`/`ocsp_stapling off`, RUNBOOK §13, SECURITY §11), task-level security review → `eca36ec` (firewall check before every staging Caddy start; host `--resolve` mTLS probe; first refresh held to the seed), CI fix `70bfba3` (502/503); B2 run on the VPS + `harden.sh` fixes `75fba2d`; `init-env staging`; DECISIONS 15 Nov (shared origin-pull CA); FOLLOWUPS (review LOW 6, 7).
+- **Half-done and how to continue (C2):** `gh run list --limit 3`: (a) CI `43716268878` red → fix first; (b) Deploy run red → `gh run view <id> --log-failed`, and on the host `sudo moz-deploy status staging`, `sudo journalctl -u docker`; the release dies loudly on: missing origin cert, firewall check, migrations, seed, web health, host mTLS probe (must be curl 35/56), published ports; (c) green → evidence: smoke 200 via `https://staging.mozrewards.com` (basic auth `moz`), direct-IP probes curl 28. Then rollback once (`gh workflow run deploy.yml -f environment=staging -f action=rollback`) and redeploy (C-37 §5); collect C-19/C-21/C-27/C-32/C-33/C-38 evidence; H-36 steps 3–5 (demo TOTP), UptimeRobot monitors (H-27). Then D3 (`scripts/backup-verify.ts`, plan line 30) → D4 → E → C-40 → C-17 → `/subphase-complete` → `/phase-complete` → `/demo`.
+- **Branches:** `main` = `wip/P0-15` content at `70bfba3` (origin/wip/P0-15 is older, `58a9c63`; continue P0-15 on `wip/P0-15` after `git switch wip/P0-15 && git merge --ff-only origin/main`, or on main; the pre-push hook now runs only `pnpm check` on `wip/*`).
+- **VPS access changed:** root SSH is **off** (harden.sh). Use your own sudo user: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208` (Git Bash's ssh can't reach the Windows agent); `sudo -n` works (NOPASSWD). CI: `deploy@` forced command only.
+- **Tested:** gate:task PASS on `70bfba3` (unit 1343, int 1191, build, bundle, sast, lint:sh 7); caddy-mtls 6/6; on the VPS: harden.sh 0 changes ×2, reboot clean, firewall ok incl. after docker restart, sshd -T policy, CI forced command refuses `status`/`id`.
+- **Not yet tested:** the whole deployed stack (first deploy in flight); Cloudflare Full (strict) + AOP end to end; host mTLS probe and direct-IP probes on the real host; `write-env staging origin-tls` with the real secret (validator tested with OpenSSL fixtures incl. the real issuer DN).
+- **Do first:** check the CI and Deploy runs above. Windows: Docker Desktop running (gitleaks hook); no Python; no `git worktree`.
 
 ## Status
 - **Phase:** P0 closing: **P0-15 on `wip/P0-15`** (A, B1, B2 files, C1, C1b parts 1–2, D1, D2 done); human 15 Nov: close P0 **with** staging and the client demo (DECISIONS 15 Nov), then P1-02.
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → P1-02 → P1-03 → P1-04. P0-E waits only on P0-15 (human tasks).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-15, Syedbadeshah76 (C1b done, VPS hardened; C2 next)
+- **Last updated:** 2026-11-15, Syedbadeshah76 (handoff: C1b done, VPS hardened, main `70bfba3` → first staging deploy in flight)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, **hardened 15 Nov** (harden.sh, 0 changes on re-run; Docker 29.9.3; origin firewall on; `init-env staging` done); not deployed yet. Origin lock via Cloudflare proxy until launch (T-5)
 
 ## Now
@@ -69,7 +71,7 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (15 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- `wip/P0-15` (Windows): `pnpm check` PASS on `58a9c63` (unit 1327 + 21 skipped); targeted after `eca36ec`: moz-deploy + moz-origin-firewall 176/0 (1 skipped: jq), caddy-mtls 6/6, host-heartbeat + health 34/0, rls 29/0, lint:sh 7 clean; `30f21f5` CI `43710655447` green.
+- `main` `70bfba3` (Windows): pre-push gate:task PASS (unit 1343 + 21 skipped, int 1191, build, bundle, sast, lint:sh 7); CI `43716268878` queued at handoff. Targeted: moz-deploy + firewall 176/0, caddy-mtls 6/6, rls 29/0.
 - VPS (15 Nov): harden.sh runs 4–5 `harden: 0 changes`; after reboot docker/fail2ban/ufw/refresh timer active; `moz-origin-firewall check` ok (15 ranges), also after `systemctl restart docker`; `sshd -T`: permitrootlogin no, passwordauthentication no, AllowUsers deploy badeshah talha; root SSH refused, badeshah sudo OK.
 - `caddy adapt` both Caddyfiles (2.11.9) OK after `https_port`/`ocsp_stapling off`.
 - Staging inputs: origin cert/key (run `43690841831`: issuer CloudFlare Origin SSL ECC CA, P-256, SAN staging.mozrewards.com, to 11 Nov 2041) and B2 keys (run `43697242708`); every staging secret deploy.yml reads is set (`gh secret list`, names only).
