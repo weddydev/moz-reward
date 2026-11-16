@@ -1,0 +1,24 @@
+# Weekly staging demo reset (P0-15, C-38): `moz-deploy seed-reset staging` deletes and re-creates the demo shops
+# and accounts with the current release, then re-runs the demo sign-in check (password alone → challenge, no
+# session). Installed by harden.sh; enabled by `moz-deploy init-env staging`. Results: `journalctl -u moz-seed-reset`.
+# Before a demo, run it by hand: `sudo systemctl start moz-seed-reset` (RUNBOOK §16).
+[Unit]
+Description=Moz Rewards staging demo reset
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/moz-deploy seed-reset staging
+UMask=0077
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/moz /run/lock
+ProtectHome=read-only
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+TimeoutStartSec=20min

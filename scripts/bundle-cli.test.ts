@@ -37,7 +37,7 @@ describe("[P0-15] bundle-cli: one bundle per entry; only the entry keeps its dir
 
   it("bundles the worker and every CLI the release and the RUNBOOK run on the host", () => {
     expect(Object.keys(CLI_ENTRIES).sort()).toEqual(
-      ["demo-credentials", "migrate", "relay", "seed", "worker"].sort(),
+      ["demo-credentials", "demo-signin-check", "migrate", "relay", "seed", "worker"].sort(),
     );
   });
 });

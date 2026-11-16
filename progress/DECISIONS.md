@@ -11,6 +11,16 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-16 — Staging demo checks run inside the release; weekly demo reset is a host timer (P0-15, C-38)
+Decision: `moz-deploy release staging` and the new `moz-deploy seed-reset staging` (developer or `moz-seed-reset.timer`, Mondays 04:30 London; not CI) run `cli/demo-signin-check.mjs` from a worker container straight to `web-1:3000`: the demo owner's password alone must give the two-step challenge with no session, and `/two-factor/enable` must answer 401. deploy.yml adds outside checks through Cloudflare + basic auth: client `X-Request-Id` replaced (C-23), every `/u/` path 404 (C-36), enable without a session = the app's 401 (C-38).
+Why: the demo password is derived from the host's key and must never reach the runner; inside the host the check needs no secret in transit. The check is a successful attempt for the staff-login limits (`attemptOutcome`), so repeated runs never lock the demo account. A failed check after `record_release` turns the deploy red with the release live (staging only): fix forward.
+Consequence: the timer has no heartbeat yet; failures show only in `journalctl -u moz-seed-reset` and the presenter's pre-demo run (RUNBOOK §16). Add a heartbeat if a weekly failure ever goes unnoticed.
+
+## 2026-11-16 — RLS cost on staging data (P0-15, C-32)
+Decision: P0-20's RLS design stands. Staging (Postgres 17.11 on the VPS, demo data: 3 shops, 3 memberships; 200 warm runs each, read-only, rolled back): point lookup p95 0.020 ms bypassed vs 0.105 ms as `moz_app` + scope; members page p95 0.023 vs 0.107 ms. The plan uses `memberships_shop_id_idx` with the policy as a filter; the scoped role sees 0 rows of other shops. The first query of a session pays ~1.5 ms for the `app_in_shop()` InitPlan (catalog warm-up).
+Why: C-32 asked for EXPLAIN on staging data. The data is demo-sized, so this shows the fixed per-query cost (~0.08 ms) and the plan, not scaling; the 2,000-row bench (P0-20) stays the scaling evidence.
+Consequence: revisit with real data volumes before P1's hot paths, as P0-20 said; pooled connections keep the warm-up cost to once per connection.
+
 ## 2026-11-15 — `pnpm backup:verify` restores into the drill's scratch container
 Decision: backup:verify (D3) restores into the same `--network none`, tmpfs, read-only scratch Postgres the monthly drill uses (moz-backup `start_scratch` + `drill_bootstrap`, the dev services' image), not a scratch database inside the dev Postgres; gpg decrypts straight into `pg_restore` (no plaintext file); the newest dump must be ≤ 26 h old (`--max-age-hours`); checks.sql runs without an expected migration count (the laptop's checkout may be ahead of the backup), so the migrations check proves only that migrations are present. The private key goes into a throwaway GNUPGHOME and must have the pinned fingerprint.
 Why: customer data never lands in the dev volume, one implementation of restore + checks, and nothing persists after the run (container, agent, files removed on any exit incl. Ctrl-C).

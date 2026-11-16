@@ -61,6 +61,7 @@ describe("[P0-15] moz-deploy request validation", () => {
     ["init-env staging", "developer-only command"],
     ["bootstrap-db production", "developer-only command"],
     ["status staging", "developer-only command"],
+    ["seed-reset staging", "developer/timer-only command (weekly demo reset, C-38)"],
     ["deploy staging", "unknown command"],
     [`release dev ${SHA}`, "unknown environment"],
     [`release staging ${SHA.toUpperCase()}`, "upper-case SHA"],
@@ -97,17 +98,24 @@ describe("[P0-15] moz-deploy request validation", () => {
     "init-env staging",
     "bootstrap-db production",
     "status staging",
+    "seed-reset staging",
     `release staging ${SHA}`,
   ])("[P0-15] a developer may run %s", (request) => {
     expect(check("admin", request).status).toBe(0);
   });
 
-  it.each(["init-env", "init-env qa", "status staging now", "shell"])(
-    "[P0-15] a developer is refused %j",
-    (request) => {
-      expect(check("admin", request).status).toBe(EX_USAGE);
-    },
-  );
+  it.each([
+    "init-env",
+    "init-env qa",
+    "status staging now",
+    "shell",
+    // Demo data never exists in production (assertSeedAllowed); the helper refuses before any container runs.
+    "seed-reset production",
+    "seed-reset",
+    "seed-reset staging now",
+  ])("[P0-15] a developer is refused %j", (request) => {
+    expect(check("admin", request).status).toBe(EX_USAGE);
+  });
 });
 
 describe("[P0-15] moz-deploy images are per environment", () => {
@@ -563,6 +571,48 @@ echo "tries=$(<"$t/n")"`,
     expect(never.status).toBe(1);
     expect(never.stderr).toMatch(
       /Caddy did not accept connections on 203\.0\.113\.9:443 within 3 s/,
+    );
+  });
+});
+
+describe("[P0-15] weekly staging demo reset (C-38)", () => {
+  const systemd = (name: string): string =>
+    readFileSync(path.join(root, "infra", "host", "files", "systemd", name), "utf8");
+  const helper = readFileSync(path.join(root, "infra", "host", "moz-deploy"), "utf8");
+
+  it("[P0-15] the timer runs moz-deploy seed-reset staging on Mondays 04:30 London time, hardened like the backup units", () => {
+    const service = systemd("moz-seed-reset.service");
+    expect(service).toMatch(/^ExecStart=\/usr\/local\/sbin\/moz-deploy seed-reset staging$/m);
+    for (const line of [
+      "Type=oneshot",
+      "UMask=0077",
+      "PrivateTmp=yes",
+      "ProtectSystem=strict",
+      "ReadWritePaths=/var/lib/moz /run/lock",
+      "NoNewPrivileges=yes",
+    ]) {
+      expect(service).toContain(`\n${line}\n`);
+    }
+    const timer = systemd("moz-seed-reset.timer");
+    expect(timer).toMatch(/^OnCalendar=Mon \*-\*-\* 04:30:00 Europe\/London$/m);
+    expect(timer).toMatch(/^Persistent=true$/m);
+    expect(timer).toMatch(/^WantedBy=timers.target$/m);
+    const harden = readFileSync(path.join(root, "infra", "host", "harden.sh"), "utf8");
+    expect(harden).toContain("moz-seed-reset.service moz-seed-reset.timer");
+    expect(helper).toContain("systemctl enable --now --quiet moz-seed-reset.timer");
+  });
+
+  it("[P0-15] the reset re-seeds with --reset on the current release, then re-runs the sign-in check; every staging release runs the check", () => {
+    const reset = helper.slice(helper.indexOf("cmd_seed_reset() {"));
+    expect(reset.slice(0, reset.indexOf("\n}\n"))).toMatch(
+      /run --rm --no-deps -T worker node cli\/seed\.mjs --reset\n\s+demo_signin_check "\$env" "\$cur"/,
+    );
+    expect(helper).toMatch(
+      /worker node cli\/demo-signin-check\.mjs --url http:\/\/web-1:3000 >&2 \|\|\n\s+die "demo sign-in check failed/,
+    );
+    const release = helper.slice(helper.indexOf("cmd_release() {"));
+    expect(release.slice(0, release.indexOf("\n}\n"))).toContain(
+      '[[ $env != staging ]] || demo_signin_check "$env" "$sha"',
     );
   });
 });

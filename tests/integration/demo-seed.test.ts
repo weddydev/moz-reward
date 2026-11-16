@@ -15,6 +15,7 @@ import {
 import { sessions, shops, users } from "@/server/db/schema";
 import { env } from "@/server/env";
 import { purposeKey } from "@/server/security/keys";
+import { checkDemoSignIn } from "../../scripts/demo-signin-check";
 import { cookieHeaderFrom } from "../fixtures/auth";
 import { makeShop, makeStaff, makeUser } from "../fixtures/factories";
 
@@ -178,6 +179,26 @@ describe("[P0-16] demo staff and admins are pre-enrolled with TOTP (C-07, audit 
       ).toEqual([]);
     },
   );
+
+  it("[P0-15] demo-signin-check (run on staging by moz-deploy, C-38) passes against the real auth handler and leaves no session", async () => {
+    await seed();
+    const { email, password } = cred("owner");
+    const results = await checkDemoSignIn(
+      (path, body, cookie) => post(path, body, cookie ? { cookie } : {}),
+      { email, password: password ?? "" },
+    );
+    expect(results.map((r) => [r.ok, r.detail])).toEqual([
+      [true, "status 200"],
+      [true, "status 401"],
+    ]);
+    const [user] = await db().select().from(users).where(eq(users.email, email));
+    expect(
+      await db()
+        .select()
+        .from(sessions)
+        .where(eq(sessions.userId, user?.id ?? "")),
+    ).toEqual([]);
+  });
 
   it("the derived password + the derived TOTP code sign the owner in with an MFA-verified session", async () => {
     await seed();

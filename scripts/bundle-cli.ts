@@ -20,6 +20,7 @@ export const CLI_ENTRIES = {
   migrate: "src/server/db/migrate.ts",
   seed: "src/server/db/seed.ts",
   "demo-credentials": "scripts/demo-credentials.ts",
+  "demo-signin-check": "scripts/demo-signin-check.ts",
 } as const;
 
 /**

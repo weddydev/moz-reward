@@ -1,0 +1,12 @@
+# Mondays 04:30 London time, clear of the nightly dump (02:30) and the Sunday base backup (03:30); all three
+# share the moz-deploy lock. Persistent: a run missed while the host was down happens at boot.
+[Unit]
+Description=Moz Rewards weekly staging demo reset
+
+[Timer]
+OnCalendar=Mon *-*-* 04:30:00 Europe/London
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

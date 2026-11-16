@@ -239,6 +239,41 @@ jobs:
           echo "live; release header: ${release:-not exposed}"
           rm -f "$netrc"
 
+      # Through Cloudflare and basic auth, as a visitor arrives (the release itself already ran the demo sign-in
+      # check from inside: password alone → challenge, enable → 401, C-38).
+      #   C-23: Caddy overwrites a client's X-Request-Id; the app would keep a well-formed incoming id, so seeing
+      #         ours back means Caddy let it through.
+      #   C-36: no Umami on staging and every /u/ path is Caddy's 404.
+      #   C-38: two-step enrolment without a session is the app's 401 (not basic auth's: no WWW-Authenticate).
+      - name: staging checks behind basic auth (C-23, C-36, C-38)
+        if: needs.resolve.outputs.env == 'staging'
+        env:
+          BASIC_AUTH_PASSWORD: ${{ secrets.BASIC_AUTH_PASSWORD_STAGING }}
+        run: |
+          set -euo pipefail
+          host=$(sed -n 's/^APP_HOST=//p' infra/deploy/staging.env)
+          user=$(sed -n 's/^BASIC_AUTH_USER=//p' infra/deploy/staging.env)
+          netrc="$RUNNER_TEMP/netrc"; ( umask 077; printf 'machine %s login %s password %s\n' "$host" "$user" "$BASIC_AUTH_PASSWORD" > "$netrc" )
+          fail=0
+          bad() { echo "::error::$*"; fail=1; }
+          rid=$(curl -sS --netrc-file "$netrc" -H 'X-Request-Id: chosen-by-client' -D - -o /dev/null "https://$host/api/health/live" |
+            tr -d '\r' | sed -n 's/^x-request-id: //Ip')
+          if [ -z "$rid" ]; then bad "C-23: no X-Request-Id on the response"
+          elif [ "$rid" = chosen-by-client ]; then bad "C-23: the client's X-Request-Id came back (Caddy must overwrite it)"
+          else echo "C-23: client X-Request-Id replaced by $rid"; fi
+          for path in /u /u/ /u/login /u/script.js /u/api/send; do
+            code=$(curl -sS --netrc-file "$netrc" -o /dev/null -w '%{http_code}' "https://$host$path")
+            if [ "$code" = 404 ]; then echo "C-36: $path 404"; else bad "C-36: $path answered $code, expected 404"; fi
+          done
+          head=$(curl -sS --netrc-file "$netrc" -X POST -H "Origin: https://$host" -H 'Content-Type: application/json' \
+            --data '{"password":"x"}' -D - -o /dev/null "https://$host/api/auth/two-factor/enable" | tr -d '\r')
+          code=$(printf '%s\n' "$head" | sed -n '1s/^HTTP\/[0-9.]* \([0-9]*\).*/\1/p')
+          if [ "$code" = 401 ] && ! printf '%s\n' "$head" | grep -qi '^www-authenticate:'; then
+            echo "C-38: two-factor enable without a session 401 (app)"
+          else bad "C-38: two-factor enable without a session answered ${code:-nothing}, expected the app's 401"; fi
+          rm -f "$netrc"
+          exit "$fail"
+
       # T-5 origin lock, checked from outside (the runner is not a Cloudflare address): the host firewall must
       # DROP direct traffic, so curl times out (exit 28). A refusal, a TLS error or any HTTP answer means the
       # origin is reachable around Cloudflare and fails the deploy. The release already checked that only Caddy

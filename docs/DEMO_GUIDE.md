@@ -82,9 +82,11 @@ Do this once before the client demo, so nothing is a surprise. Part 3 is the sam
 ### Before every practice or demo: refresh the demo data
 In Terminal on the server (1.1 steps 1–2), run:
 ```
-sudo docker exec moz-staging-worker-1 node cli/seed.mjs --reset
+sudo systemctl start moz-seed-reset
+sudo journalctl -u moz-seed-reset -n 5 --no-pager
 ```
-It says `demo seed done`. Passwords and codes stay the same.
+The first command takes about a minute and prints nothing. The last line of the second must say
+`seed-reset staging: done`. Passwords and codes stay the same. (It also runs by itself every Monday at 04:30.)
 
 ### Account cheat sheet
 

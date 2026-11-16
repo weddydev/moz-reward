@@ -561,3 +561,9 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - RUNBOOK §9 walked on staging: human forgot the basic-auth password and set a new `BASIC_AUTH_PASSWORD_STAGING` (17:30 UTC, value never in chat); redeploy `43742044923`: caddy.env rewritten, Caddy recreated 17:38, smoke ready with the new password, direct-IP dropped (C-37 §9).
 - Demo guide for the presenter: `docs/DEMO_GUIDE.md` (prep A1–A6, 10 demo steps with Do / You should see / Say, client Q&A, troubleshooting); labels checked against the code; RUNBOOK §16 points to it.
 - Handoff (talha.syed, Mac, 23:30 IST): gate:task PASS `87cf27d` (unit 1378, int 1214); last CI `43737509611` green; staging live `4c3d240`; next: auth-gated staging curls (C-23/C-36/C-38), C-32 EXPLAIN, D3b → D4 → E. Demo guide `docs/DEMO_GUIDE.md`; H-36 steps 3–5 point to its Part 1.
+
+## 2026-11-16 — P0 — P0-15 staging checks (Windows, Syedbadeshah76)
+- Windows `pnpm check` red on `scripts/moz-deploy.test.ts` fresh-host test: Git for Windows `install -m` fails on NTFS (plain chmod works) → test stub splits it (`e40b5e4`); 131/131.
+- C-38: `scripts/demo-signin-check.ts` (+ `cli/demo-signin-check.mjs`, image-check) run by `moz-deploy release staging` and new `seed-reset staging` (developer/timer only; `moz-seed-reset.timer` Mon 04:30 London); unit 16, integration 1 (real handler, no session), moz-deploy 138. Host: harden.sh 4 changes, moz-deploy hash = repo, `systemd-analyze verify` OK, timer next Mon 23 Nov 04:30.
+- deploy.yml step through Cloudflare + basic auth: C-23 client X-Request-Id replaced, C-36 `/u*` 404, C-38 enable without session = app 401. RUNBOOK §16 + DEMO_GUIDE reset → `systemctl start moz-seed-reset`.
+- C-32 closed: RLS EXPLAIN on staging (PG 17.11, demo data): lookup p95 0.020 → 0.105 ms, page 0.023 → 0.107 ms, index plan, 0 other-shop rows (DECISIONS 16 Nov).

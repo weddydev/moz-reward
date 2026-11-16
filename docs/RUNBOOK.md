@@ -208,6 +208,12 @@ ssh <you>@72.61.17.208
 sudo docker exec moz-staging-worker-1 node cli/demo-credentials.mjs           # emails, passwords, TOTP keys/URIs
 sudo docker exec moz-staging-worker-1 node cli/demo-credentials.mjs --codes   # the current 6-digit codes (30 s)
 ```
-Customers sign in by email link (the shared inbox, `inbox+moz-…@`); staff and admins with password + code. Before a
-demo, reset the demo data: `sudo docker exec moz-staging-worker-1 node cli/seed.mjs --reset` (same passwords/keys).
+Customers sign in by email link (the shared inbox, `inbox+moz-…@`); staff and admins with password + code.
+
+**Demo reset (C-38):** `moz-seed-reset.timer` runs `moz-deploy seed-reset staging` every Monday 04:30 (London): the demo
+shops and accounts are deleted and re-created (same passwords/keys), then the demo sign-in check runs (the owner's
+password alone must give the two-step challenge and no session; `/two-factor/enable` must answer 401). Every staging
+release runs the same check. **Before a demo**, reset by hand: `sudo systemctl start moz-seed-reset` (waits until done),
+then `sudo journalctl -u moz-seed-reset -n 20` ends with `seed-reset staging: done`. Failure → the journal names the step;
+a failed check means a password-only sign-in path exists: stop the demo prep and fix it first.
 **Worked when:** each account signs in and lands in its own portal. The presenter's step-by-step demo script is `docs/DEMO_GUIDE.md`.

@@ -18,7 +18,7 @@ tar -xzf "$tmp/trivy.tgz" -C "$tmp" trivy
 # shellcheck disable=SC2016 # the script runs inside the container
 docker run --rm --network none --entrypoint sh "$image" -c '
   set -e
-  for f in cli/worker.mjs cli/relay.mjs cli/migrate.mjs cli/seed.mjs cli/demo-credentials.mjs server.js; do
+  for f in cli/worker.mjs cli/relay.mjs cli/migrate.mjs cli/seed.mjs cli/demo-credentials.mjs cli/demo-signin-check.mjs server.js; do
     node --check "$f"
   done
   case "${APP_ENV:-}" in

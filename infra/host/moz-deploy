@@ -12,7 +12,8 @@
 #                                  cloudflared umami); for `write-env staging origin-tls` the Cloudflare Origin
 #                                  CA certificate followed by its unencrypted PKCS#8 key (PEM)
 #   - A developer's sudo user (or root) with arguments: the CI commands plus
-#       init-env <env>  bootstrap-db <env>  status <env>
+#       init-env <env>  bootstrap-db <env>  status <env>  seed-reset staging
+#     (`seed-reset staging` is also the weekly moz-seed-reset.timer, as root: demo data back to its seeded state)
 # <env> is staging|production, <sha> 40 lower-case hex. Secrets arrive on stdin only: never argv, -e, --env-file
 # or a host file for the owner password, and nothing secret is ever printed.
 set -Eeuo pipefail
@@ -102,6 +103,11 @@ check_request() {
     init-env | bootstrap-db | status)
       [[ $mode == admin ]] || usage_error "$cmd is for developers, not CI"
       if ! { ((n == 2)) && is_env "${w[1]}"; }; then usage_error "usage: $cmd <env>"; fi
+      ;;
+    seed-reset)
+      [[ $mode == admin ]] || usage_error "$cmd is for developers and its timer, not CI"
+      # Demo data exists only on staging (the seed refuses production too).
+      if ! { ((n == 2)) && [[ ${w[1]} == staging ]]; }; then usage_error "usage: seed-reset staging"; fi
       ;;
     *) usage_error "unknown command" ;;
   esac
@@ -317,6 +323,12 @@ cmd_init_env() {
     systemctl enable --now --quiet "$unit@$env.timer"
   done
   log "backup timers enabled (dump 02:30 daily, base backup Sun 03:30, Europe/London)"
+  if [[ $env == staging ]]; then
+    # Weekly demo reset (C-38); it finds no release on a brand-new host and fails loudly until the first deploy.
+    [[ -f /etc/systemd/system/moz-seed-reset.timer ]] || die "moz-seed-reset.timer is not installed: run harden.sh first"
+    systemctl enable --now --quiet moz-seed-reset.timer
+    log "demo reset timer enabled (Mon 04:30, Europe/London)"
+  fi
   log "init-env $env: done"
 }
 
@@ -785,6 +797,7 @@ cmd_release() {
   roll_rest "$env" "$sha"
   record_release "$env" "$sha" "$prev"
   check_published_ports "$env" "$sha"
+  [[ $env != staging ]] || demo_signin_check "$env" "$sha"
   prune "$env"
   log "release $env $sha: done"
 }
@@ -803,6 +816,28 @@ cmd_rollback() {
   record_release "$env" "$prev" "$cur"
   check_published_ports "$env" "$prev"
   log "rollback $env: now on $prev"
+}
+
+# C-38: on staging the demo owner's password alone must give the two-step challenge and no session, and
+# /api/auth/two-factor/enable must answer 401 (scripts/demo-signin-check.ts). From a worker container on the
+# data network straight to web-1, so neither basic auth nor Cloudflare is in the way; prints statuses only.
+demo_signin_check() {
+  local env=$1 sha=$2
+  log "demo sign-in check"
+  compose "$env" "$sha" run --rm --no-deps -T worker node cli/demo-signin-check.mjs --url http://web-1:3000 >&2 ||
+    die "demo sign-in check failed: the demo owner's password alone must not sign in or enrol two-step verification"
+}
+
+# Weekly (moz-seed-reset.timer) and before a demo (RUNBOOK §16): demo shops and accounts deleted and re-created
+# by the current release, then the sign-in check again. Baseline flags/content keep their rows (seed.ts).
+cmd_seed_reset() {
+  local env=$1 cur
+  cur=$(current_release "$env")
+  [[ -n $cur ]] || die "no release recorded for $env"
+  log "demo seed --reset ($cur)"
+  compose "$env" "$cur" run --rm --no-deps -T worker node cli/seed.mjs --reset
+  demo_signin_check "$env" "$cur"
+  log "seed-reset $env: done"
 }
 
 cmd_bootstrap_db() {
@@ -857,6 +892,7 @@ main() {
     init-env) cmd_init_env "$2" ;;
     bootstrap-db) cmd_bootstrap_db "$2" ;;
     status) cmd_status "$2" ;;
+    seed-reset) cmd_seed_reset "$2" ;;
   esac
 }
 

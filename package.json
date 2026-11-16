@@ -29,6 +29,7 @@
     "db:reset": "tsx src/server/db/reset.ts && pnpm db:seed",
     "backup:verify": "tsx scripts/backup-verify.ts",
     "demo:credentials": "tsx --conditions=react-server scripts/demo-credentials.ts",
+    "demo:signin-check": "tsx --conditions=react-server scripts/demo-signin-check.ts",
     "db:studio": "drizzle-kit studio",
     "setup:env": "tsx scripts/setup-env.ts",
     "services:up": "tsx scripts/services.ts up",
