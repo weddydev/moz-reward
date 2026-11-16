@@ -32,8 +32,8 @@ const APP_CONFIG = [
 /** Settings each role takes from infra/deploy/<env>.env (only those present are written). */
 const CONFIG_KEYS = {
   web: APP_CONFIG,
-  // Only the worker runs the health monitor (health.origin_firewall).
-  worker: [...APP_CONFIG, "ORIGIN_FIREWALL_ENABLED"],
+  // Only the worker runs the health monitor (health.origin_firewall, health.backup).
+  worker: [...APP_CONFIG, "ORIGIN_FIREWALL_ENABLED", "BACKUPS_ENABLED"],
   caddy: ["APP_HOST", "BASIC_AUTH_USER", "UMAMI_HOST", "MAINTENANCE"],
   cloudflared: [],
   umami: [],

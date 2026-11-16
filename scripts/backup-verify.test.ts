@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -8,7 +9,9 @@ import {
   isOpenPgp,
   newestDumps,
   readBackupConstants,
+  restoreEnv,
 } from "./backup-verify";
+import { findBash } from "./lib/find-bash";
 
 const script = readFileSync(
   path.resolve(import.meta.dirname, "..", "infra", "host", "moz-backup"),
@@ -117,5 +120,25 @@ describe("[P0-15] backup:verify pure parts", () => {
     for (const out of [failureReason(failed, 1), failureReason(pg, 1)]) {
       expect(out).not.toMatch(/jane|447700/);
     }
+  });
+
+  // Found on the first real run from Windows (16 Nov): Git for Windows' bash rewrote `PGDATA=/var/lib/…` and the
+  // `--tmpfs /var/lib/…` targets into `C:/Program Files/Git/var/lib/…` before docker.exe saw them, so the scratch
+  // Postgres exited at once ("mkdir: cannot create directory 'C:'"). A native program (node.exe here, docker.exe
+  // in the restore) must get container paths exactly as written. On Linux and macOS this holds trivially.
+  it("[P0-15] the restore shell passes container paths to native programs unchanged (Git Bash on Windows)", () => {
+    const env = restoreEnv({ env: "staging", image: "img", repoRoot: "/repo" }, "/w", "/h", [
+      "moz",
+    ]);
+    const out = spawnSync(
+      findBash(),
+      [
+        "-c",
+        String.raw`"$NODE_BIN" -e "process.stdout.write(process.argv.slice(1).join('|'))" /var/lib/postgresql/data PGDATA=/var/lib/postgresql/data/pgdata`,
+      ],
+      { encoding: "utf8", env: { ...env, NODE_BIN: process.execPath } },
+    );
+    expect(out.status).toBe(0);
+    expect(out.stdout).toBe("/var/lib/postgresql/data|PGDATA=/var/lib/postgresql/data/pgdata");
   });
 });

@@ -1,5 +1,9 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { ALL_SECRET_KEYS, ROLES, buildEnv, parseConfig } from "./deploy-env.mjs";
+
+const root = path.resolve(import.meta.dirname, "..");
 
 /**
  * P0-15 step C: the deploy job builds each role's env body (piped to `moz-deploy write-env <env> <role>`) from
@@ -62,6 +66,21 @@ describe("[P0-15] deploy env files", () => {
     expect(keysOf(buildEnv("production", "worker", CONFIG, fullSecrets()))).not.toContain(
       "DEMO_EMAIL_BASE",
     );
+  });
+
+  it("[P0-15] BACKUPS_ENABLED reaches the worker (it runs the health monitor) and no other role; staging sets it", () => {
+    const withFlag = parseConfig("APP_URL=https://staging.example.com\nBACKUPS_ENABLED=true");
+    expect(buildEnv("staging", "worker", withFlag, fullSecrets())).toMatch(
+      /^BACKUPS_ENABLED=true$/m,
+    );
+    for (const role of ["web", "caddy", "backup"])
+      expect(keysOf(buildEnv("staging", role, withFlag, fullSecrets()))).not.toContain(
+        "BACKUPS_ENABLED",
+      );
+    const staging = parseConfig(
+      readFileSync(path.join(root, "infra", "deploy", "staging.env"), "utf8"),
+    );
+    expect(staging.get("BACKUPS_ENABLED")).toBe("true");
   });
 
   it("caddy, cloudflared and umami get only their own keys", () => {

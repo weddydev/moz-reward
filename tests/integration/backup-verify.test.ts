@@ -7,6 +7,7 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import postgres from "postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { verifyBackup, type VerifyOptions } from "../../scripts/backup-verify";
+import { gpgPath } from "../../scripts/lib/backup-common";
 import { baseTestUrl, templateName } from "../support/db";
 
 /**
@@ -23,7 +24,6 @@ const ENDPOINT = "http://127.0.0.1:9000";
 const BUCKET = "moz-backups-verify-test";
 const READER = { accessKeyId: "verifytest01", secretAccessKey: "verify-test-secret-not-real-01" };
 const SRC_DB = `moz_verify_src_${String(process.pid)}`;
-const ON_WINDOWS = process.platform === "win32";
 const T = mkdtempSync(path.join(tmpdir(), "moz-verify-e2e-"));
 const GNUPG = path.join(T, "gnupg");
 const OTHER = path.join(T, "gnupg-other");
@@ -49,13 +49,19 @@ const mc = (command: string, input?: string) =>
     ],
     { input },
   );
+// gpgPath: Git for Windows' gpg reads `C:\…` as a relative path (the reason this suite skipped on Windows).
 const genKey = (home: string, uid: string): string => {
   mkdirSync(home, { mode: 0o700 });
-  must("gpg", ["--homedir", home, "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--quick-gen-key", uid, "default", "default", "never"]); // prettier-ignore
-  const colons = must("gpg", ["--homedir", home, "--with-colons", "--list-keys"]).toString();
+  must("gpg", ["--homedir", gpgPath(home), "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--quick-gen-key", uid, "default", "default", "never"]); // prettier-ignore
+  const colons = must("gpg", [
+    "--homedir",
+    gpgPath(home),
+    "--with-colons",
+    "--list-keys",
+  ]).toString();
   return /^fpr:+([0-9A-F]{40}):/m.exec(colons)?.[1] ?? "";
 };
-const exportSecret = (home: string, fpr: string, file: string) => { writeFileSync(file, must("gpg", ["--homedir", home, "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--armor", "--export-secret-keys", fpr])); }; // prettier-ignore
+const exportSecret = (home: string, fpr: string, file: string) => { writeFileSync(file, must("gpg", ["--homedir", gpgPath(home), "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--armor", "--export-secret-keys", fpr])); }; // prettier-ignore
 
 const admin = new S3Client({
   endpoint: ENDPOINT,
@@ -75,7 +81,7 @@ const pgAdmin = postgres(
 const dump = (): Buffer =>
   must("docker", ["exec", "-i", PG, "pg_dump", "-Fc", "-U", "moz", "-d", SRC_DB]);
 const encrypt = (plain: Buffer): Buffer =>
-  must("gpg", ["--homedir", GNUPG, "--batch", "--trust-model", "always", "--compress-algo", "none", "--recipient", FPR, "--encrypt", "--output", "-"], plain); // prettier-ignore
+  must("gpg", ["--homedir", gpgPath(GNUPG), "--batch", "--trust-model", "always", "--compress-algo", "none", "--recipient", FPR, "--encrypt", "--output", "-"], plain); // prettier-ignore
 const sha256 = (b: Buffer) => createHash("sha256").update(b).digest("hex");
 const stampOf = (d: Date) =>
   d
@@ -115,7 +121,6 @@ drill_bootstrap() { orig_drill_bootstrap "$@"; scratch_psql -d postgres -c 'CREA
 let cipher: Buffer = Buffer.alloc(0);
 
 beforeAll(async () => {
-  if (ON_WINDOWS) return;
   FPR = genKey(GNUPG, "Verify Test <verify-test@example.invalid>");
   exportSecret(GNUPG, FPR, path.join(T, "secret.asc"));
   const other = genKey(OTHER, "Other <other@example.invalid>");
@@ -144,12 +149,10 @@ beforeAll(async () => {
 }, 120_000);
 
 beforeEach(() => {
-  if (ON_WINDOWS) return;
   mc(`mc rm --recursive --force local/${BUCKET}/staging/ >/dev/null 2>&1; true`);
 });
 
 afterAll(async () => {
-  if (ON_WINDOWS) return;
   await pgAdmin.unsafe(`DROP DATABASE IF EXISTS ${SRC_DB} WITH (FORCE)`);
   await pgAdmin.end();
   rmSync(T, { recursive: true, force: true });
@@ -159,7 +162,7 @@ const containerGone = () =>
   must("docker", ["ps", "-aq", "--filter", "name=^moz-verify-staging-drill$"]).toString().trim() ===
   "";
 
-describe.skipIf(ON_WINDOWS)("[P0-15] backup:verify end to end (dev Postgres + MinIO)", () => {
+describe("[P0-15] backup:verify end to end (dev Postgres + MinIO)", () => {
   it("[P0-15] the newest dump downloads, matches its sha256, decrypts, restores and passes every check; nothing is left behind", async () => {
     const before = workDirs().length;
     await upload(hoursAgo(30), Buffer.from("older, never read"), { sha256: "0".repeat(64) });

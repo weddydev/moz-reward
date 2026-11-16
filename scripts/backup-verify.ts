@@ -181,6 +181,42 @@ for db in $DBS; do
 done
 scratch_psql -d moz <"$INFRA/backup/checks.sql"`;
 
+/** The restore shell's environment: an allowlist, not the caller's (no B2 key, no BASH_ENV or bash functions). */
+export function restoreEnv(
+  o: Pick<VerifyOptions, "env" | "image" | "repoRoot" | "readySeconds" | "testPrelude">,
+  work: string,
+  home: string,
+  dbs: string[],
+): NodeJS.ProcessEnv {
+  return {
+    ...pick(process.env, [
+      "PATH",
+      "HOME",
+      "TMPDIR",
+      "TERM",
+      "LANG",
+      "LC_ALL",
+      "DOCKER_HOST",
+      "DOCKER_CONTEXT",
+      "DOCKER_CONFIG",
+    ]),
+    NODE_ENV: "production",
+    // Git for Windows' bash would rewrite container paths (`PGDATA=/var/lib/…`, `--tmpfs /var/lib/…`) into
+    // `C:/Program Files/Git/…` for docker.exe. Host files are read by bash itself, so nothing needs converting.
+    MSYS_NO_PATHCONV: "1",
+    SCRIPT: path.join(o.repoRoot, "infra", "host", "moz-backup"),
+    INFRA: path.join(o.repoRoot, "infra"),
+    VERIFY_ENV: o.env,
+    IMAGE: o.image,
+    READY: String(o.readySeconds ?? 180),
+    DBS: dbs.join(" "),
+    VERIFY_WORK: gpgPath(work),
+    GNUPGHOME: gpgPath(home),
+    // Always set: never taken from the caller's environment.
+    TEST_PRELUDE: o.testPrelude ?? "",
+  };
+}
+
 function restore(
   o: VerifyOptions,
   bash: string,
@@ -192,31 +228,7 @@ function restore(
     const child = spawn(bash, ["-c", RESTORE], {
       // stdin stays the terminal so gpg-agent's pinentry can ask for the key's passphrase.
       stdio: ["inherit", "pipe", "pipe"],
-      // An allowlist, not the caller's environment: no B2 key, no BASH_ENV or exported bash functions.
-      env: {
-        ...pick(process.env, [
-          "PATH",
-          "HOME",
-          "TMPDIR",
-          "TERM",
-          "LANG",
-          "LC_ALL",
-          "DOCKER_HOST",
-          "DOCKER_CONTEXT",
-          "DOCKER_CONFIG",
-        ]),
-        NODE_ENV: "production",
-        SCRIPT: path.join(o.repoRoot, "infra", "host", "moz-backup"),
-        INFRA: path.join(o.repoRoot, "infra"),
-        VERIFY_ENV: o.env,
-        IMAGE: o.image,
-        READY: String(o.readySeconds ?? 180),
-        DBS: dbs.join(" "),
-        VERIFY_WORK: gpgPath(work),
-        GNUPGHOME: gpgPath(home),
-        // Always set: never taken from the caller's environment.
-        TEST_PRELUDE: o.testPrelude ?? "",
-      },
+      env: restoreEnv(o, work, home, dbs),
     });
     let stdout = "";
     let stderr = "";

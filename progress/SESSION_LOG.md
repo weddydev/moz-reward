@@ -576,3 +576,11 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - security-reviewer: design check (2 HIGH built in) + final review (no BLOCK/HIGH; 1 MEDIUM tamper tests + 5 LOW fixed). `--unwrap` exits 2 on tampering (verified).
 - Evidence: unit 12 (pitr) + gate:task PASS (unit 1394, int 1201, sast, lint:sh); PITR integration 9/9 on Windows.
 
+
+## 2026-11-16 (15:30–18:15 IST) — P0 — P0-15 D4 first staging backups + laptop restores (Windows, Syedbadeshah76)
+- Host: nightly `moz-backup@staging` 02:30 UTC uploaded `staging/dumps/2026-11-16/moz-20261116T023000Z.dump.gpg` (122774 B, sha256 recorded); `moz-backup wal-on staging` → base `base_00000001000000040000002A` (09:59:42 UTC); `pg_stat_archiver` 0 failures (1212 archived by 12:24); `moz-backup drill staging` all checks pass; heartbeats backup:dump/base/restore-drill/storage/key-expiry (0 = no expiry).
+- Found: the backup private key was **not** in the password manager (H-26 step missed); still in the Windows Gpg4win keyring → exported by Claude to the clipboard (never displayed), human saved it + passphrase + revocation cert in "Moz Rewards backup key".
+- Found: `backup:verify` dump path failed on Windows ("scratch Postgres stopped"): Git Bash rewrote `PGDATA=/var/lib/…`/`--tmpfs` into `C:/Program Files/Git/…` → `MSYS_NO_PATHCONV=1` in `restoreEnv()`; unit test (failed before) + backup-verify integration now runs on Windows (gpgPath in setup) 11/11, reproduces the error without the fix.
+- Human, from the password-manager copy: `backup:verify --env staging` **PASS**; `--wal --target-time 2026-11-16T10:00:15Z` **PASS** (base …2A + 32 WAL replayed, stopped at the 10:00:19.779 commit; all checks). AC4 + AC5 (developer restore) on real B2.
+- D-design checks on the host: `systemd-analyze verify` moz-backup@/moz-basebackup@ service+timer clean; lever mount read-only; host key `wal-fetch` → **403 Forbidden** on HEAD (no read capability). Left for E: overwrite-keeps-locked-version on real B2, staging 35 d governance retention decision.
+- `BACKUPS_ENABLED=true` in staging.env, and deploy-env now passes it to the worker (it was on no role's list: the flag would never have arrived); test failed before.
