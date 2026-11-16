@@ -12,6 +12,8 @@ export function SignOutButton({ to = "/" }: { to?: string }): React.JSX.Element 
       type="button"
       className={secondaryButtonClass}
       disabled={!hydrated}
+      // For the E2E axe guard, which waits for no [data-hydrating] (see DeviceList).
+      data-hydrating={hydrated ? undefined : ""}
       onClick={() => {
         // A full page load (P0-12): nothing of the signed-in pages stays in the router cache.
         void authClient.signOut().then(() => {

@@ -99,7 +99,13 @@ export function DeviceList({
   }
 
   return (
-    <section aria-labelledby="devices-heading" className="flex flex-col gap-4">
+    <section
+      aria-labelledby="devices-heading"
+      className="flex flex-col gap-4"
+      // The page segment can hydrate after the root marks <html data-hydrated>: the E2E axe guard waits for no
+      // [data-hydrating], so it never measures the disabled look (CI 43823399382).
+      data-hydrating={hydrated ? undefined : ""}
+    >
       <h2 id="devices-heading" tabIndex={-1} className="text-h3 outline-none">
         Signed-in devices
       </h2>
