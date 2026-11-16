@@ -452,7 +452,8 @@ if command -v cygpath >/dev/null; then cygpath -m "$d"; else echo "$d"; fi`,
 
     /**
      * The whole command on a fresh host (the first staging deploy, 15 Nov): no origin.crt/origin.key yet. Host
-     * paths point into a temp dir and ownership changes are no-ops (the tests don't run as root); no database
+     * paths point into a temp dir and ownership changes are no-ops (the tests don't run as root); `install -m` is split
+     * into `install` + `chmod` because Git for Windows' `install -m` fails on NTFS (plain `chmod` works); no database
      * and no running release, so the expiry isn't recorded and Caddy isn't recreated.
      */
     const writeOriginTls = (input: string): Run =>
@@ -461,7 +462,7 @@ if command -v cygpath >/dev/null; then cygpath -m "$d"; else echo "$d"; fi`,
 etc_dir() { echo "$t/etc/$1"; }
 data_dir() { echo "$t/data/$1"; }
 chown() { :; }
-install() { local a=() o; while (($#)); do case $1 in -o | -g) shift 2 ;; *) a+=("$1"); shift ;; esac; done; command install "${"$"}{a[@]}"; }
+install() { local a=() m=; while (($#)); do case $1 in -o | -g) shift 2 ;; -m) m=$2; shift 2 ;; *) a+=("$1"); shift ;; esac; done; command install "${"$"}{a[@]}" && { [[ -z $m ]] || chmod "$m" "${"$"}{a[-1]}"; }; }
 record_origin_cert_expiry() { return 1; }
 mkdir -p "$t/etc/staging/secrets" "$t/etc/staging/env"
 printf "APP_HOST='%s'\n" "$1" >"$t/etc/staging/env/caddy.env"
