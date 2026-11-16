@@ -569,3 +569,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - C-32 closed: RLS EXPLAIN on staging (PG 17.11, demo data): lookup p95 0.020 → 0.105 ms, page 0.023 → 0.107 ms, index plan, 0 other-shop rows (DECISIONS 16 Nov).
 - CI `43823399382` red: 1 flaky (axe color-contrast /me/security `.gap-[inherit]` desktop1440; deploy skipped). Cause: DeviceList/SignOutButton disabled until their segment hydrates, after the root's `<html data-hydrated>` → axe read the 55% opacity. Fix: `data-hydrating` markers (the guard already waits); test 2 (failed before); portal-pages prod E2E 20/20. Other primitives → FOLLOWUPS.
 - Deploy `43828459618` (`8c33539`) green: release demo sign-in check ok (200/401), C-23/C-36/C-38 curls ok, direct-IP 28; `systemctl start moz-seed-reset` on the host: re-seeded, check ok, Result=success. **C-23, C-36, C-38 closed.**
+
+## 2026-11-16 (14:00–15:30 IST) — P0 — P0-15 D3b point-in-time verify (Windows, Syedbadeshah76)
+- `pnpm backup:verify --wal --target-time`: laptop gpg `--unwrap` + literal-packet parser → tmpfs of a `--network none` scratch container → wal-g file storage → recovery to the target → checks.sql. Probe first (wal-g layout + PITR with file storage worked locally).
+- First e2e run: backup-fetch "stream overrun" → root cause: wal-g writes text-mode ("u") literal packets, gpg `--decrypt` rewrites line endings (Linux too); `--unwrap` keeps the bytes (zstd -t ok). Then `env -i` PATH lacked /usr/lib/postgresql/17/bin.
+- security-reviewer: design check (2 HIGH built in) + final review (no BLOCK/HIGH; 1 MEDIUM tamper tests + 5 LOW fixed). `--unwrap` exits 2 on tampering (verified).
+- Evidence: unit 12 (pitr) + gate:task PASS (unit 1394, int 1201, sast, lint:sh); PITR integration 9/9 on Windows.
+

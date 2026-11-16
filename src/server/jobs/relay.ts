@@ -1,4 +1,5 @@
 import "server-only";
+import { parseZonedTime } from "@/lib/zoned-time";
 import { systemScope } from "@/server/authz/scope";
 import { log as appLog } from "@/server/log";
 import {
@@ -230,31 +231,6 @@ export function parseReplaySince(
   arg: string | undefined,
   now: Date = new Date(),
 ): { ok: true; since: Date } | { ok: false; error: string } {
-  if (!arg) return { ok: false, error: "--replay-since <ISO time with zone> is required" };
-  const m =
-    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/.exec(
-      arg,
-    );
-  if (!m) {
-    return { ok: false, error: `not an ISO time with a zone (e.g. 2026-11-10T09:30:00Z): ${arg}` };
-  }
-  // Optional groups (seconds) are undefined at run time, whatever RegExpExecArray's type says.
-  const [y, mo, d, h, mi, sec] = (m.slice(1) as (string | undefined)[]).map((x) =>
-    x === undefined ? 0 : Number(x),
-  );
-  // Date rolls 30 Feb over to 2 Mar; check the calendar fields ourselves.
-  const day = new Date(Date.UTC(y ?? 0, (mo ?? 1) - 1, d ?? 0));
-  const since = new Date(arg);
-  if (
-    Number.isNaN(since.getTime()) ||
-    day.getUTCMonth() !== (mo ?? 0) - 1 ||
-    day.getUTCDate() !== d ||
-    (h ?? 0) > 23 ||
-    (mi ?? 0) > 59 ||
-    (sec ?? 0) > 59
-  ) {
-    return { ok: false, error: `not a valid time: ${arg}` };
-  }
-  if (since.getTime() > now.getTime()) return { ok: false, error: `in the future: ${arg}` };
-  return { ok: true, since };
+  const r = parseZonedTime("--replay-since", arg, now);
+  return r.ok ? { ok: true, since: r.at } : r;
 }

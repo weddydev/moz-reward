@@ -97,6 +97,25 @@ key into a throwaway GNUPGHOME (must be the pinned fingerprint), decrypts straig
 `--network none` scratch container and runs `infra/backup/checks.sql`. **Worked when:** the last line is
 `backup:verify: PASS`; everything (container, key, files) is removed even on Ctrl-C. Note the result in SESSION_LOG.
 
+**Prove point-in-time recovery: `pnpm backup:verify --wal --target-time <ISO with zone>` (P0-15 D3b, AC4; with
+every `backup:verify`).** Same shell, key and disk rules as above; pick a time a few minutes ago (it must be after a
+base backup finished and its WAL must be archived, so not within the last ~2 min):
+```
+pbpaste | pnpm backup:verify --env staging --key-file - --wal --target-time 2026-11-16T09:30:00Z
+```
+The first run builds the staging/production Postgres image from `infra/postgres` (amd64; a few minutes, emulated
+on Apple silicon). It lists every version under `<env>/wal/`, takes the newest base backup that finished (and was
+uploaded) before the target, and fetches its files plus its timeline's WAL up to 30 min after the target, the
+**oldest** version of each object (a note says when a key has more). Every data object must be OpenPGP
+ciphertext: a plaintext one fails the run. gpg on the laptop removes the encryption (the key never enters a
+container) and the bytes go straight into a tmpfs of a scratch container with no network, where wal-g unpacks the
+base backup and Postgres replays WAL to the target and promotes; then `checks.sql`. **Worked when:** a
+`pitr|pass|…` line names the base backup and where recovery stopped, and the last line is `backup:verify: PASS`.
+"The archived WAL ends before …" means the target is too recent (or WAL was uploaded late): pick an earlier time.
+"No base backup … finished before …": run `sudo moz-backup base <env>` on the host, or pick a later time.
+- Never `gpg --decrypt` a wal-g object by hand: wal-g writes text-mode literal packets and gpg rewrites their line
+  endings, which corrupts the zstd stream. `gpg --output - --unwrap` keeps the bytes; backup:verify does this.
+
 **Replay limits (C-31).**
 - Replay re-dispatches outbox rows that still exist after the restore. Jobs are idempotent inside our database (a completed row is skipped), so repeats there are harmless.
 - A side effect that happened **after** the restore point, recorded only in data the restore threw away, can run **again**: e.g. an email sent at 14:07 whose outbox row (completed at 14:07) was lost when restoring to 14:05 is sent a second time. Internal effects re-run idempotently; external ones (emails, push, payments later) need provider-side idempotency keys (P2 adds them for payments). Tell the client if customers may have received duplicates.
