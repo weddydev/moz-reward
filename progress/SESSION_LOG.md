@@ -584,3 +584,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Human, from the password-manager copy: `backup:verify --env staging` **PASS**; `--wal --target-time 2026-11-16T10:00:15Z` **PASS** (base …2A + 32 WAL replayed, stopped at the 10:00:19.779 commit; all checks). AC4 + AC5 (developer restore) on real B2.
 - D-design checks on the host: `systemd-analyze verify` moz-backup@/moz-basebackup@ service+timer clean; lever mount read-only; host key `wal-fetch` → **403 Forbidden** on HEAD (no read capability). Left for E: overwrite-keeps-locked-version on real B2, staging 35 d governance retention decision.
 - `BACKUPS_ENABLED=true` in staging.env, and deploy-env now passes it to the worker (it was on no role's list: the flag would never have arrived); test failed before.
+
+## 2026-11-16 (18:15–19:00 IST) — P0 — P0-15 E part 1 (Windows, Syedbadeshah76)
+- D4 pushed `c212e67` (gate:task PASS: unit 1396, int 1212, sast; pre-push reused the stamp).
+- C-37 closed: RUNBOOK §12 on staging (5% disk, pg_wal 129 MB, 3 release images, prune 0 B) and §13 staging variant (`moz-origin-firewall check` ok 15 ranges, Caddy restarted, via Cloudflare 401 = basic-auth wall, direct IP 443/80 curl 28).
+- AC7 (staging part): every container's memory + CPU limit = infra/RESOURCES.md (CPU 1.45 of 1.5), swap 0. WAL measured ~4 KB/object → staging keeps the 35 d lock (DECISIONS, RESOURCES).
+- Human decisions: production stack → P5-12 (C-47; P0.md/P5.md updated); 1a: Caddyfile.staging lets exactly the 3 health URLs skip basic auth, strips Basic, keeps Bearer. caddy-mtls 16/16 with a new echo upstream (also proves the app never gets the password on normal pages); fails without the strip.
+- security-reviewer on 1a: no BLOCK/HIGH; MEDIUM path matcher (decoded/cleaned/lowercased match vs raw proxied URI: `/admin/a%2F..%2F..%2Fapi%2Fhealth%2Fready` passed) + MEDIUM tests + LOW deny-list → fixed: raw-URI CEL match + Bearer allow-list; test reproduced all 8 bypasses + Digest/two headers first (11 failed), then caddy-mtls 25/25. LOW HEALTH_TOKEN: 32 random bytes (ok).

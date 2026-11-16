@@ -18,6 +18,9 @@ const root = path.resolve(import.meta.dirname, "..", "..");
 const CADDY =
   "caddy:2.11.9-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0";
 const NAME = `moz-caddy-mtls-${String(process.pid)}`;
+// An echo upstream answering for web-1/web-2: its body shows the Authorization header the app would receive.
+const NET = `${NAME}-net`;
+const UP = `${NAME}-up`;
 const APP = "app.test";
 const USER = "moz";
 const PASSWORD = "caddy-mtls-test-password";
@@ -55,8 +58,9 @@ ca other-ca
 leaf origin origin-ca "subjectAltName=DNS:${APP},DNS:other.test"
 leaf client pull-ca "extendedKeyUsage=clientAuth"
 leaf stranger other-ca "extendedKeyUsage=clientAuth"
-mkdir tls logs
+mkdir tls logs up
 cp origin.crt origin.key tls/
+printf '%s\n' ':3000 {' '	respond "auth=[{header.Authorization}] uri=[{uri}] rid=[{header.X-Request-Id}]" 200' '}' > up/Caddyfile
 if command -v cygpath >/dev/null; then cygpath -m "$d"; else echo "$d"; fi`,
     ],
     { encoding: "utf8" },
@@ -68,11 +72,17 @@ if command -v cygpath >/dev/null; then cygpath -m "$d"; else echo "$d"; fi`,
     ["run", "--rm", "-i", "--network", "none", CADDY, "caddy", "hash-password"],
     `${PASSWORD}\n`,
   );
+  docker(["network", "create", NET]);
+  docker(["create", "--name", UP, "--network", NET, "--network-alias", "web-1", "--network-alias", "web-2", CADDY, "caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]); // prettier-ignore
+  docker(["cp", path.join(dir, "up", "Caddyfile"), `${UP}:/etc/caddy/Caddyfile`]);
+  docker(["start", UP]);
   // Files go in with `docker cp` (no bind mounts: paths differ on Windows); same paths as infra/compose.
   docker([
     "create",
     "--name",
     NAME,
+    "--network",
+    NET,
     "-p",
     "127.0.0.1::443",
     "-e",
@@ -101,12 +111,28 @@ if command -v cygpath >/dev/null; then cygpath -m "$d"; else echo "$d"; fi`,
 }, 120_000);
 
 afterAll(() => {
-  spawnSync("docker", ["rm", "-f", NAME]);
+  spawnSync("docker", ["rm", "-f", NAME, UP]);
+  spawnSync("docker", ["network", "rm", NET]);
   if (dir) rmSync(dir, { recursive: true, force: true });
 });
 
-type Outcome = { status: number } | { error: string };
-type Opts = { sni: string; host?: string; client?: "client" | "stranger" | null; auth?: boolean };
+/** What the echo upstream answers: the Authorization header and URI the app got, and Caddy's request id. */
+const esc = (v: string) => v.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+const echoed = (auth: string, uri: string): unknown =>
+  expect.stringMatching(
+    new RegExp(String.raw`^auth=\[${esc(auth)}\] uri=\[${esc(uri)}\] rid=\[[0-9a-f-]{36}\]$`),
+  );
+
+type Outcome = { status: number; body?: string } | { error: string };
+type Opts = {
+  sni: string;
+  host?: string;
+  client?: "client" | "stranger" | null;
+  auth?: boolean;
+  path?: string;
+  /** A raw Authorization header (e.g. a Bearer token), instead of the basic-auth password. */
+  authorization?: string | string[];
+};
 
 /** One HTTPS request with explicit SNI, Host and client certificate; resolves with the status or the error. */
 function request(o: Opts, attempt = 0): Promise<Outcome> {
@@ -116,21 +142,26 @@ function request(o: Opts, attempt = 0): Promise<Outcome> {
       {
         host: "127.0.0.1",
         port,
-        path: "/",
+        path: o.path ?? "/",
         servername: o.sni,
         ca: file("origin-ca.crt"),
         checkServerIdentity: () => undefined,
         headers: {
           Host: o.host ?? o.sni,
           ...(o.auth ? { Authorization: `Basic ${btoa(`${USER}:${PASSWORD}`)}` } : {}),
+          ...(o.authorization ? { Authorization: o.authorization } : {}),
         },
         ...(client ? { cert: file(`${client}.crt`), key: file(`${client}.key`) } : {}),
         agent: false,
         timeout: 10_000,
       },
       (res) => {
-        res.resume();
-        resolve({ status: res.statusCode ?? 0 });
+        let body = "";
+        res.setEncoding("utf8");
+        res.on("data", (c: string) => (body += c));
+        res.on("end", () => {
+          resolve(res.statusCode === 200 ? { status: 200, body } : { status: res.statusCode ?? 0 });
+        });
       },
     );
     req.on("error", (err: NodeJS.ErrnoException) => {
@@ -150,13 +181,60 @@ function request(o: Opts, attempt = 0): Promise<Outcome> {
 }
 
 describe("[P0-15] staging Caddy: Cloudflare-only TLS (origin-pull client certificate, SNI = Host)", () => {
-  it("[P0-15] with the origin-pull certificate, the app's name reaches basic auth (401), then the app proxy (502/503: no upstream here)", async () => {
+  it("[P0-15] with the origin-pull certificate, the app's name reaches basic auth (401), then the app, which never sees the password", async () => {
     expect(await request({ sni: APP })).toEqual({ status: 401 });
-    // No web-1/web-2 in this test: Caddy answers 502 when the names don't resolve at once, 503 after its
-    // lb_try_duration (10 s) when DNS is slow (CI). Either way the request got past basic auth to the app proxy.
-    const passed = await request({ sni: APP, auth: true });
-    expect([502, 503]).toContain("status" in passed ? passed.status : passed.error);
+    expect(await request({ sni: APP, auth: true })).toEqual({ status: 200, body: echoed("", "/") });
   }, 30_000);
+
+  // 1a (human, 16 Nov): UptimeRobot checks the status-only health URLs without the staging password (production
+  // serves them publicly too). Exactly these three raw URIs; anything else, near misses included, keeps basic auth.
+  // The app gets the exact path, Caddy's request id (C-23) and Authorization only as one well-formed Bearer token.
+  it.each(["/api/health/live", "/api/health/ready", "/api/health/worker"])(
+    "[P0-15] %s reaches the app without the staging password; only a Bearer token is passed on",
+    async (p) => {
+      expect(await request({ sni: APP, path: p })).toEqual({ status: 200, body: echoed("", p) });
+      expect(await request({ sni: APP, path: p, authorization: "Bearer health-token-x" })).toEqual({
+        status: 200,
+        body: echoed("Bearer health-token-x", p),
+      });
+      for (const authorization of [
+        `Basic ${btoa(`${USER}:${PASSWORD}`)}`,
+        "basic abc",
+        "BASIC abc",
+        "Digest abc",
+        "Bearer two words",
+        "Bearer a, Basic abc",
+        ["Bearer health-token-x", `Basic ${btoa(`${USER}:${PASSWORD}`)}`],
+      ])
+        expect(await request({ sni: APP, path: p, authorization })).toEqual({
+          status: 200,
+          body: echoed("", p),
+        });
+    },
+    30_000,
+  );
+
+  it.each([
+    "/api/health",
+    "/api/health/",
+    "/api/health/ready2",
+    "/api/health/ready/x",
+    "/api/health/ready%2F..%2F..%2Fadmin",
+    "/api/healthz",
+    "/api/health/../../admin",
+    // Paths that only become a health path once decoded, cleaned, lowercased or merged (security review, 16 Nov).
+    "/admin/a%2F..%2F..%2F..%2Fapi%2Fhealth%2Fready",
+    "/x%2F..%2Fapi/health/ready",
+    "/x/../api/health/ready",
+    "/API/HEALTH/LIVE",
+    "/api/Health/ready",
+    "/api//health/live",
+    "/api/health/ready?x=1",
+    "/api/health/ready;x",
+    "/api/health/%72eady",
+  ])("[P0-15] %s still needs the staging password (401)", async (p) => {
+    expect(await request({ sni: APP, path: p })).toEqual({ status: 401 });
+  });
 
   it("[P0-15] a Host that differs from the TLS server name is refused (421)", async () => {
     expect(await request({ sni: APP, host: "other.test" })).toEqual({ status: 421 });

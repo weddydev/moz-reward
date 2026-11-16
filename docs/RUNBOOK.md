@@ -52,6 +52,8 @@ Alert emails go to every address in `ALERT_EMAILS` (both developers). Subject: `
 
 A stopped worker does **not** fail `ready` (it must not take the web out of Caddy); it fails `/api/health/worker`.
 
+On staging these three URLs (exactly these paths) skip the basic-auth password, so UptimeRobot needs no password (DECISIONS 16 Nov); a Basic header sent to them is removed, a Bearer one passes. **UptimeRobot monitors (staging):** HTTP(s) `https://staging.mozrewards.com/api/health/ready` and `/api/health/worker`, and a keyword monitor on `/api/health/live` for `"status":"ok"`; 5-min interval; alert contacts: both developers' emails + the app on both phones. Production monitors are added in P5-12.
+
 ## 4. Deploy
 
 *(P0-15)* Staging deploys on every green push to `main`; production on a `v*` tag, started by a human.

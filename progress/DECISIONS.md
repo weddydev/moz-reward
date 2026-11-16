@@ -11,6 +11,21 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-16 — Production stack is set up at launch (P5-12), not in P0-15 (human)
+Decision: the P0-15 line "production stack provisioned now, serving only the maintenance page" moves to P5-12 (human, 16 Nov: production at the end, phase 5). P0-15 closes with staging only. P5-12 then sets up production: its secrets (`deploy-secrets.mjs production` + provider keys), the Tunnel or the accepted proxy design (C-44), `moz-deploy init-env production`, a maintenance-only deploy, backups on (C-46), UptimeRobot production monitors.
+Why: production can't run today without the Tunnel (postponed to launch, T-5/C-44) or a second origin-lock setup, and it holds 4 of its secrets; an empty stack now rehearses nothing staging doesn't (same compose, deploy, rollback, backups).
+Consequence / revisit when: P0-15 AC7 is shown on staging only (limits = infra/RESOURCES.md, host headroom, swap 0 under the k6 smoke); the two-stack check runs in P5-12 (CARRIED C-47).
+
+## 2026-11-16 — Staging health URLs skip basic auth for UptimeRobot (P0-15 E, human 1a)
+Decision: on staging, exactly `/api/health/live`, `/ready`, `/worker` skip basic auth, as production serves them publicly, matched on the **raw** request URI (CEL `expression`, case-sensitive, no query) — not Caddy's `path` matcher, which compares a decoded/cleaned/lowercased path while the raw one is proxied (security review MEDIUM: `/admin/a%2F..%2F..%2Fapi%2Fhealth%2Fready` would have passed). There, Authorization is kept only if all its values together are one `Bearer <token>` (HEALTH_TOKEN detail, 256-bit); anything else is removed. Every other path keeps basic auth.
+Why: UptimeRobot then never holds the staging password; the endpoints are status-only without the token (DECISIONS P0-13). Proved by the real-Caddy test with an echo upstream (exact URI + Caddy's request id reach the app; 15 near misses incl. encoded traversal, case, `//`, `;`, query → 401; Basic/Digest/second header never reach the app).
+Revisit when: C-44 (Tunnel/Access at launch) changes how staging is protected.
+
+## 2026-11-16 — Staging backups keep the bucket's 35-day lock (P0-15 D4)
+Decision: staging objects keep B2's default governance retention of 35 days (lifecycle hides them after 7); no per-prefix override. Host keys stay list + write only (`wal-fetch` with the host key: 403 on HEAD).
+Why: measured on staging, a near-idle WAL object averages ~4 KB (163 objects, 681 KB): ~6 MB/day, ~0.2 GB for 35 days against the 2 GB staging budget; an override would need a key with retention rights on the host.
+Revisit when: the nightly `backup:storage` passes 70% of the staging budget (health.backup alerts).
+
 ## 2026-11-16 — Point-in-time verify: the laptop decrypts, wal-g never gets the key (P0-15 D3b, AC4)
 Decision: `backup:verify --wal --target-time` downloads the chosen base backup + its timeline's WAL (oldest version of each object, keys allowlisted, sizes capped, every data object must be OpenPGP), the laptop's gpg removes the encryption with `--unwrap` (a parser takes the literal packet's bytes), and the plaintext streams into tmpfs of a `--network none`, read-only, noexec scratch container of the staging image, where wal-g reads it as local file storage (no key, no network) and Postgres replays to the target with the image's config, `recovery_target_timeline` pinned to the base's, preload libraries off.
 Why: the open D3b point (the key's passphrase in a container env) disappears; the bucket is treated as hostile (anyone with the host's write key can upload validly encrypted objects; security design check 16 Nov, 2 HIGH built in). `gpg --decrypt` can't be used: wal-g's Go OpenPGP writes text-mode ("u") literal packets and gpg rewrites their line endings, corrupting zstd (found on the first end-to-end run).

@@ -48,6 +48,23 @@ https://:443 {
 		}
 	}
 
+	# UptimeRobot (1a, human 16 Nov): the three status-only health URLs skip basic auth, as in production. Matched
+	# on the RAW request URI, exactly and case-sensitively, with no query: the `path` matcher compares a decoded,
+	# cleaned, lowercased path while reverse_proxy forwards the raw one, so `/admin/a%2F..%2F..%2Fapi%2Fhealth%2Fready`
+	# would pass it (security review, 16 Nov). Their detail needs `Authorization: Bearer <HEALTH_TOKEN>`, so the
+	# header is kept only when all its values together are one well-formed Bearer token; anything else (the staging
+	# password from deploy.yml's --netrc, other schemes, a second header) is removed: the app never sees a password.
+	@health {
+		host {$APP_HOST}
+		expression `{http.request.uri} in ["/api/health/live", "/api/health/ready", "/api/health/worker"]`
+	}
+	handle @health {
+		header X-Robots-Tag "noindex, nofollow"
+		@not_bearer expression `!{http.request.header.Authorization}.matches("^Bearer [A-Za-z0-9._~+/=-]+$")`
+		request_header @not_bearer -Authorization
+		import app_common
+	}
+
 	@app host {$APP_HOST}
 	handle @app {
 		header X-Robots-Tag "noindex, nofollow"
