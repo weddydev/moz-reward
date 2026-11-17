@@ -332,6 +332,7 @@ test.describe("[P0-10] motion gallery", () => {
       "Forward and back",
       "Card to page",
       "Tab order",
+      "Gilded Gate",
       "Presets",
       "Popover",
       "Stagger",

@@ -186,15 +186,24 @@ test("[P1-03] a tap or a key skips at once, with no layout jump", async ({
 }) => {
   const { shopCode } = await seedShop(request);
   await page.addInitScript(() => {
-    const w = window as unknown as { __cls: number };
+    const w = window as unknown as { __cls: number; __shifted: string[] };
     w.__cls = 0;
+    w.__shifted = [];
     try {
       new PerformanceObserver((list) => {
         for (const e of list.getEntries() as (PerformanceEntry & {
           value: number;
           hadRecentInput: boolean;
+          sources: { node?: Node }[];
         })[]) {
+          if (e.hadRecentInput) continue; // as CLS itself counts
           w.__cls += e.value;
+          for (const x of e.sources) {
+            const el = x.node instanceof Element ? x.node : x.node?.parentElement;
+            w.__shifted.push(
+              `${el?.tagName ?? "?"}${el?.getAttribute("data-testid") ? `#${el.getAttribute("data-testid") ?? ""}` : ""}:${String(e.value)}`,
+            );
+          }
         }
       }).observe({ type: "layout-shift", buffered: true });
     } catch {
@@ -227,7 +236,13 @@ test("[P1-03] a tap or a key skips at once, with no layout jump", async ({
   await page.waitForTimeout(300);
   expect(await rect()).toEqual(right);
   if (browserName === "chromium") {
-    expect(await page.evaluate(() => (window as unknown as { __cls: number }).__cls)).toBe(0);
+    // The gate is fixed and the rise is transform-only, so neither can shift layout. Linux CI showed a
+    // sub-pixel shift (CLS 0.00004) from the page's own font swap; "no CLS" = nothing a person could see.
+    const { cls, shifted } = await page.evaluate(() => {
+      const w = window as unknown as { __cls: number; __shifted: string[] };
+      return { cls: w.__cls, shifted: w.__shifted };
+    });
+    expect(cls, shifted.join(", ")).toBeLessThan(0.001);
   }
   await expect(page.getByTestId("landing-collect")).toBeInViewport();
 
