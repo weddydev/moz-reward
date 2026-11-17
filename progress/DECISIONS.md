@@ -11,6 +11,11 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-17 — `/shops/[id]` answers non-members with a soft 404 (P1-04 D)
+Decision: the customer shop page stays under `(customer)/(pages)` with its `loading.tsx`, so a non-member, unknown or malformed id gets the designed "We can't find that page" with status 200 and `noindex` (not a 404 status). E2E proves the page is identical for all three and the HTML holds no shop data.
+Why: DECISIONS 12 Nov (a page under `loading.tsx` answers 200 once the fallback streams; acceptable behind sign-in); P1-09 builds the full page there and wants the loading skeleton. security-reviewer agreed (no usable oracle: ids are UUIDs).
+Consequence / revisit when: if a real 404 status is wanted, gate membership in the group layout from `x-pathname` (as the 403 rule does) or move the route beside `(pages)`.
+
 ## 2026-11-17 — Join flow details: dynamic route returnTo, welcome flag, abandoned profile, audit UUIDs (P1-04 C)
 Decision: (1) table routes may have a `[param]` segment (`/shops/[id]`); signing in from one returns to the portal root (`returnPathOf`), never to a path built from the request. (2) `/shops/[id]?welcome=1` only changes copy on the member's own page; non-members (incl. staff/admins) get the same 404. (3) An abandoned profile form stores nothing: the typed values survive closing the sheet on that page only (no PII in browser storage) and the next visit asks again. (4) `redactText` skips UUID-shaped tokens before its digit rules (shared `outsideUuids`), as Sentry's scrubber already did.
 Why: (1) P0-12 rule that the gate never trusts the URL; (3) minimisation; (4) a shop id in audit meta was being corrupted.

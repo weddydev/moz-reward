@@ -93,3 +93,22 @@ describe("[P0-04] dead-letter payload redaction", () => {
     expect(redact({ count: 3, ok: true, at: null })).toEqual({ count: 3, ok: true, at: null });
   });
 });
+
+describe("[P1-04] redactText keeps UUIDs whole (audit meta ids)", () => {
+  it("never touches a UUID, even one with a long run of digits, but still scrubs a phone beside it", () => {
+    // P1-04: a shop id like …-c8ef1566567c lost "1566567" in an audit row (about 1 random UUID in 10).
+    const ids = [
+      "01a1e9cb-05f0-7459-872d-c8ef1566567c",
+      "a0f26d5a-8e59-4944-949f-123456789012",
+      "01234567-8901-4234-8567-890123456789",
+    ];
+    for (const id of ids) expect(redactText(id)).toBe(id);
+    const mixed = redactText(`shop ${ids[0] ?? ""} called 07700900123 / +44 7700 900123`);
+    expect(mixed).toContain(ids[0]);
+    expect(mixed).not.toMatch(/07700900123|7700 900123/);
+    // Digits running on past a UUID-shaped prefix are not a UUID: still scrubbed.
+    expect(redactText("a0f26d5a-8e59-4944-949f-1234567890123456")).not.toContain(
+      "1234567890123456",
+    );
+  });
+});

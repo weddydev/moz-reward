@@ -31,7 +31,12 @@ export const shopStatus = pgEnum("shop_status", [
 export const shopStaffRole = pgEnum("shop_staff_role", ["owner", "staff"]);
 export const adminRole = pgEnum("admin_role", ["owner", "support", "moderator", "finance"]);
 
-/** Customer-side profile (1:1 with users). Phone stored encrypted + HMAC blind index. */
+/**
+ * Customer-side profile (1:1 with users). Phone stored encrypted (`phone_enc` sealed under `phone_key_id`,
+ * src/server/security/field-crypto.ts) + HMAC blind index (`phone_hash`, never unique: no "number in use"
+ * oracle). Guard trigger 0020: member_id, user_id, created_at and age_declared_at never change, and a
+ * customer can't set the 18+ columns.
+ */
 export const customerProfiles = pgTable(
   "customer_profiles",
   {
@@ -40,6 +45,8 @@ export const customerProfiles = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     fullName: text().notNull(),
     phoneEnc: text(),
+    /** Id of the data key that sealed `phone_enc` (rotation, `pnpm keys:reencrypt`). */
+    phoneKeyId: text(),
     phoneHash: text(),
     birthdayDay: smallint(),
     birthdayMonth: smallint(),
@@ -50,10 +57,17 @@ export const customerProfiles = pgTable(
     reduceMotion: boolean(),
     isAdultConfirmed: boolean().notNull().default(false),
     adultConfirmedAt: tz(),
+    /** When the "I am 13 or over" box was ticked (COMPLIANCE §7); set once, on profile creation (P1-04). */
+    ageDeclaredAt: tz(),
     ...timestamps(),
   },
   (t) => [
     index("customer_profiles_phone_hash_idx").on(t.phoneHash),
+    check(
+      "customer_profiles_phone_sealed",
+      sql`(${t.phoneEnc} IS NULL) = (${t.phoneKeyId} IS NULL) AND (${t.phoneEnc} IS NULL) = (${t.phoneHash} IS NULL)`,
+    ),
+    check("customer_profiles_full_name_length", sql`char_length(${t.fullName}) BETWEEN 1 AND 80`),
     check("customer_profiles_member_id_format", sql`${t.memberId} ~ '^[2-9A-HJKMNP-TV-Z]{6}$'`),
     check(
       "customer_profiles_birthday_valid",

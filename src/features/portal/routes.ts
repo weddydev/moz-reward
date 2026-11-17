@@ -91,6 +91,14 @@ export const CUSTOMER_ROUTES: readonly CustomerRoute[] = [
   },
   {
     portal: "customer",
+    path: "/shops/[id]",
+    label: "Shop",
+    icon: "Store",
+    access: "signed-in",
+    nav: "hidden",
+  },
+  {
+    portal: "customer",
     path: "/me/security",
     label: "Your devices",
     icon: "CircleUser",
@@ -292,6 +300,25 @@ export const PORTAL_ROUTES: readonly PortalRoute[] = [
 
 export const PORTAL_ROOT = { customer: "/wallet", shop: "/dashboard", admin: "/admin" } as const;
 
+/** A table path with a dynamic segment (`/shops/[id]`): it names a page, not a URL. */
+export const isDynamicPath = (path: string): boolean => /\[[^\]/]+\]/.test(path);
+
+/**
+ * Where signing in returns to for a route: its own path, or for a dynamic route the portal root. The gate
+ * never builds a return path from the request's URL (P0-12), and a table path like `/shops/[id]` is no URL.
+ */
+export const returnPathOf = (route: PortalRoute): string =>
+  isDynamicPath(route.path) ? PORTAL_ROOT[route.portal] : route.path;
+
+/** Whether `pathname` is the table path `pattern` or under it; a `[param]` segment matches any one segment. */
+function underRoute(pattern: string, pathname: string): boolean {
+  if (!isDynamicPath(pattern)) return pathname === pattern || pathname.startsWith(`${pattern}/`);
+  const want = pattern.split("/");
+  const got = pathname.split("/");
+  if (got.length < want.length) return false;
+  return want.every((seg, i) => (isDynamicPath(seg) ? (got[i] ?? "") !== "" : seg === got[i]));
+}
+
 export function routeByPath(path: string): PortalRoute | undefined {
   return PORTAL_ROUTES.find((r) => r.path === path);
 }
@@ -355,5 +382,5 @@ export const PORTAL_HOME = "/portal";
  */
 export function isPortalPath(pathname: string): boolean {
   if (pathname === PORTAL_HOME) return true;
-  return PORTAL_ROUTES.some((r) => pathname === r.path || pathname.startsWith(`${r.path}/`));
+  return PORTAL_ROUTES.some((r) => underRoute(r.path, pathname));
 }

@@ -21,6 +21,7 @@ import {
   makeStaff,
   makeUser,
   markSessionMfaVerified,
+  setShopStatus,
 } from "@/server/testing/factories";
 import { testApiAllowed } from "@/server/testing/test-api";
 
@@ -36,6 +37,8 @@ const sessionInput = z
     shopId: z.uuid().optional(),
     /** P0-12: staff/owner actors can also be staff of this many extra new shops (shop switcher). */
     extraShops: z.number().int().min(0).max(3).optional(),
+    /** P1-04: false → a customer with no profile yet (the join sheet asks for it). */
+    profile: z.boolean().optional(),
   })
   .strict();
 
@@ -135,6 +138,9 @@ const shopInput = z
   })
   .strict();
 
+/** P1-04: move a seeded shop to another state mid-flow (suspended while the join sheet is open). */
+const shopStatusInput = z.object({ shopId: z.uuid(), status: shopInput.shape.status }).strict();
+
 type Ctx = { params: Promise<{ action: string }> };
 const invalid = (): Response => NextResponse.json({ error: "invalid input" }, { status: 400 });
 
@@ -213,6 +219,12 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
       if (memberUserId) await makeMembership(memberUserId, shop.id);
       return NextResponse.json({ shopId: shop.id, shopCode: shop.shopCode });
     }
+    case "shop-status": {
+      const parsed = shopStatusInput.safeParse(body);
+      if (!parsed.success) return invalid();
+      await setShopStatus(parsed.data.shopId, parsed.data.status);
+      return NextResponse.json({ ok: true });
+    }
     case "ops-snapshot": {
       // P0-13: a sample health snapshot for the System page (the E2E server runs no worker).
       const snapshot = await makeOpsSnapshot();
@@ -273,10 +285,10 @@ async function createSession(body: unknown): Promise<Response> {
   const parsed = sessionInput.safeParse(body);
   if (!parsed.success) return invalid();
 
-  const actor = await makeActor(
-    parsed.data.role,
-    parsed.data.shopId ? { shopId: parsed.data.shopId } : {},
-  );
+  const actor = await makeActor(parsed.data.role, {
+    ...(parsed.data.shopId ? { shopId: parsed.data.shopId } : {}),
+    ...(parsed.data.profile === false ? { profile: false } : {}),
+  });
   const extraShopIds: string[] = [];
   for (let i = 0; i < (parsed.data.extraShops ?? 0); i++) {
     const shop = await makeShop({ name: `Second Shop ${String(i + 1)}` });

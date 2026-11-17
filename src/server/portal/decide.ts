@@ -4,6 +4,7 @@ import {
   type AdminRouteRole,
   type Portal,
   PORTAL_ROOT,
+  returnPathOf,
   type PortalRoute,
   routeByPath,
   type ShopRouteRole,
@@ -84,20 +85,20 @@ export function decideRouteGate(input: {
   switch (route.portal) {
     case "customer":
       if (route.access === "public") return { kind: "allow", principal: p };
-      if (!p) return { kind: "redirect", to: signIn("/sign-in", route.path) };
+      if (!p) return { kind: "redirect", to: signIn("/sign-in", returnPathOf(route)) };
       return { kind: "allow", principal: p };
     case "shop": {
-      if (!p) return { kind: "redirect", to: signIn("/staff/sign-in", route.path) };
+      if (!p) return { kind: "redirect", to: signIn("/staff/sign-in", returnPathOf(route)) };
       const shopId = pickActiveShop(p.shopRoles, input.shopCookie);
       if (shopId === null) return { kind: "forbidden" };
       const d = decideShopRole(p, shopId, route.roles, now);
-      if (!d.ok) return fromDenied(d, route.path);
+      if (!d.ok) return fromDenied(d, returnPathOf(route));
       return { kind: "allow", principal: p, shopId, role: d.value.role };
     }
     case "admin": {
-      if (!p) return { kind: "redirect", to: signIn("/staff/sign-in", route.path) };
+      if (!p) return { kind: "redirect", to: signIn("/staff/sign-in", returnPathOf(route)) };
       const d = decideAdminRole(p, route.roles, now, input.allowlist);
-      if (!d.ok) return fromDenied(d, route.path);
+      if (!d.ok) return fromDenied(d, returnPathOf(route));
       return { kind: "allow", principal: p, role: d.value.role };
     }
   }

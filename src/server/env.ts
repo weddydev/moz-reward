@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { formatEnvError } from "@/lib/env";
 import { parseAdminAllowlist } from "@/server/security/admin-allowlist";
+import { FieldCryptoError, parseKeyring } from "@/server/security/field-crypto";
 
 /**
  * Server-only environment (P0-02), validated at startup (`src/instrumentation.ts`, worker entry) and cached.
@@ -82,7 +83,11 @@ export const serverEnvSchema = z
     TRUSTED_PROXY: z.enum(["none", "caddy", "cloudflare"]).default("none"),
 
     DATA_ENCRYPTION_KEY: key32,
-    DATA_ENCRYPTION_KEY_ID: z.string().default("k1"),
+    /**
+     * Decrypt-only keys kept during a rotation (P1-04, RUNBOOK §18): base64 keys, comma-separated. Key ids are
+     * derived from the keys (field-crypto `keyIdOf`). Removed once `pnpm keys:reencrypt` reports PASS.
+     */
+    DATA_ENCRYPTION_OLD_KEYS: optional,
     BLIND_INDEX_KEY: key32,
     MEMBER_QR_SIGNING_KEY: key32,
 
@@ -178,9 +183,15 @@ export const serverEnvSchema = z
     const appUrl = URL.canParse(e.APP_URL) ? new URL(e.APP_URL) : undefined;
     const isLocalEnv = e.APP_ENV === "local" || e.APP_ENV === "test";
     // SECURITY §7: every secret is its own value — two equal secrets fail the boot (names only, never values).
+    const oldKeys = (e.DATA_ENCRYPTION_OLD_KEYS ?? "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((key, i) => [`DATA_ENCRYPTION_OLD_KEYS (key ${String(i + 1)})`, key] as const);
     const secrets = [
       ["AUTH_SECRET", e.AUTH_SECRET],
       ["DATA_ENCRYPTION_KEY", e.DATA_ENCRYPTION_KEY],
+      ...oldKeys,
       ["BLIND_INDEX_KEY", e.BLIND_INDEX_KEY],
       ["MEMBER_QR_SIGNING_KEY", e.MEMBER_QR_SIGNING_KEY],
       ["HEALTH_TOKEN", e.HEALTH_TOKEN ?? ""],
@@ -193,6 +204,23 @@ export const serverEnvSchema = z
           ctx.addIssue({ code: "custom", path: [b], message: `must differ from ${a}` });
         }
       }
+    }
+    try {
+      parseKeyring({ key: e.DATA_ENCRYPTION_KEY, old: e.DATA_ENCRYPTION_OLD_KEYS });
+    } catch (err) {
+      // FieldCryptoError messages name ids and rules only, never key material.
+      if (err instanceof FieldCryptoError)
+        ctx.addIssue({
+          code: "custom",
+          // A bad current key is already reported by its own field check; this names the old-key list.
+          path: [
+            err.message.startsWith("DATA_ENCRYPTION_KEY")
+              ? "DATA_ENCRYPTION_KEY"
+              : "DATA_ENCRYPTION_OLD_KEYS",
+          ],
+          message: err.message,
+        });
+      else throw err;
     }
     if (!isLocalEnv && e.ALERT_EMAILS.length === 0) {
       ctx.addIssue({

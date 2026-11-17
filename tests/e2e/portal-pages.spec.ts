@@ -1,4 +1,4 @@
-import { expect, test } from "./support/test";
+import { expect, test, testApiHeaders } from "./support/test";
 import {
   ADMIN_ROUTES,
   CUSTOMER_ROUTES,
@@ -14,12 +14,22 @@ import type { Page } from "@playwright/test";
 const FORBIDDEN = "You don't have access to this page";
 const NOT_FOUND = "We can't find that page";
 
-async function expectPages(page: Page, routes: readonly PortalRoute[]): Promise<void> {
+/** A dynamic route (`/shops/[id]`) opened through a real URL, with the heading that page shows. */
+type Concrete = Record<string, { url: string; heading: string }>;
+
+async function expectPages(
+  page: Page,
+  routes: readonly PortalRoute[],
+  concrete: Concrete = {},
+): Promise<void> {
   for (const route of routes) {
-    const res = await page.goto(route.path);
+    const real = concrete[route.path];
+    // A new `[param]` route must be given a real URL here, never skipped silently.
+    if (route.path.includes("[") && !real) throw new Error(`no concrete URL for ${route.path}`);
+    const res = await page.goto(real?.url ?? route.path);
     expect(res?.status(), route.path).toBe(200);
     await expect(page.getByRole("heading", { level: 1 }), route.path).toHaveText(
-      route.path === "/admin/system" ? "System" : route.label,
+      real?.heading ?? (route.path === "/admin/system" ? "System" : route.label),
     );
     await expect(page.locator("main"), route.path).toHaveCount(1);
     await expect(page.locator(`[data-portal="${route.portal}"]`), route.path).toBeVisible();
@@ -49,8 +59,17 @@ test.describe("[P0-12] portal pages", () => {
       const res = await request.get(route.path, { maxRedirects: 0 });
       expect(res.status(), route.path).toBe(route.access === "public" ? 200 : 307);
     }
-    await signInAs("customer");
-    await expectPages(page, CUSTOMER_ROUTES);
+    const customer = await signInAs("customer");
+    // P1-04: the shop page needs a shop the customer is a member of.
+    const seeded = await page.request.post("/api/test/shop", {
+      data: { status: "active", name: "Route Table Café", memberUserId: customer.userId },
+      headers: testApiHeaders(),
+    });
+    expect(seeded.ok()).toBe(true);
+    const { shopId } = (await seeded.json()) as { shopId: string };
+    await expectPages(page, CUSTOMER_ROUTES, {
+      "/shops/[id]": { url: `/shops/${shopId}`, heading: "Route Table Café" },
+    });
   });
 
   test("COMPLIANCE §1: the Feedback and Offers placeholders carry no call to action", async ({

@@ -1,5 +1,4 @@
 import { Clock, MapPin, Navigation, Phone, Store } from "lucide-react";
-import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -26,12 +25,13 @@ const rise = (i: number): { "data-gate-rise": ""; style: React.CSSProperties } =
  */
 export function ShopLanding({
   data,
-  collectHref,
+  collect,
   member,
   now,
 }: {
   data: Live;
-  collectHref: string;
+  /** The "Collect points" CTA for this visitor (sign-in link, join sheet, or the member's shop page link). */
+  collect: React.ReactNode;
   member: boolean;
   now: Date;
 }): React.JSX.Element {
@@ -54,13 +54,13 @@ export function ShopLanding({
             <CoverArt coverUrl={shop.coverUrl} page />
           </div>
           <div className="relative mx-auto -mt-10 max-w-[560px] px-5 lg:hidden" {...rise(0)}>
-            <Logo name={shop.name} logoUrl={shop.logoUrl} />
+            <ShopLogo name={shop.name} logoUrl={shop.logoUrl} />
           </div>
         </div>
 
         <section className="mx-auto flex w-full max-w-[560px] flex-col gap-5 px-5 pt-3 pb-10 lg:mx-0 lg:max-w-none lg:justify-center lg:px-0 lg:pt-0">
           <div className="hidden lg:block" {...rise(0)}>
-            <Logo name={shop.name} logoUrl={shop.logoUrl} />
+            <ShopLogo name={shop.name} logoUrl={shop.logoUrl} />
           </div>
           <div className="flex flex-col gap-2" {...rise(1)}>
             <h1 className="text-h1 break-words" data-testid="landing-name">
@@ -80,13 +80,7 @@ export function ShopLanding({
             </p>
           ) : null}
           <div className="flex flex-col gap-3" {...rise(3)}>
-            <Link
-              href={collectHref}
-              className={buttonClasses({ size: 56, block: true })}
-              data-testid="landing-collect"
-            >
-              Collect points
-            </Link>
+            {collect}
           </div>
         </section>
       </div>
@@ -184,7 +178,13 @@ export function CoverArt({
   );
 }
 
-function Logo({ name, logoUrl }: { name: string; logoUrl: string | null }): React.JSX.Element {
+export function ShopLogo({
+  name,
+  logoUrl,
+}: {
+  name: string;
+  logoUrl: string | null;
+}): React.JSX.Element {
   return (
     <span className="border-surface bg-gold-100 grid size-20 place-items-center overflow-hidden rounded-[var(--r-md)] border-4 shadow-[var(--shadow-2)]">
       {logoUrl ? (

@@ -25,7 +25,6 @@ const APP_CONFIG = [
   "EMAIL_FALLBACK_PROVIDER",
   "EMAIL_FROM",
   "EMAIL_DAILY_CAP",
-  "DATA_ENCRYPTION_KEY_ID",
   "LOG_LEVEL",
 ];
 
@@ -52,7 +51,8 @@ const APP_SECRETS = {
     "TURNSTILE_SECRET_KEY",
     "ALERT_EMAILS",
   ],
-  optional: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "SENTRY_DSN"],
+  // DATA_ENCRYPTION_OLD_KEYS: only during a data-key rotation (RUNBOOK §18), in the web and worker containers.
+  optional: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "SENTRY_DSN", "DATA_ENCRYPTION_OLD_KEYS"],
   stagingRequired: [],
 };
 

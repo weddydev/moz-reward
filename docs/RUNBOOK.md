@@ -164,7 +164,7 @@ Rotate first, investigate second. Inventory and rotation consequences: SECURITY 
 1. Identify the secret and every environment that used it (each environment has its own values).
 2. Generate the new value as in the inventory (`openssl rand -base64 32|48`, or the provider's console for Resend/Brevo/R2/Google/Turnstile/Sentry).
 3. Update the GitHub secret and the password manager; redeploy (§4) so the deploy job rewrites the host env file. Revoke the old value at the provider.
-4. Consequences: `AUTH_SECRET` signs everyone out; `MEMBER_QR_SIGNING_KEY` invalidates saved QR codes; `DATA_ENCRYPTION_KEY` is never rotated in place (new key + new ID + re-encryption job, P1-04); `BLIND_INDEX_KEY` rotation rebuilds lookup indexes; database passwords need the P0-15 bootstrap re-run; `HEALTH_TOKEN` needs the deploy scripts updated.
+4. Consequences: `AUTH_SECRET` signs everyone out; `MEMBER_QR_SIGNING_KEY` invalidates saved QR codes; `DATA_ENCRYPTION_KEY` is never rotated in place: follow §18; `BLIND_INDEX_KEY` rotation rebuilds lookup indexes; database passwords need the P0-15 bootstrap re-run; `HEALTH_TOKEN` needs the deploy scripts updated.
 5. Investigate: how it leaked (gitleaks history, logs, a laptop), what it could reach (audit log, provider logs). Personal data exposed → COMPLIANCE §2 breach steps (72 h to the ICO if reportable).
 6. **Worked when:** the old value is refused at the provider and the app is healthy on the new one.
 
@@ -254,3 +254,44 @@ mobile network sharing one address is never blocked by Cloudflare; it only stops
   data). **From many IPs at once:** raise the Cloudflare rule's action to Managed Challenge for `/s/*` until it stops.
 - **Customers report "Too many requests" at a busy shop:** check the IP in the logs; if it is the shop's own Wi-Fi, the
   60/min limit is too low for that site: record it in DECISIONS and raise `LANDING_LIMIT` (src/server/security/landing-limit.ts).
+
+## 18. Rotate the data encryption key (`DATA_ENCRYPTION_KEY`)
+
+*(P1-04)* Phone numbers (and every later `*_enc` column) are sealed with AES-256-GCM under `DATA_ENCRYPTION_KEY`;
+each value stores the **key id**, which is derived from the key itself (`k` + 10 hex characters, `keyIdOf`), so an id
+can never point at the wrong key, even across a rollback. A rotation adds a key; it never re-keys in place. Do it on
+a key leak (§9) or on a schedule. One environment at a time, staging first.
+1. **New key.** `openssl rand -base64 32` → password manager entry "Moz `<env>` data key `<date>`". Keep the old
+   key's entry: you need it in step 2 and until the last backup sealed with it has expired (step 6).
+2. **Secrets (human, GitHub → Settings → Secrets → Actions):** `DATA_ENCRYPTION_OLD_KEYS_<ENV>` = the **old** key
+   (base64; if an earlier rotation's key is still listed, keep it after a comma), then `DATA_ENCRYPTION_KEY_<ENV>` =
+   the **new** key. Set the old-keys secret first: a deploy started between the two steps then fails its boot check
+   (the old key listed is still the current key) and aborts with the previous release serving, whereas the other
+   order would boot on the new key without the old one and fail every read of an existing phone number.
+3. **Deploy** (§4, or `gh workflow run deploy.yml` for staging). Web and worker now seal new values under the new id
+   and still open the old ones. A malformed or repeated key fails the boot by name, the deploy aborts and the
+   previous release keeps serving.
+4. **Re-encrypt** (worker container: it has both keys):
+   ```
+   sudo docker exec moz-<env>-worker-1 node cli/keys-reencrypt.mjs --dry-run   # key ids in the keyring + rows per id
+   sudo docker exec moz-<env>-worker-1 node cli/keys-reencrypt.mjs             # batches of 500, one audit row each
+   ```
+   **Worked when:** the last line is `keys:reencrypt: PASS, every value is on key id "<new id>"` and the `after` line
+   shows only the new id. Copy the before/after lines into SESSION_LOG and write the new id next to the key in the
+   password manager. Interrupted (Ctrl-C, container restart)? Run it again: at most one batch was rolled back and
+   nothing is sealed twice. `STOPPED … not in the keyring` = rows sealed under a key you didn't list: find it in the
+   password manager, add it to `DATA_ENCRYPTION_OLD_KEYS_<ENV>`, redeploy, run again (nothing was changed).
+   `STOPPED … does not open` names the row: that value is damaged; restore it from a backup (§6), never delete it
+   to make the job pass. `FAIL … still on an old key id` = a process kept the old keyring (a container not
+   replaced): redeploy, run again.
+5. **Drop the old key from the app:** delete `DATA_ENCRYPTION_OLD_KEYS_<ENV>` (or remove that key from the list),
+   redeploy, and run `--dry-run` once more: the keyring lists only the new id.
+6. **Keep the old key in the password manager** until every backup taken before step 4 has expired (35 days,
+   §6). Restoring an older backup needs it back in `DATA_ENCRYPTION_OLD_KEYS_<ENV>`, then step 4 again. After
+   35 days, delete the entry and note it in SESSION_LOG.
+- **Rollback during a rotation (§5):** safe. The key id comes from the key, not from the release, so an older
+  release with the new key and the old-keys list reads both kinds of value and writes the new id.
+- **Leaked key (§9):** do steps 1–5 at once; step 6 still applies, but the leaked key protects those backups no
+  better than it did before, so also consider COMPLIANCE §2 for the data it sealed.
+- Adding a new encrypted column: register it in `ENCRYPTED_FIELDS` (src/server/jobs/reencrypt.ts). The job refuses
+  to run while any `*_enc` column is unregistered, and `tests/integration/key-rotation.test.ts` fails too.

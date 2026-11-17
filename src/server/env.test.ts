@@ -195,6 +195,29 @@ describe("[P0-02] server env", () => {
     expect(() => parseServerEnv({ ...base, DATA_ENCRYPTION_KEY: base.AUTH_SECRET })).toThrow();
   });
 
+  it("[P1-04] data key: old keys (base64 list) parse, differ from every secret and never echo", () => {
+    const old = Buffer.alloc(32, 5).toString("base64");
+    const old2 = Buffer.alloc(32, 6).toString("base64");
+    const ok = { ...prod, DATA_ENCRYPTION_OLD_KEYS: `${old}, ${old2}` };
+    expect(parseServerEnv(ok).DATA_ENCRYPTION_OLD_KEYS).toBe(`${old}, ${old2}`);
+    expect(parseServerEnv(prod).DATA_ENCRYPTION_OLD_KEYS).toBeUndefined();
+    const reused = { ...prod, DATA_ENCRYPTION_OLD_KEYS: base.BLIND_INDEX_KEY };
+    expect(() => parseServerEnv(reused)).toThrow(
+      /must differ from DATA_ENCRYPTION_OLD_KEYS|BLIND_INDEX_KEY: must differ/,
+    );
+    const bad = [`k1:${old}`, "k1", prod.DATA_ENCRYPTION_KEY, `${old},${old}`, "c2hvcnQ="];
+    for (const value of bad) {
+      const run = () => parseServerEnv({ ...prod, DATA_ENCRYPTION_OLD_KEYS: value });
+      expect(run, value).toThrow(/DATA_ENCRYPTION_OLD_KEYS/);
+      try {
+        run();
+      } catch (e) {
+        expect(String(e)).not.toContain(old);
+        expect(String(e)).not.toContain(prod.DATA_ENCRYPTION_KEY);
+      }
+    }
+  });
+
   it("[P0-19] staging/production require a Turnstile secret and refuse SMTP for sign-in mail", () => {
     const { TURNSTILE_SECRET_KEY: _t, ...noTurnstile } = prod;
     expect(() => parseServerEnv(noTurnstile)).toThrow(/TURNSTILE_SECRET_KEY: required/);

@@ -17,6 +17,7 @@ import { isDirectRun } from "../src/lib/is-direct-run";
 export const CLI_ENTRIES = {
   worker: "src/worker/index.ts",
   relay: "scripts/relay.ts",
+  "keys-reencrypt": "scripts/keys-reencrypt.ts",
   migrate: "src/server/db/migrate.ts",
   seed: "src/server/db/seed.ts",
   "demo-credentials": "scripts/demo-credentials.ts",

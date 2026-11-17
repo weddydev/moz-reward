@@ -2,7 +2,12 @@ import "server-only";
 import { and, asc, eq, gte, sql } from "drizzle-orm";
 import { CodeCollisionError, normaliseCode, SHOP_CODE_LENGTH, withUniqueCode } from "@/lib/codes";
 import type { LngLat } from "@/lib/geo";
-import { type AdminScope, publicScope, type ShopScope } from "@/server/authz/scope";
+import {
+  type AdminScope,
+  type CustomerScope,
+  publicScope,
+  type ShopScope,
+} from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import { shopClosures, shopHours, shops } from "@/server/db/schema";
 import { opsAlert } from "@/server/security/alert";
@@ -199,4 +204,38 @@ export async function readShopLanding(shopCode: string): Promise<ShopLandingData
       closures,
     };
   });
+}
+
+const JOINABLE = new Set(["active", "expiring", "grace", "restricted"]);
+
+/**
+ * The shop a customer is joining, by code (P1-04). A plain read under the customer's own scope: `FOR SHARE`
+ * would need an UPDATE policy the customer doesn't have (RLS), and the membership's FK already takes a key-share
+ * lock on the shop row. The memberships guard (0020) re-checks the status at insert, as the database wall.
+ */
+export async function findJoinableShop(
+  scope: CustomerScope,
+  shopCode: string,
+  tx: Transaction,
+): Promise<{ kind: "live"; id: string; name: string } | { kind: "gone" } | { kind: "none" }> {
+  const code = normaliseCode(shopCode, SHOP_CODE_LENGTH);
+  if (!code) return { kind: "none" };
+  const [row] = await withScope(
+    scope,
+    (q) =>
+      q
+        .select({
+          id: shops.id,
+          name: shops.name,
+          tradingName: shops.tradingName,
+          status: shops.status,
+        })
+        .from(shops)
+        .where(eq(shops.shopCode, code))
+        .limit(1),
+    tx,
+  );
+  if (!row || row.status === "pending") return { kind: "none" };
+  if (!JOINABLE.has(row.status)) return { kind: "gone" };
+  return { kind: "live", id: row.id, name: row.tradingName ?? row.name };
 }

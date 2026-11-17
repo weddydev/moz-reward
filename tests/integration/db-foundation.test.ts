@@ -107,6 +107,7 @@ describe("[P0-03] app role moz_app (least privilege)", () => {
     shop_hours: "ISUD", // P1-01: the owner edits hours (RLS: owner / admin owner+support)
     shop_closures: "ISUD", // P1-01: the owner adds and removes closure days (same RLS)
     nfc_tags: "ISU", // P1-01: no DELETE, tags are history (replaced, never removed)
+    marketing_consents: "IS", // P1-04: append-only consent history (RLS: own insert/read, shop + admin read)
   };
 
   it("has exactly the reviewed grants per table, never TRUNCATE", async () => {

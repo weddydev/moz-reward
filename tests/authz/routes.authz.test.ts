@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { PORTAL_ROUTES, type PortalRoute } from "@/features/portal/routes";
-import { defaultPortalPath } from "@/features/portal/routes";
+import { defaultPortalPath, PORTAL_ROOT } from "@/features/portal/routes";
 import {
   ADMIN_SESSION_MAX_MS,
   type Principal,
@@ -154,7 +154,10 @@ const ADMIN_ROLE: Partial<Record<string, "owner" | "support" | "moderator" | "fi
 };
 
 function expected(route: PortalRoute, col: string): Outcome["kind"] | `redirect ${string}` {
-  const back = encodeURIComponent(route.path);
+  // A dynamic route (`/shops/[id]`) names no URL, so signing in returns to the portal root (P1-04).
+  const back = encodeURIComponent(
+    route.path.includes("[") ? PORTAL_ROOT[route.portal] : route.path,
+  );
   if (route.portal === "customer") {
     if (route.access === "public") return "allow";
     return col === "signed out" ? `redirect /sign-in?returnTo=${back}` : "allow";

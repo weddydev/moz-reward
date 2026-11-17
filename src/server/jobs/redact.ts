@@ -1,4 +1,5 @@
 import "server-only";
+import { outsideUuids } from "@/lib/outside-uuids";
 
 /**
  * Redaction for the dead-letter table and worker logs (P0-04, SECURITY §7: no personal data or secrets in
@@ -31,10 +32,13 @@ export function redactText(text: string): string {
   const scrubbed = text
     .replace(EMAIL, REDACTED)
     .replace(BEARER, `$1 ${REDACTED}`)
-    .replace(QUERY_VALUE, `$1${REDACTED}`)
-    .replace(SEPARATED_DIGITS, (run) => ((run.match(/\d/g)?.length ?? 0) >= 10 ? REDACTED : run))
-    .replace(LONG_DIGITS, REDACTED);
-  return scrubbed.length > MAX_STRING ? `${scrubbed.slice(0, MAX_STRING)}…` : scrubbed;
+    .replace(QUERY_VALUE, `$1${REDACTED}`);
+  const digitsGone = outsideUuids(scrubbed, (part) =>
+    part
+      .replace(SEPARATED_DIGITS, (run) => ((run.match(/\d/g)?.length ?? 0) >= 10 ? REDACTED : run))
+      .replace(LONG_DIGITS, REDACTED),
+  );
+  return digitsGone.length > MAX_STRING ? `${digitsGone.slice(0, MAX_STRING)}…` : digitsGone;
 }
 
 /** Keys whose string values may be kept (id/enum keys that do not identify a person). */

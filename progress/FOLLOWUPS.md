@@ -33,3 +33,6 @@ _CLAUDE.md §4 findings policy: LOW findings and nits get one line here, are not
 - [P1-04, 17 Nov] `VALIDATE CONSTRAINT` the NOT VALID checks `customer_profiles_phone_sealed` and `customer_profiles_full_name_length` (0020) in a later migration.
 - [P1-04 design check LOW 13/c, 17 Nov] DSAR export (P2) must list `marketing_consents`; marketing senders (P3) treat `marketing_opt_in IS NULL` as no.
 - [P1-04 C, 17 Nov] `/shops/[id]` metadata title is the generic "Shop"; P1-09 should use the shop name (`generateMetadata` with the same member read).
+- [P2-13] DSAR export lists `marketing_consents` (append-only, no FKs: select by `user_id`); the erasure routine keeps consent evidence per COMPLIANCE §3 (pseudonymised), never deletes it to make a purge pass.
+- [P1-09] From the P1-04 security review (LOW 5): `marketing_consents_own_insert` lets a customer insert consent rows without touching the membership (server-only today). Pin "every consent row is written with a matching `marketing_opt_in` write in the same transaction" by a comment + test, optionally an AFTER INSERT check.
+- [H-13] Join sheet on a real iPhone: open it, scroll so the Safari toolbar collapses/expands; the sheet must stay pinned to the bottom (Playwright WebKit keeps an open dialog's `100dvh` after a programmatic resize, so E2E sets viewports before loading).
