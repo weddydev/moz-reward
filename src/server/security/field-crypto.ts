@@ -1,5 +1,5 @@
 import "server-only";
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHmac, randomBytes } from "node:crypto";
 
 /**
  * Field-level encryption (SECURITY §7, P1-04): AES-256-GCM with a random 96-bit IV per write. Each value is
@@ -9,15 +9,17 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
  * (`"<table>.<column>|<row id>|<key id>"`), so ciphertext copied to another row or relabelled with another
  * key id fails the tag instead of decrypting.
  *
+ * The key id is derived from the key itself (`keyIdOf`): an HMAC of a fixed label under the key, so the id
+ * always travels with its key. A release rolled back across a rotation, or a key pasted into the wrong secret,
+ * can never seal values under one key while labelling them with another (DECISIONS 17 Nov, P1-04 B).
+ *
  * Pure: the keyring is passed in (`fieldKeyring()` in `field-keys.ts` builds it from the env). Errors name
  * the problem and the key id only, never the value, the key or the ciphertext.
  */
 
-/** Local/test key id when `DATA_ENCRYPTION_KEY_ID` is unset (required elsewhere, `parseServerEnv`). */
-export const DEFAULT_DATA_KEY_ID = "k1";
 const IV_BYTES = 12;
 const TAG_BYTES = 16;
-const KEY_ID = /^[a-z0-9-]{1,16}$/;
+const KEY_ID_LABEL = "moz-rewards/field-key-id/v1";
 /** Format version of the stored value, so the algorithm can change later without guessing. */
 const PREFIX = "v1.";
 
@@ -47,31 +49,40 @@ function decodeKey(b64: string, label: string): Buffer {
   return key;
 }
 
+const idOf = (key: Buffer): string =>
+  "k" + createHmac("sha256", key).update(KEY_ID_LABEL).digest("hex").slice(0, 10);
+
+/** The id stored with every value a key seals: `k` + 10 hex characters, derived from the key (base64). */
+export function keyIdOf(b64: string): string {
+  return idOf(decodeKey(b64, "key"));
+}
+
 /**
- * Builds the keyring. `old` is the decrypt-only list kept during a rotation: `"k1:<base64>,k0:<base64>"`.
- * Throws on a malformed id, a duplicate id, or the same key under two ids.
+ * Builds the keyring from `DATA_ENCRYPTION_KEY` and, during a rotation, the decrypt-only
+ * `DATA_ENCRYPTION_OLD_KEYS` (base64 keys, comma-separated). Throws on a malformed key, an old key equal to the
+ * current one or to another old key, or the retired `id:base64` format. Messages name positions and ids only.
  */
-export function parseKeyring(spec: { key: string; id: string; old?: string | undefined }): Keyring {
-  const entries: [string, Buffer][] = [[spec.id, decodeKey(spec.key, "DATA_ENCRYPTION_KEY")]];
-  for (const raw of (spec.old ?? "").split(",")) {
-    const item = raw.trim();
-    if (!item) continue;
-    const sep = item.indexOf(":");
-    if (sep < 0) throw new FieldCryptoError("keyring", "each old key must be written id:base64");
-    const id = item.slice(0, sep);
-    entries.push([id, decodeKey(item.slice(sep + 1), `old key "${id}"`)]);
-  }
-  const keys = new Map<string, Buffer>();
-  for (const [id, key] of entries) {
-    if (!KEY_ID.test(id))
-      throw new FieldCryptoError("keyring", `key id "${id}" must match ${String(KEY_ID)}`);
-    if (keys.has(id)) throw new FieldCryptoError("keyring", `duplicate key id "${id}"`);
-    for (const [otherId, other] of keys)
-      if (other.equals(key))
-        throw new FieldCryptoError("keyring", `key "${id}" reuses the key of "${otherId}"`);
+export function parseKeyring(spec: { key: string; old?: string | undefined }): Keyring {
+  const current = decodeKey(spec.key, "DATA_ENCRYPTION_KEY");
+  const keys = new Map<string, Buffer>([[idOf(current), current]]);
+  const items = (spec.old ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  items.forEach((item, i) => {
+    const label = `old key ${String(i + 1)}`;
+    if (item.includes(":"))
+      throw new FieldCryptoError(
+        "keyring",
+        `${label}: list old keys as base64 only (the id is derived from the key)`,
+      );
+    const key = decodeKey(item, label);
+    if (key.equals(current)) throw new FieldCryptoError("keyring", `${label} is the current key`);
+    const id = idOf(key);
+    if (keys.has(id)) throw new FieldCryptoError("keyring", `${label} repeats an earlier old key`);
     keys.set(id, key);
-  }
-  return { current: spec.id, ids: [...keys.keys()], keys };
+  });
+  return { current: idOf(current), ids: [...keys.keys()], keys };
 }
 
 const aad = (context: string, keyId: string): Buffer => Buffer.from(`${context}|${keyId}`, "utf8");

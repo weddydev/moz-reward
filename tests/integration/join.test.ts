@@ -5,10 +5,12 @@ import { MARKETING_CONSENT_VERSION, marketingConsentText } from "@/features/join
 import { mintCustomerScope, mintShopScope } from "@/server/authz/scope";
 import { testOwnerDb as db } from "@/server/db/client";
 import { customerProfiles, marketingConsents, memberships } from "@/server/db/schema";
+import { env } from "@/server/env";
 import { AppError } from "@/server/errors";
 import { transaction, withScope } from "@/server/repos/_base";
 import { recordConsentChange } from "@/server/repos/consents";
 import { createOwnProfile, readOwnProfile } from "@/server/repos/profiles";
+import { keyIdOf } from "@/server/security/field-crypto";
 import { phoneBlindIndex } from "@/server/security/field-keys";
 import { joinShop, type JoinInput } from "@/server/services/join";
 import { makeMembership, makeShop, makeStaff, makeUser } from "@/server/testing/factories";
@@ -82,7 +84,7 @@ describe("[P1-04] join flow", () => {
       .where(eq(customerProfiles.userId, c.id));
     expect(row?.phoneEnc).toMatch(/^v1\./);
     expect(row?.phoneEnc).not.toContain("7400123456");
-    expect(row?.phoneKeyId).toBe("k1");
+    expect(row?.phoneKeyId).toBe(keyIdOf(env().DATA_ENCRYPTION_KEY));
     expect(row?.phoneHash).toBe(phoneBlindIndex(PHONE));
     expect(row?.ageDeclaredAt).toBeInstanceOf(Date);
     expect(row).toMatchObject({ birthdayDay: 29, birthdayMonth: 2, isAdultConfirmed: false });

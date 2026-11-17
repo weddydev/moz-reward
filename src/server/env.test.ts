@@ -90,7 +90,6 @@ describe("[P0-02] server env", () => {
     EMAIL_FALLBACK_API_KEY: "k2",
     TURNSTILE_SECRET_KEY: "0x4AAAAAAA-test-only-secret",
     TRUSTED_PROXY: "cloudflare",
-    DATA_ENCRYPTION_KEY_ID: "k1",
     REDIS_URL: "rediss://:strong-password@redis.internal:6380",
     REDIS_CACHE_URL: "rediss://:other-password@redis-cache.internal:6380",
     REDIS_KEY_PREFIX: "prod:",
@@ -196,20 +195,20 @@ describe("[P0-02] server env", () => {
     expect(() => parseServerEnv({ ...base, DATA_ENCRYPTION_KEY: base.AUTH_SECRET })).toThrow();
   });
 
-  it("[P1-04] data key: explicit id on staging/production; old keys parse, differ and never echo", () => {
-    const { DATA_ENCRYPTION_KEY_ID: _id, ...noId } = prod;
-    expect(() => parseServerEnv(noId)).toThrow(/DATA_ENCRYPTION_KEY_ID: required outside local/);
-    expect(parseServerEnv(base).DATA_ENCRYPTION_KEY_ID).toBeUndefined();
+  it("[P1-04] data key: old keys (base64 list) parse, differ from every secret and never echo", () => {
     const old = Buffer.alloc(32, 5).toString("base64");
-    const ok = { ...prod, DATA_ENCRYPTION_KEY_ID: "k2", DATA_ENCRYPTION_OLD_KEYS: `k1:${old}` };
-    expect(parseServerEnv(ok).DATA_ENCRYPTION_OLD_KEYS).toBe(`k1:${old}`);
-    const reused = { ...ok, DATA_ENCRYPTION_OLD_KEYS: `k1:${base.BLIND_INDEX_KEY}` };
+    const old2 = Buffer.alloc(32, 6).toString("base64");
+    const ok = { ...prod, DATA_ENCRYPTION_OLD_KEYS: `${old}, ${old2}` };
+    expect(parseServerEnv(ok).DATA_ENCRYPTION_OLD_KEYS).toBe(`${old}, ${old2}`);
+    expect(parseServerEnv(prod).DATA_ENCRYPTION_OLD_KEYS).toBeUndefined();
+    const reused = { ...prod, DATA_ENCRYPTION_OLD_KEYS: base.BLIND_INDEX_KEY };
     expect(() => parseServerEnv(reused)).toThrow(
       /must differ from DATA_ENCRYPTION_OLD_KEYS|BLIND_INDEX_KEY: must differ/,
     );
-    for (const bad of [`k2:${old}`, "k1", `k1:${prod.DATA_ENCRYPTION_KEY}`, "k1:c2hvcnQ="]) {
-      const run = () => parseServerEnv({ ...ok, DATA_ENCRYPTION_OLD_KEYS: bad });
-      expect(run, bad).toThrow(/DATA_ENCRYPTION_OLD_KEYS/);
+    const bad = [`k1:${old}`, "k1", prod.DATA_ENCRYPTION_KEY, `${old},${old}`, "c2hvcnQ="];
+    for (const value of bad) {
+      const run = () => parseServerEnv({ ...prod, DATA_ENCRYPTION_OLD_KEYS: value });
+      expect(run, value).toThrow(/DATA_ENCRYPTION_OLD_KEYS/);
       try {
         run();
       } catch (e) {

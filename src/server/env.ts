@@ -2,11 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { formatEnvError } from "@/lib/env";
 import { parseAdminAllowlist } from "@/server/security/admin-allowlist";
-import {
-  DEFAULT_DATA_KEY_ID,
-  FieldCryptoError,
-  parseKeyring,
-} from "@/server/security/field-crypto";
+import { FieldCryptoError, parseKeyring } from "@/server/security/field-crypto";
 
 /**
  * Server-only environment (P0-02), validated at startup (`src/instrumentation.ts`, worker entry) and cached.
@@ -87,11 +83,9 @@ export const serverEnvSchema = z
     TRUSTED_PROXY: z.enum(["none", "caddy", "cloudflare"]).default("none"),
 
     DATA_ENCRYPTION_KEY: key32,
-    /** Id stored with every value the current key seals (P1-04). Set explicitly outside local/test ("k1" there). */
-    DATA_ENCRYPTION_KEY_ID: optional,
     /**
-     * Decrypt-only keys kept during a rotation (P1-04, RUNBOOK "Rotate the data encryption key"):
-     * `id:base64,id:base64`. Removed once `pnpm keys:reencrypt` reports nothing left on them.
+     * Decrypt-only keys kept during a rotation (P1-04, RUNBOOK §18): base64 keys, comma-separated. Key ids are
+     * derived from the keys (field-crypto `keyIdOf`). Removed once `pnpm keys:reencrypt` reports PASS.
      */
     DATA_ENCRYPTION_OLD_KEYS: optional,
     BLIND_INDEX_KEY: key32,
@@ -191,9 +185,9 @@ export const serverEnvSchema = z
     // SECURITY §7: every secret is its own value — two equal secrets fail the boot (names only, never values).
     const oldKeys = (e.DATA_ENCRYPTION_OLD_KEYS ?? "")
       .split(",")
-      .map((item) => item.trim().split(":"))
-      .filter((parts) => parts.length === 2)
-      .map(([id, key]) => [`DATA_ENCRYPTION_OLD_KEYS (${id ?? ""})`, key ?? ""] as const);
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((key, i) => [`DATA_ENCRYPTION_OLD_KEYS (key ${String(i + 1)})`, key] as const);
     const secrets = [
       ["AUTH_SECRET", e.AUTH_SECRET],
       ["DATA_ENCRYPTION_KEY", e.DATA_ENCRYPTION_KEY],
@@ -211,23 +205,21 @@ export const serverEnvSchema = z
         }
       }
     }
-    if (!isLocalEnv && !e.DATA_ENCRYPTION_KEY_ID) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["DATA_ENCRYPTION_KEY_ID"],
-        message: "required outside local/test (the id stored with every encrypted value)",
-      });
-    }
     try {
-      parseKeyring({
-        key: e.DATA_ENCRYPTION_KEY,
-        id: e.DATA_ENCRYPTION_KEY_ID ?? DEFAULT_DATA_KEY_ID,
-        old: e.DATA_ENCRYPTION_OLD_KEYS,
-      });
+      parseKeyring({ key: e.DATA_ENCRYPTION_KEY, old: e.DATA_ENCRYPTION_OLD_KEYS });
     } catch (err) {
       // FieldCryptoError messages name ids and rules only, never key material.
       if (err instanceof FieldCryptoError)
-        ctx.addIssue({ code: "custom", path: ["DATA_ENCRYPTION_OLD_KEYS"], message: err.message });
+        ctx.addIssue({
+          code: "custom",
+          // A bad current key is already reported by its own field check; this names the old-key list.
+          path: [
+            err.message.startsWith("DATA_ENCRYPTION_KEY")
+              ? "DATA_ENCRYPTION_KEY"
+              : "DATA_ENCRYPTION_OLD_KEYS",
+          ],
+          message: err.message,
+        });
       else throw err;
     }
     if (!isLocalEnv && e.ALERT_EMAILS.length === 0) {
