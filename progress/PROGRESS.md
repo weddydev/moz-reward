@@ -7,30 +7,27 @@ Baton: held by talha.syed since 2026-11-17 18:17 IST (Mac)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handed over by talha.syed, 2026-11-17 ~17:15 IST (Mac). Baton free.** Finished: **P1-03 Gilded Gate** (main `349c008`, ticked). Design: CSS timeline from first paint + pre-paint script, inline morph script after the landing markup, lazy sound-only chunk (DECISIONS 17 Nov ×2, incl. the "no long tasks" judgment). Then CI fixes on main (handoff commit): `/dev/motion` section list in the P0-10 AC9 spec + the P1-03 CLS check now counts like CLS (no shifts after input; < 0.001, Linux font-swap sub-pixel shift).
-- **Half-done:** nothing. **CI:** main push `44071634171` (`349c008`) was still running at handoff and **is expected red** on P0-10 AC9 (fixed in the handoff commit); the handoff push's CI is the one that must be green: check it first. `wip/P1-02` and `wip/P1-03` can be deleted once it is.
-- **Next = P1-04 Join flow** (security-relevant: `security-reviewer` design check first; closes C-52). Code may go to a `wip/P1-04` branch; progress files only on main.
-- **P1-A MEDIUM batch (fix together before `/subphase-complete` P1-A):** (a) landing screenshot test seeds a real cover image (test API `shop` needs a `coverUrl` option + a served image) so the m01 composition / LCP image is shown; (b) cookie notice screenshots without consent at 320 and 390, before and after hydration (overlap with Collect at 320×720).
-- **Local gpg 2.5.24 (Mac):** backup-pitr "unprotected WAL" case skips locally (fixture can't be built), runs in CI — C-53.
-- **Tested (17 Nov, Mac):** gate:task P1-03 + P1-02 PASS on `349c008`; after the CI fixes, P0-10 motion gallery + P1-03 on Chromium, WebKit, Pixel 7, desktop1440: 39/0 (+1 skip) on Mac, and 48/0 twice in the Linux Playwright container (5 projects); the pre-push hook ran gate:task on the handoff tree. Lighthouse `?src=qr` LCP 0.81 s.
-- **Not yet tested:** Gilded Gate on a real phone (H-13: feel, frame rate, `arrival` after a soft unlock); health.backup with the flag on (C-48); UptimeRobot alerts (H-45, C-48); demo guide clicks on staging (human); SSE through Cloudflare; Sentry release events from staging; seed-reset timer's first unattended run (Mon 23 Nov 04:30).
-- **Do first:** `git pull`; no new env vars, migrations or seeds. A change to `infra/host/*` needs `scp -r infra <you>@72.61.17.208:moz-infra && ssh <you>@… 'sudo -n bash ~/moz-infra/host/harden.sh'` before a deploy uses it. Manual deploy dispatch: `-f sha=<commit with green push CI>`. Mac: long gates under `caffeinate -i`. Don't edit files while `gate:task` runs (its tree check fails).
-- **VPS access:** root SSH off. Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`; `sudo -n` works. CI: `deploy@` forced command only.
+- **Checkpoint by talha.syed, 2026-11-17 ~19:15 IST (Mac). Baton held.** **P1-04 step A done** on **`wip/P1-04`, HEAD `ad94630`** (pushed): field encryption (`src/server/security/field-crypto.ts` + `field-keys.ts`), UK phone (`src/server/services/phone.ts`, new dep libphonenumber-js), migration **0020** (profile guard, `marketing_consents`, deferred consent trigger, joinable-shop check), `joinShop` service (`src/server/services/join.ts`) + repos (profiles, memberships, consents, `findJoinableShop`).
+- **Plan with the security design check's findings: `progress/P1-04-plan.md`** (HIGH 1 + M2–M5 done in A; M6 rejoin done; M7 + LOW 9 deploy wiring partly done → B; L10/L11/L13 → C).
+- **Next = step B:** `pnpm keys:reencrypt` (registry of encrypted fields + check every `*_enc` column is registered; plain `FOR UPDATE` keyset batches, optimistic `WHERE phone_key_id = old`, audit row per batch, final count ≠ 0 → exit 1; unknown key id → loud stop) + integration (rotate, interrupt/resume, second run no-op, blind index still matches) + RUNBOOK rotation steps. Then C (UI: landing CTA C-52, join sheet, `/shops/[id]`), D (E2E J1, gate:task, security-reviewer on the diff). Steps B–D build on `wip/P1-04`; progress files only on main.
+- **Half-done:** nothing uncommitted. `DATA_ENCRYPTION_OLD_KEYS` is wired in deploy.yml/deploy-env (optional secret, not set anywhere yet). **Not yet tested:** CI on `wip/P1-04` (pushed 19:10, check before the next push); everything from the previous handoff's list (Gilded Gate on a real phone H-13, C-48 items, SSE via Cloudflare, Sentry staging releases, seed-reset timer Mon 23 Nov).
+- **Tested (17 Nov, Mac):** `pnpm check` PASS on `ad94630` (unit 1480); integration join 17 + profile-guard 6 + membership-guard + db-foundation/auth-flows/outbox/rls re-run alone 73/0; full `test:int` 1272/7 under lint contention (6 timeouts re-run alone green; backup-pitr alone 8/0 + 1 skip C-53; grants test fixed).
+- **Do first:** `git pull`; `git switch wip/P1-04 && git merge --ff-only origin/wip/P1-04`; `pnpm install` (new dep); `pnpm db:migrate` (0020). Mac: long gates under `caffeinate -i`. VPS access as before: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`; `sudo -n` works.
 
 ## Status
 - **Phase:** **P1**. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → ~~P1-02~~ → ~~P1-03~~ → **P1-04**.
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-17, talha.syed (handoff; P1-03 ticked; P1-04 next)
+- **Last updated:** 2026-11-17, talha.syed (checkpoint; P1-04 step A on wip/P1-04)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `8353e00`; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`.
-- **P0 closed 17 Nov (human: no more time on P0).** P0-15 ticked; leftovers C-48/C-49 → P1-18. **P1-A:** P1-01 (13 Nov), P1-02 and P1-03 (17 Nov) done; Lighthouse CI exists.
+- **P0 closed 17 Nov (human: no more time on P0).** P0-15 ticked; leftovers C-48/C-49 → P1-18. **P1-A:** P1-01 (13 Nov), P1-02 and P1-03 (17 Nov) done; **P1-04 in progress: step A on `wip/P1-04` (`ad94630`), B next** (`progress/P1-04-plan.md`).
 
 ## Next (top 3)
-1. **P1-04** join flow (security-relevant; closes C-52).
+1. **P1-04 step B** re-encryption job + RUNBOOK, then C (UI) and D (E2E J1, gate, security review) — `progress/P1-04-plan.md`.
 2. P1-A close: MEDIUM batch (Handoff note) → `/subphase-complete` P1-A (also reviews the unreviewed P0-E commits, C-49).
 3. Human, any time: H-45 UptimeRobot monitors (then the stop-staging phone alert test, C-48); H-46 Cloudflare `/s/*` rule; H-47 re-enable the Scheduled workflow? (🟢).
 
@@ -54,6 +51,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-50 | P1-02 | P1-08 | Shop landing `/s/[code]` shows the reward preview with a static ingot (next reward + gold needed) once the loyalty programme exists; public data only, inside the cached landing payload (bump `shop-landing:v1` key version) | E2E on the landing |
 | C-51 | P1-02 | P5-05 | Landing footer "Terms" / "Privacy" links (`/terms`, `/privacy`, plain `<a>`) resolve to the legal pages | E2E: links 200 |
 | C-52 | P1-02 | P1-04 | Landing "Collect points": signed-out → sign-in with returnTo (done); signed-in non-member → join sheet; member → shop page / request (today: `/wallet` placeholder in `src/app/(public)/s/[code]/page.tsx`) | E2E per visitor state |
+| C-54 | P1-04 design check M6 | P1-09 | "Leave shop" sets `marketing_opt_in` false and writes a consent row (`recordConsentChange`, source `leave`) in the same transaction; rejoin (already in `joinOwnMembership`) restores frozen progress | integration |
 | C-53 | P1-02 gate (gpg 2.5) | P1-18 | backup-pitr "WAL object without integrity protection" fixture is unprotected on every gpg (hand-built SED packet), so the case runs on developer laptops (gpg 2.5 writes AEAD even with `--rfc2440`) as well as CI | integration passes on Mac gpg 2.5 without the skip |
 | C-17 | Stryker | P1-18 (human 17 Nov) | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 | C-48 | P0-15 E (human 17 Nov) | P1-18 | P0-15 leftovers: health.backup shows no alert on staging with `BACKUPS_ENABLED=true` (health snapshot); UptimeRobot staging monitors (H-45) + alert on both phones when staging is stopped (AC8); ZAP baseline (weekly) + k6 smoke (twice weekly) wired against staging, zero failed requests during a deploy under k6 (AC2) and rollback under load (AC3); B2 overwrite leaves the locked version (D design HIGH 1); two workers run each scheduled job once (AC6) if not already proven | staging snapshots + workflow runs + SESSION_LOG |
@@ -68,10 +66,9 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (17 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- gate:task P1-03 P1-02 (final tree): PASS, counts in the P1-03 commit message on main.
-- P1-03 E2E (production build, Mac): 17/0 + 1 Chromium-only skip; Linux container 4 projects 70/0 (P1-02 + P1-03). Frames 0/500/850/1000/1200/1400 ms at 390/320/1440 inspected (Chromium + WebKit).
-- Lighthouse with the gate playing (`?src=qr`): LCP 0.81 s, CLS 0, score 100, JS 147.6 KB gzip (17 Nov judgment). Gate JS chunk < 1 KB gzip, loaded only when it plays.
-- CI `44051042111` (P1-02 main) + Deploy `44052730072` green.
+- P1-04 step A (`wip/P1-04` `ad94630`): `pnpm check` PASS (unit 1480); integration join 17/0, profile-guard 6/0, membership-guard + db-foundation + auth-flows + outbox + rls 73/0 (alone); backup-pitr 8/0 + 1 skip (C-53).
+- Full `test:int` ran under lint contention: 1272 passed, 7 failed (6 timeouts, green alone; 1 grants table → fixed). Not yet a clean full run: gate:task at the P1-04 tick.
+- P1-03: CI `44073336752` (handoff main) + Deploy `44074972808` green.
 
 
 ## Follow-ups (LOW)

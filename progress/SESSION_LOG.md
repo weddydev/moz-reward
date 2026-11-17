@@ -622,3 +622,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - CI of the first `wip/P1-03` push (`44057884052`) red: P0-10 AC9 (the `/dev/motion` section list lacked "Gilded Gate") and P1-03 skip test CLS 0.00004 on Linux desktop1440 (summed shifts after input; sub-pixel font swap). Fixed: list updated; CLS counted like CLS (no `hadRecentInput`), < 0.001, shifted nodes in the message.
 - Evidence: Mac Chromium/WebKit/Pixel 7/desktop1440 39/0 (+1 skip); Linux container 5 projects 48/0 twice. Main `349c008` CI `44071634171` expected red on AC9 (fixed in this commit).
 - Lesson: a change to `/dev/motion` must also run the P0-10 gallery spec (gate:task runs only the task's IDs). H-47 added (Scheduled workflow disabled, no record). Baton freed.
+
+## 2026-11-17 — P1 — P1-04 step A checkpoint (Mac, talha.syed)
+- security-reviewer design check: no BLOCK; HIGH 1 (opt-in without consent row) + M2–M7 + 6 LOW, all adopted (`progress/P1-04-plan.md`). Built A on `wip/P1-04` `ad94630`: field crypto, UK phone (libphonenumber-js), migration 0020 guards + consent triggers, `joinShop`.
+- Evidence: `pnpm check` PASS (unit 1480); integration join 17/0 (parallel joins, two-shop first join, rejoin, member-ID retry/exhaustion, suspended/closed/pending, outdated wording, consent walls), profile-guard 6/0; affected suites 73/0 alone; backup-pitr alone 8/0 + 1 skip.
+- Full test:int under lint contention: 7 fails = 6 timeouts (green alone) + grants table (fixed). Note: don't run test:int and lint at the same time on the Mac.
+- Next exact step: P1-04 step B — `pnpm keys:reencrypt` + integration + RUNBOOK (handoff note).
+

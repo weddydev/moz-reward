@@ -30,3 +30,5 @@ _CLAUDE.md §4 findings policy: LOW findings and nits get one line here, are not
 - [P1-02 design review LOW, 17 Nov] `src/app/(public)/s/[code]/not-found.tsx` has no `LandingFooter` (suspended/closed pages do).
 - [P1-03 design review LOW, 17 Nov] Gate frame 168×208 and radius 28 are literals in `gilded-gate.css` and `GATE.frame`: expose them as CSS custom properties set from `GATE.frame` (one source).
 - [P1-03, 17 Nov] Linux-container check (CLAUDE.md "Linux check") has no committed helper: host `next start` on `.next-e2e` with `e2eServerEnv()`, container `mcr.microsoft.com/playwright:v1.65.0-noble` with `E2E_BASE_URL=http://localhost:3100` and a TCP forwarder to `host.docker.internal:3100` (a non-localhost origin breaks COOP). Make it `pnpm e2e:linux`; remote mode skips the route warm-up, so the first cold run can time out.
+- [P1-04, 17 Nov] `VALIDATE CONSTRAINT` the NOT VALID checks `customer_profiles_phone_sealed` and `customer_profiles_full_name_length` (0020) in a later migration.
+- [P1-04 design check LOW 13/c, 17 Nov] DSAR export (P2) must list `marketing_consents`; marketing senders (P3) treat `marketing_opt_in IS NULL` as no.
