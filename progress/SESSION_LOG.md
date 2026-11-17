@@ -601,3 +601,4 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Push CI `44038980322` + Deploy `44040271524` (handoff of `e9aa786`) green; staging `/api/health/ready` → 200 without password. `pnpm check` PASS (unit 1417).
 - security-reviewer on never-reviewed P0-15 commits `51b67d7` + `c212e67`: no BLOCK/HIGH/MEDIUM; 3 LOW → FOLLOWUPS (netrc trap, seed-reset heartbeat, unit hardening).
 - Human 17 Nov: close P0 fast → P0-15 ticked; leftovers C-48 + C-35/C-40/C-17 + P0 gate/DoD/demo (C-49) → P1-18 (DECISIONS 17 Nov). `progress/P0-15-plan.md` deleted.
+- Human 17 Nov: P0 officially closed → PHASES P0-E / P0 / DoD lines ticked (evidence owed by C-49 at P1-18). Branch rule: progress files only on main, code on wip/P1-02.
