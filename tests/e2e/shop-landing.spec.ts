@@ -48,7 +48,8 @@ test("[P1-02] active shop: screen 1 content, Collect points to sign-in, screensh
   );
   await expect(page.getByTestId("landing-collect")).toHaveAttribute(
     "href",
-    `/sign-in?returnTo=${encodeURIComponent(`/s/${shopCode}`)}`,
+    // P1-04: back from sign-in, `?join=1` opens the join sheet.
+    `/sign-in?returnTo=${encodeURIComponent(`/s/${shopCode}?join=1`)}`,
   );
   await expect(page.getByText("Powered by Moz Rewards")).toBeVisible();
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
@@ -164,13 +165,13 @@ test("[P1-02] a member sees their state; the anonymous HTML never carries it", a
   baseURL,
 }) => {
   const customer = await signInAs("customer");
-  const { shopCode } = await seedShop(request, {
+  const { shopId, shopCode } = await seedShop(request, {
     status: "active",
     memberUserId: customer.userId,
   });
   await page.goto(`/s/${shopCode}`);
   await expect(page.getByText("You’re a member")).toBeVisible();
-  await expect(page.getByTestId("landing-collect")).toHaveAttribute("href", "/wallet");
+  await expect(page.getByTestId("landing-collect")).toHaveAttribute("href", `/shops/${shopId}`);
 
   // Same code straight after, from a signed-out visitor: the cached shop data is shared, the member state isn't.
   const visitor = await newClientContext(browser, baseURL!);

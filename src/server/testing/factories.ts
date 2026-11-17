@@ -100,6 +100,16 @@ export async function makeShop(over: Partial<typeof shops.$inferInsert> = {}): P
   );
 }
 
+/** Moves an existing shop to another state (P1-04: a shop suspended while a customer has the join sheet open). */
+export async function setShopStatus(shopId: string, status: ShopRow["status"]): Promise<void> {
+  const rows = await db()
+    .update(shops)
+    .set({ status })
+    .where(eq(shops.id, shopId))
+    .returning({ id: shops.id });
+  if (rows.length !== 1) throw new Error("setShopStatus: no such shop");
+}
+
 /** Opening hours (ISO weekday 1–7, "HH:MM") and closure dates for a shop (P1-01/P1-02). */
 export async function makeShopHours(
   shopId: string,
@@ -180,7 +190,8 @@ export type ActorRole = (typeof ACTOR_ROLES)[number];
 /** Builds a ready-to-use actor for a role: user (+ profile/shop/staff/admin rows as needed). */
 export async function makeActor(
   role: ActorRole,
-  opts: { shopId?: string } = {},
+  /** `profile: false`: a customer who has never joined a shop (no profile yet; P1-04 join sheet). */
+  opts: { shopId?: string; profile?: boolean } = {},
 ): Promise<{ user: UserRow; shopId: string | null; shopCode: string | null }> {
   const user = await makeUser({
     email: fakeEmail(role),
@@ -189,7 +200,7 @@ export async function makeActor(
   });
   switch (role) {
     case "customer":
-      await makeCustomerProfile(user.id);
+      if (opts.profile !== false) await makeCustomerProfile(user.id);
       return { user, shopId: null, shopCode: null };
     case "staff":
     case "owner": {

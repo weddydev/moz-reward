@@ -20,16 +20,16 @@ describe("[P1-04] cleanPersonName", () => {
   });
 
   it.each([
-    ["right-to-left override", "Ali‮ce"],
-    ["left-to-right isolate", "Ali⁦ce"],
-    ["pop directional isolate", "Ali⁩ce"],
-    ["right-to-left mark", "Ali‏ce"],
-    ["Arabic letter mark", "Ali؜ce"],
-    ["zero-width space", "Ali​ce"],
-    ["zero-width joiner", "Ali‍ce"],
-    ["word joiner", "Ali⁠ce"],
-    ["byte order mark", "﻿Alice"],
-    ["soft hyphen", "Ali­ce"],
+    ["right-to-left override", "Ali\u202Ece"],
+    ["left-to-right isolate", "Ali\u2066ce"],
+    ["pop directional isolate", "Ali\u2069ce"],
+    ["right-to-left mark", "Ali\u200Fce"],
+    ["Arabic letter mark", "Ali\u061Cce"],
+    ["zero-width space", "Ali\u200Bce"],
+    ["zero-width joiner", "Ali\u200Dce"],
+    ["word joiner", "Ali\u2060ce"],
+    ["byte order mark", "\uFEFFAlice"],
+    ["soft hyphen", "Ali\u00ADce"],
     ["control character", "Ali\u0007ce"],
     ["newline", "Alice\nSmith"],
   ])("refuses a name with a hidden character: %s", (_label, raw) => {

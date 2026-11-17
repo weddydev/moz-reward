@@ -166,13 +166,13 @@ describe("[P1-04] join.shop action", () => {
     ["an empty phone", { phone: "" }, "profile.phone", UK_MOBILE_ONLY],
     [
       "a name with a right-to-left override",
-      { fullName: "Ali‮ce" },
+      { fullName: "Ali\u202Ece" },
       "profile.fullName",
       "Your name contains a hidden character. Please type it again.",
     ],
     [
       "a name with a zero-width space",
-      { fullName: "Ali​ce" },
+      { fullName: "Ali\u200Bce" },
       "profile.fullName",
       "Your name contains a hidden character. Please type it again.",
     ],

@@ -179,7 +179,10 @@ type Fixtures = {
   /** This test's client address, sent as X-Forwarded-For on every page and API request. */
   clientIp: string;
   guard: { problems: GuardProblem[] };
-  signInAs: (role: ActorRole, opts?: { shopId?: string; extraShops?: number }) => Promise<SignedIn>;
+  signInAs: (
+    role: ActorRole,
+    opts?: { shopId?: string; extraShops?: number; profile?: boolean },
+  ) => Promise<SignedIn>;
   /** A password user with no session, via `/api/test/user` (for flows that sign in through the UI). */
   createUser: (
     label?: string,
