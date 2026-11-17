@@ -3,13 +3,15 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-17 18:17 IST (Mac)
+Baton: free — last held by talha.syed, 2026-11-17 21:55 IST (Mac)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-A MEDIUM batch done by talha.syed, 2026-11-17 ~22:00 IST (Mac). Baton held.** One commit on main: M1 rejoin DB wall (migration **0021**), M2 consent answer checked against the shop name shown (`consentShopName`), L3 `errorSummary` in the re-encrypt CLI, P1-02 design M2 (landing shots with a real cover, fixture `tests/e2e/fixtures/shop-cover.jpg` via `cover: true` on `/api/test/shop`) and M5 (cookie notice first paint + hydrated at 320/390). security-reviewer on the batch: PASS, 2 LOW (one fixed: SQLSTATE 22 values + URLs; one → FOLLOWUPS). `wip/P1-04` can be deleted.
-- **Next = `/subphase-complete` P1-A** (CI green, staging smoke, Sentry, reviews of unreviewed commits incl. the P0-E ones (C-49), scoped QA of the landing + join screens), then P1-B.
-- **Half-done:** nothing uncommitted. **Not yet tested:** CI on the batch commit; the join sheet on a real iPhone (H-13); the earlier list (Gilded Gate on a real phone H-13, C-48 items, SSE via Cloudflare, Sentry staging releases, seed-reset timer Mon 23 Nov).
+- **Handed over by talha.syed, 2026-11-17 21:55 IST (Mac). Baton free.** Finished today: P1-02, P1-03, P1-04 and the **P1-A MEDIUM batch** (`e05c785` on main): M1 rejoin DB wall (migration **0021**), M2 consent answer checked against the shop name shown (`consentShopName`), L3 `errorSummary` in `keys:reencrypt`, P1-02 design M2 (landing shots with a real cover: `tests/e2e/fixtures/shop-cover.jpg`, `cover: true` on `/api/test/shop`) and M5 (cookie notice first paint with JS off + hydrated at 320/390).
+- **Next = `/subphase-complete` P1-A**: CI green, staging smoke (deploy of `e05c785`), Sentry, code/design reviews of commits not yet reviewed (P1-01..04 non-security parts + the P0-E commits, C-49), scoped QA of landing + join screens. Then P1-B's first task.
+- **Half-done:** nothing. No wip branch to continue; merged `wip/P1-02/03/04` await deletion (H-38).
+- **Tested:** gate:task P1-04 P1-02 J1 on the `e05c785` tree PASS (unit 1511/0, int 1341/0/1 skip C-53, sast, e2e 30/0 Chromium + WebKit); cookie-notice spec 5/5 projects; screenshots 320/390/1440 inspected; security-reviewer on the batch PASS. CI `44107979353` (P1-04) green; Deploy `44110092209` green.
+- **Not yet tested:** CI `44123070994` on `e05c785` (queued at handoff) and its deploy — check first; red CI is fixed before anything else. The join sheet on a real iPhone (H-13); earlier list (Gilded Gate on a real phone, C-48 items, SSE via Cloudflare, Sentry staging releases, seed-reset timer Mon 23 Nov).
 - **Do first:** `git pull`; other laptop: `pnpm install` and `pnpm db:migrate` (0020, 0021). Mac: long gates under `caffeinate -i`. VPS access as before: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`; `sudo -n` works.
 
 ## Status
@@ -17,7 +19,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → ~~P1-02~~ → ~~P1-03~~ → ~~P1-04~~ → ~~MEDIUM batch~~ → **`/subphase-complete`**.
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-17, talha.syed (P1-A MEDIUM batch)
+- **Last updated:** 2026-11-17, talha.syed (handoff after the P1-A MEDIUM batch)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now

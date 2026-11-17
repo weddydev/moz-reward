@@ -656,3 +656,7 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Pre-hydration shots: WebKit reports `route.abort()` as a network failure and caches empty-fulfilled chunks (the next load never hydrates); use a separate context with `javaScriptEnabled: false` instead. 5 projects 5/0.
 - security-reviewer (batch diff): PASS; LOW SQLSTATE-22/URL leak fixed; LOW shop-name length → FOLLOWUPS. gate:task P1-04 P1-02 J1 counts in the commit message.
 - Lesson: design-review MEDIUMs routed to a batch must be written into the handoff/FOLLOWUPS with their text, not just their numbers.
+
+## 2026-11-17 (21:55 IST) — P1 — handoff (Mac, talha.syed)
+- `e05c785` (P1-A MEDIUM batch) pushed; pre-push reused the gate stamp (PASS on the same tree). CI `44123070994` queued at handoff; previous CI `44107979353` + Deploy `44110092209` green.
+- H-38 extended with `wip/P1-02/03/04` (Claude's branch delete refused by permissions). Baton freed; next `/subphase-complete` P1-A.
