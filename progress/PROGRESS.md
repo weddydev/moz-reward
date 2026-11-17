@@ -3,15 +3,16 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-17 (Mac)
+Baton: free — last held by talha.syed, 2026-11-17 ~17:15 IST (Mac)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **talha.syed, 2026-11-17 (Mac), baton held.** **P1-03 Gilded Gate done and ticked** (squash of `wip/P1-03` `5ec3982` on main; `wip/P1-02` and `wip/P1-03` can be deleted once main CI is green). Design: CSS timeline from first paint + pre-paint script, inline morph script after the landing markup, lazy sound-only chunk (DECISIONS 17 Nov ×2).
+- **Handed over by talha.syed, 2026-11-17 ~17:15 IST (Mac). Baton free.** Finished: **P1-03 Gilded Gate** (main `349c008`, ticked). Design: CSS timeline from first paint + pre-paint script, inline morph script after the landing markup, lazy sound-only chunk (DECISIONS 17 Nov ×2, incl. the "no long tasks" judgment). Then CI fixes on main (handoff commit): `/dev/motion` section list in the P0-10 AC9 spec + the P1-03 CLS check now counts like CLS (no shifts after input; < 0.001, Linux font-swap sub-pixel shift).
+- **Half-done:** nothing. **CI:** main push `44071634171` (`349c008`) was still running at handoff and **is expected red** on P0-10 AC9 (fixed in the handoff commit); the handoff push's CI is the one that must be green: check it first. `wip/P1-02` and `wip/P1-03` can be deleted once it is.
 - **Next = P1-04 Join flow** (security-relevant: `security-reviewer` design check first; closes C-52). Code may go to a `wip/P1-04` branch; progress files only on main.
 - **P1-A MEDIUM batch (fix together before `/subphase-complete` P1-A):** (a) landing screenshot test seeds a real cover image (test API `shop` needs a `coverUrl` option + a served image) so the m01 composition / LCP image is shown; (b) cookie notice screenshots without consent at 320 and 390, before and after hydration (overlap with Collect at 320×720).
 - **Local gpg 2.5.24 (Mac):** backup-pitr "unprotected WAL" case skips locally (fixture can't be built), runs in CI — C-53.
-- **Tested (17 Nov, Mac):** gate:task P1-03 + P1-02 PASS on the final tree (Last verified); Linux container (Playwright noble image) P1-02 + P1-03 on Chromium, WebKit, Pixel 7, iPhone 14: 70/0. CI of the P1-03 main push: check before the next push.
+- **Tested (17 Nov, Mac):** gate:task P1-03 + P1-02 PASS on `349c008`; after the CI fixes, P0-10 motion gallery + P1-03 on Chromium, WebKit, Pixel 7, desktop1440: 39/0 (+1 skip) on Mac, and 48/0 twice in the Linux Playwright container (5 projects); the pre-push hook ran gate:task on the handoff tree. Lighthouse `?src=qr` LCP 0.81 s.
 - **Not yet tested:** Gilded Gate on a real phone (H-13: feel, frame rate, `arrival` after a soft unlock); health.backup with the flag on (C-48); UptimeRobot alerts (H-45, C-48); demo guide clicks on staging (human); SSE through Cloudflare; Sentry release events from staging; seed-reset timer's first unattended run (Mon 23 Nov 04:30).
 - **Do first:** `git pull`; no new env vars, migrations or seeds. A change to `infra/host/*` needs `scp -r infra <you>@72.61.17.208:moz-infra && ssh <you>@… 'sudo -n bash ~/moz-infra/host/harden.sh'` before a deploy uses it. Manual deploy dispatch: `-f sha=<commit with green push CI>`. Mac: long gates under `caffeinate -i`. Don't edit files while `gate:task` runs (its tree check fails).
 - **VPS access:** root SSH off. Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`; `sudo -n` works. CI: `deploy@` forced command only.
@@ -21,7 +22,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → ~~P1-02~~ → ~~P1-03~~ → **P1-04**.
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-17, talha.syed (P1-03 ticked; P1-04 next)
+- **Last updated:** 2026-11-17, talha.syed (handoff; P1-03 ticked; P1-04 next)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -31,7 +32,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 ## Next (top 3)
 1. **P1-04** join flow (security-relevant; closes C-52).
 2. P1-A close: MEDIUM batch (Handoff note) → `/subphase-complete` P1-A (also reviews the unreviewed P0-E commits, C-49).
-3. Human, any time: H-45 UptimeRobot monitors (then the stop-staging phone alert test, C-48); H-46 Cloudflare `/s/*` rule (🟢).
+3. Human, any time: H-45 UptimeRobot monitors (then the stop-staging phone alert test, C-48); H-46 Cloudflare `/s/*` rule; H-47 re-enable the Scheduled workflow? (🟢).
 
 
 ## CARRIED (a task can't be ticked while a row targets it)

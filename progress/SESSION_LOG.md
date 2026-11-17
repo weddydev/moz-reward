@@ -617,3 +617,8 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - 4× CPU: Next's framework bootstrap long task (80–170 ms) falls inside the 1.4 s with or without the gate; test proves the gate adds none and the morph still joins (DECISIONS 17 Nov judgment).
 - design-reviewer (review-animations + animation-performance): HIGH clone over rising content + 3 MEDIUM (morph late on slow phones, transform+clip on one element, swipe did nothing) fixed; re-check: no BLOCK/HIGH. LOW 7/8/9/10/11 + scroll target fixed; 2 LOW → FOLLOWUPS.
 - gate:task P1-03 P1-02 ran on this exact tree before the commit: PASS, per-suite counts in the P1-03 commit message (the gate stamp covers the files, so they cannot carry its result).
+
+## 2026-11-17 — P1 — handoff (Mac, talha.syed)
+- CI of the first `wip/P1-03` push (`44057884052`) red: P0-10 AC9 (the `/dev/motion` section list lacked "Gilded Gate") and P1-03 skip test CLS 0.00004 on Linux desktop1440 (summed shifts after input; sub-pixel font swap). Fixed: list updated; CLS counted like CLS (no `hadRecentInput`), < 0.001, shifted nodes in the message.
+- Evidence: Mac Chromium/WebKit/Pixel 7/desktop1440 39/0 (+1 skip); Linux container 5 projects 48/0 twice. Main `349c008` CI `44071634171` expected red on AC9 (fixed in this commit).
+- Lesson: a change to `/dev/motion` must also run the P0-10 gallery spec (gate:task runs only the task's IDs). H-47 added (Scheduled workflow disabled, no record). Baton freed.
