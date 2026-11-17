@@ -52,7 +52,8 @@ const APP_SECRETS = {
     "TURNSTILE_SECRET_KEY",
     "ALERT_EMAILS",
   ],
-  optional: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "SENTRY_DSN"],
+  // DATA_ENCRYPTION_OLD_KEYS: only during a data-key rotation (RUNBOOK), in the web and worker containers.
+  optional: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "SENTRY_DSN", "DATA_ENCRYPTION_OLD_KEYS"],
   stagingRequired: [],
 };
 

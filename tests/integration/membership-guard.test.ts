@@ -77,13 +77,12 @@ describe("[P1-01] C-34 memberships: customers can't write counters", () => {
     expect(rows.map((r) => r.column_name)).toEqual(Object.values(CLASSIFIED).flat().sort());
   });
 
-  it("lets a customer change muted, marketing_opt_in and left_at on their own membership", async () => {
+  // marketing_opt_in also needs a consent row in the same transaction (P1-04, tests/integration/join.test.ts).
+  it("lets a customer change muted and left_at on their own membership", async () => {
     const leftAt = new Date("2026-11-13T10:00:00Z");
-    expect(
-      await update(w.customer, w.own.id, { muted: true, marketingOptIn: true, leftAt }),
-    ).toHaveLength(1);
+    expect(await update(w.customer, w.own.id, { muted: true, leftAt })).toHaveLength(1);
     const [row] = await db().select().from(memberships).where(eq(memberships.id, w.own.id));
-    expect(row).toMatchObject({ muted: true, marketingOptIn: true, leftAt });
+    expect(row).toMatchObject({ muted: true, leftAt });
     expect(await update(w.customer, w.own.id, { leftAt: null })).toHaveLength(1);
   });
 
@@ -120,7 +119,7 @@ describe("[P1-01] C-34 memberships: customers can't write counters", () => {
     ] satisfies Partial<typeof memberships.$inferInsert>[]) {
       expect(await pgCode(() => join(over)), JSON.stringify(over)).toBe(DENIED);
     }
-    expect(await join({ marketingOptIn: false })).toHaveLength(1);
+    expect(await join({})).toHaveLength(1);
     await db()
       .delete(memberships)
       .where(and(eq(memberships.userId, w.customerId), eq(memberships.shopId, w.shopB.id)));

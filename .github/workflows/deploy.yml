@@ -161,6 +161,7 @@ jobs:
         env:
           AUTH_SECRET: ${{ secrets[format('AUTH_SECRET_{0}', needs.resolve.outputs.suffix)] }}
           DATA_ENCRYPTION_KEY: ${{ secrets[format('DATA_ENCRYPTION_KEY_{0}', needs.resolve.outputs.suffix)] }}
+          DATA_ENCRYPTION_OLD_KEYS: ${{ secrets[format('DATA_ENCRYPTION_OLD_KEYS_{0}', needs.resolve.outputs.suffix)] }}
           BLIND_INDEX_KEY: ${{ secrets[format('BLIND_INDEX_KEY_{0}', needs.resolve.outputs.suffix)] }}
           MEMBER_QR_SIGNING_KEY: ${{ secrets[format('MEMBER_QR_SIGNING_KEY_{0}', needs.resolve.outputs.suffix)] }}
           HEALTH_TOKEN: ${{ secrets[format('HEALTH_TOKEN_{0}', needs.resolve.outputs.suffix)] }}

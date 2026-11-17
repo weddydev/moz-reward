@@ -4,3 +4,4 @@ export * from "./core";
 export * from "./jobs";
 export * from "./outbox";
 export * from "./shop-details";
+export * from "./consents";

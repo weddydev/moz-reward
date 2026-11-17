@@ -65,6 +65,7 @@
     "bullmq": "6.4.2",
     "drizzle-orm": "^0.45.4",
     "ioredis": "6.0.0",
+    "libphonenumber-js": "^1.13.16",
     "lucide-react": "^1.70.0",
     "next": "16.4.5",
     "nodemailer": "^10.3.1",

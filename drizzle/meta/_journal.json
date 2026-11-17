@@ -141,6 +141,13 @@
       "when": 1794743972722,
       "tag": "0019_host_metric",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794920211074,
+      "tag": "0020_join_profile_consent",
+      "breakpoints": true
     }
   ]
 }
