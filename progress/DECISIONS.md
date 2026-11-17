@@ -11,6 +11,11 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-17 — Join flow details: dynamic route returnTo, welcome flag, abandoned profile, audit UUIDs (P1-04 C)
+Decision: (1) table routes may have a `[param]` segment (`/shops/[id]`); signing in from one returns to the portal root (`returnPathOf`), never to a path built from the request. (2) `/shops/[id]?welcome=1` only changes copy on the member's own page; non-members (incl. staff/admins) get the same 404. (3) An abandoned profile form stores nothing: the typed values survive closing the sheet on that page only (no PII in browser storage) and the next visit asks again. (4) `redactText` skips UUID-shaped tokens before its digit rules (shared `outsideUuids`), as Sentry's scrubber already did.
+Why: (1) P0-12 rule that the gate never trusts the URL; (3) minimisation; (4) a shop id in audit meta was being corrupted.
+Consequence / revisit when: P1-09 may give `/shops/[id]` a real return path (validated id) if users land there signed out.
+
 ## 2026-11-17 — Data-key ids are derived from the key; DATA_ENCRYPTION_KEY_ID removed (P1-04 B)
 Decision: a field-encryption key's id is `k` + 10 hex of HMAC-SHA256(key, "moz-rewards/field-key-id/v1") (`keyIdOf`); `DATA_ENCRYPTION_OLD_KEYS` is a plain base64 list. Replaces step A's explicit `DATA_ENCRYPTION_KEY_ID` (committed per-env file) before anything was sealed outside dev/test.
 Why: the id lived in the deployed commit's `infra/deploy/<env>.env` and the key in a GitHub secret; a rollback across a rotation would have paired the new key with the old id (mislabelled writes). A derived id can't point at the wrong key. A 40-bit PRF output reveals nothing about a 256-bit key.

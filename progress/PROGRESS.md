@@ -7,25 +7,25 @@ Baton: held by talha.syed since 2026-11-17 18:17 IST (Mac)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 2026-11-17 ~19:20 IST (Mac). Baton held.** **P1-04 steps A + B done** on **`wip/P1-04`, HEAD `1b7575a`** (pushed). B: `src/server/jobs/reencrypt.ts` + `pnpm keys:reencrypt` (bundled `cli/keys-reencrypt.mjs`), RUNBOOK §18. **Changed in B:** key ids are derived from the key (`keyIdOf`, `k` + 10 hex); `DATA_ENCRYPTION_KEY_ID` is gone; `DATA_ENCRYPTION_OLD_KEYS` = plain base64 list (DECISIONS 17 Nov). The security-reviewer at step D must see this change (it replaces a design-check item from step A).
-- **Plan: `progress/P1-04-plan.md`.** **Next = step C (UI):** landing CTA per visitor state (C-52), join sheet (BottomSheet / Modal desktop) with profile fields when no profile, consent wording versioned server-side (L11), name NFC + no bidi/zero-width (L10), join limits 30/h/user fail closed + 50 new memberships/day/user, `/shops/[id]` minimal route with first-join welcome + member ID card (no QR, L13), non-member → 404, authz matrix row. Then D (E2E J1, DB inspection before/after `keys:reencrypt` with real rows, screenshots, DECISIONS batch, gate:task, security-reviewer on the diff). Code on `wip/P1-04`; progress files only on main.
-- **Half-done:** nothing uncommitted. **Not yet tested:** CI on `1b7575a` (pushed ~19:10; check before the next push); CLI rotation on a DB with real rows (step D); everything from the earlier list (Gilded Gate on a real phone H-13, C-48 items, SSE via Cloudflare, Sentry staging releases, seed-reset timer Mon 23 Nov).
-- **Do first:** `git pull`; `git switch wip/P1-04 && git merge --ff-only origin/wip/P1-04`; `pnpm install` (libphonenumber-js); `pnpm db:migrate` (0020). A stale `DATA_ENCRYPTION_KEY_ID` line in a laptop's `.env.local` is harmless (ignored); remove it. Mac: long gates under `caffeinate -i`. VPS access as before: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`; `sudo -n` works.
+- **Checkpoint by talha.syed, 2026-11-17 ~19:45 IST (Mac). Baton held.** **P1-04 steps A + B + C done** on **`wip/P1-04`, HEAD `aa40e8e`** (pushed). C: `joinShopAction` (`src/features/join/actions.ts`: 30/h + 50 new joins/day, fail closed, audit `membership.join`), `JoinSheet.tsx` (BottomSheet / Modal ≥ 1024px), `profile-input.ts` (name NFC, no Cc/Cf chars), landing CTA per visitor (signed out → sign-in `returnTo=/s/{code}?join=1`, auto-opens the sheet; member → `/shops/{id}`), `/shops/[id]` (members only, 404 else; `?welcome=1`; `MemberIdCard`, no QR). Also fixed `redactText` mangling UUIDs in audit meta (`src/lib/outside-uuids.ts`).
+- **Plan: `progress/P1-04-plan.md`.** **Next = step D:** E2E journey 1 (Chromium + WebKit: signed out → sign-in → sheet auto-opens → profile + consent → `/shops/{id}?welcome=1`; re-scan → member link, no second membership; suspended shop; international number message; non-member `/shops/{id}` 404), screenshots 320/390/1440 of the sheet (mobile sheet + desktop modal) and `/shops/[id]` (inspect: never seen yet in a browser), DB inspection before/after `pnpm keys:reencrypt` with real rows, DECISIONS batch (plan list), `pnpm gate:task`, security-reviewer on the whole P1-04 diff (incl. the derived key ids change), then tick + merge to main.
+- **Half-done:** nothing uncommitted. **Not yet tested:** CI on `aa40e8e` (pushed ~19:45; check before the next push); the join sheet and `/shops/[id]` in a real browser (step D); CLI rotation on a DB with real rows (step D); everything from the earlier list (Gilded Gate on a real phone H-13, C-48 items, SSE via Cloudflare, Sentry staging releases, seed-reset timer Mon 23 Nov).
+- **Do first:** `git pull`; `git switch wip/P1-04 && git merge --ff-only origin/wip/P1-04`; `pnpm install` (libphonenumber-js); `pnpm db:migrate` (0020). Other laptop: nothing new to install for C. A stale `DATA_ENCRYPTION_KEY_ID` line in a laptop's `.env.local` is harmless (ignored); remove it. Mac: long gates under `caffeinate -i`. VPS access as before: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`; `sudo -n` works.
 
 ## Status
 - **Phase:** **P1**. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → ~~P1-02~~ → ~~P1-03~~ → **P1-04**.
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-17, talha.syed (checkpoint; P1-04 steps A + B on wip/P1-04)
+- **Last updated:** 2026-11-17, talha.syed (checkpoint; P1-04 steps A–C on wip/P1-04)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `8353e00`; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`.
-- **P0 closed 17 Nov (human: no more time on P0).** P0-15 ticked; leftovers C-48/C-49 → P1-18. **P1-A:** P1-01 (13 Nov), P1-02 and P1-03 (17 Nov) done; **P1-04 in progress: steps A + B on `wip/P1-04` (`1b7575a`), C next** (`progress/P1-04-plan.md`).
+- **P0 closed 17 Nov (human: no more time on P0).** P0-15 ticked; leftovers C-48/C-49 → P1-18. **P1-A:** P1-01 (13 Nov), P1-02 and P1-03 (17 Nov) done; **P1-04 in progress: steps A–C on `wip/P1-04` (`aa40e8e`), D next** (`progress/P1-04-plan.md`).
 
 ## Next (top 3)
-1. **P1-04 step C** (UI: landing CTA C-52, join sheet, `/shops/[id]`), then D (E2E J1, rotation DB inspection, gate, security review) — `progress/P1-04-plan.md`.
+1. **P1-04 step D** (E2E J1, screenshots, rotation DB inspection, DECISIONS, gate:task, security review, tick) — Handoff note + `progress/P1-04-plan.md`.
 2. P1-A close: MEDIUM batch (Handoff note) → `/subphase-complete` P1-A (also reviews the unreviewed P0-E commits, C-49).
 3. Human, any time: H-45 UptimeRobot monitors (then the stop-staging phone alert test, C-48); H-46 Cloudflare `/s/*` rule; H-47 re-enable the Scheduled workflow? (🟢).
 
@@ -48,7 +48,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-47 | P0-15 (human 16 Nov) | P5-12 | Production stack set up before go-live (DECISIONS 16 Nov): secrets, Tunnel/origin lock (C-44), `init-env production`, maintenance-only deploy, then backups (C-46) and UptimeRobot production monitors; P0-15 AC7 re-checked with both stacks running | deploy log + `docker stats` + SESSION_LOG |
 | C-50 | P1-02 | P1-08 | Shop landing `/s/[code]` shows the reward preview with a static ingot (next reward + gold needed) once the loyalty programme exists; public data only, inside the cached landing payload (bump `shop-landing:v1` key version) | E2E on the landing |
 | C-51 | P1-02 | P5-05 | Landing footer "Terms" / "Privacy" links (`/terms`, `/privacy`, plain `<a>`) resolve to the legal pages | E2E: links 200 |
-| C-52 | P1-02 | P1-04 | Landing "Collect points": signed-out → sign-in with returnTo (done); signed-in non-member → join sheet; member → shop page / request (today: `/wallet` placeholder in `src/app/(public)/s/[code]/page.tsx`) | E2E per visitor state |
+| C-52 | P1-02 | P1-04 | Landing "Collect points": signed-out → sign-in with returnTo (done); signed-in non-member → join sheet; member → shop page / request. **Built in P1-04 C (`aa40e8e`); only the E2E per visitor state (step D) is left** | E2E per visitor state |
 | C-54 | P1-04 design check M6 | P1-09 | "Leave shop" sets `marketing_opt_in` false and writes a consent row (`recordConsentChange`, source `leave`) in the same transaction; rejoin (already in `joinOwnMembership`) restores frozen progress | integration |
 | C-53 | P1-02 gate (gpg 2.5) | P1-18 | backup-pitr "WAL object without integrity protection" fixture is unprotected on every gpg (hand-built SED packet), so the case runs on developer laptops (gpg 2.5 writes AEAD even with `--rfc2440`) as well as CI | integration passes on Mac gpg 2.5 without the skip |
 | C-17 | Stryker | P1-18 (human 17 Nov) | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
@@ -64,8 +64,8 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (17 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- P1-04 step B (`wip/P1-04` `1b7575a`): integration key-rotation 6/0, join + profile-guard 23/0; `pnpm check` PASS (unit 1482); bundled `cli/keys-reencrypt.mjs --dry-run` exit 0 on dev DB.
-- P1-04 step A (`ad94630`): CI `44091743861` green; integration join 17/0, profile-guard 6/0 (alone). Not yet a clean full `test:int`: gate:task at the P1-04 tick.
+- P1-04 step C (`wip/P1-04` `aa40e8e`): `pnpm check` PASS (unit 1507); integration join-action 19/0 (6 repeated runs), authz join matrix 14/0, routes matrix + join + audit-log 652/0; redact unit 8/0.
+- P1-04 step B (`1b7575a`): CI `44094608880` green; key-rotation 6/0.
 - P1-03: CI `44073336752` (handoff main) + Deploy `44074972808` green.
 
 

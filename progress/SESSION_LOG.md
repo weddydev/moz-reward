@@ -635,3 +635,9 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Not yet: CLI rotation on a DB with real rows (step D DB inspection); CI on `1b7575a` (pushed 19:10).
 - Next exact step: P1-04 step C (UI: landing CTA C-52, join sheet, `/shops/[id]`) per `progress/P1-04-plan.md`.
 
+
+## 2026-11-17 — P1 — P1-04 step C checkpoint (Mac, talha.syed)
+- Built on `wip/P1-04` `aa40e8e`: `joinShopAction` (limits 30/h + 50 new joins/day fail closed, audit), `JoinSheet` (sheet/modal), `profile-input.ts` (L10), landing CTA per visitor (C-52) with `?join=1` auto-open, `/shops/[id]` + `MemberIdCard` (no QR), route table dynamic path → returnTo `/wallet`.
+- Root-caused an intermittent join-action failure: `redactText` (audit/DLQ) redacted 7+ digit runs inside UUIDs (~1 in 10 ids in audit meta). Fixed with `src/lib/outside-uuids.ts`, unit test first.
+- Evidence: `pnpm check` PASS (unit 1507); join-action 19/0 ×6 runs; authz join 14/0; routes matrix + join + audit-log 652/0. CI `1b7575a` green. Not yet: CI on `aa40e8e`; UI never opened in a browser.
+- Next exact step: P1-04 step D (E2E J1, screenshots, rotation DB inspection, DECISIONS batch, gate:task, security-reviewer) — Handoff note.
