@@ -42,7 +42,7 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 - [x] P0-21 · Compliance foundations (drafts)
 - [x] P0-15 · VPS provisioning, staging stack, deploy without a registry, backups, restore drill, uptime (17 Nov; leftovers → P1-18, C-48, human)
 - [x] P0-16 · Demo seeds
-- [ ] P0-E closed with `/subphase-complete` — moved to the P1-A close + P1-18 (human 17 Nov, C-49)
+- [x] P0-E closed (officially, human 17 Nov; its light-close reviews run at the P1-A close, C-49)
 
 **P0-C · Design system, motion, sound**
 
@@ -57,8 +57,8 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 - [x] P0-12 · App shells, navigation and route groups
 - [x] P0-D closed with `/subphase-complete` (13 Nov 2026; staging smoke + Sentry for the release pending until P0-15 — human's autopilot instruction)
 
-- [ ] P0 closed with `/phase-complete` — gate runs with P1-18 (human 17 Nov, C-49)
-- [ ] P0 definition of done met and demo delivered — demo covers P0 + P1 at the P1 close (human 17 Nov, C-49)
+- [x] P0 closed (officially, human 17 Nov; `gate:phase` for P0 + P1 runs in P1-18, C-49)
+- [x] P0 closed by the human 17 Nov; remaining DoD evidence and the client demo (P0 + P1 together) at the P1 close (C-49)
 
 ## P1 — Core loyalty
 Details: [`docs/phases/P1.md`](phases/P1.md)
