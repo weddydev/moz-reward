@@ -3,18 +3,17 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by Syedbadeshah76 since 2026-11-16 (Windows)
+Baton: free — last held by Syedbadeshah76, 2026-11-17 12:45 IST (Windows)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by Syedbadeshah76, 2026-11-16 ~19:00 IST (Windows); baton held.** P0-15 **D4 done** (`c212e67`) + **E part 1** (this commit: staging health URLs without basic auth for UptimeRobot, decisions). The `c212e67` push deploys `BACKUPS_ENABLED=true`; this push deploys the Caddy change. `wip/P0-15` stale, unused.
+- **Handed over by Syedbadeshah76, 2026-11-17 ~12:45 IST (Windows); baton free.** Last code commit `e9aa786` (P0-15 E part 1: the 3 staging health URLs skip basic auth for UptimeRobot) is pushed **with this handoff commit**; its deploy follows the green push CI. `wip/P0-15` stale, unused.
 - **Human request (15 Nov, standing for this run):** close P0 completely **with** staging and the client demo; demo guide `docs/DEMO_GUIDE.md`. `/demo` writes DEMO_NOTES.md at the phase close.
-- **Finished this session:** D4 — first staging dump (02:30 timer), `wal-on` + base backup, WAL to B2 (0 failures), forced drill pass; human ran `backup:verify` dump **and** `--wal` PITR from the password-manager key: both PASS (AC4, AC5 developer restore). Backup private key was missing from the password manager → saved there 16 Nov (H-26). Fixed: `backup:verify` dump path on Windows (`MSYS_NO_PATHCONV`); `BACKUPS_ENABLED` now reaches the worker (deploy-env).
-- **Human decisions 16 Nov:** production stack moves to **P5-12** (C-47, DECISIONS); UptimeRobot via health URLs without the staging password (1a, DECISIONS). **Human now:** add the UptimeRobot monitors (settings in the reply / RUNBOOK), then stop-staging alert test with Claude.
-- **Exactly how to continue (P0-15):** after CI + deploy of `c212e67` and this commit: check health.backup shows no alert on staging (System page or `/api/health/worker` with HEALTH_TOKEN) and `curl https://staging.mozrewards.com/api/health/ready` → 200 without a password. Then **E** (B2 overwrite keeps the locked version — by design + capability check, record in the final review; C-35 request logs, UptimeRobot, ZAP/k6, RUNBOOK §12/§13 walks C-37, final security review of the whole P0-15 diff incl. `51b67d7`, `8353e00` and this commit) → C-40 → C-17 → `/subphase-complete` → `/phase-complete` → `/demo`.
-- **Tested:** D4 gate:task PASS (unit 1396, int 1212, sast, lint:sh). E1: caddy-mtls integration 25/25 with an echo upstream (exact raw health URIs 200 without password; only one well-formed Bearer reaches the app; 15 near misses incl. the review's encoded-traversal bypass → 401; security review MEDIUMs fixed); this commit's gate: see SESSION_LOG. RUNBOOK §12/§13 walked on staging (C-37 closed).
-- **Not yet tested:** health.backup on staging with the flag on (after this deploy); `walg-archive`/`backup-pipeline` integration suites still skip on Windows (CI Linux runs them); the demo guide's clicks on staging (human); SSE through Cloudflare; Sentry release events from staging; seed-reset timer's first unattended run (Mon 23 Nov 04:30).
-- **Do first:** `git pull`; nothing new to install. A change to `infra/host/*` needs `scp -r infra <you>@72.61.17.208:moz-infra && ssh <you>@… 'sudo -n bash ~/moz-infra/host/harden.sh'` before a deploy uses it (Windows: copy the script to the host before running a script that calls `docker exec -i`, it eats piped stdin). Manual deploy dispatch: pass `-f sha=<commit with green push CI>`. Mac: run long gates under `caffeinate -i`.
+- **Finished:** P0-15 D1–D4 (backups on staging, laptop dump + PITR restore PASS) and E part 1 (`e9aa786`, security-reviewed, MEDIUMs fixed). Human decisions 16 Nov: production stack → P5-12 (C-47); health URLs without the staging password (DECISIONS).
+- **Half-done: P0-15 E.** Exactly how to continue: (1) check the push CI of this handoff commit and the Deploy run after it (`gh run list --limit 3`); (2) `curl -s -o /dev/null -w "%{http_code}" https://staging.mozrewards.com/api/health/ready` → **200** without a password (17 Nov 06:30 UTC it was 401: `e9aa786` not yet deployed); (3) health.backup shows no alert with `BACKUPS_ENABLED=true` (System page or `/api/health/worker` with HEALTH_TOKEN); (4) human H-45 UptimeRobot monitors, then stop-staging phone alert test with Claude; (5) rest of E: B2 overwrite keeps the locked version (by design + capability check, record in the final review), C-35 request logs on the System page, ZAP/k6, final security review of the whole P0-15 diff incl. `51b67d7`, `8353e00`, `e9aa786` → C-40 → C-17 → `/subphase-complete` P0-E → `/phase-complete` → `/demo`; then P1-02.
+- **Tested (17 Nov, Windows):** `gate:task` on `e9aa786`: typecheck, lint, format, titles, unit 1396/0, int 1231/0, build, check:bundle, sast, lint:sh all PASS; its last step "working tree unchanged" failed only because a progress file was edited during the run (no code change), so the gate was re-run on the final handoff tree and the pre-push hook lets the push through only on a pass. CI for `c212e67` green (43871015148) → Deploy green (43872448798); scheduled CI 16 Nov green.
+- **Not yet tested:** push CI + deploy of `e9aa786`/this commit (running at handoff); health URLs 200 on staging; health.backup on staging with the flag on; UptimeRobot alerts; `walg-archive`/`backup-pipeline` integration suites skip on Windows (CI Linux runs them); demo guide clicks on staging (human); SSE through Cloudflare; Sentry release events from staging; seed-reset timer's first unattended run (Mon 23 Nov 04:30).
+- **Do first:** `git pull`; no new env vars, migrations or seeds. A change to `infra/host/*` needs `scp -r infra <you>@72.61.17.208:moz-infra && ssh <you>@… 'sudo -n bash ~/moz-infra/host/harden.sh'` before a deploy uses it. Manual deploy dispatch: `-f sha=<commit with green push CI>`. Mac: long gates under `caffeinate -i`. Don't edit files while `gate:task` runs (its tree check fails).
 - **VPS access:** root SSH off. Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`; `sudo -n` works. CI: `deploy@` forced command only.
 
 ## Status
@@ -22,7 +21,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → P1-02 → P1-03 → P1-04. P0-E waits only on P0-15 (human tasks).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-16, Syedbadeshah76 (checkpoint: P0-15 D4 first staging backups + laptop restores done)
+- **Last updated:** 2026-11-17, Syedbadeshah76 (handoff: P0-15 E part 1 pushed, E continues)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -31,7 +30,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - P0-15 is the only P0-E task left: E remains. D4 (first staging backups, laptop dump + PITR restore PASS) done 16 Nov.
 
 ## Next (top 3)
-1. Check health.backup on staging after the deploys (no alert with `BACKUPS_ENABLED=true`); UptimeRobot monitors (human) + stop-staging phone alert test.
+1. After CI + deploy of `e9aa786`: health URLs 200 without password, health.backup no alert; H-45 UptimeRobot monitors (human) + stop-staging phone alert test.
 2. **E** (C-35 request logs, UptimeRobot, ZAP/k6, RUNBOOK §12/§13, final P0-15 security review).
 3. C-40 → C-17 → `/subphase-complete` P0-E → `/phase-complete` → `/demo`; then **P1-02** (closes C-15).
 
@@ -56,19 +55,19 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-17 | Stryker | P0 phase gate | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 
 ## Blockers
-- Human: none blocking. Now: H-42 tail (delete the old `moz-backups` B2 key). Needed later: at the P0 close H-29 (`backup:verify`), H-13 (real devices), H-23 (drafts to the solicitor), H-14 (send demo notes).
+- Human: none blocking. Now: H-45 (UptimeRobot staging monitors, after the `e9aa786` deploy), H-42 tail (delete the old `moz-backups` B2 key). Needed later: at the P0 close H-29 (`backup:verify`), H-13 (real devices), H-23 (drafts to the solicitor), H-14 (send demo notes).
 - Technical: C-40 (quarantined test) blocks the P0 phase gate. Known risk: wal-g `wal-push` hangs without `ca-certificates` in the Postgres image (wal-g #2550).
 
 ## Map of the codebase
 In **`progress/MAP.md`** (read when you need to locate code; add new important paths there).
 
-## Last verified (16 Nov 2026)
+## Last verified (17 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
+- 17 Nov gate:task on `e9aa786`: unit 1396/0, int 1231/0, build, bundle, sast, lint:sh PASS (re-run on the handoff tree before push); staging `/api/health/ready` 401 before the `e9aa786` deploy (expected).
 - D4 laptop (human, from the password-manager key): `backup:verify --env staging` PASS; `--wal --target-time 2026-11-16T10:00:15Z` PASS (base …2A + 32 WAL, all checks).
 - D4 host: dump 02:30 UTC in B2 (sha256 recorded); `wal-on` base 09:59 UTC; `pg_stat_archiver` 0 failures; `moz-backup drill staging` all pass.
 - backup-verify integration 11/11 on Windows (fails without the MSYS fix with the human's exact error); deploy-env 12 (flag reaches the worker only).
 - CI `43844301457` (D3b) green → Deploy `43845822169` green (release `8353e00`).
-- C-32: RLS EXPLAIN on staging (PG 17.11): lookup p95 0.020 → 0.105 ms; 0 other-shop rows (DECISIONS 16 Nov).
 
 
 ## Follow-ups (LOW)

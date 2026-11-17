@@ -591,3 +591,8 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - AC7 (staging part): every container's memory + CPU limit = infra/RESOURCES.md (CPU 1.45 of 1.5), swap 0. WAL measured ~4 KB/object → staging keeps the 35 d lock (DECISIONS, RESOURCES).
 - Human decisions: production stack → P5-12 (C-47; P0.md/P5.md updated); 1a: Caddyfile.staging lets exactly the 3 health URLs skip basic auth, strips Basic, keeps Bearer. caddy-mtls 16/16 with a new echo upstream (also proves the app never gets the password on normal pages); fails without the strip.
 - security-reviewer on 1a: no BLOCK/HIGH; MEDIUM path matcher (decoded/cleaned/lowercased match vs raw proxied URI: `/admin/a%2F..%2F..%2Fapi%2Fhealth%2Fready` passed) + MEDIUM tests + LOW deny-list → fixed: raw-URI CEL match + Bearer allow-list; test reproduced all 8 bypasses + Digest/two headers first (11 failed), then caddy-mtls 25/25. LOW HEALTH_TOKEN: 32 random bytes (ok).
+
+## 2026-11-17 (11:45–12:45 IST) — P0 — handoff (Windows, Syedbadeshah76)
+- gate:task on `e9aa786` (P0-15 E part 1): typecheck, lint, format, titles, unit 1396/0, int 1231/0, build (reused), bundle, sast, lint:sh PASS; "working tree unchanged" failed only because HUMAN_TASKS was edited mid-run → gate re-run on the handoff tree before the push (pre-push hook).
+- Staging `/api/health/ready` 401 at 06:30 UTC: `e9aa786` not deployed yet (expected). Last CI before handoff: `c212e67` push CI 43871015148 green → Deploy 43872448798 green; scheduled 43872615586 green.
+- H-45 added (UptimeRobot staging monitors, 🟠, after the `e9aa786` deploy). Baton freed; P0-15 E continues (PROGRESS Next).
