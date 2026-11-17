@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { Popover } from "@/components/motion";
-import { BottomSheet, Button, Card, Modal, SidePanel, Switch, toast } from "@/components/ui";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
+import { SidePanel } from "@/components/ui/SidePanel";
+import { Switch } from "@/components/ui/Switch";
+import { toast } from "@/components/ui/Toast";
 import { haptic, HAPTICS, type HapticName } from "@/lib/haptics";
 import { MOTION_PRESETS, staggerStyle } from "@/lib/motion/presets";
 import { useSoundPreference } from "@/lib/preferences";

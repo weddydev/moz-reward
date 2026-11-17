@@ -1,6 +1,9 @@
-import { Clock, MapPin, Navigation, Phone } from "lucide-react";
+import { Clock, MapPin, Navigation, Phone, Store } from "lucide-react";
 import Link from "next/link";
-import { Badge, buttonClasses, Card, Icon } from "@/components/ui";
+import { Badge } from "@/components/ui/Badge";
+import { buttonClasses } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Icon } from "@/components/ui/Icon";
 import { initialsOf } from "@/lib/initials";
 import { openStatus } from "@/lib/open-status";
 import { directionsUrl, telHref } from "@/lib/shop-links";
@@ -52,11 +55,14 @@ export function ShopLanding({
                 data-testid="landing-cover"
               />
             ) : (
+              // Quiet surface + foil, not the gold gradient: gold stays ≤ 10% of the screen and belongs to
+              // the Collect CTA (DESIGN §3; design review P1-02). Most new shops have no cover yet.
               <div
-                className="size-full"
-                style={{ background: "var(--gold-gradient)" }}
+                className="foil bg-surface-2 relative grid size-full place-items-center"
                 data-testid="landing-cover-fallback"
-              />
+              >
+                <Icon icon={Store} size={32} className="text-gold-700" />
+              </div>
             )}
             <div className="from-bg pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t to-transparent lg:hidden" />
           </div>
@@ -118,23 +124,25 @@ export function ShopLanding({
             <Icon icon={MapPin} className="text-gold-700" /> Find us
           </h2>
           {address ? <p className="text-small text-ink-2">{address}</p> : null}
-          <div className="flex flex-wrap gap-2">
-            {directions ? (
-              <a
-                href={directions}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={buttonClasses({ variant: "secondary", size: 40 })}
-              >
-                <Icon icon={Navigation} size={16} /> Directions
-              </a>
-            ) : null}
-            {tel ? (
-              <a href={tel} className={buttonClasses({ variant: "secondary", size: 40 })}>
-                <Icon icon={Phone} size={16} /> Call
-              </a>
-            ) : null}
-          </div>
+          {directions || tel ? (
+            <div className="flex flex-wrap gap-2">
+              {directions ? (
+                <a
+                  href={directions}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={buttonClasses({ variant: "secondary", size: 40 })}
+                >
+                  <Icon icon={Navigation} size={16} /> Directions
+                </a>
+              ) : null}
+              {tel ? (
+                <a href={tel} className={buttonClasses({ variant: "secondary", size: 40 })}>
+                  <Icon icon={Phone} size={16} /> Call
+                </a>
+              ) : null}
+            </div>
+          ) : null}
           {!address && !directions && !tel ? (
             <p className="text-small text-ink-2">Contact details not added yet.</p>
           ) : null}
@@ -163,13 +171,14 @@ function Logo({ name, logoUrl }: { name: string; logoUrl: string | null }): Reac
 
 export function LandingFooter(): React.JSX.Element {
   return (
-    <footer className="text-caption text-ink-2 border-line mx-auto flex w-full max-w-[1280px] flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t px-5 py-6">
+    <footer className="text-caption text-ink-2 border-line mx-auto flex w-full max-w-[1280px] flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t px-5 pt-6 pb-[max(24px,env(safe-area-inset-bottom))]">
       <span>Powered by Moz Rewards</span>
-      {/* Plain links (no prefetch): the legal pages ship in P5 (CARRIED C-51). */}
-      <a href="/terms" className="underline-offset-2 hover:underline">
+      {/* Plain links (no prefetch): the legal pages ship in P5 (CARRIED C-51). Underlined at rest (touch has no
+          hover) with a 44px hit area (DESIGN §13). */}
+      <a href="/terms" className="hit-44 underline underline-offset-2">
         Terms
       </a>
-      <a href="/privacy" className="underline-offset-2 hover:underline">
+      <a href="/privacy" className="hit-44 underline underline-offset-2">
         Privacy
       </a>
     </footer>

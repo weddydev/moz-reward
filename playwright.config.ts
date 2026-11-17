@@ -51,6 +51,11 @@ export default defineConfig({
       name: "desktop1440",
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
     },
+    // Lighthouse CI (DESIGN §12): only with LIGHTHOUSE=1 (`pnpm test:lighthouse`, `pnpm gate:phase`), so an
+    // ordinary `pnpm e2e` or CI run never picks it up. Serial within the file: one audit at a time.
+    ...(process.env.LIGHTHOUSE
+      ? [{ name: "lighthouse", testDir: "./tests/perf", fullyParallel: false }]
+      : []),
   ],
   // Remote targets (staging) are already running: no local web server at all.
   ...(isRemote

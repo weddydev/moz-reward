@@ -1,5 +1,5 @@
 import { RouteTransition } from "@/components/motion";
-import { Toaster } from "@/components/ui";
+import { Toaster } from "@/components/ui/Toast";
 import { cx } from "@/lib/cx";
 import { ActiveShopSync } from "./shell/ActiveShopSync";
 import { BottomNav } from "./shell/BottomNav";

@@ -2,38 +2,31 @@
 
 import { Bell, Coffee, Gift, MapPin, Plus, Settings, Sparkles, Star } from "lucide-react";
 import { useState } from "react";
-import {
-  Avatar,
-  Badge,
-  Button,
-  Card,
-  Checkbox,
-  Chip,
-  ChipGroup,
-  type Column,
-  EmptyState,
-  ErrorState,
-  HeroCard,
-  Icon,
-  IconButton,
-  KpiCard,
-  MilestoneTrack,
-  ProgressBar,
-  RadioGroup,
-  SegmentedControl,
-  Select,
-  ShopCard,
-  Skeleton,
-  Sparkline,
-  Spinner,
-  Switch,
-  Table,
-  Tabs,
-  TextArea,
-  TextField,
-  Toaster,
-  toast,
-} from "@/components/ui";
+import { Avatar } from "@/components/ui/Avatar";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card, HeroCard } from "@/components/ui/Card";
+import { Checkbox } from "@/components/ui/Checkbox";
+import { Chip, ChipGroup } from "@/components/ui/Chip";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { Icon } from "@/components/ui/Icon";
+import { IconButton } from "@/components/ui/IconButton";
+import { KpiCard } from "@/components/ui/KpiCard";
+import { MilestoneTrack } from "@/components/ui/MilestoneTrack";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { RadioGroup } from "@/components/ui/Radio";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Select } from "@/components/ui/Select";
+import { ShopCard } from "@/components/ui/ShopCard";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Sparkline } from "@/components/ui/Sparkline";
+import { Spinner } from "@/components/ui/Spinner";
+import { Switch } from "@/components/ui/Switch";
+import { type Column, Table } from "@/components/ui/Table";
+import { Tabs } from "@/components/ui/Tabs";
+import { TextArea, TextField } from "@/components/ui/TextField";
+import { Toaster, toast } from "@/components/ui/Toast";
 import { PreferenceToggles } from "@/features/preferences/PreferenceToggles";
 import { useHydrated } from "@/lib/use-hydrated";
 import { OverlayDemos } from "./OverlayDemos";

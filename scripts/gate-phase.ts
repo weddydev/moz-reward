@@ -139,7 +139,13 @@ function steps(checkScript: string): PhaseStep[] {
     },
     { name: "ZAP baseline (staging)", from: 0, missing: notBuilt("P0-15"), run: unreachable },
     { name: "reconciliation clean", from: 0, missing: notBuilt("P0-18"), run: unreachable },
-    { name: "Lighthouse CI", from: 1, missing: notBuilt("P1"), run: unreachable },
+    {
+      // DESIGN §12 budgets, mobile throttled, on the production build (tests/perf; P1-02).
+      name: "Lighthouse CI",
+      from: 1,
+      missing: () => null,
+      run: () => e2eStep("Lighthouse CI", ["--project", "lighthouse"], { LIGHTHOUSE: "1" }),
+    },
     { name: "rollback rehearsal (staging)", from: 1, missing: notBuilt("P1"), run: unreachable },
   );
   return list;

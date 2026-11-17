@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 /** Loading state of the slow demo page: same layout as the page, so nothing shifts when it arrives. */
 export default function MotionSlowLoading(): React.JSX.Element {

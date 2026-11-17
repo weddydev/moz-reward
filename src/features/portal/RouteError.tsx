@@ -2,7 +2,8 @@
 
 import { CircleAlert } from "lucide-react";
 import { useEffect } from "react";
-import { Button, Icon } from "@/components/ui";
+import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import { useHydrated } from "@/lib/use-hydrated";
 
 /** The server's reference for an error it already logged; absent on an error thrown in the browser. */

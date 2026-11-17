@@ -69,11 +69,15 @@ export function unpushedCommitMessages(): string {
   return r.status === 0 ? r.stdout : "";
 }
 
-export function e2eStep(name: string, args: string[]): StepResult {
+export function e2eStep(
+  name: string,
+  args: string[],
+  env: Record<string, string> = {},
+): StepResult {
   const report = path.join(GATE_DIR, `${name.replace(/\W+/g, "-")}.json`);
   rmSync(report, { force: true });
   const r = exec(name, process.execPath, [PLAYWRIGHT_CLI, "test", ...args, "--reporter=json"], {
-    env: { ...process.env, E2E_MODE: "prod", PLAYWRIGHT_JSON_OUTPUT_NAME: report },
+    env: { ...process.env, ...env, E2E_MODE: "prod", PLAYWRIGHT_JSON_OUTPUT_NAME: report },
   });
   const counts = parsePlaywrightReport(report);
   const ok = r.ok && counts !== null && counts.failed === 0 && counts.flaky === 0;

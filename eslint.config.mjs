@@ -69,6 +69,16 @@ const authScopeRule = {
   importNames: ["authScope"],
   message: "authScope belongs to the identity layer (src/server/auth).",
 };
+/**
+ * P1-02: the `@/components/ui` barrel re-exports every primitive, "use client" ones included, so one import
+ * through it put the whole kit (toasts, sheets, tables…) in the browser bundle of every page (Lighthouse: +23 KB
+ * gzip on the shop landing). Import the file instead. Tests may use the barrel (gallery-list.test.ts).
+ */
+const uiBarrelRule = {
+  name: "@/components/ui",
+  message:
+    'Import the primitive\'s own file (e.g. "@/components/ui/Button"): the barrel pulls every client primitive into the bundle (P1-02).',
+};
 const restrictImports = (...paths) => ({
   "no-restricted-imports": paths.length ? ["error", { paths }] : "off",
 });
@@ -145,7 +155,14 @@ const eslintConfig = defineConfig([
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["**/*.test.{ts,tsx}"],
     rules: {
-      ...restrictImports(dbClientRule, testOwnerRule, mintRule, systemScopeRule, authScopeRule),
+      ...restrictImports(
+        dbClientRule,
+        testOwnerRule,
+        mintRule,
+        systemScopeRule,
+        authScopeRule,
+        uiBarrelRule,
+      ),
       "no-restricted-syntax": ["error", ...scopeCastRules, ...authApiRules],
     },
   },

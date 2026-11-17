@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { BottomSheet, Button, Chip, ChipGroup, Modal, SidePanel, TextField } from "@/components/ui";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Button } from "@/components/ui/Button";
+import { Chip, ChipGroup } from "@/components/ui/Chip";
+import { Modal } from "@/components/ui/Modal";
+import { SidePanel } from "@/components/ui/SidePanel";
+import { TextField } from "@/components/ui/TextField";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Demo } from "./Section";
 

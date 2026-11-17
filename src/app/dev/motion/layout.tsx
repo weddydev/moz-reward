@@ -1,5 +1,5 @@
 import { RouteTransition } from "@/components/motion";
-import { Toaster } from "@/components/ui";
+import { Toaster } from "@/components/ui/Toast";
 
 /** `/dev/motion` demos: pages under here slide per their navigation's type (P0-10). */
 export default function MotionLayout({ children }: LayoutProps<"/dev/motion">): React.JSX.Element {

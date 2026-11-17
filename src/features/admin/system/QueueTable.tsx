@@ -1,6 +1,7 @@
 "use client";
 
-import { Badge, type Column, Table } from "@/components/ui";
+import { Badge } from "@/components/ui/Badge";
+import { type Column, Table } from "@/components/ui/Table";
 import type { SystemView } from "./view-model";
 
 type Row = SystemView["queues"][number];

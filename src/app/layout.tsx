@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { CookieNotice } from "@/features/consent/CookieNotice";
 import { ApplyPreferences } from "@/features/preferences/ApplyPreferences";
 import { loadAccountPreferences } from "@/features/preferences/load";
+import { parseConsent } from "@/lib/consent";
 import { clientEnv } from "@/lib/env";
 import { HEAD_SCRIPT } from "@/lib/head-script";
 import { fraunces, manrope } from "@/styles/fonts";
@@ -33,7 +34,8 @@ export default async function RootLayout({
 }: LayoutProps<"/">): Promise<React.JSX.Element> {
   // Render per request so Next can put this request's CSP nonce (set by src/proxy.ts) on every script.
   await connection();
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const requestHeaders = await headers();
+  const nonce = requestHeaders.get("x-nonce") ?? undefined;
   return (
     // suppressHydrationWarning: the pre-paint script sets data-reduce-motion on <html> before React hydrates.
     <html
@@ -65,6 +67,7 @@ export default async function RootLayout({
           <CookieNotice
             path={clientEnv.NEXT_PUBLIC_UMAMI_PATH}
             websiteId={clientEnv.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
+            initialChoice={parseConsent(requestHeaders.get("cookie") ?? "")}
           />
         ) : null}
       </body>

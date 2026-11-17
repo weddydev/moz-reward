@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Badge, Button } from "@/components/ui";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { cx } from "@/lib/cx";
 import { useHydrated } from "@/lib/use-hydrated";
 import { withNetworkGuard } from "./network";

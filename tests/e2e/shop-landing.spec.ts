@@ -133,8 +133,20 @@ test("[P1-02] missing cover, logo, hours and contact details; a 60-character nam
   const { shopCode } = await seedShop(request, { status: "active", name });
   await page.goto(`/s/${shopCode}`);
   await expect(page.getByTestId("landing-name")).toHaveText(name);
-  await expect(page.getByTestId("landing-cover-fallback")).toBeVisible();
+  const fallback = page.getByTestId("landing-cover-fallback");
+  await expect(fallback).toBeVisible();
+  // Design review: the no-cover state is a quiet surface, never a gold block (gold ≤ 10%, DESIGN §3).
+  expect(await fallback.evaluate((el) => getComputedStyle(el).backgroundImage)).toBe("none");
   await expect(page.getByTestId("landing-logo-fallback").first()).toHaveText("TL");
+  // No empty actions row when there is neither Directions nor Call.
+  await expect(page.getByTestId("landing-details").getByRole("link")).toHaveCount(0);
+  // Footer legal links: 44px hit areas (DESIGN §13).
+  for (const label of ["Terms", "Privacy"]) {
+    const hit = await page
+      .getByRole("link", { name: label })
+      .evaluate((el) => getComputedStyle(el, "::after").height);
+    expect(Number.parseFloat(hit)).toBeGreaterThanOrEqual(44);
+  }
   await expect(page.getByText("Opening hours not added yet.")).toBeVisible();
   await expect(page.getByText("Contact details not added yet.")).toBeVisible();
   const overflow = await page.evaluate(

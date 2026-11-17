@@ -2,7 +2,8 @@
 
 import { Bell, LogIn, ScanLine } from "lucide-react";
 import { TransitionLink } from "@/components/motion";
-import { buttonClasses, Icon } from "@/components/ui";
+import { buttonClasses } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import { cx } from "@/lib/cx";
 import { PortalSwitcher } from "./PortalSwitcher";
 import { Wordmark } from "./Wordmark";
