@@ -4,8 +4,8 @@ import { useEffect } from "react";
 import { GATE } from "@/lib/motion/gilded-gate";
 
 /**
- * Loads the gate's morph + sound chunk only when the pre-paint script actually plays the gate (P1-03 AC:
- * never loaded without `src`, nor on a replayed or skipped visit). Renders nothing.
+ * Loads the gate's sound chunk only when the pre-paint script actually plays the gate (P1-03 AC: never loaded
+ * without `src`, nor on a replayed or skipped visit). Renders nothing.
  */
 export function GildedGateLoader(): null {
   useEffect(() => {

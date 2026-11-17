@@ -51,29 +51,7 @@ export function ShopLanding({
             className="relative aspect-[16/10] w-full overflow-hidden lg:aspect-[4/3] lg:rounded-[var(--r-lg)]"
             data-gate-cover=""
           >
-            {shop.coverUrl ? (
-              // Uploaded covers are already sized WebP/AVIF variants on the CDN (ARCHITECTURE §8).
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={shop.coverUrl}
-                alt=""
-                width={1200}
-                height={750}
-                fetchPriority="high"
-                className="size-full object-cover"
-                data-testid="landing-cover"
-              />
-            ) : (
-              // Quiet surface + foil, not the gold gradient: gold stays ≤ 10% of the screen and belongs to
-              // the Collect CTA (DESIGN §3; design review P1-02). Most new shops have no cover yet.
-              <div
-                className="foil bg-surface-2 relative grid size-full place-items-center"
-                data-testid="landing-cover-fallback"
-              >
-                <Icon icon={Store} size={32} className="text-gold-700" />
-              </div>
-            )}
-            <div className="from-bg pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t to-transparent lg:hidden" />
+            <CoverArt coverUrl={shop.coverUrl} page />
           </div>
           <div className="relative mx-auto -mt-10 max-w-[560px] px-5 lg:hidden" {...rise(0)}>
             <Logo name={shop.name} logoUrl={shop.logoUrl} />
@@ -164,6 +142,45 @@ export function ShopLanding({
 
       <LandingFooter />
     </main>
+  );
+}
+
+/**
+ * The cover's picture: the uploaded cover, or a quiet foil surface; with the ivory fade at its foot on mobile.
+ * Also drawn inside the Gilded Gate (P1-03) for its morph, without test ids or the LCP hint (`page` false).
+ */
+export function CoverArt({
+  coverUrl,
+  page = false,
+}: {
+  coverUrl: string | null;
+  page?: boolean;
+}): React.JSX.Element {
+  return (
+    <>
+      {coverUrl ? (
+        // Uploaded covers are already sized WebP/AVIF variants on the CDN (ARCHITECTURE §8).
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={coverUrl}
+          alt=""
+          width={1200}
+          height={750}
+          {...(page ? { fetchPriority: "high" as const, "data-testid": "landing-cover" } : {})}
+          className="size-full object-cover"
+        />
+      ) : (
+        // Quiet surface + foil, not the gold gradient: gold stays ≤ 10% of the screen and belongs to
+        // the Collect CTA (DESIGN §3; design review P1-02). Most new shops have no cover yet.
+        <div
+          className="foil bg-surface-2 relative grid size-full place-items-center"
+          {...(page ? { "data-testid": "landing-cover-fallback" } : {})}
+        >
+          <Icon icon={Store} size={32} className="text-gold-700" />
+        </div>
+      )}
+      <div className="from-bg pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t to-transparent lg:hidden" />
+    </>
   );
 }
 

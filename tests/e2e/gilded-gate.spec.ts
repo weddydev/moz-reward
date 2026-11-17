@@ -38,7 +38,12 @@ const gateState = (page: Page): Promise<string | null> =>
 /** Seek every animation on the page (the gate, the page's rise, the morph clone) to `ms`. */
 const seek = (page: Page, ms: number): Promise<void> =>
   page.evaluate((t) => {
-    for (const a of document.getAnimations()) a.currentTime = t;
+    // Pause too: the page's rise animations start after the gate's (its markup is parsed later), so the
+    // pause at "play" never saw them.
+    for (const a of document.getAnimations()) {
+      a.pause();
+      a.currentTime = t;
+    }
   }, ms);
 
 async function seedShop(
@@ -93,7 +98,7 @@ test("[P1-03] the timeline lasts 1.4s and the morph lands exactly on the cover",
   const { shopCode } = await seedShop(request);
   await watchGate(page, true);
   await page.goto(`/s/${shopCode}?src=nfc`);
-  await expect(page.locator("[data-gate-panel]")).toHaveCount(1); // the chunk joined in step
+  await expect(page.getByTestId("gilded-gate")).toHaveAttribute("data-morph", ""); // the inline morph joined in step
   const end = await page.evaluate(() =>
     Math.max(
       ...document.getAnimations().map((a) => Number(a.effect?.getComputedTiming().endTime ?? 0)),
@@ -104,6 +109,23 @@ test("[P1-03] the timeline lasts 1.4s and the morph lands exactly on the cover",
     page.locator("[data-gate-cover]").evaluate((el) => getComputedStyle(el).opacity);
   await seek(page, 1200); // mid-morph: one cover on screen, the clone
   expect(await coverOpacity()).toBe("0");
+  // The rising content sits above the clone (no half-covered logo snapping in at 1.4s) and lets taps through
+  // to the gate (a tap skips; nothing below is pressed by accident).
+  const rise = await page.evaluate(() =>
+    [...document.querySelectorAll("[data-gate-rise]")].map((el) => {
+      const cs = getComputedStyle(el);
+      return `${cs.position} ${cs.zIndex} ${cs.pointerEvents}`;
+    }),
+  );
+  expect(rise.length).toBeGreaterThan(0);
+  expect(new Set(rise)).toEqual(new Set(["relative 61 none"]));
+  expect(
+    await page.evaluate(() => {
+      const r = document.querySelector("[data-testid=landing-collect]")?.getBoundingClientRect();
+      const hit = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
+      return hit?.closest("#gilded-gate")?.id ?? null;
+    }),
+  ).toBe("gilded-gate");
   await seek(page, 1399.9);
   const [panel, cover] = await page.evaluate(() =>
     ["[data-gate-panel]", "[data-gate-cover]"].map((s) => {
@@ -231,13 +253,13 @@ test("[P1-03] reduced motion: a 150ms fade, nothing moves", async ({ page, reque
         })),
         inner: (gate?.getAnimations({ subtree: true }) ?? []).length,
         rise: rise.reduce((n, el) => n + el.getAnimations().length, 0),
-        panel: document.querySelectorAll("[data-gate-panel]").length,
+        morph: gate?.hasAttribute("data-morph") ?? false,
       };
     });
     expect(anims.own).toEqual([{ name: "gate-fade", duration: 150 }]);
     expect(anims.inner).toBe(1); // only the gate's own fade
     expect(anims.rise).toBe(0);
-    expect(anims.panel).toBe(0);
+    expect(anims.morph).toBe(false);
   };
 
   // System setting.
@@ -293,6 +315,7 @@ type LoadProfile = {
   play: number | null;
   paint: number;
   doc: string;
+  morphed: boolean;
 };
 
 /** Long animation frames (with their script attribution) and loaded scripts for one throttled load. */
@@ -328,6 +351,7 @@ async function profileLoad(page: Page, url: string): Promise<LoadProfile> {
       (window as unknown as { __gate: GateLog }).__gate.states.find((x) => x.s === "play")?.t ??
       null,
     paint: performance.getEntriesByName("first-paint")[0]?.startTime ?? 0,
+    morphed: document.getElementById("gilded-gate")?.hasAttribute("data-morph") ?? false,
     doc: location.href,
   }));
   await p.close();
@@ -357,6 +381,8 @@ test("[P1-03] adds no long task while it plays, 4× CPU throttle (Chromium)", as
   expect(plain.play).toBeNull();
   const play = scanned.play;
   expect(play).not.toBeNull();
+  // The morph is an inline script, so it joins in time even on a 4× slower CPU (design review P1-03).
+  expect(scanned.morphed).toBe(true);
   const from = play ?? 0;
   const gateCode = new Set([
     scanned.doc,
@@ -394,9 +420,9 @@ test("[P1-03] frames at 0 / 0.5 / 1.0 / 1.4s (390, 320, 1440)", async ({
       .catch(() => undefined);
     await page.goto(`/s/${shopCode}?src=qr`);
     expect(await gateState(page)).toBe("play");
-    await expect(page.locator("[data-gate-panel]")).toHaveCount(1);
+    await expect(page.getByTestId("gilded-gate")).toHaveAttribute("data-morph", "");
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    for (const ms of [0, 500, 1000, 1200, 1400]) {
+    for (const ms of [0, 500, 850, 1000, 1200, 1400]) {
       await seek(page, ms);
       await page.screenshot({
         path: path.join(dir, `gate-${String(w)}-${String(ms)}ms--${testInfo.project.name}.png`),

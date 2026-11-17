@@ -3,7 +3,7 @@
  *   0–200ms    the outline draws from the top centre round to the bottom (stroke-dashoffset)
  *   200–700ms  the logo fades and scales .92 → 1; a soft gold glow breathes once behind it
  *   700–1000ms a diagonal shimmer crosses the gate; "Welcome to {shop}" fades in below
- *   1000–1400ms the gate gives way to the cover (the lazy chunk morphs a cover clone out of it); the ivory
+ *   1000–1400ms the gate gives way to the cover (an inline script morphs a cover clone out of it); the ivory
  *              leaves and the page content rises 12px with a 40ms stagger (six items, the last lands at 1400ms)
  * Everything moves with transform and opacity (plus the stroke inside the gate). The gate is hidden unless its
  * pre-paint script sets data-state="play"; it hides itself at the end (visibility), and a skip hides it at once.
@@ -17,8 +17,7 @@
   position: fixed;
   inset: 0;
   z-index: 60; /* over the cookie notice (40) and toasts (50) for its 1.4s */
-  touch-action: none; /* a swipe on the gate doesn't scroll the page under it */
-  overscroll-behavior: contain;
+  /* A swipe scrolls the page under it, and the scroll skips the gate (a pan never becomes a click). */
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   animation: gate-life 1400ms linear forwards;
@@ -30,15 +29,24 @@
   background: var(--bg);
 }
 
+/* The morph's cover copy (server-rendered); the inline morph script sizes it onto the real cover and animates
+   it: transform + opacity on the panel, clip-path on the art inside it. */
+.gate-panel {
+  position: fixed;
+  opacity: 0;
+  transform-origin: 0 0;
+}
+.gate-art {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
 .gate-stage {
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  padding: 24px;
+  display: grid;
+  place-items: center;
 }
 
 .gate-frame {
@@ -103,7 +111,13 @@
   transform: translateX(-100%);
 }
 
+/* Hangs below the centred frame (frame height / 2 + a 20px gap), so its line count never moves the frame. */
 .gate-welcome {
+  position: absolute;
+  top: calc(50% + 104px + var(--space-20));
+  left: var(--space-24);
+  right: var(--space-24);
+  margin-inline: auto;
   max-width: 18rem;
   text-align: center;
   text-wrap: balance;
@@ -139,10 +153,17 @@
   animation: gate-rise 200ms var(--ease-out) calc(1000ms + var(--rise-i, 0) * 40ms) backwards;
 }
 
-/* While the chunk morphs a clone of the cover out of the gate, the real cover waits underneath, so there is
-   only ever one cover on screen; when the gate ends (or is skipped) it is simply there, where the clone landed. */
+/* While a clone of the cover morphs out of the gate, the real cover waits underneath, so there is only ever one
+   cover on screen; when the gate ends (or is skipped) it is simply there, where the clone landed. The rising
+   content stays above the clone (the logo overlaps the cover's foot) and lets taps through to the gate, which
+   skips it: nothing under the gate can be pressed by accident. */
 :root:has(.gilded-gate[data-state="play"][data-morph]) [data-gate-cover] {
   opacity: 0;
+}
+:root:has(.gilded-gate[data-state="play"][data-morph]) [data-gate-rise] {
+  position: relative;
+  z-index: 61;
+  pointer-events: none;
 }
 
 /* Reduced motion (system, unless the user chose full motion; or the user's own toggle): no movement, the

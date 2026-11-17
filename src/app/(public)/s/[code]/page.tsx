@@ -2,7 +2,7 @@ import { Store } from "lucide-react";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { GildedGate } from "@/components/motion/GildedGate";
+import { GildedGate, GildedGateMorph } from "@/components/motion/GildedGate";
 import { LandingFooter, ShopLanding } from "@/features/landing/ShopLanding";
 import { StatePage } from "@/features/portal/StatePage";
 import { normaliseCode, SHOP_CODE_LENGTH } from "@/lib/codes";
@@ -109,6 +109,7 @@ export default async function ShopLandingPage({
     ? "/wallet"
     : `/sign-in?returnTo=${encodeURIComponent(`/s/${code}`)}`;
   const gate = gateEntrySource((await searchParams).src);
+  const nonce = gate ? ((await headers()).get("x-nonce") ?? undefined) : undefined;
   return (
     <>
       {gate ? (
@@ -116,10 +117,12 @@ export default async function ShopLandingPage({
           code={code}
           name={data.shop.name}
           logoUrl={data.shop.logoUrl}
-          nonce={(await headers()).get("x-nonce") ?? undefined}
+          coverUrl={data.shop.coverUrl}
+          nonce={nonce}
         />
       ) : null}
       <ShopLanding data={data} collectHref={collectHref} member={visitor.member} now={new Date()} />
+      {gate ? <GildedGateMorph nonce={nonce} /> : null}
     </>
   );
 }
