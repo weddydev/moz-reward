@@ -7,26 +7,26 @@ Baton: held by talha.syed since 2026-11-17 18:17 IST (Mac)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-04 ticked by talha.syed, 2026-11-17 ~20:30 IST (Mac). Baton held.** Squash-merged from `wip/P1-04` (last HEAD `3c30e69`; its CI `44102769499` was red on P0-12 `portal-pages` meeting `/shops/[id]`, fixed in this commit; `wip/P1-04` can be deleted once main's CI is green). P1-A's four tasks are done.
-- **Next = P1-A MEDIUM batch (one commit, one gate run, test first), then `/subphase-complete` P1-A** (also reviews the unreviewed P0-E commits, C-49). Batch: (M1, security P1-04) `memberships_customer_guard` UPDATE branch for `moz_app`: `OLD.left_at IS NOT NULL AND NEW.left_at IS NULL` (rejoin) must pass the same `shops.status IN (active, expiring, grace, restricted)` check as INSERT — new migration + integration test. (M2) consent wording hash: the sheet sends the text hash (or shop name) it rendered; `joinShopAction` refuses with CONFLICT (re-ask, unticked) if it differs from the server's text, or bust the `shop-landing` cache on rename — integration test with a rename inside the 60 s cache window. (L3) `scripts/keys-reencrypt.ts:87-89` prints a raw error (pg `detail` can carry profile columns): log name/code/message only or use the redacting logger. Plus any MEDIUMs still open from P1-01..03 (SESSION_LOG).
-- **Half-done:** nothing uncommitted. **Not yet tested:** CI on this main commit (the full E2E run); the join sheet on a real iPhone (FOLLOWUPS H-13 line); everything from the earlier list (Gilded Gate on a real phone H-13, C-48 items, SSE via Cloudflare, Sentry staging releases, seed-reset timer Mon 23 Nov).
-- **Do first:** `git pull`; other laptop: `pnpm install` (libphonenumber-js) and `pnpm db:migrate` (0020). A stale `DATA_ENCRYPTION_KEY_ID` line in a laptop's `.env.local` is harmless (ignored); remove it. Mac: long gates under `caffeinate -i`. VPS access as before: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`; `sudo -n` works.
+- **P1-A MEDIUM batch done by talha.syed, 2026-11-17 ~22:00 IST (Mac). Baton held.** One commit on main: M1 rejoin DB wall (migration **0021**), M2 consent answer checked against the shop name shown (`consentShopName`), L3 `errorSummary` in the re-encrypt CLI, P1-02 design M2 (landing shots with a real cover, fixture `tests/e2e/fixtures/shop-cover.jpg` via `cover: true` on `/api/test/shop`) and M5 (cookie notice first paint + hydrated at 320/390). security-reviewer on the batch: PASS, 2 LOW (one fixed: SQLSTATE 22 values + URLs; one → FOLLOWUPS). `wip/P1-04` can be deleted.
+- **Next = `/subphase-complete` P1-A** (CI green, staging smoke, Sentry, reviews of unreviewed commits incl. the P0-E ones (C-49), scoped QA of the landing + join screens), then P1-B.
+- **Half-done:** nothing uncommitted. **Not yet tested:** CI on the batch commit; the join sheet on a real iPhone (H-13); the earlier list (Gilded Gate on a real phone H-13, C-48 items, SSE via Cloudflare, Sentry staging releases, seed-reset timer Mon 23 Nov).
+- **Do first:** `git pull`; other laptop: `pnpm install` and `pnpm db:migrate` (0020, 0021). Mac: long gates under `caffeinate -i`. VPS access as before: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`; `sudo -n` works.
 
 ## Status
 - **Phase:** **P1**. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
-- **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → ~~P1-02~~ → ~~P1-03~~ → ~~P1-04~~ → **MEDIUM batch + close**.
+- **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → ~~P1-02~~ → ~~P1-03~~ → ~~P1-04~~ → ~~MEDIUM batch~~ → **`/subphase-complete`**.
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-17, talha.syed (P1-04 ticked)
+- **Last updated:** 2026-11-17, talha.syed (P1-A MEDIUM batch)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `8353e00`; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`.
-- **P0 closed 17 Nov (human: no more time on P0).** P0-15 ticked; leftovers C-48/C-49 → P1-18. **P1-A:** P1-01 (13 Nov), P1-02, P1-03 and P1-04 (17 Nov) done; next the MEDIUM batch, then `/subphase-complete` P1-A.
+- **P0 closed 17 Nov (human: no more time on P0).** P0-15 ticked; leftovers C-48/C-49 → P1-18. **P1-A:** P1-01 (13 Nov), P1-02, P1-03, P1-04 and the MEDIUM batch (17 Nov) done; next `/subphase-complete` P1-A.
 
 ## Next (top 3)
-1. **P1-A MEDIUM batch** (Handoff note: rejoin DB wall, consent hash vs cached text, CLI error logging) → one commit, one gate run.
-2. `/subphase-complete` P1-A (also reviews the unreviewed P0-E commits, C-49).
+1. `/subphase-complete` P1-A (also reviews the unreviewed P0-E commits, C-49).
+2. P1-B, first task (phase file).
 3. Human, any time: H-45 UptimeRobot monitors (then the stop-staging phone alert test, C-48); H-46 Cloudflare `/s/*` rule; H-47 re-enable the Scheduled workflow? (🟢).
 
 
@@ -64,6 +64,7 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (17 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
+- P1-A batch: guard + join + action + authz 46+52/0 (M1/M2 tests red before the fix); redact unit 12/0; landing spec Chromium 8/0, cookie shots 320/390 first paint + hydrated inspected (no overlap with Collect); gate:task counts in the commit message; security-reviewer PASS.
 - P1-04 (`3c30e69` tree): gate:task PASS (unit 1507, int 1336/0/1 skip, sast, e2e P1-04,J1,P1-02 28/0); join spec 25/0 on 5 projects; security-reviewer PASS (2 MEDIUM → batch).
 - P1-04 rotation on 15 real E2E rows: 8 batches, all on the new key id, blind indexes unchanged, second run no-op, unknown key id → exit 1 unchanged.
 - P1-04 step B (`1b7575a`): CI `44094608880` green. P1-03: CI `44073336752` + Deploy `44074972808` green.

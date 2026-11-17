@@ -69,7 +69,8 @@ export function JoinSheet({
   shopCode: string;
   shopName: string;
   needsProfile: boolean;
-  consent: { version: string; text: string };
+  /** The question as rendered; `shopName` is sent back so the server can tell the customer saw today's text. */
+  consent: { version: string; text: string; shopName: string };
   autoOpen: boolean;
 }): React.JSX.Element {
   const router = useRouter();
@@ -128,6 +129,7 @@ export function JoinSheet({
         shopCode,
         marketingOptIn: optIn,
         consentVersion: consent.version,
+        consentShopName: consent.shopName,
         profile: needsProfile
           ? {
               fullName,

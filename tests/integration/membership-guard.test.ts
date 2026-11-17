@@ -144,3 +144,40 @@ describe("[P1-01] C-34 memberships: customers can't write counters", () => {
     expect(await update(worker, w.own.id, { purchaseCount: 7 })).toHaveLength(1);
   });
 });
+
+describe("[P1-04] memberships: a rejoin passes the same shop-status wall as a join (security review M1)", () => {
+  /** A customer who left a shop that is now `status`; returns their membership id and scope. */
+  async function leftMember(status: "active" | "suspended" | "closed" | "pending" | "restricted") {
+    const [shop, user] = await Promise.all([makeShop({ status: "active" }), makeUser()]);
+    const m = await makeMembership(user.id, shop.id);
+    const scope = mintCustomerScope({ userId: user.id });
+    expect(await update(scope, m.id, { leftAt: new Date() })).toHaveLength(1);
+    await db().execute(sql`UPDATE shops SET status = ${status} WHERE id = ${shop.id}`);
+    return { id: m.id, scope };
+  }
+
+  it("refuses a customer rejoining (left_at → null) a suspended, closed or pending shop", async () => {
+    for (const status of ["suspended", "closed", "pending"] as const) {
+      const m = await leftMember(status);
+      expect(await pgCode(() => update(m.scope, m.id, { leftAt: null })), status).toBe(DENIED);
+      const [row] = await db().select().from(memberships).where(eq(memberships.id, m.id));
+      expect(row?.leftAt, status).not.toBeNull();
+    }
+  });
+
+  it("lets a customer rejoin an active or restricted shop", async () => {
+    for (const status of ["active", "restricted"] as const) {
+      const m = await leftMember(status);
+      expect(await update(m.scope, m.id, { leftAt: null }), status).toHaveLength(1);
+    }
+  });
+
+  it("still lets a customer leave or mute in a suspended shop, and a left member mute there", async () => {
+    const [shop, user] = await Promise.all([makeShop({ status: "suspended" }), makeUser()]);
+    const m = await makeMembership(user.id, shop.id);
+    const scope = mintCustomerScope({ userId: user.id });
+    expect(await update(scope, m.id, { muted: true })).toHaveLength(1);
+    expect(await update(scope, m.id, { leftAt: new Date() })).toHaveLength(1);
+    expect(await update(scope, m.id, { muted: false })).toHaveLength(1);
+  });
+});

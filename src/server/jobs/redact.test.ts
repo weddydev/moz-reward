@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { REDACTED, redact, redactText } from "./redact";
+import { errorSummary, REDACTED, redact, redactText } from "./redact";
 
 describe("[P0-04] dead-letter payload redaction", () => {
   it("removes personal data and secrets by key, keeping ids and shape", () => {
@@ -110,5 +110,61 @@ describe("[P1-04] redactText keeps UUIDs whole (audit meta ids)", () => {
     expect(redactText("a0f26d5a-8e59-4944-949f-1234567890123456")).not.toContain(
       "1234567890123456",
     );
+  });
+});
+
+describe("[P1-04] errorSummary: one log line without row values (P1-A batch, security review L3)", () => {
+  /** What drizzle throws for a failed query: its own error wrapping the pg error. */
+  function pgFailure(): Error {
+    const pg = Object.assign(new Error('new row violates check constraint "x"'), {
+      name: "error",
+      code: "23514",
+      detail: "Failing row contains (Aisha Khan, +447400123456, aisha@example.com).",
+      table: "customer_profiles",
+    });
+    return new Error(
+      'Failed query: update "customer_profiles" set "phone_enc" = $1 params: v1.secret',
+      {
+        cause: pg,
+      },
+    );
+  }
+
+  it("keeps name, code and the message, never the pg detail, params or row values", () => {
+    const line = errorSummary(pgFailure());
+    expect(line).toContain("23514");
+    expect(line).toContain("violates check constraint");
+    for (const leak of ["Aisha", "447400123456", "aisha@example.com", "Failing row", "v1.secret"])
+      expect(line).not.toContain(leak);
+  });
+
+  it("redacts emails and phone numbers inside a message, and handles non-errors", () => {
+    const line = errorSummary(new Error("no user aisha@example.com at 07400 123456"));
+    expect(line).not.toContain("aisha@example.com");
+    expect(line).not.toContain("07400 123456");
+    expect(errorSummary("boom")).toBe("non-error thrown");
+    expect(errorSummary(undefined)).toBe("non-error thrown");
+  });
+
+  it("drops the value a data-exception (SQLSTATE 22…) quotes, and any URL or connection string", () => {
+    const bad = Object.assign(new Error('invalid input syntax for type uuid: "Aisha Khan"'), {
+      code: "22P02",
+    });
+    const line = errorSummary(bad);
+    expect(line).toContain("22P02");
+    expect(line).toContain("invalid input syntax for type uuid");
+    expect(line).not.toContain("Aisha");
+    const conn = errorSummary(
+      new Error("connect failed: postgres://moz:hunter2@localhost:5432/moz"),
+    );
+    expect(conn).not.toContain("hunter2");
+    expect(conn).toContain("connect failed");
+  });
+
+  it("stops at a cause cycle", () => {
+    const a = new Error("a");
+    const b = new Error("b", { cause: a });
+    Object.assign(a, { cause: b });
+    expect(errorSummary(a)).toMatch(/^Error: a ← Error: b$/);
   });
 });

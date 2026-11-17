@@ -142,6 +142,7 @@ export default async function ShopLandingPage({
         consent={{
           version: MARKETING_CONSENT_VERSION,
           text: marketingConsentText(data.shop.name),
+          shopName: data.shop.name,
         }}
         autoOpen={query.join === "1"}
       />

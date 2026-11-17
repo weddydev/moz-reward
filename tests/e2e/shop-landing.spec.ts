@@ -1,5 +1,14 @@
-import { type APIRequestContext } from "@playwright/test";
-import { expect, newClientContext, newClientIp, test, testApiHeaders } from "./support/test";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+import { type APIRequestContext, type Page } from "@playwright/test";
+import {
+  clientHeaders,
+  expect,
+  newClientContext,
+  newClientIp,
+  test,
+  testApiHeaders,
+} from "./support/test";
 
 // P1-02: shop landing `/s/[code]` on the production build (states, CSP + caching headers, member state,
 // lookup limit, fallbacks). Screenshots at every project size (.artifacts/screens/P1-02).
@@ -9,11 +18,27 @@ type ShopState =
 
 async function seedShop(
   request: APIRequestContext,
-  body: { status: ShopState; name?: string; details?: boolean; memberUserId?: string },
+  body: {
+    status: ShopState;
+    name?: string;
+    details?: boolean;
+    cover?: boolean;
+    memberUserId?: string;
+  },
 ): Promise<{ shopId: string; shopCode: string }> {
   const res = await request.post("/api/test/shop", { data: body, headers: testApiHeaders() });
   expect(res.ok()).toBe(true);
   return (await res.json()) as { shopId: string; shopCode: string };
+}
+
+/** Serves the seeded cover (`cover: true`) from the fixture; the app itself never serves that path. */
+async function serveCover(page: Page): Promise<void> {
+  await page.route("**/e2e-fixtures/shop-cover.jpg", (route) =>
+    route.fulfill({
+      path: path.join(__dirname, "fixtures", "shop-cover.jpg"),
+      contentType: "image/jpeg",
+    }),
+  );
 }
 
 const nonceOf = (csp: string | undefined): string | undefined =>
@@ -28,9 +53,18 @@ test("[P1-02] active shop: screen 1 content, Collect points to sign-in, screensh
     status: "active",
     name: "Brew & Bloom Café",
     details: true,
+    cover: true,
   });
+  await serveCover(page);
   const res = await page.goto(`/s/${shopCode.toLowerCase()}?src=qr`);
   expect(res?.status()).toBe(200);
+  // A real cover, so the shots show the m01 composition (ivory fade, overlapping logo) and the LCP image
+  // (P1-02 design review MEDIUM 2).
+  const cover = page.getByTestId("landing-cover");
+  await expect(cover).toBeVisible();
+  await expect
+    .poll(() => cover.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+    .toBe(true);
   await expect(page.getByTestId("landing-name")).toHaveText("Brew & Bloom Café");
   await expect(page.getByText("Café · Shoreditch")).toBeVisible();
   await expect(page.getByTestId("landing-status")).toHaveText(/^(Open|Closes soon|Closed)/);
@@ -209,4 +243,64 @@ test("[P1-02] the 61st lookup from one address within a minute gets a friendly 4
   const prefetch = await api.get("/s/ZZZZZZ", { headers: { "next-router-prefetch": "1" } });
   expect(prefetch.status()).toBe(429);
   await api.dispose();
+});
+
+test.describe("cookie notice on the landing, before any choice", () => {
+  test.use({ analyticsConsent: null });
+
+  // P1-02 design review MEDIUM 5: the server-rendered first paint (buttons kept invisible until hydration) and
+  // the hydrated notice, at 320 and 390; the fixed notice never blocks Collect points.
+  test("[P1-02] cookie notice: first paint and hydrated at 320 and 390, Collect points stays reachable", async ({
+    browser,
+    baseURL,
+    page,
+    request,
+    shoot,
+  }, testInfo) => {
+    const { shopCode } = await seedShop(request, { status: "active", details: true, cover: true });
+    const { deviceScaleFactor, isMobile, hasTouch, userAgent } = testInfo.project.use;
+    for (const size of [
+      { width: 320, height: 720 },
+      { width: 390, height: 844 },
+    ]) {
+      // First paint: the server HTML and styles alone (no JavaScript, so nothing hydrates), no consent stored.
+      const firstPaint = await browser.newContext({
+        baseURL: baseURL ?? "",
+        extraHTTPHeaders: clientHeaders(),
+        javaScriptEnabled: false,
+        viewport: size,
+        ...(deviceScaleFactor ? { deviceScaleFactor } : {}),
+        ...(isMobile ? { isMobile } : {}),
+        ...(hasTouch ? { hasTouch } : {}),
+        ...(userAgent ? { userAgent } : {}),
+      });
+      const raw = await firstPaint.newPage();
+      await serveCover(raw);
+      await raw.goto(`/s/${shopCode}`);
+      const rawNotice = raw.getByRole("region", { name: "Cookies" });
+      await expect(rawNotice).toBeVisible();
+      await expect(rawNotice.locator("[data-consent-actions]")).toBeHidden();
+      await expect(raw.getByTestId("landing-collect")).toBeVisible();
+      const dir = path.join(".artifacts", "screens", "P1-02");
+      mkdirSync(dir, { recursive: true });
+      await raw.screenshot({
+        path: path.join(
+          dir,
+          `landing-cookies-first-paint-${String(size.width)}--${testInfo.project.name}.png`,
+        ),
+        animations: "disabled",
+      });
+      await firstPaint.close();
+
+      // Hydrated: the buttons turn visible only once the notice has hydrated.
+      await serveCover(page);
+      await page.setViewportSize(size);
+      await page.goto(`/s/${shopCode}`);
+      const notice = page.getByRole("region", { name: "Cookies" });
+      await expect(notice.getByRole("button", { name: "No thanks" })).toBeVisible();
+      await shoot(`landing-cookies-hydrated-${String(size.width)}`, { fullPage: false });
+      // Playwright scrolls Collect into view and fails if anything (the fixed notice) covers its centre.
+      await page.getByTestId("landing-collect").click({ trial: true, timeout: 5_000 });
+    }
+  });
 });

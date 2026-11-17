@@ -649,3 +649,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - security-reviewer (whole P1-04 diff): PASS, no BLOCK/HIGH; 2 MEDIUM (rejoin UPDATE not covered by the DB shop-status wall; consent hash from fresh shop name vs 60 s cached sheet text) → P1-A MEDIUM batch; LOW 3 (CLI raw error may log pg `detail` PII) → batch too; LOW 4 → C-55; LOW 5 → FOLLOWUPS.
 - CI `3c30e69` (`44102769499`) red: P0-12 `portal-pages` opens every route-table path literally and hit `/shops/[id]`; the spec now takes a concrete URL per dynamic route (and throws for one without). 40/0 on 4 projects. Lesson: a route-table change runs `portal-pages.spec.ts` too.
 - NOT VERIFIED: the sheet on a real iPhone when the Safari toolbar collapses (Playwright WebKit keeps an open dialog's `100dvh` after a programmatic resize) → H-13.
+
+## 2026-11-17 — P1 — P1-A MEDIUM batch (Mac, talha.syed)
+- M1: 0021 re-creates `memberships_customer_guard`: a customer rejoin (`left_at` set → null) passes the same shop-status wall as a join; leave/mute stay allowed (guard test red → green). M2: sheet sends `consentShopName`; `joinShop` refuses CONFLICT if it isn't the current display name (service test + action test with a rename inside the 60 s landing cache, both red without the check).
+- L3: `errorSummary` (name, SQLSTATE, redacted message per cause; drops drizzle SQL/params, URLs, values quoted by SQLSTATE 22) in `keys:reencrypt`. P1-02 design M2/M5 (recovered from the P1-02 transcript; never written down): landing shots with a real cover; cookie notice first paint (JS-off context) + hydrated at 320/390, Collect clickable under it.
+- Pre-hydration shots: WebKit reports `route.abort()` as a network failure and caches empty-fulfilled chunks (the next load never hydrates); use a separate context with `javaScriptEnabled: false` instead. 5 projects 5/0.
+- security-reviewer (batch diff): PASS; LOW SQLSTATE-22/URL leak fixed; LOW shop-name length → FOLLOWUPS. gate:task P1-04 P1-02 J1 counts in the commit message.
+- Lesson: design-review MEDIUMs routed to a batch must be written into the handoff/FOLLOWUPS with their text, not just their numbers.

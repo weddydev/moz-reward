@@ -43,6 +43,7 @@ const join = (c: Awaited<ReturnType<typeof customer>>, shop: Shop, over: Partial
         shopCode: shop.shopCode,
         marketingOptIn: false,
         consentVersion: MARKETING_CONSENT_VERSION,
+        consentShopName: shop.tradingName ?? shop.name,
         profile: profile(),
         ...over,
       },
@@ -214,6 +215,29 @@ describe("[P1-04] join flow", () => {
     expect(err).toBeInstanceOf(AppError);
     expect(err).toMatchObject({ code: "CONFLICT" });
     expect(await membershipsOf(c.id)).toHaveLength(0);
+  });
+
+  it("refuses an answer given to the old shop name after a rename (P1-A batch, security review M2)", async () => {
+    const c = await customer();
+    const shop = await makeShop({ status: "active", name: "Old Name Café" });
+    // The sheet showed "Old Name Café"; the shop is renamed (or gets a trading name) before the tap.
+    await db().execute(sql`UPDATE shops SET trading_name = 'New Name Café' WHERE id = ${shop.id}`);
+    for (const shown of ["Old Name Café", "new name café", ""]) {
+      const err = await join(c, shop, { consentShopName: shown, marketingOptIn: true }).catch(
+        (e: unknown) => e,
+      );
+      expect(err, shown).toBeInstanceOf(AppError);
+      expect(err, shown).toMatchObject({ code: "CONFLICT" });
+    }
+    expect(await membershipsOf(c.id)).toHaveLength(0);
+    expect(await consentsOf(c.id)).toHaveLength(0);
+    expect(await readOwnProfile(c.scope)).toBeNull();
+    // Asked again with the current name: joined, and the stored hash is of the text actually shown.
+    await join(c, shop, { consentShopName: "New Name Café", marketingOptIn: true });
+    const [consent] = await consentsOf(c.id);
+    expect(consent?.wordingHash).toBe(
+      createHash("sha256").update(marketingConsentText("New Name Café"), "utf8").digest("hex"),
+    );
   });
 
   it("re-opens a left membership: asks again, records a 'rejoin' consent, never restores the old opt-in", async () => {

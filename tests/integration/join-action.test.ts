@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { Redis } from "ioredis";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { joinShopAction } from "@/features/join/actions";
@@ -11,10 +11,17 @@ import {
 } from "@/features/join/profile-input";
 import { loadPrincipal, runAsPrincipal } from "@/server/authz/principal";
 import { testOwnerDb as db } from "@/server/db/client";
-import { auditLogs, customerProfiles, marketingConsents, memberships } from "@/server/db/schema";
+import {
+  auditLogs,
+  customerProfiles,
+  marketingConsents,
+  memberships,
+  shops,
+} from "@/server/db/schema";
 import type * as RateLimitModule from "@/server/security/rate-limit";
 import { limit, userKey } from "@/server/security/rate-limit";
 import { CONSENT_OUTDATED, PROFILE_REQUIRED, SHOP_NOT_JOINABLE } from "@/server/services/join";
+import { invalidateShopLanding, loadShopLanding } from "@/server/services/shop-landing";
 import { makeShop, makeUser } from "@/server/testing/factories";
 
 /**
@@ -73,20 +80,31 @@ const PROFILE: Profile = {
   over13: true,
 };
 
+/** The name the sheet would show: the shop's current display name (unknown codes: a placeholder). */
+async function shownName(shopCode: string): Promise<string> {
+  const [row] = await db()
+    .select({ name: shops.name, tradingName: shops.tradingName })
+    .from(shops)
+    .where(eq(shops.shopCode, shopCode));
+  return row ? (row.tradingName ?? row.name) : "Unknown shop";
+}
+
 const call = (
   c: Customer,
   shopCode: string,
   over: {
     marketingOptIn?: boolean;
     consentVersion?: string;
+    consentShopName?: string;
     profile?: Partial<Profile> | null;
   } = {},
 ) =>
-  runAsPrincipal(c.principal, () =>
+  runAsPrincipal(c.principal, async () =>
     joinShopAction({
       shopCode,
       marketingOptIn: over.marketingOptIn ?? false,
       consentVersion: over.consentVersion ?? MARKETING_CONSENT_VERSION,
+      consentShopName: over.consentShopName ?? (await shownName(shopCode)),
       profile: over.profile === null ? null : { ...PROFILE, ...over.profile },
     }),
   );
@@ -219,6 +237,37 @@ describe("[P1-04] join.shop action", () => {
       error: { code: "CONFLICT", message: CONSENT_OUTDATED },
     });
     expect(await rowsFor(c.id)).toEqual(nothingWritten);
+  });
+
+  it("a rename inside the 60 s landing cache: the answer to the cached wording is refused, the fresh one is stored (P1-A batch M2)", async () => {
+    const c = await customer();
+    const shop = await makeShop({ name: "Corner Bakery" });
+    await invalidateShopLanding(shop.shopCode);
+    const before = await loadShopLanding(shop.shopCode); // what the landing renders: cached for 60 s
+    expect(before).toMatchObject({ kind: "live", shop: { name: "Corner Bakery" } });
+    // Renamed with the entry still cached (a sheet open since before the rename, or invalidation failed).
+    await db().execute(sql`UPDATE shops SET name = 'Corner Bakery & Deli' WHERE id = ${shop.id}`);
+    const stale = await loadShopLanding(shop.shopCode);
+    const staleName = stale.kind === "live" ? stale.shop.name : "";
+    expect(staleName).toBe("Corner Bakery");
+    const refused = await call(c, shop.shopCode, {
+      marketingOptIn: true,
+      consentShopName: staleName,
+    });
+    expect(refused).toMatchObject({
+      ok: false,
+      error: { code: "CONFLICT", message: CONSENT_OUTDATED },
+    });
+    expect(await rowsFor(c.id)).toEqual(nothingWritten);
+    // The sheet refreshes; once the entry is fresh it shows the new name and the answer is stored.
+    await invalidateShopLanding(shop.shopCode);
+    const fresh = await loadShopLanding(shop.shopCode);
+    const freshName = fresh.kind === "live" ? fresh.shop.name : "";
+    expect(freshName).toBe("Corner Bakery & Deli");
+    expect(
+      await call(c, shop.shopCode, { marketingOptIn: true, consentShopName: freshName }),
+    ).toMatchObject({ ok: true });
+    expect((await rowsFor(c.id)).consents).toMatchObject([{ optedIn: true }]);
   });
 
   it("a suspended shop is refused with its message; a restricted one can be joined", async () => {

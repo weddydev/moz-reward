@@ -127,6 +127,9 @@ const ageInput = z
   })
   .strict();
 
+/** Never served by the app: the landing spec fulfils it from a fixture (`page.route`). */
+const E2E_COVER_PATH = "/e2e-fixtures/shop-cover.jpg";
+
 /** P1-02: a shop in a given state for the landing page specs, optionally with full details and a member. */
 const shopInput = z
   .object({
@@ -134,6 +137,8 @@ const shopInput = z
     name: z.string().min(1).max(80).optional(),
     /** Address, phone, location, description and a full week of hours. */
     details: z.boolean().default(false),
+    /** A cover at a same-origin path the spec serves with `page.route` (tests/e2e/fixtures/shop-cover.jpg). */
+    cover: z.boolean().default(false),
     memberUserId: z.uuid().optional(),
   })
   .strict();
@@ -191,10 +196,11 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
     case "shop": {
       const parsed = shopInput.safeParse(body);
       if (!parsed.success) return invalid();
-      const { status, name, details, memberUserId } = parsed.data;
+      const { status, name, details, cover, memberUserId } = parsed.data;
       const shop = await makeShop({
         status,
         ...(name ? { name } : {}),
+        ...(cover ? { coverUrl: E2E_COVER_PATH } : {}),
         ...(details
           ? {
               description: "Small-batch coffee, fresh bakes and a warm welcome on the high street.",

@@ -61,3 +61,33 @@ export function redact(value: unknown, depth = 0, stringsAllowed = false): unkno
   }
   return out;
 }
+
+/** Drizzle's query errors quote the SQL and its params (ciphertext, phone numbers): only the prefix is kept. */
+const FAILED_QUERY = /^Failed query\b[\s\S]*$/;
+const MAX_CAUSES = 4;
+/** Connection strings and URLs (`postgres://user:pass@localhost/db`) can carry credentials. */
+const URL_LIKE = /\b[a-z][a-z0-9+.-]*:\/\/\S+/gi;
+const QUOTED = /"[^"]*"/g;
+
+/**
+ * One log line for an error in a CLI or job that touches personal data (P1-A batch, security review L3): name,
+ * a short code (a pg SQLSTATE like `23514`) and the redacted message of the error and its causes. Never the
+ * pg `detail`/`where`/`table` fields or drizzle's params, which can carry row values.
+ */
+export function errorSummary(err: unknown): string {
+  const parts: string[] = [];
+  const seen = new Set<unknown>();
+  let current: unknown = err;
+  while (current instanceof Error && !seen.has(current) && parts.length < MAX_CAUSES) {
+    seen.add(current);
+    const code = (current as { code?: unknown }).code;
+    const shownCode = typeof code === "string" && ID_VALUE.test(code) ? ` ${code}` : "";
+    let message = current.message.replace(FAILED_QUERY, "Failed query").replace(URL_LIKE, REDACTED);
+    // SQLSTATE class 22 (data exception) quotes the offending value: `invalid input syntax for type …: "x"`.
+    if (shownCode.startsWith(" 22")) message = message.replace(QUOTED, `"${REDACTED}"`);
+    message = redactText(message);
+    parts.push(`${current.name}${shownCode}: ${message}`);
+    current = current.cause;
+  }
+  return parts.length ? parts.join(" ← ") : "non-error thrown";
+}

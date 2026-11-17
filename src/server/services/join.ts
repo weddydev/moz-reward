@@ -13,6 +13,10 @@ export type JoinInput = {
   marketingOptIn: boolean;
   /** The consent wording version the customer saw; anything but the current one is refused. */
   consentVersion: string;
+  /** The shop name the question showed ("Get offers and news from <name>?"); the stored hash is of the text
+   *  the server renders now, so an answer given to an older name (renamed inside the 60 s landing cache, or a
+   *  sheet open since before the rename) is refused like an outdated version. */
+  consentShopName: string;
   /** Required when the caller has no profile yet; ignored (never overwrites) when they have one. */
   profile: NewProfile | null;
 };
@@ -46,6 +50,7 @@ export async function joinShop(
   const shop = await findJoinableShop(scope, input.shopCode, tx);
   if (shop.kind === "none") throw new AppError("NOT_FOUND", "We couldn't find that shop.");
   if (shop.kind === "gone") throw new AppError("FORBIDDEN", SHOP_NOT_JOINABLE);
+  if (input.consentShopName !== shop.name) throw new AppError("CONFLICT", CONSENT_OUTDATED);
 
   let memberId = await ownMemberId(scope, tx);
   if (!memberId) {

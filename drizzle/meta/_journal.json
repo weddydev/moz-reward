@@ -148,6 +148,13 @@
       "when": 1794920211074,
       "tag": "0020_join_profile_consent",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794930770688,
+      "tag": "0021_rejoin_shop_status",
+      "breakpoints": true
     }
   ]
 }

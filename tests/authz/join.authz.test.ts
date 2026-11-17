@@ -25,14 +25,21 @@ const SIGNED_IN: Role[] = [
   "admin_owner_no_mfa",
 ];
 
+/** The shop's code and the name its join sheet shows. */
 const codeOf = async (shopId: string) => {
-  const [row] = await db().select({ code: shops.shopCode }).from(shops).where(eq(shops.id, shopId));
+  const [row] = await db()
+    .select({ code: shops.shopCode, name: shops.name, tradingName: shops.tradingName })
+    .from(shops)
+    .where(eq(shops.id, shopId));
   if (!row) throw new Error("shop missing");
-  return row.code;
+  return { shopCode: row.code, consentShopName: row.tradingName ?? row.name };
 };
 
-const input = (shopCode: string, extra: Record<string, unknown> = {}) => ({
-  shopCode,
+const input = (
+  shop: { shopCode: string; consentShopName: string },
+  extra: Record<string, unknown> = {},
+) => ({
+  ...shop,
   marketingOptIn: false,
   consentVersion: MARKETING_CONSENT_VERSION,
   profile: {

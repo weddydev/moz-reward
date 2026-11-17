@@ -65,6 +65,7 @@ export const joinShopAction = defineAction({
       shopCode: z.string().min(1).max(20),
       marketingOptIn: z.boolean(),
       consentVersion: z.string().min(1).max(32),
+      consentShopName: z.string().max(200),
       profile: profileInput.nullable(),
     })
     .strict(),

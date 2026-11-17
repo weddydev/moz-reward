@@ -12,6 +12,7 @@ import "./load-env";
 import { parseArgs } from "node:util";
 import { bootOrExit, runBootChecks } from "@/server/boot";
 import { setDbProcess } from "@/server/db/client";
+import { errorSummary } from "@/server/jobs/redact";
 import {
   keyIdCounts,
   ReencryptError,
@@ -86,7 +87,8 @@ async function main(): Promise<number> {
 main().then(
   (code) => process.exit(code),
   (err: unknown) => {
-    console.error("keys:reencrypt: failed (safe to run again):", err);
+    // Summary only: a pg error's `detail` and drizzle's params can quote profile values (security review L3).
+    console.error(`keys:reencrypt: failed (safe to run again): ${errorSummary(err)}`);
     process.exit(1);
   },
 );

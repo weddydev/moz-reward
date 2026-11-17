@@ -11,6 +11,11 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-17 — Consent answers are checked against the shop name shown; rejoin behind the DB status wall (P1-A batch)
+Decision: the join sheet sends back the shop name its marketing question showed (`consentShopName`); `joinShop` refuses with CONFLICT ("wording changed", nothing written) when it isn't the shop's current display name, exactly like an outdated `consentVersion`. Migration 0021 applies the 0020 shop-status check to a customer's rejoin (`left_at` set → null) as well as to an insert; leaving and muting stay allowed in any status.
+Why: security review M1/M2 (P1-04): the stored wording hash is of the fresh name, while the landing is cached 60 s and a sheet can stay open across a rename, so the hash could describe text the customer never saw; and the app's rejoin check had no DB wall behind it.
+Consequence: a rename makes an open sheet re-ask once (router.refresh); if the cache drop failed, for at most 60 s. A future shop-name writer (P2) must cap display names at ≤ 200 characters (the action input's limit). The CLI now logs `errorSummary` (name, SQLSTATE, redacted message), never a pg `detail`.
+
 ## 2026-11-17 — `/shops/[id]` answers non-members with a soft 404 (P1-04 D)
 Decision: the customer shop page stays under `(customer)/(pages)` with its `loading.tsx`, so a non-member, unknown or malformed id gets the designed "We can't find that page" with status 200 and `noindex` (not a 404 status). E2E proves the page is identical for all three and the HTML holds no shop data.
 Why: DECISIONS 12 Nov (a page under `loading.tsx` answers 200 once the fallback streams; acceptable behind sign-in); P1-09 builds the full page there and wants the loading skeleton. security-reviewer agreed (no usable oracle: ids are UUIDs).
