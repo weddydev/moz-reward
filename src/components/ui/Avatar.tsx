@@ -4,17 +4,11 @@ import { User } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { cx } from "@/lib/cx";
+import { initialsOf } from "@/lib/initials";
 import { Icon } from "./Icon";
 
 /** First letter of the first and last words, upper-cased by locale ("Ólafur Arnalds" → "ÓA"). */
-export function initialsOf(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const first = words[0];
-  if (!first) return "";
-  const last = words.length > 1 ? words[words.length - 1] : undefined;
-  const letter = (w: string) => (Array.from(w)[0] ?? "").toLocaleUpperCase("en-GB");
-  return letter(first) + (last ? letter(last) : "");
-}
+export { initialsOf };
 
 const SIZE = {
   32: "size-8 text-caption",

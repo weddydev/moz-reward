@@ -60,3 +60,50 @@ test("[P0-13] AC5: 'Allow analytics' loads Umami same-origin, without query stri
   await expect(notice(page)).toHaveCount(0);
   await expect(analyticsScript(page)).toHaveCount(1);
 });
+
+test("[P1-02] first visit: the notice text is in the server HTML, its buttons only work once hydrated", async ({
+  browser,
+  baseURL,
+  extraHTTPHeaders,
+}) => {
+  // Without JavaScript: the text paints with the page (it is the landing's LCP on a first visit), while the
+  // buttons stay hidden and unfocusable, so a tap before React owns them can never be lost (P0-13).
+  const context = await browser.newContext({
+    javaScriptEnabled: false,
+    ...(baseURL ? { baseURL } : {}),
+    ...(extraHTTPHeaders ? { extraHTTPHeaders } : {}),
+  });
+  const page = await context.newPage();
+  await page.goto("/sign-in");
+  await expect(notice(page)).toBeVisible();
+  await expect(notice(page).getByText("We use essential cookies")).toBeVisible();
+  await expect(notice(page).getByRole("button")).toHaveCount(0);
+  const reserved = await notice(page).locator("[data-consent-actions]").boundingBox();
+  expect(reserved?.height ?? 0).toBeGreaterThan(30);
+  await context.close();
+
+  // With a stored choice the server renders no notice at all (no flash for returning visitors).
+  const decided = await browser.newContext({
+    javaScriptEnabled: false,
+    ...(baseURL ? { baseURL } : {}),
+    ...(extraHTTPHeaders ? { extraHTTPHeaders } : {}),
+  });
+  await decided.addCookies([
+    { name: "moz_consent", value: "analytics-v1-denied", url: baseURL ?? "", sameSite: "Lax" },
+  ]);
+  const page2 = await decided.newPage();
+  await page2.goto("/sign-in");
+  await expect(notice(page2)).toHaveCount(0);
+  await decided.close();
+});
+
+test("[P1-02] first visit with JavaScript: hydrated buttons appear in the reserved space without a shift", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  const before = await notice(page).boundingBox();
+  await expect(notice(page).getByRole("button", { name: "No thanks" })).toBeVisible();
+  const after = await notice(page).boundingBox();
+  expect(after?.y).toBe(before?.y);
+  expect(after?.height).toBe(before?.height);
+});

@@ -1,4 +1,4 @@
-import { EmptyState } from "@/components/ui";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 /** A portal page whose feature isn't built yet: the real title and an empty state (P0-12). */
 export function PlaceholderPage({

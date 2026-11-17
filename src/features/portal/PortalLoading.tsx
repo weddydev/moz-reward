@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 /**
  * What a portal page shows while it loads (P0-12): the page's outline in the same container as the page,

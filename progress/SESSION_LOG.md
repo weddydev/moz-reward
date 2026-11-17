@@ -603,3 +603,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Human 17 Nov: close P0 fast → P0-15 ticked; leftovers C-48 + C-35/C-40/C-17 + P0 gate/DoD/demo (C-49) → P1-18 (DECISIONS 17 Nov). `progress/P0-15-plan.md` deleted.
 - Human 17 Nov: P0 officially closed → PHASES P0-E / P0 / DoD lines ticked (evidence owed by C-49 at P1-18). Branch rule: progress files only on main, code on wip/P1-02.
 - P1-02 A `e8036e4` (CI green) + B `9805ec1` on wip/P1-02: landing data cache + limit + page/states; integration 14, unit 4+6, E2E 35/35 (5 projects, production build); screenshots 390/320/1440 inspected. CARRIED C-50 (P1-08), C-51 (P5-05), C-52 (P1-04) added. Step C next (handoff lists it).
+
+## 2026-11-17 — P1 — P1-02 shop landing ticked (Mac, talha.syed)
+- Step C `9bb42b5` on wip/P1-02, squash-merged to main. Lighthouse CI built (`pnpm test:lighthouse`, in gate:phase): landing LCP 0.80 s, CLS 0, score 100, JS 147.2 KB gzip (judgment; framework ~131 KB) — DECISIONS 17 Nov.
+- Every page −54 KB gzip JS (zod out of the browser, no UI-barrel imports + lint rule); first-visit cookie notice server-rendered (buttons hidden until hydration): landing LCP 2.83 → 0.80 s.
+- Full 5-project E2E (root layout changed): 883 passed, 0 failed/flaky. Landing + consent specs 55/55 (5 projects) after design fixes; screenshots 390/320/1440 inspected.
+- design-reviewer: PASS with notes; HIGH (gold fallback cover) fixed; MEDIUM 3–4 fixed, 2 + 5 → P1-A MEDIUM batch; LOW → FOLLOWUPS. gate:task PASS (unit 1437, int 1256/0 + 1 gpg-2.5 skip → C-53, e2e P1-02 18/0).
+- backup-pitr "unprotected WAL" fails locally on gpg 2.5.24 (clean tree too): fixture now AEAD; explicit skip + C-53. H-46 (Cloudflare `/s/*` rule) added. C-15 closed.

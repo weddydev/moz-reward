@@ -238,3 +238,19 @@ release runs the same check. **Before a demo**, reset by hand: `sudo systemctl s
 then `sudo journalctl -u moz-seed-reset -n 20` ends with `seed-reset staging: done`. Failure → the journal names the step;
 a failed check means a password-only sign-in path exists: stop the demo prep and fix it first.
 **Worked when:** each account signs in and lands in its own portal. The presenter's step-by-step demo script is `docs/DEMO_GUIDE.md`.
+
+## 17. Shop-code lookups (`/s/<code>`)
+**Our limit is the real control (P1-02, C-15):** 60 lookups per minute per client IP (the address Caddy saw, never a
+client header), in redis-queue (`shop-lookup` key). Over the limit → a friendly 429 page with `Retry-After`; no
+database read. It **fails open** (a public page): with Redis down, landings still render and only this limit is off.
+Shop data is cached 60 s in redis-cache (`shop-landing:v1:<CODE>`); every shop update or status change deletes the key,
+so a suspension shows at once (worst case 60 s if the delete itself failed). HTML is always `private, no-store`.
+
+**Cloudflare backstop (H-46, free plan, one zone-level rule):** Security → WAF → Rate limiting rules → create
+`moz-shop-lookup`: expression `starts_with(http.request.uri.path, "/s/")`, characteristics **IP**, **50 requests per
+10 seconds**, action **Block** for 10 seconds. It is deliberately much looser than ours (≈ 300/min), so a shop's Wi-Fi or a
+mobile network sharing one address is never blocked by Cloudflare; it only stops floods before they reach the VPS.
+- **Many 429s in the logs from one IP:** a scraper walking codes; nothing to do (codes are not secret, the page is public
+  data). **From many IPs at once:** raise the Cloudflare rule's action to Managed Challenge for `/s/*` until it stops.
+- **Customers report "Too many requests" at a busy shop:** check the IP in the logs; if it is the shop's own Wi-Fi, the
+  60/min limit is too low for that site: record it in DECISIONS and raise `LANDING_LIMIT` (src/server/security/landing-limit.ts).

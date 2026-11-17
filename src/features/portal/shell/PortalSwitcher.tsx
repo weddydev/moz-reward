@@ -2,7 +2,7 @@
 
 import { ArrowLeftRight, Check } from "lucide-react";
 import { Popover } from "@/components/motion";
-import { Icon } from "@/components/ui";
+import { Icon } from "@/components/ui/Icon";
 import { cx } from "@/lib/cx";
 import type { Portal } from "../routes";
 import type { PortalLink } from "../switcher";

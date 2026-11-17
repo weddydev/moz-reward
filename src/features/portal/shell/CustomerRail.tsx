@@ -4,7 +4,7 @@ import { LogIn, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { TransitionLink } from "@/components/motion";
-import { Icon } from "@/components/ui";
+import { Icon } from "@/components/ui/Icon";
 import { cx } from "@/lib/cx";
 import { navIcon } from "../nav-icons";
 import { activeRoute, type PortalRoute } from "../routes";

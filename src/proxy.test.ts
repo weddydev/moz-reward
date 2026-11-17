@@ -12,7 +12,7 @@ async function run(
   headers: Record<string, string> = {},
 ): Promise<{ res: Response; forwarded: (name: string) => string | null }> {
   const { proxy } = await import("./proxy");
-  const res = proxy(new NextRequest(`http://localhost:3000${path}`, { headers }));
+  const res = await proxy(new NextRequest(`http://localhost:3000${path}`, { headers }));
   // NextResponse.next({ request: { headers } }) forwards overridden request headers this way.
   const forwarded = (name: string): string | null =>
     res.headers.get(`x-middleware-request-${name}`);
@@ -89,8 +89,67 @@ describe("[P0-05] proxy: CSP nonce, security headers, request id, /dev gate", ()
 
   it("matcher skips static assets and router prefetches", async () => {
     const { config } = await import("./proxy");
-    const [matcher] = config.matcher;
-    expect(matcher?.source).toContain("_next/static");
-    expect(matcher?.missing.map((m) => m.key)).toEqual(["next-router-prefetch", "purpose"]);
+    const [matcher, landing] = config.matcher;
+    if (typeof matcher !== "object") throw new Error("first matcher must be an object");
+    expect(landing).toBe("/s/:code");
+    expect(matcher.source).toContain("_next/static");
+    expect(matcher.missing.map((m) => m.key)).toEqual(["next-router-prefetch", "purpose"]);
+  });
+});
+
+describe("[P1-02] proxy: shop landing /s/[code]", () => {
+  it("matches only /s/<one segment>", async () => {
+    const { isLandingPath } = await import("./proxy");
+    expect(isLandingPath("/s/ABC234")).toBe(true);
+    expect(isLandingPath("/s/abc234/")).toBe(true);
+    expect(isLandingPath("/s/")).toBe(false);
+    expect(isLandingPath("/s/ABC234/join")).toBe(false);
+    expect(isLandingPath("/shops/ABC234")).toBe(false);
+  });
+
+  it("HTML is never stored by a shared cache and carries a fresh nonce per request", async () => {
+    const a = await run("/s/ABC234?src=qr");
+    const b = await run("/s/ABC234?src=qr");
+    expect(a.res.headers.get("cache-control")).toBe("private, no-store");
+    const nonce = (r: Response) =>
+      /'nonce-([A-Za-z0-9+/=]+)'/.exec(r.headers.get("content-security-policy") ?? "")?.[1];
+    expect(nonce(a.res)).toBeDefined();
+    expect(nonce(a.res)).not.toBe(nonce(b.res));
+    expect(a.res.headers.get("content-security-policy")).not.toMatch(
+      /script-src[^;]*'unsafe-inline'/,
+    );
+  });
+
+  it("over the lookup limit: a friendly 429 page with Retry-After, never rendered", async () => {
+    vi.doMock("@/server/security/landing-limit", () => ({
+      checkLandingLimit: () =>
+        Promise.resolve({ ok: false, remaining: 0, resetAt: new Date(Date.now() + 42_000) }),
+    }));
+    const { res } = await run("/s/ABC234");
+    vi.doUnmock("@/server/security/landing-limit");
+    expect(res.status).toBe(429);
+    expect(Number(res.headers.get("retry-after"))).toBeGreaterThanOrEqual(41);
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+    expect(res.headers.get("x-middleware-next")).toBeNull();
+    const html = await res.text();
+    expect(html).toContain("Too many shop lookups");
+    const nonce = /'nonce-([A-Za-z0-9+/=]+)'/.exec(
+      res.headers.get("content-security-policy") ?? "",
+    )?.[1];
+    expect(html).toContain(`<style nonce="${nonce ?? "missing"}">`);
+  });
+
+  it("a malformed percent-escape is a 400, not a framework 500", async () => {
+    const { res } = await run("/s/%E0%A4%A");
+    expect(res.status).toBe(400);
+  });
+
+  it("other paths never consult the lookup limit", async () => {
+    const check = vi.fn();
+    vi.doMock("@/server/security/landing-limit", () => ({ checkLandingLimit: check }));
+    await run("/wallet");
+    await run("/s/ABC234/join");
+    vi.doUnmock("@/server/security/landing-limit");
+    expect(check).not.toHaveBeenCalled();
   });
 });

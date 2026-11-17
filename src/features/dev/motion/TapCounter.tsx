@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/ui/Button";
 
 /** Proves a destination page is live while its transition runs (P0-10 AC 2): taps register at once. */
 export function TapCounter(): React.JSX.Element {

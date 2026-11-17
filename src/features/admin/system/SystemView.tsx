@@ -1,5 +1,6 @@
 import { CircleAlert, CircleCheck } from "lucide-react";
-import { Badge, Card } from "@/components/ui";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
 import { QueueTable } from "./QueueTable";
 import type { SystemView as View } from "./view-model";
 

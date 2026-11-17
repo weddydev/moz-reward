@@ -4,7 +4,8 @@
  *      reused while the app's sources are unchanged (fingerprint below), so editing a spec costs no rebuild.
  *   2. `playwright test <args>`; playwright.config starts `next start` on :3100 (E2E_MODE=prod).
  * `pnpm e2e:dev` (`--dev`) runs the old `next dev` server instead: fast inner loop only, never evidence.
- * Flags: `--dev`, `--rebuild` (ignore the fingerprint), `--build-only`. Everything else goes to Playwright.
+ * Flags: `--dev`, `--rebuild` (ignore the fingerprint), `--build-only`, `--visual`, `--lighthouse` (only the
+ * Lighthouse CI project, tests/perf). Everything else goes to Playwright.
  * Needs `pnpm services:up`. Never touches tsconfig.json (it already includes `.next-e2e/types`).
  */
 import "./load-env";
@@ -116,8 +117,10 @@ function main(): void {
   const buildOnly = args.includes("--build-only");
   // `--visual`: only the @visual snapshot tests (add `--update-snapshots` to accept a new look).
   const visual = args.includes("--visual");
+  // `--lighthouse`: only the Lighthouse CI project (DESIGN §12 budgets, mobile, throttled).
+  const lighthouse = args.includes("--lighthouse");
   const pwArgs = args.filter(
-    (a) => !["--dev", "--rebuild", "--build-only", "--visual"].includes(a),
+    (a) => !["--dev", "--rebuild", "--build-only", "--visual", "--lighthouse"].includes(a),
   );
 
   if (!dev && !process.env.E2E_BASE_URL) {
@@ -127,10 +130,21 @@ function main(): void {
   }
   const r = spawnSync(
     process.execPath,
-    [PLAYWRIGHT_CLI, "test", ...(visual ? ["--grep", "@visual"] : []), ...pwArgs],
+    [
+      PLAYWRIGHT_CLI,
+      "test",
+      ...(visual ? ["--grep", "@visual"] : []),
+      ...(lighthouse ? ["--project", "lighthouse"] : []),
+      ...pwArgs,
+    ],
     {
       stdio: "inherit",
-      env: { ...process.env, E2E_MODE: dev ? "dev" : "prod", ...(visual ? { VISUAL: "1" } : {}) },
+      env: {
+        ...process.env,
+        E2E_MODE: dev ? "dev" : "prod",
+        ...(visual ? { VISUAL: "1" } : {}),
+        ...(lighthouse ? { LIGHTHOUSE: "1" } : {}),
+      },
     },
   );
   process.exit(r.status ?? 1);

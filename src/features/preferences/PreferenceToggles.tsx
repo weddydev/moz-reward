@@ -1,6 +1,7 @@
 "use client";
 
-import { SegmentedControl, Switch } from "@/components/ui";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Switch } from "@/components/ui/Switch";
 import { type MotionPreference, useMotionPreference, useSoundPreference } from "@/lib/preferences";
 import { useHydrated } from "@/lib/use-hydrated";
 

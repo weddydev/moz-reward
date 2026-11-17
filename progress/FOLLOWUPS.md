@@ -25,3 +25,6 @@ _CLAUDE.md §4 findings policy: LOW findings and nits get one line here, are not
 - [P0-15 final security review LOW, 17 Nov] deploy.yml smoke + "staging checks behind basic auth" steps delete the netrc only on the last line; add `trap 'rm -f "$netrc"' EXIT` right after creating it (runners are ephemeral, so minor).
 - [P0-15 final security review LOW, 17 Nov] `moz-seed-reset.service`: a failed weekly demo sign-in check shows only in journalctl; write a `demo:signin-check` / `-failed` heartbeat (or `OnFailure=`) so the health monitor emails both developers.
 - [P0-15 final security review LOW, 17 Nov] `moz-*` systemd units: add `CapabilityBoundingSet=`, `ProtectClock=yes`, `RestrictNamespaces=yes`, `SystemCallArchitectures=native` (cosmetic while the unit holds the Docker socket).
+- [P1-02 design review LOW, 17 Nov] Landing hours: today's row only bold; add `aria-current="date"` (or hidden "(today)") and `tabular-nums` on the times (`src/features/landing/ShopLanding.tsx`).
+- [P1-02 design review LOW, 17 Nov] Landing desktop: Find us card stretches to the hours card height (empty area): `lg:items-start` on the cards grid; desktop Collect CTA spans the whole 580px column: consider `lg:w-auto lg:min-w-72`.
+- [P1-02 design review LOW, 17 Nov] `src/app/(public)/s/[code]/not-found.tsx` has no `LandingFooter` (suspended/closed pages do).

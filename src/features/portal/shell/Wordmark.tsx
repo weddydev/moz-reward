@@ -1,5 +1,5 @@
 import { Crown } from "lucide-react";
-import { Icon } from "@/components/ui";
+import { Icon } from "@/components/ui/Icon";
 import { cx } from "@/lib/cx";
 
 /** The Moz Rewards name with its crown mark. `compact` shows the crown only (collapsed customer rail). */

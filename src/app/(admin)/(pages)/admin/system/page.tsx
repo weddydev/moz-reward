@@ -1,4 +1,4 @@
-import { Card } from "@/components/ui";
+import { Card } from "@/components/ui/Card";
 import { SystemView } from "@/features/admin/system/SystemView";
 import { systemView } from "@/features/admin/system/view-model";
 import { healthSnapshotSchema } from "@/server/ops/health-rules";

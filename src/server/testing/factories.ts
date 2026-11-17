@@ -17,6 +17,8 @@ import {
   memberships,
   opsSnapshot,
   sessions,
+  shopClosures,
+  shopHours,
   shopStaff,
   shops,
   users,
@@ -96,6 +98,23 @@ export async function makeShop(over: Partial<typeof shops.$inferInsert> = {}): P
     },
     { length: 6 },
   );
+}
+
+/** Opening hours (ISO weekday 1–7, "HH:MM") and closure dates for a shop (P1-01/P1-02). */
+export async function makeShopHours(
+  shopId: string,
+  hours: { weekday: number; opens: string; closes: string }[],
+  closures: { date: string; note?: string }[] = [],
+): Promise<void> {
+  if (hours.length)
+    await db()
+      .insert(shopHours)
+      .values(hours.map((h) => ({ shopId, ...h })));
+  if (closures.length) {
+    await db()
+      .insert(shopClosures)
+      .values(closures.map((c) => ({ shopId, date: c.date, note: c.note ?? null })));
+  }
 }
 
 export async function makeStaff(

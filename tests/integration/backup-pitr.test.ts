@@ -308,10 +308,29 @@ describe("[P0-15] backup:verify --wal: point-in-time restore from the WAL archiv
   it.each([
     ["a WAL object with a flipped byte", () => `staging/wal/wal_005/${startSegment.slice(0, 8)}00000000000000F1.zst`, tampered],
     ["a base backup partition with a flipped byte", () => `staging/wal/basebackups_005/base_${baseSegment}/tar_partitions/part_002.tar.zst`, tampered],
-    ["a WAL object without integrity protection", () => `staging/wal/wal_005/${startSegment.slice(0, 8)}00000000000000F2.zst`, () => encrypt(Buffer.from("28b52ffd00", "hex"), ["--rfc2440"])],
   ])("[P0-15] fails on %s (the plaintext gpg already wrote is never used)", async (_what, keyOf, body) => {
     const key = keyOf();
     await admin.send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body() }));
+    try {
+      const result = await verifyPitr(opts());
+      expect(result.ok).toBe(false);
+      expect(result.error).toBe(`gpg could not decrypt ${key}`);
+      expect(containerGone()).toBe(true);
+    } finally {
+      mc(`mc rm --versions --force local/${BUCKET}/${key} >/dev/null`);
+    }
+  }, 300_000); // prettier-ignore
+
+  it("[P0-15] fails on a WAL object without integrity protection (the plaintext gpg already wrote is never used)", async (ctx) => {
+    const key = `staging/wal/wal_005/${startSegment.slice(0, 8)}00000000000000F2.zst`;
+    const body = encrypt(Buffer.from("28b52ffd00", "hex"), ["--rfc2440"]);
+    // gpg ≥ 2.5 writes an AEAD (OCB) packet even with --rfc2440 when the key advertises AEAD, so it can no longer
+    // build an unprotected fixture: the case runs where gpg still can (CI, gpg 2.4) — CARRIED C-53.
+    const packets = sh("gpg", ["--homedir", gpgPath(GNUPG), "--list-packets"], body).stdout.toString();
+    if (/aead|ocb|mdc_method/i.test(packets)) {
+      ctx.skip("local gpg cannot write an unprotected message (gpg 2.5+); covered in CI");
+    }
+    await admin.send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body }));
     try {
       const result = await verifyPitr(opts());
       expect(result.ok).toBe(false);

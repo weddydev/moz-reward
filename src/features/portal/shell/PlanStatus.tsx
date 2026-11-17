@@ -1,6 +1,6 @@
 import { ChevronRight, Crown } from "lucide-react";
 import { TransitionLink } from "@/components/motion";
-import { Icon } from "@/components/ui";
+import { Icon } from "@/components/ui/Icon";
 import type { ShopStatus } from "./types";
 
 /**
