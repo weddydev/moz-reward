@@ -6,7 +6,10 @@ import {
   SHOP_ROUTES,
   activeRoute,
   defaultPortalPath,
+  isDynamicPath,
+  isPortalPath,
   navFor,
+  returnPathOf,
   routeByPath,
 } from "./routes";
 
@@ -48,7 +51,7 @@ describe("[P0-12] portal route table", () => {
     ]);
   });
 
-  it("customer: Wallet, Offers, Scan, Market, Notifications, Me (DESIGN §5 rail order) + hidden Me pages; only Offers and Market are public", () => {
+  it("customer: Wallet, Offers, Scan, Market, Notifications, Me (DESIGN §5 rail order) + hidden pages (Me, a shop); only Offers and Market are public", () => {
     // Hidden pages are gated routes but never nav items; their parent item shows as active.
     expect(navFor("customer", null).map((r) => r.path)).not.toContain("/me/security");
     expect(activeRoute("/me/security")?.path).toBe("/me");
@@ -59,6 +62,7 @@ describe("[P0-12] portal route table", () => {
       "/market",
       "/notifications",
       "/me",
+      "/shops/[id]",
       "/me/security",
     ]);
     expect(CUSTOMER_ROUTES.filter((r) => r.access === "public").map((r) => r.path)).toEqual([
@@ -71,7 +75,8 @@ describe("[P0-12] portal route table", () => {
     const paths = PORTAL_ROUTES.map((r) => r.path);
     expect(new Set(paths).size).toBe(paths.length);
     for (const r of PORTAL_ROUTES) {
-      expect(r.path).toMatch(/^\/[a-z0-9/-]+$/);
+      // Lower-case segments; a dynamic segment is one `[name]` (P1-04: `/shops/[id]`).
+      expect(r.path).toMatch(/^(?:\/(?:[a-z0-9-]+|\[[a-z]+\]))+$/);
       if (r.portal === "shop")
         expect(r.path === "/dashboard" || r.path.startsWith("/dashboard/")).toBe(true);
       if (r.portal === "admin")
@@ -148,5 +153,33 @@ describe("[P0-12] portal route table", () => {
     expect(defaultPortalPath({ adminRole: "support", shopRoles: [{}] })).toBe("/admin");
     expect(defaultPortalPath({ adminRole: null, shopRoles: [{}] })).toBe("/dashboard");
     expect(defaultPortalPath({ adminRole: null, shopRoles: [] })).toBe("/wallet");
+  });
+});
+
+describe("[P1-04] dynamic table routes (/shops/[id])", () => {
+  it("is in the customer table, signed-in and hidden from the nav", () => {
+    expect(routeByPath("/shops/[id]")).toMatchObject({
+      portal: "customer",
+      access: "signed-in",
+      nav: "hidden",
+    });
+    expect(navFor("customer", null).map((r) => r.path)).not.toContain("/shops/[id]");
+  });
+
+  it("a concrete shop URL is a portal path (never cached), the bare prefix and look-alikes are not", () => {
+    expect(isPortalPath("/shops/0b8f5c1e-7f2a-4c55-9d1e-2b9a3f6c7d10")).toBe(true);
+    expect(isPortalPath("/shops/x/anything")).toBe(true);
+    expect(isPortalPath("/shops")).toBe(false);
+    expect(isPortalPath("/shops/")).toBe(false);
+    expect(isPortalPath("/shopsx/abc")).toBe(false);
+  });
+
+  it("signing in from a dynamic route returns to the portal root, a static route to itself", () => {
+    const shop = routeByPath("/shops/[id]");
+    const me = routeByPath("/me/security");
+    if (!shop || !me) throw new Error("routes missing");
+    expect(isDynamicPath(shop.path)).toBe(true);
+    expect(returnPathOf(shop)).toBe("/wallet");
+    expect(returnPathOf(me)).toBe("/me/security");
   });
 });

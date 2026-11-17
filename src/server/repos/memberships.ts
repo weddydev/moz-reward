@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, isNull } from "drizzle-orm";
 import type { CustomerScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
-import { memberships } from "@/server/db/schema";
+import { memberships, shops } from "@/server/db/schema";
 import { ownedBy, withScope } from "./_base";
 
 /** Whether the caller is a current member of `shopId` (P1-02 landing: per request, never cached). */
@@ -21,6 +21,51 @@ export async function isOwnMember(scope: CustomerScope, shopId: string): Promise
       .limit(1),
   );
   return Boolean(row);
+}
+
+export type OwnMemberShop = {
+  shopId: string;
+  shopCode: string;
+  name: string;
+  logoUrl: string | null;
+  status: (typeof shops.$inferSelect)["status"];
+  joinedAt: Date;
+};
+
+/**
+ * The shop behind the customer's own current membership (`/shops/[id]`, P1-04): its public identity only. Null
+ * when the caller isn't a current member (never joined, left, or no such shop): the page answers 404 for all
+ * of these alike, so it never tells a non-member whether a shop id exists.
+ */
+export async function readOwnMemberShop(
+  scope: CustomerScope,
+  shopId: string,
+): Promise<OwnMemberShop | null> {
+  const [row] = await withScope(scope, (q) =>
+    q
+      .select({
+        shopId: shops.id,
+        shopCode: shops.shopCode,
+        name: shops.name,
+        tradingName: shops.tradingName,
+        logoUrl: shops.logoUrl,
+        status: shops.status,
+        joinedAt: memberships.joinedAt,
+      })
+      .from(memberships)
+      .innerJoin(shops, eq(shops.id, memberships.shopId))
+      .where(
+        and(
+          ownedBy(memberships.userId, scope),
+          eq(memberships.shopId, shopId),
+          isNull(memberships.leftAt),
+        ),
+      )
+      .limit(1),
+  );
+  if (!row) return null;
+  const { tradingName, ...rest } = row;
+  return { ...rest, name: tradingName ?? row.name };
 }
 
 export type JoinOutcome =

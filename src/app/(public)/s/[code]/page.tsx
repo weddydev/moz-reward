@@ -1,8 +1,12 @@
 import { Store } from "lucide-react";
 import { headers } from "next/headers";
-import { notFound } from "next/navigation";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { GildedGate, GildedGateMorph } from "@/components/motion/GildedGate";
+import { buttonClasses } from "@/components/ui/Button";
+import { MARKETING_CONSENT_VERSION, marketingConsentText } from "@/features/join/consent";
+import { JoinSheet } from "@/features/join/JoinSheet";
 import { LandingFooter, ShopLanding } from "@/features/landing/ShopLanding";
 import { StatePage } from "@/features/portal/StatePage";
 import { normaliseCode, SHOP_CODE_LENGTH } from "@/lib/codes";
@@ -11,6 +15,7 @@ import { requireCustomer } from "@/server/authz";
 import { currentPrincipal } from "@/server/authz/principal";
 import { env } from "@/server/env";
 import { isOwnMember } from "@/server/repos/memberships";
+import { ownMemberId } from "@/server/repos/profiles";
 import type { ShopLandingData } from "@/server/repos/shops";
 import { loadShopLanding } from "@/server/services/shop-landing";
 import type { Metadata } from "next";
@@ -60,15 +65,22 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   };
 }
 
-/** Whether the signed-in visitor (if any) is a member: staff and admins and anonymous visitors are not. */
-async function visitorIsMember(shopId: string): Promise<{ signedIn: boolean; member: boolean }> {
+type Visitor =
+  | { kind: "signed-out" }
+  | { kind: "member" }
+  /** Signed in, not a member (never joined, or left): the join sheet; first join also asks for the profile. */
+  | { kind: "joining"; needsProfile: boolean };
+
+/**
+ * Who is looking (P1-04, C-52), read per request and never cached. Any signed-in account may join as a
+ * customer (PRODUCT §2), staff and admins included.
+ */
+async function visitorState(shopId: string): Promise<Visitor> {
   const principal = await currentPrincipal();
-  if (!principal) return { signedIn: false, member: false };
-  try {
-    return { signedIn: true, member: await isOwnMember(await requireCustomer(principal), shopId) };
-  } catch {
-    return { signedIn: true, member: false };
-  }
+  if (!principal) return { kind: "signed-out" };
+  const scope = await requireCustomer(principal);
+  const [member, memberId] = await Promise.all([isOwnMember(scope, shopId), ownMemberId(scope)]);
+  return member ? { kind: "member" } : { kind: "joining", needsProfile: memberId === null };
 }
 
 export default async function ShopLandingPage({
@@ -103,12 +115,38 @@ export default async function ShopLandingPage({
     );
   }
 
-  const visitor = await visitorIsMember(data.shop.id);
-  // P1-04 replaces these targets with the join sheet (CARRIED C-52).
-  const collectHref = visitor.signedIn
-    ? "/wallet"
-    : `/sign-in?returnTo=${encodeURIComponent(`/s/${code}`)}`;
-  const gate = gateEntrySource((await searchParams).src);
+  const query = await searchParams;
+  const visitor = await visitorState(data.shop.id);
+  const shopPage = `/shops/${data.shop.id}`;
+  // Back from sign-in (`returnTo=/s/{code}?join=1`) as an existing member: straight to the shop page.
+  if (visitor.kind === "member" && query.join === "1") redirect(shopPage);
+  const ctaClass = buttonClasses({ size: 56, block: true });
+  const collect =
+    visitor.kind === "signed-out" ? (
+      <Link
+        href={`/sign-in?returnTo=${encodeURIComponent(`/s/${code}?join=1`)}`}
+        className={ctaClass}
+        data-testid="landing-collect"
+      >
+        Collect points
+      </Link>
+    ) : visitor.kind === "member" ? (
+      <Link href={shopPage} className={ctaClass} data-testid="landing-collect">
+        Collect points
+      </Link>
+    ) : (
+      <JoinSheet
+        shopCode={code}
+        shopName={data.shop.name}
+        needsProfile={visitor.needsProfile}
+        consent={{
+          version: MARKETING_CONSENT_VERSION,
+          text: marketingConsentText(data.shop.name),
+        }}
+        autoOpen={query.join === "1"}
+      />
+    );
+  const gate = gateEntrySource(query.src);
   const nonce = gate ? ((await headers()).get("x-nonce") ?? undefined) : undefined;
   return (
     <>
@@ -121,7 +159,12 @@ export default async function ShopLandingPage({
           nonce={nonce}
         />
       ) : null}
-      <ShopLanding data={data} collectHref={collectHref} member={visitor.member} now={new Date()} />
+      <ShopLanding
+        data={data}
+        collect={collect}
+        member={visitor.kind === "member"}
+        now={new Date()}
+      />
       {gate ? <GildedGateMorph nonce={nonce} /> : null}
     </>
   );

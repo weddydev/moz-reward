@@ -72,12 +72,20 @@ describe("[P0-12] decideRouteGate: customer routes", () => {
     }
   });
   it("signed-in routes redirect a visitor to /sign-in with this page as returnTo", () => {
-    for (const r of CUSTOMER_ROUTES.filter((c) => c.access === "signed-in")) {
+    for (const r of CUSTOMER_ROUTES.filter(
+      (c) => c.access === "signed-in" && !c.path.includes("["),
+    )) {
       expect(decide(r.path, null)).toEqual({
         kind: "redirect",
         to: `/sign-in?returnTo=${encodeURIComponent(r.path)}`,
       });
     }
+  });
+  it("[P1-04] a dynamic route (/shops/[id]) returns to the portal root, never to its pattern", () => {
+    expect(decide("/shops/[id]", null)).toEqual({
+      kind: "redirect",
+      to: `/sign-in?returnTo=${encodeURIComponent("/wallet")}`,
+    });
   });
   it("any signed-in user may open them, MFA or not (customers have no second factor)", () => {
     const p = principal({ mfaVerified: false });

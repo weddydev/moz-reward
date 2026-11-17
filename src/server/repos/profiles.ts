@@ -71,6 +71,20 @@ export async function ownMemberId(scope: CustomerScope, tx?: Transaction): Promi
   return row?.memberId ?? null;
 }
 
+/** What the member ID card shows (no phone, so nothing is decrypted), or null without a profile. */
+export async function ownMemberCard(
+  scope: CustomerScope,
+): Promise<{ memberId: string; fullName: string } | null> {
+  const [row] = await withScope(scope, (q) =>
+    q
+      .select({ memberId: customerProfiles.memberId, fullName: customerProfiles.fullName })
+      .from(customerProfiles)
+      .where(ownedBy(customerProfiles.userId, scope))
+      .limit(1),
+  );
+  return row ?? null;
+}
+
 /** The caller's own profile with the phone decrypted (an unknown key id or a failed tag throws, loudly). */
 export async function readOwnProfile(
   scope: CustomerScope,
