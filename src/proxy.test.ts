@@ -139,6 +139,11 @@ describe("[P1-02] proxy: shop landing /s/[code]", () => {
     expect(html).toContain(`<style nonce="${nonce ?? "missing"}">`);
   });
 
+  it("a malformed percent-escape is a 400, not a framework 500", async () => {
+    const { res } = await run("/s/%E0%A4%A");
+    expect(res.status).toBe(400);
+  });
+
   it("other paths never consult the lookup limit", async () => {
     const check = vi.fn();
     vi.doMock("@/server/security/landing-limit", () => ({ checkLandingLimit: check }));

@@ -14,8 +14,10 @@ import {
   fakeEmail,
   makeActor,
   makeAdmin,
+  makeMembership,
   makeOpsSnapshot,
   makeShop,
+  makeShopHours,
   makeStaff,
   makeUser,
   markSessionMfaVerified,
@@ -122,6 +124,17 @@ const ageInput = z
   })
   .strict();
 
+/** P1-02: a shop in a given state for the landing page specs, optionally with full details and a member. */
+const shopInput = z
+  .object({
+    status: z.enum(["pending", "active", "expiring", "grace", "restricted", "suspended", "closed"]),
+    name: z.string().min(1).max(80).optional(),
+    /** Address, phone, location, description and a full week of hours. */
+    details: z.boolean().default(false),
+    memberUserId: z.uuid().optional(),
+  })
+  .strict();
+
 type Ctx = { params: Promise<{ action: string }> };
 const invalid = (): Response => NextResponse.json({ error: "invalid input" }, { status: 400 });
 
@@ -168,6 +181,37 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
       if (!parsed.success) return invalid();
       if (parsed.data.ai) fakeAi.script(parsed.data.ai);
       return NextResponse.json({ ok: true });
+    }
+    case "shop": {
+      const parsed = shopInput.safeParse(body);
+      if (!parsed.success) return invalid();
+      const { status, name, details, memberUserId } = parsed.data;
+      const shop = await makeShop({
+        status,
+        ...(name ? { name } : {}),
+        ...(details
+          ? {
+              description: "Small-batch coffee, fresh bakes and a warm welcome on the high street.",
+              addressLine1: "12 High Street",
+              town: "Shoreditch",
+              postcode: "E1 6AN",
+              phone: "+442071234567",
+              location: { lng: -0.0754, lat: 51.5245 },
+            }
+          : {}),
+      });
+      if (details) {
+        await makeShopHours(
+          shop.id,
+          [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({
+            weekday,
+            opens: weekday === 7 ? "10:00" : "07:30",
+            closes: weekday >= 5 ? "23:00" : "18:00",
+          })),
+        );
+      }
+      if (memberUserId) await makeMembership(memberUserId, shop.id);
+      return NextResponse.json({ shopId: shop.id, shopCode: shop.shopCode });
     }
     case "ops-snapshot": {
       // P0-13: a sample health snapshot for the System page (the E2E server runs no worker).

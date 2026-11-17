@@ -25,6 +25,16 @@ function requestId(request: NextRequest, trustedProxy: string): string {
   return trustedProxy !== "none" && incoming && REQUEST_ID.test(incoming) ? incoming : randomUUID();
 }
 
+/** True when the path's percent-escapes decode (a malformed one makes the framework fail with a 500). */
+function decodes(pathname: string): boolean {
+  try {
+    decodeURIComponent(pathname);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** A shop landing path: `/s/<anything>` (the page decides whether it is a valid code). */
 export const isLandingPath = (pathname: string): boolean => /^\/s\/[^/]+\/?$/.test(pathname);
 
@@ -56,6 +66,8 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   let response: NextResponse;
   if (e.APP_ENV === "production" && (pathname === "/dev" || pathname.startsWith("/dev/"))) {
     response = new NextResponse("Not found", { status: 404 });
+  } else if (landing && !decodes(pathname)) {
+    response = new NextResponse("Bad request", { status: 400 });
   } else if (lookup && !lookup.ok) {
     response = tooManyLookups(retryAfterSec(lookup), nonce);
   } else {
