@@ -7,30 +7,29 @@ Baton: held by talha.syed since 2026-11-17 (Mac)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **talha.syed, 2026-11-17 (Mac), baton held.** **P1-02 done and ticked** (squash of `wip/P1-02` A+B+C on main; `wip/P1-02` can be deleted after CI is green). Human 17 Nov: P0 closed; its leftovers live on P1-18 (C-35, C-40, C-17, C-48, C-49).
-- **P1-02 C landed:** Lighthouse CI (`pnpm test:lighthouse`, tests/perf; in gate:phase); every page −54 KB gzip JS (zod out of the browser, UI imports by file + ESLint rule against the `@/components/ui` barrel); first-visit cookie notice server-rendered (buttons `invisible` until hydration). Landing LCP 0.80 s, CLS 0, JS 147.2 KB (judgment, DECISIONS 17 Nov).
-- **Next = P1-03 Gilded Gate** (read its section in `docs/phases/P1.md`). Code may go straight to a `wip/P1-03` branch or main per GITHUB_MODE `free`; progress files only on main.
+- **talha.syed, 2026-11-17 (Mac), baton held.** **P1-03 Gilded Gate done and ticked** (squash of `wip/P1-03` `5ec3982` on main; `wip/P1-02` and `wip/P1-03` can be deleted once main CI is green). Design: CSS timeline from first paint + pre-paint script, inline morph script after the landing markup, lazy sound-only chunk (DECISIONS 17 Nov ×2).
+- **Next = P1-04 Join flow** (security-relevant: `security-reviewer` design check first; closes C-52). Code may go to a `wip/P1-04` branch; progress files only on main.
 - **P1-A MEDIUM batch (fix together before `/subphase-complete` P1-A):** (a) landing screenshot test seeds a real cover image (test API `shop` needs a `coverUrl` option + a served image) so the m01 composition / LCP image is shown; (b) cookie notice screenshots without consent at 320 and 390, before and after hydration (overlap with Collect at 320×720).
 - **Local gpg 2.5.24 (Mac):** backup-pitr "unprotected WAL" case skips locally (fixture can't be built), runs in CI — C-53.
-- **Tested (17 Nov, Mac):** gate:task P1-02 PASS on the final tree; full 5-project E2E 883/0 (root layout changed); CI of `9805ec1` green. CI of the main squash push: check before the next push.
-- **Not yet tested:** health.backup with the flag on (C-48); UptimeRobot alerts (H-45, C-48); demo guide clicks on staging (human); SSE through Cloudflare; Sentry release events from staging; seed-reset timer's first unattended run (Mon 23 Nov 04:30).
+- **Tested (17 Nov, Mac):** gate:task P1-03 + P1-02 PASS on the final tree (Last verified); Linux container (Playwright noble image) P1-02 + P1-03 on Chromium, WebKit, Pixel 7, iPhone 14: 70/0. CI of the P1-03 main push: check before the next push.
+- **Not yet tested:** Gilded Gate on a real phone (H-13: feel, frame rate, `arrival` after a soft unlock); health.backup with the flag on (C-48); UptimeRobot alerts (H-45, C-48); demo guide clicks on staging (human); SSE through Cloudflare; Sentry release events from staging; seed-reset timer's first unattended run (Mon 23 Nov 04:30).
 - **Do first:** `git pull`; no new env vars, migrations or seeds. A change to `infra/host/*` needs `scp -r infra <you>@72.61.17.208:moz-infra && ssh <you>@… 'sudo -n bash ~/moz-infra/host/harden.sh'` before a deploy uses it. Manual deploy dispatch: `-f sha=<commit with green push CI>`. Mac: long gates under `caffeinate -i`. Don't edit files while `gate:task` runs (its tree check fails).
 - **VPS access:** root SSH off. Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`; `sudo -n` works. CI: `deploy@` forced command only.
 
 ## Status
 - **Phase:** **P1**. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
-- **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → ~~P1-02~~ → **P1-03** → P1-04.
+- **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → ~~P1-02~~ → ~~P1-03~~ → **P1-04**.
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-17, talha.syed (P1-02 ticked; P1-03 next)
+- **Last updated:** 2026-11-17, talha.syed (P1-03 ticked; P1-04 next)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `8353e00`; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`.
-- **P0 closed 17 Nov (human: no more time on P0).** P0-15 ticked; leftovers C-48/C-49 → P1-18. **P1-A:** P1-01 (13 Nov) and P1-02 (17 Nov) done; Lighthouse CI exists.
+- **P0 closed 17 Nov (human: no more time on P0).** P0-15 ticked; leftovers C-48/C-49 → P1-18. **P1-A:** P1-01 (13 Nov), P1-02 and P1-03 (17 Nov) done; Lighthouse CI exists.
 
 ## Next (top 3)
-1. **P1-03** Gilded Gate → P1-04 join flow (security-relevant; closes C-52).
+1. **P1-04** join flow (security-relevant; closes C-52).
 2. P1-A close: MEDIUM batch (Handoff note) → `/subphase-complete` P1-A (also reviews the unreviewed P0-E commits, C-49).
 3. Human, any time: H-45 UptimeRobot monitors (then the stop-staging phone alert test, C-48); H-46 Cloudflare `/s/*` rule (🟢).
 
@@ -68,10 +67,10 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (17 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- gate:task P1-02 (final tree): unit 1437/0, int 1256/0 (+1 gpg-2.5 skip, C-53), build, bundle, sast, lint:sh, e2e P1-02 18/0 PASS.
-- Lighthouse (production build, mobile throttled): landing LCP 0.80 s, CLS 0, score 100, initial JS 147.2 KB gzip (accepted judgment).
-- Full 5-project E2E after the root-layout change: 883 passed, 0 failed, 0 flaky; landing + consent 55/55 after design fixes.
-- CI `44044786856` (P1-02 B, `9805ec1`) green; staging `/api/health/ready` 200 (17 Nov, release `8353e00`).
+- gate:task P1-03 P1-02 (final tree): PASS, counts in the P1-03 commit message on main.
+- P1-03 E2E (production build, Mac): 17/0 + 1 Chromium-only skip; Linux container 4 projects 70/0 (P1-02 + P1-03). Frames 0/500/850/1000/1200/1400 ms at 390/320/1440 inspected (Chromium + WebKit).
+- Lighthouse with the gate playing (`?src=qr`): LCP 0.81 s, CLS 0, score 100, JS 147.6 KB gzip (17 Nov judgment). Gate JS chunk < 1 KB gzip, loaded only when it plays.
+- CI `44051042111` (P1-02 main) + Deploy `44052730072` green.
 
 
 ## Follow-ups (LOW)

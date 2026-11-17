@@ -67,7 +67,7 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 
 - [x] P1-01 · Shop entities, codes, hours, NFC records
 - [x] P1-02 · Shop landing page `/s/[code]`
-- [ ] P1-03 · Gilded Gate entry animation
+- [x] P1-03 · Gilded Gate entry animation
 - [ ] P1-04 · Join flow, profile completion, member ID
 - [ ] P1-A closed with `/subphase-complete`
 

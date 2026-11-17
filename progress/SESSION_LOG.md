@@ -610,3 +610,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Full 5-project E2E (root layout changed): 883 passed, 0 failed/flaky. Landing + consent specs 55/55 (5 projects) after design fixes; screenshots 390/320/1440 inspected.
 - design-reviewer: PASS with notes; HIGH (gold fallback cover) fixed; MEDIUM 3–4 fixed, 2 + 5 → P1-A MEDIUM batch; LOW → FOLLOWUPS. gate:task PASS (unit 1437, int 1256/0 + 1 gpg-2.5 skip → C-53, e2e P1-02 18/0).
 - backup-pitr "unprotected WAL" fails locally on gpg 2.5.24 (clean tree too): fixture now AEAD; explicit skip + C-53. H-46 (Cloudflare `/s/*` rule) added. C-15 closed.
+
+## 2026-11-17 — P1 — P1-03 Gilded Gate ticked (Mac, talha.syed)
+- Built: SSR gate + pre-paint script (once per shop per tab session), CSS timeline 1.4 s, inline morph into the cover (server-rendered copy, transform/clip split), lazy sound chunk, `/dev/motion` replay. Unit 16 (incl. bare-VM run of the inlined source), E2E 9 specs.
+- E2E (production build): Mac Chromium + WebKit P1-02/03 35/0 (+1 skip); Linux container 70/0 on 4 projects (first cold run: 4 timeouts/limit from no warm-up in remote mode, not reproduced). Lighthouse `?src=qr`: LCP 0.81 s, CLS 0, 100.
+- 4× CPU: Next's framework bootstrap long task (80–170 ms) falls inside the 1.4 s with or without the gate; test proves the gate adds none and the morph still joins (DECISIONS 17 Nov judgment).
+- design-reviewer (review-animations + animation-performance): HIGH clone over rising content + 3 MEDIUM (morph late on slow phones, transform+clip on one element, swipe did nothing) fixed; re-check: no BLOCK/HIGH. LOW 7/8/9/10/11 + scroll target fixed; 2 LOW → FOLLOWUPS.
+- gate:task P1-03 P1-02 ran on this exact tree before the commit: PASS, per-suite counts in the P1-03 commit message (the gate stamp covers the files, so they cannot carry its result).
