@@ -596,3 +596,8 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - gate:task on `e9aa786` (P0-15 E part 1): typecheck, lint, format, titles, unit 1396/0, int 1231/0, build (reused), bundle, sast, lint:sh PASS; "working tree unchanged" failed only because HUMAN_TASKS was edited mid-run → gate re-run on the handoff tree before the push (pre-push hook).
 - Staging `/api/health/ready` 401 at 06:30 UTC: `e9aa786` not deployed yet (expected). Last CI before handoff: `c212e67` push CI 43871015148 green → Deploy 43872448798 green; scheduled 43872615586 green.
 - H-45 added (UptimeRobot staging monitors, 🟠, after the `e9aa786` deploy). Baton freed; P0-15 E continues (PROGRESS Next).
+
+## 2026-11-17 — P0 — P0 closed by human direction, P1 starts (Mac, talha.syed)
+- Push CI `44038980322` + Deploy `44040271524` (handoff of `e9aa786`) green; staging `/api/health/ready` → 200 without password. `pnpm check` PASS (unit 1417).
+- security-reviewer on never-reviewed P0-15 commits `51b67d7` + `c212e67`: no BLOCK/HIGH/MEDIUM; 3 LOW → FOLLOWUPS (netrc trap, seed-reset heartbeat, unit hardening).
+- Human 17 Nov: close P0 fast → P0-15 ticked; leftovers C-48 + C-35/C-40/C-17 + P0 gate/DoD/demo (C-49) → P1-18 (DECISIONS 17 Nov). `progress/P0-15-plan.md` deleted.
