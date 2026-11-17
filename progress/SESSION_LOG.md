@@ -629,3 +629,9 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Full test:int under lint contention: 7 fails = 6 timeouts (green alone) + grants table (fixed). Note: don't run test:int and lint at the same time on the Mac.
 - Next exact step: P1-04 step B — `pnpm keys:reencrypt` + integration + RUNBOOK (handoff note).
 
+## 2026-11-17 — P1 — P1-04 step B checkpoint (Mac, talha.syed)
+- Built on `wip/P1-04` `1b7575a`: `src/server/jobs/reencrypt.ts` (registry + `*_enc` coverage check, unknown-key preflight, FOR UPDATE keyset batches, optimistic key-id update, audit per batch, 3 passes) + `pnpm keys:reencrypt` (bundled `cli/keys-reencrypt.mjs`, image-check) + RUNBOOK §18. Key ids now derived from keys (DECISIONS 17 Nov): rollback can't mislabel.
+- Evidence: integration key-rotation 6/0 (rotate, interrupt mid-batch + resume, second run no-op, blind index, unknown key, tag failure, registry), join + profile-guard 23/0 after the id change; unit 1482 (`pnpm check`); bundled CLI `--dry-run` on dev DB exit 0; CLI exit 2 on bad args. CI `ad94630` green.
+- Not yet: CLI rotation on a DB with real rows (step D DB inspection); CI on `1b7575a` (pushed 19:10).
+- Next exact step: P1-04 step C (UI: landing CTA C-52, join sheet, `/shops/[id]`) per `progress/P1-04-plan.md`.
+

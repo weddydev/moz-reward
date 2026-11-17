@@ -7,27 +7,25 @@ Baton: held by talha.syed since 2026-11-17 18:17 IST (Mac)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 2026-11-17 ~19:15 IST (Mac). Baton held.** **P1-04 step A done** on **`wip/P1-04`, HEAD `ad94630`** (pushed): field encryption (`src/server/security/field-crypto.ts` + `field-keys.ts`), UK phone (`src/server/services/phone.ts`, new dep libphonenumber-js), migration **0020** (profile guard, `marketing_consents`, deferred consent trigger, joinable-shop check), `joinShop` service (`src/server/services/join.ts`) + repos (profiles, memberships, consents, `findJoinableShop`).
-- **Plan with the security design check's findings: `progress/P1-04-plan.md`** (HIGH 1 + M2–M5 done in A; M6 rejoin done; M7 + LOW 9 deploy wiring partly done → B; L10/L11/L13 → C).
-- **Next = step B:** `pnpm keys:reencrypt` (registry of encrypted fields + check every `*_enc` column is registered; plain `FOR UPDATE` keyset batches, optimistic `WHERE phone_key_id = old`, audit row per batch, final count ≠ 0 → exit 1; unknown key id → loud stop) + integration (rotate, interrupt/resume, second run no-op, blind index still matches) + RUNBOOK rotation steps. Then C (UI: landing CTA C-52, join sheet, `/shops/[id]`), D (E2E J1, gate:task, security-reviewer on the diff). Steps B–D build on `wip/P1-04`; progress files only on main.
-- **Half-done:** nothing uncommitted. `DATA_ENCRYPTION_OLD_KEYS` is wired in deploy.yml/deploy-env (optional secret, not set anywhere yet). **Not yet tested:** CI on `wip/P1-04` (pushed 19:10, check before the next push); everything from the previous handoff's list (Gilded Gate on a real phone H-13, C-48 items, SSE via Cloudflare, Sentry staging releases, seed-reset timer Mon 23 Nov).
-- **Tested (17 Nov, Mac):** `pnpm check` PASS on `ad94630` (unit 1480); integration join 17 + profile-guard 6 + membership-guard + db-foundation/auth-flows/outbox/rls re-run alone 73/0; full `test:int` 1272/7 under lint contention (6 timeouts re-run alone green; backup-pitr alone 8/0 + 1 skip C-53; grants test fixed).
-- **Do first:** `git pull`; `git switch wip/P1-04 && git merge --ff-only origin/wip/P1-04`; `pnpm install` (new dep); `pnpm db:migrate` (0020). Mac: long gates under `caffeinate -i`. VPS access as before: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`; `sudo -n` works.
+- **Checkpoint by talha.syed, 2026-11-17 ~19:20 IST (Mac). Baton held.** **P1-04 steps A + B done** on **`wip/P1-04`, HEAD `1b7575a`** (pushed). B: `src/server/jobs/reencrypt.ts` + `pnpm keys:reencrypt` (bundled `cli/keys-reencrypt.mjs`), RUNBOOK §18. **Changed in B:** key ids are derived from the key (`keyIdOf`, `k` + 10 hex); `DATA_ENCRYPTION_KEY_ID` is gone; `DATA_ENCRYPTION_OLD_KEYS` = plain base64 list (DECISIONS 17 Nov). The security-reviewer at step D must see this change (it replaces a design-check item from step A).
+- **Plan: `progress/P1-04-plan.md`.** **Next = step C (UI):** landing CTA per visitor state (C-52), join sheet (BottomSheet / Modal desktop) with profile fields when no profile, consent wording versioned server-side (L11), name NFC + no bidi/zero-width (L10), join limits 30/h/user fail closed + 50 new memberships/day/user, `/shops/[id]` minimal route with first-join welcome + member ID card (no QR, L13), non-member → 404, authz matrix row. Then D (E2E J1, DB inspection before/after `keys:reencrypt` with real rows, screenshots, DECISIONS batch, gate:task, security-reviewer on the diff). Code on `wip/P1-04`; progress files only on main.
+- **Half-done:** nothing uncommitted. **Not yet tested:** CI on `1b7575a` (pushed ~19:10; check before the next push); CLI rotation on a DB with real rows (step D); everything from the earlier list (Gilded Gate on a real phone H-13, C-48 items, SSE via Cloudflare, Sentry staging releases, seed-reset timer Mon 23 Nov).
+- **Do first:** `git pull`; `git switch wip/P1-04 && git merge --ff-only origin/wip/P1-04`; `pnpm install` (libphonenumber-js); `pnpm db:migrate` (0020). A stale `DATA_ENCRYPTION_KEY_ID` line in a laptop's `.env.local` is harmless (ignored); remove it. Mac: long gates under `caffeinate -i`. VPS access as before: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`; `sudo -n` works.
 
 ## Status
 - **Phase:** **P1**. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → ~~P1-02~~ → ~~P1-03~~ → **P1-04**.
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-17, talha.syed (checkpoint; P1-04 step A on wip/P1-04)
+- **Last updated:** 2026-11-17, talha.syed (checkpoint; P1-04 steps A + B on wip/P1-04)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `8353e00`; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`.
-- **P0 closed 17 Nov (human: no more time on P0).** P0-15 ticked; leftovers C-48/C-49 → P1-18. **P1-A:** P1-01 (13 Nov), P1-02 and P1-03 (17 Nov) done; **P1-04 in progress: step A on `wip/P1-04` (`ad94630`), B next** (`progress/P1-04-plan.md`).
+- **P0 closed 17 Nov (human: no more time on P0).** P0-15 ticked; leftovers C-48/C-49 → P1-18. **P1-A:** P1-01 (13 Nov), P1-02 and P1-03 (17 Nov) done; **P1-04 in progress: steps A + B on `wip/P1-04` (`1b7575a`), C next** (`progress/P1-04-plan.md`).
 
 ## Next (top 3)
-1. **P1-04 step B** re-encryption job + RUNBOOK, then C (UI) and D (E2E J1, gate, security review) — `progress/P1-04-plan.md`.
+1. **P1-04 step C** (UI: landing CTA C-52, join sheet, `/shops/[id]`), then D (E2E J1, rotation DB inspection, gate, security review) — `progress/P1-04-plan.md`.
 2. P1-A close: MEDIUM batch (Handoff note) → `/subphase-complete` P1-A (also reviews the unreviewed P0-E commits, C-49).
 3. Human, any time: H-45 UptimeRobot monitors (then the stop-staging phone alert test, C-48); H-46 Cloudflare `/s/*` rule; H-47 re-enable the Scheduled workflow? (🟢).
 
@@ -66,8 +64,8 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (17 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- P1-04 step A (`wip/P1-04` `ad94630`): `pnpm check` PASS (unit 1480); integration join 17/0, profile-guard 6/0, membership-guard + db-foundation + auth-flows + outbox + rls 73/0 (alone); backup-pitr 8/0 + 1 skip (C-53).
-- Full `test:int` ran under lint contention: 1272 passed, 7 failed (6 timeouts, green alone; 1 grants table → fixed). Not yet a clean full run: gate:task at the P1-04 tick.
+- P1-04 step B (`wip/P1-04` `1b7575a`): integration key-rotation 6/0, join + profile-guard 23/0; `pnpm check` PASS (unit 1482); bundled `cli/keys-reencrypt.mjs --dry-run` exit 0 on dev DB.
+- P1-04 step A (`ad94630`): CI `44091743861` green; integration join 17/0, profile-guard 6/0 (alone). Not yet a clean full `test:int`: gate:task at the P1-04 tick.
 - P1-03: CI `44073336752` (handoff main) + Deploy `44074972808` green.
 
 

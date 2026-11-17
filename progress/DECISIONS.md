@@ -11,6 +11,11 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-17 — Data-key ids are derived from the key; DATA_ENCRYPTION_KEY_ID removed (P1-04 B)
+Decision: a field-encryption key's id is `k` + 10 hex of HMAC-SHA256(key, "moz-rewards/field-key-id/v1") (`keyIdOf`); `DATA_ENCRYPTION_OLD_KEYS` is a plain base64 list. Replaces step A's explicit `DATA_ENCRYPTION_KEY_ID` (committed per-env file) before anything was sealed outside dev/test.
+Why: the id lived in the deployed commit's `infra/deploy/<env>.env` and the key in a GitHub secret; a rollback across a rotation would have paired the new key with the old id (mislabelled writes). A derived id can't point at the wrong key. A 40-bit PRF output reveals nothing about a 256-bit key.
+Consequence: rotation = set old-keys secret, then new key, deploy, `keys:reencrypt` (RUNBOOK §18). Ids aren't human-chosen: the CLI prints them; write the id next to the key in the password manager.
+
 ## 2026-11-17 — Join data walls: consent enforced by the database, profile guard, consent rows without FKs (P1-04)
 Decision: (1) a deferred constraint trigger refuses any non-null `memberships.marketing_opt_in` (insert or change, every role) without a `marketing_consents` row of the same value written in the same transaction (latest row, `created_at = now()`); `recordConsentChange` is the only writer. NULL stays "not asked" (seeds, pre-P1-04 rows) and senders treat it as no; it can't be set back to NULL. (2) `marketing_consents` is append-only with no foreign keys (like `audit_logs`): a BEFORE trigger copies user/shop from the membership and stamps `created_at`. (3) `customer_profiles_guard`: member_id/user_id/created_at/age_declared_at immutable for every role; customers write only profile fields (P4-03 must extend it for the 18+ flag). (4) The memberships guard refuses customer joins to suspended/closed/pending shops.
 Why: security design check 17 Nov (HIGH 1, M2, M5): PECR evidence must not depend on every future code path remembering it; demo resets delete users, so FKs would block them or cascade the evidence away.
