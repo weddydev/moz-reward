@@ -1,9 +1,12 @@
 import { Store } from "lucide-react";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { GildedGate } from "@/components/motion/GildedGate";
 import { LandingFooter, ShopLanding } from "@/features/landing/ShopLanding";
 import { StatePage } from "@/features/portal/StatePage";
 import { normaliseCode, SHOP_CODE_LENGTH } from "@/lib/codes";
+import { gateEntrySource } from "@/lib/motion/gilded-gate";
 import { requireCustomer } from "@/server/authz";
 import { currentPrincipal } from "@/server/authz/principal";
 import { env } from "@/server/env";
@@ -16,9 +19,11 @@ import type { Metadata } from "next";
  * Shop landing `/s/[code]` (P1-02, PRODUCT §3, DESIGN §15 screen 1). Rendered per request with the nonce CSP
  * (ARCHITECTURE §5); the proxy has already applied the per-IP lookup limit and `Cache-Control: private,
  * no-store`. Public shop data comes from redis-cache (60 s); whether the visitor is a member is read here,
- * per request, and never cached. `?src=qr|nfc|code` is for analytics and the entry animation (P1-03) only.
+ * per request, and never cached. `?src=qr|nfc|code` is for analytics and the entry animation only: `qr`/`nfc`
+ * render the Gilded Gate (P1-03), which plays once per shop per browser session.
  */
 type Params = Promise<{ code: string }>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 async function landing(raw: string): Promise<{ code: string | null; data: ShopLandingData }> {
   let decoded: string;
@@ -68,8 +73,10 @@ async function visitorIsMember(shopId: string): Promise<{ signedIn: boolean; mem
 
 export default async function ShopLandingPage({
   params,
+  searchParams,
 }: {
   params: Params;
+  searchParams: SearchParams;
 }): Promise<React.JSX.Element> {
   await connection();
   const { code, data } = await landing((await params).code);
@@ -101,7 +108,18 @@ export default async function ShopLandingPage({
   const collectHref = visitor.signedIn
     ? "/wallet"
     : `/sign-in?returnTo=${encodeURIComponent(`/s/${code}`)}`;
+  const gate = gateEntrySource((await searchParams).src);
   return (
-    <ShopLanding data={data} collectHref={collectHref} member={visitor.member} now={new Date()} />
+    <>
+      {gate ? (
+        <GildedGate
+          code={code}
+          name={data.shop.name}
+          logoUrl={data.shop.logoUrl}
+          nonce={(await headers()).get("x-nonce") ?? undefined}
+        />
+      ) : null}
+      <ShopLanding data={data} collectHref={collectHref} member={visitor.member} now={new Date()} />
+    </>
   );
 }

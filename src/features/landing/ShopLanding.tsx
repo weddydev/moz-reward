@@ -12,6 +12,12 @@ import { addressLine, areaLine, londonDate, statusLabel, weekRows } from "./view
 
 type Live = Extract<ShopLandingData, { kind: "live" }>;
 
+/** Marks content that rises in order as the Gilded Gate lands (P1-03; inert when no gate plays). */
+const rise = (i: number): { "data-gate-rise": ""; style: React.CSSProperties } => ({
+  "data-gate-rise": "",
+  style: { "--rise-i": i } as React.CSSProperties,
+});
+
 /**
  * Shop landing, screen 1 (DESIGN §15; P1-02). Server component, no client JS of its own. Mobile: cover with
  * an ivory fade, overlapping logo, stacked CTAs, details. Desktop (≥ 1024px): split hero, cover left, details
@@ -41,7 +47,10 @@ export function ShopLanding({
     <main id="main" data-page="shop-landing" className="bg-bg min-h-dvh">
       <div className="mx-auto w-full max-w-[1280px] lg:grid lg:grid-cols-2 lg:gap-10 lg:px-10 lg:pt-10">
         <div className="relative">
-          <div className="relative aspect-[16/10] w-full overflow-hidden lg:aspect-[4/3] lg:rounded-[var(--r-lg)]">
+          <div
+            className="relative aspect-[16/10] w-full overflow-hidden lg:aspect-[4/3] lg:rounded-[var(--r-lg)]"
+            data-gate-cover=""
+          >
             {shop.coverUrl ? (
               // Uploaded covers are already sized WebP/AVIF variants on the CDN (ARCHITECTURE §8).
               // eslint-disable-next-line @next/next/no-img-element
@@ -66,16 +75,16 @@ export function ShopLanding({
             )}
             <div className="from-bg pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t to-transparent lg:hidden" />
           </div>
-          <div className="relative mx-auto -mt-10 max-w-[560px] px-5 lg:hidden">
+          <div className="relative mx-auto -mt-10 max-w-[560px] px-5 lg:hidden" {...rise(0)}>
             <Logo name={shop.name} logoUrl={shop.logoUrl} />
           </div>
         </div>
 
         <section className="mx-auto flex w-full max-w-[560px] flex-col gap-5 px-5 pt-3 pb-10 lg:mx-0 lg:max-w-none lg:justify-center lg:px-0 lg:pt-0">
-          <div className="hidden lg:block">
+          <div className="hidden lg:block" {...rise(0)}>
             <Logo name={shop.name} logoUrl={shop.logoUrl} />
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2" {...rise(1)}>
             <h1 className="text-h1 break-words" data-testid="landing-name">
               {shop.name}
             </h1>
@@ -87,8 +96,12 @@ export function ShopLanding({
               {member ? <Badge tone="happy-hour">You&rsquo;re a member</Badge> : null}
             </div>
           </div>
-          {shop.description ? <p className="text-body text-ink-2">{shop.description}</p> : null}
-          <div className="flex flex-col gap-3">
+          {shop.description ? (
+            <p className="text-body text-ink-2" {...rise(2)}>
+              {shop.description}
+            </p>
+          ) : null}
+          <div className="flex flex-col gap-3" {...rise(3)}>
             <Link
               href={collectHref}
               className={buttonClasses({ size: 56, block: true })}
@@ -101,7 +114,7 @@ export function ShopLanding({
       </div>
 
       <div className="mx-auto grid w-full max-w-[560px] gap-4 px-5 pb-10 lg:mt-10 lg:max-w-[1280px] lg:grid-cols-2 lg:gap-6 lg:px-10">
-        <Card className="flex flex-col gap-3 p-5" data-testid="landing-hours">
+        <Card className="flex flex-col gap-3 p-5" data-testid="landing-hours" {...rise(4)}>
           <h2 className="text-h2 flex items-center gap-2">
             <Icon icon={Clock} className="text-gold-700" /> Opening hours
           </h2>
@@ -119,7 +132,7 @@ export function ShopLanding({
           )}
         </Card>
 
-        <Card className="flex flex-col gap-3 p-5" data-testid="landing-details">
+        <Card className="flex flex-col gap-3 p-5" data-testid="landing-details" {...rise(5)}>
           <h2 className="text-h2 flex items-center gap-2">
             <Icon icon={MapPin} className="text-gold-700" /> Find us
           </h2>

@@ -1,0 +1,226 @@
+/*
+ * Gilded Gate (P1-03, DESIGN §8.1). Timings mirror GATE in src/lib/motion/gilded-gate.ts (1.4s in all):
+ *   0–200ms    the outline draws from the top centre round to the bottom (stroke-dashoffset)
+ *   200–700ms  the logo fades and scales .92 → 1; a soft gold glow breathes once behind it
+ *   700–1000ms a diagonal shimmer crosses the gate; "Welcome to {shop}" fades in below
+ *   1000–1400ms the gate gives way to the cover (the lazy chunk morphs a cover clone out of it); the ivory
+ *              leaves and the page content rises 12px with a 40ms stagger (six items, the last lands at 1400ms)
+ * Everything moves with transform and opacity (plus the stroke inside the gate). The gate is hidden unless its
+ * pre-paint script sets data-state="play"; it hides itself at the end (visibility), and a skip hides it at once.
+ */
+.gilded-gate {
+  display: none;
+}
+
+.gilded-gate[data-state="play"] {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 60; /* over the cookie notice (40) and toasts (50) for its 1.4s */
+  touch-action: none; /* a swipe on the gate doesn't scroll the page under it */
+  overscroll-behavior: contain;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  animation: gate-life 1400ms linear forwards;
+}
+
+.gate-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+}
+
+.gate-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 24px;
+}
+
+.gate-frame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 168px;
+  height: 208px;
+  flex: none;
+  border-radius: 28px;
+  overflow: hidden;
+}
+
+.gate-outline {
+  position: absolute;
+  inset: 0;
+  fill: none;
+  stroke: var(--gold-500);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.gate-outline path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.gate-glow {
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--gold-300) 70%, transparent),
+    transparent
+  );
+  opacity: 0.35;
+}
+
+.gate-logo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 80px;
+  height: 80px;
+  overflow: hidden;
+  border: 4px solid var(--surface);
+  border-radius: var(--r-md);
+  background: var(--gold-100);
+  box-shadow: var(--shadow-2);
+}
+
+.gate-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    color-mix(in srgb, var(--surface) 75%, transparent) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+}
+
+.gate-welcome {
+  max-width: 18rem;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+/* ---- the timeline (only while playing) ---- */
+
+.gilded-gate[data-state="play"] .gate-outline path {
+  animation: gate-draw 200ms var(--ease-out) backwards;
+}
+.gilded-gate[data-state="play"] .gate-glow {
+  animation: gate-glow 500ms var(--ease-in-out) 200ms backwards;
+}
+.gilded-gate[data-state="play"] .gate-logo {
+  animation: gate-logo 500ms var(--ease-out) 200ms backwards;
+}
+.gilded-gate[data-state="play"] .gate-shimmer {
+  animation: gate-shimmer 300ms var(--ease-in-out) 700ms forwards;
+}
+.gilded-gate[data-state="play"] .gate-welcome {
+  animation: gate-welcome 300ms var(--ease-out) 700ms backwards;
+}
+.gilded-gate[data-state="play"] .gate-stage {
+  animation: gate-stage-out 250ms var(--ease-out) 1000ms forwards;
+}
+.gilded-gate[data-state="play"] .gate-bg {
+  animation: gate-bg-out 350ms var(--ease-out) 1000ms forwards;
+}
+
+/* The page under the gate: hidden until step 4, then rises in order (backwards fill: nothing stays applied). */
+:root:has(.gilded-gate[data-state="play"]) [data-gate-rise] {
+  animation: gate-rise 200ms var(--ease-out) calc(1000ms + var(--rise-i, 0) * 40ms) backwards;
+}
+
+/* While the chunk morphs a clone of the cover out of the gate, the real cover waits underneath, so there is
+   only ever one cover on screen; when the gate ends (or is skipped) it is simply there, where the clone landed. */
+:root:has(.gilded-gate[data-state="play"][data-morph]) [data-gate-cover] {
+  opacity: 0;
+}
+
+/* Reduced motion (system, unless the user chose full motion; or the user's own toggle): no movement, the
+   gate's end frame fades away in 150ms and the page is simply there. */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-reduce-motion="false"]) .gilded-gate[data-state="play"] {
+    animation: gate-fade 150ms var(--ease-out) forwards;
+  }
+  :root:not([data-reduce-motion="false"]) .gilded-gate[data-state="play"] *,
+  :root:not([data-reduce-motion="false"]):has(.gilded-gate[data-state="play"]) [data-gate-rise] {
+    animation: none !important;
+  }
+}
+:root[data-reduce-motion="true"] .gilded-gate[data-state="play"] {
+  animation: gate-fade 150ms var(--ease-out) forwards;
+}
+:root[data-reduce-motion="true"] .gilded-gate[data-state="play"] *,
+:root[data-reduce-motion="true"]:has(.gilded-gate[data-state="play"]) [data-gate-rise] {
+  animation: none !important;
+}
+
+@keyframes gate-life {
+  to {
+    visibility: hidden;
+  }
+}
+@keyframes gate-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+@keyframes gate-glow {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+@keyframes gate-logo {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+@keyframes gate-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes gate-welcome {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes gate-stage-out {
+  to {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+@keyframes gate-bg-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes gate-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes gate-fade {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
