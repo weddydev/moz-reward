@@ -1,9 +1,10 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq, gte, sql } from "drizzle-orm";
 import { CodeCollisionError, normaliseCode, SHOP_CODE_LENGTH, withUniqueCode } from "@/lib/codes";
+import type { LngLat } from "@/lib/geo";
 import { type AdminScope, publicScope, type ShopScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
-import { shops } from "@/server/db/schema";
+import { shopClosures, shopHours, shops } from "@/server/db/schema";
 import { opsAlert } from "@/server/security/alert";
 import { inShop, withScope } from "./_base";
 
@@ -100,4 +101,102 @@ export async function shopSummary(scope: ShopScope): Promise<ShopSummary | null>
   return row
     ? { id: row.id, name: row.tradingName ?? row.name, town: row.town, status: row.status }
     : null;
+}
+
+/** Shop statuses whose landing page works normally (PRODUCT §14: a restricted plan still shows its landing). */
+export const LANDING_LIVE_STATUSES = ["active", "expiring", "grace", "restricted"] as const;
+type LandingLiveStatus = (typeof LANDING_LIVE_STATUSES)[number];
+
+/** The public profile behind `/s/[code]` (P1-02). Public data only: nothing about any user. */
+export type ShopLandingData =
+  | { kind: "none" }
+  | { kind: "gone"; status: "suspended" | "closed"; name: string }
+  | {
+      kind: "live";
+      shop: {
+        id: string;
+        shopCode: string;
+        name: string;
+        category: string;
+        description: string | null;
+        addressLine1: string | null;
+        addressLine2: string | null;
+        town: string | null;
+        postcode: string | null;
+        location: LngLat | null;
+        googlePlaceId: string | null;
+        phone: string | null;
+        logoUrl: string | null;
+        coverUrl: string | null;
+        status: LandingLiveStatus;
+      };
+      hours: { weekday: number; opens: string; closes: string }[];
+      /** Closures from yesterday (Europe/London) for 9 days: enough for today, overnight and this week. */
+      closures: { date: string; note: string | null }[];
+    };
+
+const PUBLIC_LANDING_READ = publicScope(
+  "public shop landing page (profile, hours and closures of a shop, as printed on its QR code)",
+);
+
+/**
+ * Reads a shop's public landing data by an already-normalised code (`normaliseCode`). Pending and unknown
+ * shops are `none` (RLS hides pending shops from the public too); suspended and closed shops return only
+ * their name. Callers go through `loadShopLanding` (src/server/services/shop-landing.ts), which caches this.
+ */
+export async function readShopLanding(shopCode: string): Promise<ShopLandingData> {
+  return withScope(PUBLIC_LANDING_READ, async (q) => {
+    const [row] = await q
+      .select({
+        id: shops.id,
+        shopCode: shops.shopCode,
+        name: shops.name,
+        tradingName: shops.tradingName,
+        category: shops.category,
+        description: shops.description,
+        addressLine1: shops.addressLine1,
+        addressLine2: shops.addressLine2,
+        town: shops.town,
+        postcode: shops.postcode,
+        location: shops.location,
+        googlePlaceId: shops.googlePlaceId,
+        phone: shops.phone,
+        logoUrl: shops.logoUrl,
+        coverUrl: shops.coverUrl,
+        status: shops.status,
+      })
+      .from(shops)
+      .where(eq(shops.shopCode, shopCode))
+      .limit(1);
+    if (!row || row.status === "pending") return { kind: "none" };
+    const name = row.tradingName ?? row.name;
+    if (row.status === "suspended" || row.status === "closed") {
+      return { kind: "gone", status: row.status, name };
+    }
+    const { tradingName: _t, ...shop } = row;
+    const [hours, closures] = await Promise.all([
+      q
+        .select({ weekday: shopHours.weekday, opens: shopHours.opens, closes: shopHours.closes })
+        .from(shopHours)
+        .where(eq(shopHours.shopId, row.id))
+        .orderBy(asc(shopHours.weekday), asc(shopHours.opens)),
+      q
+        .select({ date: shopClosures.date, note: shopClosures.note })
+        .from(shopClosures)
+        .where(
+          and(
+            eq(shopClosures.shopId, row.id),
+            gte(shopClosures.date, sql`((now() AT TIME ZONE 'Europe/London')::date - 1)`),
+            sql`${shopClosures.date} < ((now() AT TIME ZONE 'Europe/London')::date + 8)`,
+          ),
+        )
+        .orderBy(asc(shopClosures.date)),
+    ]);
+    return {
+      kind: "live",
+      shop: { ...shop, name, status: row.status },
+      hours: hours.map((h) => ({ ...h, opens: h.opens.slice(0, 5), closes: h.closes.slice(0, 5) })),
+      closures,
+    };
+  });
 }

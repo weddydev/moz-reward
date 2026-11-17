@@ -3,6 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { isPortalPath } from "@/features/portal/routes";
 import { env } from "@/server/env";
 import { securityHeaders } from "@/server/security/headers";
+import { checkLandingLimit } from "@/server/security/landing-limit";
+import { retryAfterSec } from "@/server/security/rate-limit";
 
 /**
  * Proxy (Next 16's middleware; Node runtime) — P0-05, SECURITY §5.
@@ -12,7 +14,9 @@ import { securityHeaders } from "@/server/security/headers";
  *   for log correlation and returned to the client.
  * - `/dev/*` answers a real 404 in production (a page-level notFound() would stream a 200).
  * - `x-pathname`: the request path, forwarded for the portal layout gate (P0-12).
- * - `Cache-Control: private, no-store` on portal paths (P0-12).
+ * - `Cache-Control: private, no-store` on portal paths (P0-12) and shop landing pages (P1-02).
+ * - `/s/<code>`: per-IP shop-lookup limit (P1-02, C-15) before any render, so a refused request never reaches
+ *   the cache or the database; over the limit → a friendly 429 page with Retry-After.
  */
 const REQUEST_ID = /^[A-Za-z0-9-]{8,64}$/;
 
@@ -21,7 +25,19 @@ function requestId(request: NextRequest, trustedProxy: string): string {
   return trustedProxy !== "none" && incoming && REQUEST_ID.test(incoming) ? incoming : randomUUID();
 }
 
-export function proxy(request: NextRequest): NextResponse {
+/** A shop landing path: `/s/<anything>` (the page decides whether it is a valid code). */
+export const isLandingPath = (pathname: string): boolean => /^\/s\/[^/]+\/?$/.test(pathname);
+
+function tooManyLookups(waitSec: number, nonce: string): NextResponse {
+  const minutes = waitSec <= 60 ? "a minute" : `${String(Math.ceil(waitSec / 60))} minutes`;
+  const html = `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Too many shop lookups · Moz Rewards</title><style nonce="${nonce}">body{margin:0;min-height:100vh;display:grid;place-items:center;font:16px/1.5 system-ui,sans-serif;background:#fbf8f1;color:#2a2418;padding:16px}main{max-width:28rem;text-align:center}h1{font-size:1.5rem;margin:0 0 .5rem}</style></head><body><main><h1>Too many shop lookups</h1><p>You've looked up a lot of shops in a short time. Please try again in ${minutes}.</p></main></body></html>`;
+  return new NextResponse(html, {
+    status: 429,
+    headers: { "Content-Type": "text/html; charset=utf-8", "Retry-After": String(waitSec) },
+  });
+}
+
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   const e = env();
   const nonce = randomBytes(16).toString("base64");
   const headers = securityHeaders({
@@ -34,9 +50,14 @@ export function proxy(request: NextRequest): NextResponse {
   const id = requestId(request, e.TRUSTED_PROXY);
   const { pathname } = request.nextUrl;
 
+  const landing = isLandingPath(pathname);
+  const lookup = landing ? await checkLandingLimit(request.headers) : null;
+
   let response: NextResponse;
   if (e.APP_ENV === "production" && (pathname === "/dev" || pathname.startsWith("/dev/"))) {
     response = new NextResponse("Not found", { status: 404 });
+  } else if (lookup && !lookup.ok) {
+    response = tooManyLookups(retryAfterSec(lookup), nonce);
   } else {
     const forwarded = new Headers(request.headers);
     forwarded.set("x-nonce", nonce);
@@ -50,7 +71,8 @@ export function proxy(request: NextRequest): NextResponse {
   for (const [name, value] of Object.entries(headers)) response.headers.set(name, value);
   response.headers.set("x-request-id", id);
   // Portal pages are per-user (P0-12): never stored, whatever the framework would default to.
-  if (isPortalPath(pathname)) response.headers.set("Cache-Control", "private, no-store");
+  // Shop landing HTML is never stored by a shared cache (ARCHITECTURE §5: only its public data is cached).
+  if (isPortalPath(pathname) || landing) response.headers.set("Cache-Control", "private, no-store");
   return response;
 }
 
@@ -64,5 +86,7 @@ export const config = {
         { type: "header", key: "purpose", value: "prefetch" },
       ],
     },
+    // Shop landing pages also on prefetch requests: a prefetch header must not skip the lookup limit.
+    "/s/:code",
   ],
 };
