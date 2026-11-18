@@ -7,10 +7,10 @@ Baton: held by Syedbadeshah76 since 2026-11-18 07:35 PKT
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **18 Nov, Syedbadeshah76 (Windows): the P1-A fix batch is on main** (squash of `wip/P1-A-close` @ `01652c3`). Every HIGH/MAJOR/MEDIUM of the close plan is fixed except CR-M3 (branded types → **C-56, P1-06**). `wip/P1-A-close` can be deleted (add to H-38).
+- **18 Nov, Syedbadeshah76 (Windows): the P1-A fix batch is on main as `ab29272`** (squash of `wip/P1-A-close` @ `01652c3`). Every HIGH/MAJOR/MEDIUM of the close plan is fixed except CR-M3 (branded types → **C-56, P1-06**). `wip/P1-A-close` can be deleted (add to H-38).
 - **P1-A is NOT ticked yet:** `/subphase-complete` step 3 needs a green staging deploy of this commit, the staging smoke and Sentry, and the deploy rolls back until **H-48 🔴** (real `SENTRY_DSN_STAGING`; the boot check now refuses the placeholder). **Next exact step:** once the human confirms H-48 → `gh run list --workflow Deploy --limit 1` (re-run the deploy if it ran before the fix) → staging smoke (inside web-1: `/s/BREW22` 200 member/non-member, join sheet, `/api/health/ready`) → Sentry shows the release with no new errors → tick the P1-A line in PHASES + SESSION_LOG "staging smoke" line (docs-only commit). Without H-48, carry on with **P1-B's first task** and close P1-A when the deploy passes.
 - **Demo data:** the demo customer's profile is complete only after a reseed: run `moz-deploy seed-reset staging` (or wait for the weekly reset) once the deploy is green; locally `pnpm db:seed --reset`.
-- **Tested:** see Last verified. **Not yet tested:** Linux 5-project run `44283257480` (WebKit/iPhone evidence for the batch) — check its result first; a red WebKit join test (QA minor 3 / fade) is fixed before P1-B.
+- **Tested:** see Last verified; Linux 5-project E2E `44283257480` on the batch: green. **Not yet seen:** CI for `ab29272` (running at stop; check it first, red is fixed first) and its Deploy, which is expected to roll back to `8353e00` until H-48 (malformed Sentry DSN now fails boot) — confirm the put-back left staging on the old release (`/api/health/ready` 200).
 - **Do first on the other laptop:** `git pull`, `pnpm install`, `pnpm db:migrate` (0022, 0023), `pnpm db:seed --reset`. VPS: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`.
 
 ## Status
@@ -68,7 +68,7 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 ## Last verified (18 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
 - P1-A close batch (`01652c3` code tree = main): gate:task P1-04 P1-02 J1 P0-15 PASS — unit 1513/0, int 1342/0/12 skip, sast, e2e 40/0; CI `44276804681` green (1e24001).
-- Full local E2E (Windows): 972 passed; Chromium-family fail only gilded-gate long-task under 4× throttle at full parallel load (2/0 alone, green in CI); 4 WebKit/iPhone fails are not evidence on Windows → Linux run `44283257480`.
+- Full local E2E (Windows): 972 passed; Chromium-family fail only gilded-gate long-task under 4× throttle at full parallel load (2/0 alone, green in CI); 4 WebKit/iPhone fails are not evidence on Windows; Linux run `44283257480` green.
 - Red first: QA-MAJ1/MAJ2 E2E, SEC-M1 3 + SEC-M2 2 guard cases, CR-M1 closures window, CR-M2 seed profile, ci:usage public; security-reviewer PASS (1 MEDIUM fixed: web pool must log in as moz_app), design re-check PASS WITH FIXES (2 LOW).
 - Screens inspected: join sheet 320 (80-char name, fade, scrolled), 375 pending spinner + fade, 390 not-joinable footer error + Close, welcome 390, shop page long name 320/390/1440.
 
