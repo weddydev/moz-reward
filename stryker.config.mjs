@@ -10,7 +10,12 @@ const config = {
   testRunner: "vitest",
   vitest: { configFile: "vitest.config.mts", related: true },
   plugins: ["@stryker-mutator/vitest-runner"],
-  mutate: ["src/server/authz/policies.ts", "src/lib/return-to.ts", "src/lib/codes.ts"],
+  mutate: [
+    "src/server/authz/policies.ts",
+    "src/lib/return-to.ts",
+    "src/lib/codes.ts",
+    "src/lib/loyalty/engine.ts",
+  ],
   coverageAnalysis: "perTest",
   thresholds: { high: 90, low: 80, break: 80 },
   reporters: ["clear-text", "progress", "html"],

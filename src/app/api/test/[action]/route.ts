@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { parseShopId } from "@/lib/brand";
 import { getAuth } from "@/server/auth/auth";
 import { beginStaffLogin } from "@/server/auth/staff-login";
 import { authScope } from "@/server/authz/scope";
@@ -227,8 +228,9 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
     }
     case "shop-status": {
       const parsed = shopStatusInput.safeParse(body);
-      if (!parsed.success) return invalid();
-      await setShopStatus(parsed.data.shopId, parsed.data.status);
+      const shopId = parsed.success ? parseShopId(parsed.data.shopId) : null;
+      if (!parsed.success || !shopId) return invalid();
+      await setShopStatus(shopId, parsed.data.status);
       return NextResponse.json({ ok: true });
     }
     case "ops-snapshot": {

@@ -5,7 +5,8 @@ import "server-only";
  * unique, obviously fake data (never real personal data).
  */
 import { eq } from "drizzle-orm";
-import { withUniqueCode } from "@/lib/codes";
+import type { ShopId } from "@/lib/brand";
+import { generateMemberId, generateShopCode, withUniqueCode } from "@/lib/codes";
 import { newId } from "@/lib/id";
 import { hashPassword } from "@/server/auth/password";
 import { testOwnerDb as db } from "@/server/db/client";
@@ -66,42 +67,36 @@ export async function makeCustomerProfile(
   userId: string,
   over: Partial<typeof customerProfiles.$inferInsert> = {},
 ): Promise<typeof customerProfiles.$inferSelect> {
-  return withUniqueCode(
-    async (memberId) => {
-      const [row] = await db()
-        .insert(customerProfiles)
-        .values({ userId, fullName: "Aisha Khan", memberId, ...over })
-        .returning();
-      if (!row) throw new Error("makeCustomerProfile: no row");
-      return row;
-    },
-    { length: 6 },
-  );
+  return withUniqueCode(async (memberId) => {
+    const [row] = await db()
+      .insert(customerProfiles)
+      .values({ userId, fullName: "Aisha Khan", memberId, ...over })
+      .returning();
+    if (!row) throw new Error("makeCustomerProfile: no row");
+    return row;
+  }, generateMemberId);
 }
 
 export async function makeShop(over: Partial<typeof shops.$inferInsert> = {}): Promise<ShopRow> {
-  return withUniqueCode(
-    async (shopCode) => {
-      const [row] = await db()
-        .insert(shops)
-        .values({
-          slug: `shop-${uniq()}`,
-          shopCode,
-          name: "Brew & Bloom Café",
-          category: "cafe",
-          status: "active",
-          ...over,
-        })
-        .returning();
-      if (!row) throw new Error("makeShop: no row");
-      return row;
-    },
-    { length: 6 },
-  );
+  return withUniqueCode(async (shopCode) => {
+    const [row] = await db()
+      .insert(shops)
+      .values({
+        slug: `shop-${uniq()}`,
+        shopCode,
+        name: "Brew & Bloom Café",
+        category: "cafe",
+        status: "active",
+        ...over,
+      })
+      .returning();
+    if (!row) throw new Error("makeShop: no row");
+    return row;
+  }, generateShopCode);
 }
 
 /** Moves an existing shop to another state (P1-04: a shop suspended while a customer has the join sheet open). */
-export async function setShopStatus(shopId: string, status: ShopRow["status"]): Promise<void> {
+export async function setShopStatus(shopId: ShopId, status: ShopRow["status"]): Promise<void> {
   const rows = await db()
     .update(shops)
     .set({ status })

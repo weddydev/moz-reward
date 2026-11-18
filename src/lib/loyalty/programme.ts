@@ -21,7 +21,10 @@ export type MilestoneRule = { percent: MilestonePercent; reward: string; isMyste
 /** Everything an owner sets. Stored as one immutable version row. */
 export type ProgrammeRules = {
   earnMode: EarnMode;
-  /** Gold per approved visit (`per_visit`) or per whole £1 spent (`per_pound`, rounded down). */
+  /**
+   * Gold per approved visit (`per_visit`) or per £1 spent (`per_pound`): floor(pence × rate / 100), rounded
+   * down once after any multipliers (engine `calculateAward`), so £4.50 at 10 per £1 is 45.
+   */
   earnRate: number;
   /** Gold needed to fill one ingot. */
   ingotSize: number;

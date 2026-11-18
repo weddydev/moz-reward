@@ -16,6 +16,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { MemberId, ShopCode, ShopId } from "@/lib/brand";
 import { geographyPoint, id, timestamps, tz } from "./_columns";
 import { users } from "./auth";
 
@@ -50,7 +51,7 @@ export const customerProfiles = pgTable(
     phoneHash: text(),
     birthdayDay: smallint(),
     birthdayMonth: smallint(),
-    memberId: text().notNull().unique(),
+    memberId: text().$type<MemberId>().notNull().unique(),
     /** null = no choice yet (sounds are on by default, DESIGN §9). */
     soundOn: boolean(),
     /** null = follow the system setting (prefers-reduced-motion). */
@@ -79,9 +80,9 @@ export const customerProfiles = pgTable(
 export const shops = pgTable(
   "shops",
   {
-    id: id(),
+    id: id().$type<ShopId>(),
     slug: text().notNull().unique(),
-    shopCode: text().notNull().unique(),
+    shopCode: text().$type<ShopCode>().notNull().unique(),
     name: text().notNull(),
     tradingName: text(),
     category: text().notNull(),

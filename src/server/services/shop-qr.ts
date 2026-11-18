@@ -1,6 +1,6 @@
 import "server-only";
 import QRCode from "qrcode";
-import { normaliseCode, SHOP_CODE_LENGTH } from "@/lib/codes";
+import { normaliseShopCode } from "@/lib/codes";
 import { env } from "@/server/env";
 
 /**
@@ -15,7 +15,7 @@ const QR_OPTIONS = { errorCorrectionLevel: "M", margin: 4 } as const;
 const PNG_SCALE = 12;
 
 export function shopEntryUrl(code: string, src: EntrySource, appUrl = env().APP_URL): string {
-  const shopCode = normaliseCode(code, SHOP_CODE_LENGTH);
+  const shopCode = normaliseShopCode(code);
   if (!shopCode) throw new RangeError("not a valid shop code");
   const url = new URL(`/s/${shopCode}`, appUrl);
   url.searchParams.set("src", src);

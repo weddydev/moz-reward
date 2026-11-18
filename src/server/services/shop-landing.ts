@@ -1,5 +1,6 @@
 import "server-only";
-import { normaliseCode, SHOP_CODE_LENGTH } from "@/lib/codes";
+import type { ShopCode } from "@/lib/brand";
+import { normaliseShopCode } from "@/lib/codes";
 import { londonDate } from "@/lib/time";
 import { cached, cacheKey, cacheRedis } from "@/server/cache";
 import { log } from "@/server/log";
@@ -25,7 +26,7 @@ const inflight = new Map<string, Promise<ShopLandingData>>();
 export type LandingDeps = {
   redis?: Redis;
   /** Injectable for tests (query counter). */
-  read?: (shopCode: string, today: string) => Promise<ShopLandingData>;
+  read?: (shopCode: ShopCode, today: string) => Promise<ShopLandingData>;
   /** Injectable clock: today's London date frames the closures window. */
   now?: () => Date;
 };
@@ -38,7 +39,7 @@ export async function loadShopLanding(
   input: string,
   deps: LandingDeps = {},
 ): Promise<ShopLandingData> {
-  const shopCode = normaliseCode(input, SHOP_CODE_LENGTH);
+  const shopCode = normaliseShopCode(input);
   if (!shopCode) return { kind: "none" };
   const running = inflight.get(shopCode);
   if (running) return running;

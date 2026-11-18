@@ -9,6 +9,7 @@ import {
   TOO_MANY_NEW_SHOPS,
   UK_MOBILE_ONLY,
 } from "@/features/join/profile-input";
+import { normaliseShopCode } from "@/lib/codes";
 import { loadPrincipal, runAsPrincipal } from "@/server/authz/principal";
 import { testOwnerDb as db } from "@/server/db/client";
 import {
@@ -85,7 +86,9 @@ const PROFILE: Profile = {
 };
 
 /** The name the sheet would show: the shop's current display name (unknown codes: a placeholder). */
-async function shownName(shopCode: string): Promise<string> {
+async function shownName(input: string): Promise<string> {
+  const shopCode = normaliseShopCode(input);
+  if (!shopCode) return "Unknown shop";
   const [row] = await db()
     .select({ name: shops.name, tradingName: shops.tradingName })
     .from(shops)

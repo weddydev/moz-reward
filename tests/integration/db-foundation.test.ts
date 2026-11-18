@@ -1,5 +1,6 @@
 import { eq, type SQL, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import type { ShopCode } from "@/lib/brand";
 import { newId } from "@/lib/id";
 import { testOwnerDb as db } from "@/server/db/client";
 import { runMigrations } from "@/server/db/migrate";
@@ -207,7 +208,8 @@ describe("[P0-03] constraints in the database", () => {
     // Direct insert: makeShop itself retries collisions with a fresh code (withUniqueCode).
     const dup = { slug: `dup-${newId()}`, shopCode: shop.shopCode, name: "Dup", category: "cafe" };
     expect(await pgCode(() => db().insert(shops).values(dup))).toBe("23505");
-    expect(await pgCode(() => makeShop({ shopCode: "ABC0O1" }))).toBe("23514");
+    // The cast skips the brand on purpose: this proves the database check, not the normaliser.
+    expect(await pgCode(() => makeShop({ shopCode: "ABC0O1" as ShopCode }))).toBe("23514");
   });
 
   it("content setting keys follow the key format", async () => {

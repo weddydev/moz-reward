@@ -52,6 +52,11 @@ function decodeKey(b64: string, label: string): Buffer {
 const idOf = (key: Buffer): string =>
   "k" + createHmac("sha256", key).update(KEY_ID_LABEL).digest("hex").slice(0, 10);
 
+const KEY_ID = /^k[0-9a-f]{10}$/;
+
+/** True for exactly the shape `keyIdOf` produces. Key ids are not secret (one is stored beside every value). */
+export const isKeyId = (value: string): boolean => KEY_ID.test(value);
+
 /** The id stored with every value a key seals: `k` + 10 hex characters, derived from the key (base64). */
 export function keyIdOf(b64: string): string {
   return idOf(decodeKey(b64, "key"));

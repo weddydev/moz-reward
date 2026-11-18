@@ -69,7 +69,11 @@ export default defineConfig({
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
       exclude: ["src/**/*.test.{ts,tsx}", "src/app/dev/**", "src/features/dev/**"],
-      thresholds: { "src/server/services/**": { lines: 90, branches: 90 } },
+      thresholds: {
+        "src/server/services/**": { lines: 90, branches: 90 },
+        // Loyalty engine (TESTING §2): money-like rules, ≥ 95%.
+        "src/lib/loyalty/engine.ts": { lines: 95, branches: 95, functions: 95, statements: 95 },
+      },
     },
   },
 });

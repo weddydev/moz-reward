@@ -1,5 +1,7 @@
 import { randomInt } from "node:crypto";
 
+import type { MemberId, ShopCode } from "./brand";
+
 /**
  * Public short codes (shop codes, member IDs, claim/redeem codes) — ARCHITECTURE §3, ENGINEERING §7.
  * Crockford base32 without the confusable 0, O, 1, I, L (and U): 30 characters.
@@ -8,6 +10,7 @@ export const CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
 const MAX_ATTEMPTS = 5;
 /** Shop codes (PRODUCT §3) and member IDs are 6 characters. */
 export const SHOP_CODE_LENGTH = 6;
+export const MEMBER_ID_LENGTH = 6;
 
 export class CodeCollisionError extends Error {
   constructor(readonly attempts: number) {
@@ -49,8 +52,22 @@ export function normaliseCode(input: string, length: number): string | null {
   return code;
 }
 
+/** A typed, scanned or routed shop code as stored, or null (see `normaliseCode`). */
+export const normaliseShopCode = (input: string): ShopCode | null =>
+  normaliseCode(input, SHOP_CODE_LENGTH) as ShopCode | null;
+
+/** A typed or scanned member ID as stored, or null (see `normaliseCode`). */
+export const normaliseMemberId = (input: string): MemberId | null =>
+  normaliseCode(input, MEMBER_ID_LENGTH) as MemberId | null;
+
+/** A fresh shop code; insert it through `withUniqueCode` (the unique index decides). */
+export const generateShopCode = (): ShopCode => generateCode(SHOP_CODE_LENGTH) as ShopCode;
+
+/** A fresh member ID (the unique index decides). */
+export const generateMemberId = (): MemberId => generateCode(MEMBER_ID_LENGTH) as MemberId;
+
 /** "K7Q42M" → "K7Q-42M" (display only; stored without the dash). */
-export function formatMemberId(code: string): string {
+export function formatMemberId(code: MemberId): string {
   return formatCode(code, { group: 3 });
 }
 
@@ -67,17 +84,14 @@ function isUniqueViolation(err: unknown): boolean {
  * Runs `insert(code)` with fresh codes until it succeeds, retrying only on unique violations (23505),
  * at most 5 times. The DB unique constraint is the source of truth, not a read-before-write.
  */
-export async function withUniqueCode<T>(
-  insert: (code: string) => Promise<T>,
-  opts: {
-    length: number;
-    /** Tests only: force collisions. */ generate?: (() => string) | undefined;
-  },
+export async function withUniqueCode<T, C extends string>(
+  insert: (code: C) => Promise<T>,
+  /** `generateShopCode`, `generateMemberId`, …; tests pass a sequence to force collisions. */
+  generate: () => C,
 ): Promise<T> {
-  const next = opts.generate ?? (() => generateCode(opts.length));
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      return await insert(next());
+      return await insert(generate());
     } catch (err) {
       if (!isUniqueViolation(err)) throw err;
     }

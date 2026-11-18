@@ -7,6 +7,7 @@
  */
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import type { ShopId } from "@/lib/brand";
 import type { ActionResult } from "@/server/actionTemplate";
 import type { AdminRole, Principal } from "@/server/authz/policies";
 import { loadPrincipal, runAsPrincipal } from "@/server/authz/principal";
@@ -34,9 +35,9 @@ export type Role = (typeof ROLES)[number];
 
 export type World = {
   /** The shop the action targets ("own shop"). */
-  shopA: { id: string };
+  shopA: { id: ShopId };
   /** Another shop (cross-shop attacks come from here). */
-  shopB: { id: string };
+  shopB: { id: ShopId };
   principals: Record<Role, Principal | null>;
 };
 

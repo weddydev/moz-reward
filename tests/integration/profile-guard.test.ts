@@ -1,5 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import { generateMemberId } from "@/lib/codes";
 import { mintCustomerScope } from "@/server/authz/scope";
 import { testOwnerDb as db } from "@/server/db/client";
 import { customerProfiles } from "@/server/db/schema";
@@ -93,12 +94,12 @@ describe("[P1-04] customer_profiles guard", () => {
 
   it("never changes member_id or user_id, for any role (owner included)", async () => {
     const p = await profiled();
-    expect(await pgCode(() => update(p.scope, { memberId: "ABC234" }))).toBe("23001");
+    expect(await pgCode(() => update(p.scope, { memberId: generateMemberId() }))).toBe("23001");
     expect(
       await pgCode(() =>
         db()
           .update(customerProfiles)
-          .set({ memberId: "ABC234" })
+          .set({ memberId: generateMemberId() })
           .where(eq(customerProfiles.userId, p.row.userId)),
       ),
     ).toBe("23001");
@@ -122,7 +123,7 @@ describe("[P1-04] customer_profiles guard", () => {
           q.insert(customerProfiles).values({
             userId: user.id,
             fullName: "Test",
-            memberId: "MNP234",
+            memberId: generateMemberId(),
             ...over,
           } as typeof customerProfiles.$inferInsert),
         );

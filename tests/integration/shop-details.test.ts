@@ -1,6 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { CodeCollisionError, generateCode } from "@/lib/codes";
+import type { ShopCode } from "@/lib/brand";
+import { CodeCollisionError, generateCode, generateShopCode } from "@/lib/codes";
 import {
   mintAdminScope,
   mintCustomerScope,
@@ -110,14 +111,14 @@ const visibleShops = async (scope: Scope, table: typeof shopHours | typeof shopC
 
 describe("[P1-01] shop codes", () => {
   it("concurrent creation never duplicates a code: the loser of a clash retries with a new one", async () => {
-    const taken = generateCode(6);
+    const taken = generateShopCode();
     const seq =
-      (...codes: string[]) =>
+      (...codes: ShopCode[]) =>
       () =>
-        codes.shift() ?? generateCode(6);
+        codes.shift() ?? generateShopCode();
     const [a, b] = await Promise.all([
-      createShop(w.support, newShop("Clash A"), { generate: seq(taken, generateCode(6)) }),
-      createShop(w.support, newShop("Clash B"), { generate: seq(taken, generateCode(6)) }),
+      createShop(w.support, newShop("Clash A"), { generate: seq(taken, generateShopCode()) }),
+      createShop(w.support, newShop("Clash B"), { generate: seq(taken, generateShopCode()) }),
     ]);
     expect(a.shopCode).not.toBe(b.shopCode);
     expect([a.shopCode, b.shopCode]).toContain(taken);
@@ -146,8 +147,8 @@ describe("[P1-01] shop codes", () => {
       const created = await createShop(w.support, newShop("In Tx"), {
         tx,
         generate: (() => {
-          const codes = [w.shopB.shopCode, generateCode(6)];
-          return () => codes.shift() ?? generateCode(6);
+          const codes = [w.shopB.shopCode, generateShopCode()];
+          return () => codes.shift() ?? generateShopCode();
         })(),
       });
       const [again] = await tx.select({ id: shops.id }).from(shops).where(eq(shops.id, created.id));
@@ -163,10 +164,11 @@ describe("[P1-01] shop codes", () => {
       );
     }
     expect(
-      await pgCode(() =>
-        db()
-          .insert(shops)
-          .values({ ...newShop("Bad"), shopCode: "ABC12" }),
+      await pgCode(
+        () =>
+          db()
+            .insert(shops)
+            .values({ ...newShop("Bad"), shopCode: "ABC12" as ShopCode }), // cast on purpose: the DB check is under test
       ),
     ).toBe("23514");
   });

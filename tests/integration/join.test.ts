@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { MARKETING_CONSENT_VERSION, marketingConsentText } from "@/features/join/consent";
+import { generateMemberId } from "@/lib/codes";
 import { mintCustomerScope, mintShopScope } from "@/server/authz/scope";
 import { testOwnerDb as db } from "@/server/db/client";
 import { customerProfiles, marketingConsents, memberships } from "@/server/db/schema";
@@ -262,11 +263,14 @@ describe("[P1-04] join flow", () => {
     const shop = await makeShop({ status: "active" });
     const { memberId } = await join(taken, shop);
     const c = await customer();
-    const codes = [memberId, memberId, "ABC234"];
+    const fresh = generateMemberId();
+    const codes = [memberId, memberId, fresh];
     const made = await transaction(c.scope, (tx) =>
-      createOwnProfile(c.scope, profile(), tx, { generate: () => codes.shift() ?? "XYZ789" }),
+      createOwnProfile(c.scope, profile(), tx, {
+        generate: () => codes.shift() ?? generateMemberId(),
+      }),
     );
-    expect(made).toEqual({ memberId: "ABC234", created: true });
+    expect(made).toEqual({ memberId: fresh, created: true });
     const d = await customer();
     await expect(
       transaction(d.scope, (tx) =>

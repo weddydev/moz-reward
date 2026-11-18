@@ -1,5 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import type { ShopId } from "@/lib/brand";
+import { generateShopCode } from "@/lib/codes";
 import { mintAdminScope, mintShopScope, type Scope } from "@/server/authz/scope";
 import { testOwnerDb as db } from "@/server/db/client";
 import { shops } from "@/server/db/schema";
@@ -49,7 +51,7 @@ const CLASSIFIED = {
 
 type ShopSet = Partial<typeof shops.$inferInsert>;
 
-const update = (scope: Scope, id: string, set: ShopSet) =>
+const update = (scope: Scope, id: ShopId, set: ShopSet) =>
   withScope(scope, (q) =>
     q.update(shops).set(set).where(eq(shops.id, id)).returning({ id: shops.id }),
   );
@@ -73,7 +75,7 @@ async function team() {
 
 const ADMIN_ONLY_SETS: ShopSet[] = [
   { status: "suspended" },
-  { shopCode: "ZZZZ22" },
+  { shopCode: generateShopCode() },
   { slug: "taken-over" },
   { createdAt: new Date("2020-01-01T00:00:00Z") },
   { name: "Renamed", status: "closed" },

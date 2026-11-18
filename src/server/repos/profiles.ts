@@ -1,6 +1,7 @@
 import "server-only";
 import { sql } from "drizzle-orm";
-import { CodeCollisionError, SHOP_CODE_LENGTH, generateCode } from "@/lib/codes";
+import type { MemberId } from "@/lib/brand";
+import { CodeCollisionError, generateMemberId } from "@/lib/codes";
 import type { CustomerScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import { customerProfiles } from "@/server/db/schema";
@@ -50,14 +51,17 @@ export type NewProfile = {
 
 export type OwnProfile = {
   fullName: string;
-  memberId: string;
+  memberId: MemberId;
   /** Plaintext: only ever returned to the profile's owner (SECURITY §7). */
   phoneE164: string | null;
   birthday: { day: number; month: number } | null;
 };
 
 /** The caller's member ID, or null when they have no profile yet (join flow: profile step needed). */
-export async function ownMemberId(scope: CustomerScope, tx?: Transaction): Promise<string | null> {
+export async function ownMemberId(
+  scope: CustomerScope,
+  tx?: Transaction,
+): Promise<MemberId | null> {
   const [row] = await withScope(
     scope,
     (q) =>
@@ -74,7 +78,7 @@ export async function ownMemberId(scope: CustomerScope, tx?: Transaction): Promi
 /** What the member ID card shows (no phone, so nothing is decrypted), or null without a profile. */
 export async function ownMemberCard(
   scope: CustomerScope,
-): Promise<{ memberId: string; fullName: string } | null> {
+): Promise<{ memberId: MemberId; fullName: string } | null> {
   const [row] = await withScope(scope, (q) =>
     q
       .select({ memberId: customerProfiles.memberId, fullName: customerProfiles.fullName })
@@ -136,11 +140,11 @@ export async function createOwnProfile(
   scope: CustomerScope,
   input: NewProfile,
   tx: Transaction,
-  opts: { /** Tests only: force member-ID collisions. */ generate?: () => string } = {},
-): Promise<{ memberId: string; created: boolean }> {
+  opts: { /** Tests only: force member-ID collisions. */ generate?: () => MemberId } = {},
+): Promise<{ memberId: MemberId; created: boolean }> {
   const sealed = sealField(fieldKeyring(), input.phoneE164, profilePhoneContext(scope.userId));
   const phoneHash = phoneBlindIndex(input.phoneE164);
-  const next = opts.generate ?? (() => generateCode(SHOP_CODE_LENGTH));
+  const next = opts.generate ?? generateMemberId;
   return withScope(
     scope,
     async (q) => {

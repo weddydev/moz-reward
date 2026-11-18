@@ -4,6 +4,7 @@ import { buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { ShopLogo } from "@/features/landing/ShopLanding";
+import type { MemberId } from "@/lib/brand";
 import { MemberIdCard } from "./MemberIdCard";
 
 /**
@@ -16,7 +17,7 @@ export function MemberShopPage({
   welcome,
 }: {
   shop: { name: string; shopCode: string; logoUrl: string | null };
-  member: { memberId: string; fullName: string };
+  member: { memberId: MemberId; fullName: string };
   welcome: boolean;
 }): React.JSX.Element {
   return (

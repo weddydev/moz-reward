@@ -5,6 +5,7 @@ import type { Database, Transaction } from "@/server/db/client";
 import { auditLogs } from "@/server/db/schema";
 import { REDACTED, redactText } from "@/server/jobs/redact";
 import { withScope } from "@/server/repos/_base";
+import { isKeyId } from "@/server/security/field-crypto";
 import { purposeKey } from "@/server/security/keys";
 
 export type AuditEntry = {
@@ -30,11 +31,12 @@ const MAX_DEPTH = 4;
 /**
  * Audit meta keeps its shape and business facts (amounts, statuses, ids); values under sensitive keys are
  * replaced, and emails / phone numbers / URL tokens inside free text are scrubbed. Audit rows are permanent
- * (append-only), so this runs on every write.
+ * (append-only), so this runs on every write. A data-key id (`k` + 10 hex) is kept whole: about 1 in 12 has
+ * 7+ digits in a row, which the phone-number rule would otherwise cut out of a key-rotation audit.
  */
 export function scrubAuditMeta(value: unknown, depth = 0): unknown {
   if (depth > MAX_DEPTH) return "[truncated]";
-  if (typeof value === "string") return redactText(value);
+  if (typeof value === "string") return isKeyId(value) ? value : redactText(value);
   if (value === null || typeof value !== "object") return value;
   if (Array.isArray(value)) return value.map((v) => scrubAuditMeta(v, depth + 1));
   return Object.fromEntries(

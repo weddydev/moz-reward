@@ -52,3 +52,46 @@ export function addDays(isoDate: string, days: number): string {
   if (Number.isNaN(ms)) throw new RangeError(`not a date: ${isoDate}`);
   return new Date(ms + days * DAY).toISOString().slice(0, 10);
 }
+
+/** The Monday (YYYY-MM-DD) of the ISO week that contains `now` in London (streaks, PRODUCT §6). */
+export function londonWeekStart(now: Date): string {
+  const date = londonDate(now);
+  const weekday = new Date(`${date}T00:00:00Z`).getUTCDay(); // 0 = Sunday
+  return addDays(date, -((weekday + 6) % 7));
+}
+
+function wholeCount(n: number, what: string): void {
+  if (!Number.isSafeInteger(n)) throw new RangeError(`${what} must be a whole number`);
+}
+
+/** Moves `at` along the London wall clock (offsets are whole hours, so seconds are carried as they are). */
+function shiftWall(at: Date, move: (wall: Date) => number): Date {
+  const ms = at.getTime();
+  const subMinute = ((ms % MINUTE) + MINUTE) % MINUTE;
+  return new Date(londonInstant(move(new Date(londonWall(ms)))) + subMinute);
+}
+
+/**
+ * `at` plus whole calendar months in London, same wall time; a day the target month lacks becomes its last
+ * day (31 Jan + 1 → 28/29 Feb). A wall time in the missing spring hour moves to 02:00 BST (`londonInstant`).
+ */
+export function addLondonMonths(at: Date, months: number): Date {
+  wholeCount(months, "months");
+  return shiftWall(at, (w) => {
+    const target = w.getUTCMonth() + months;
+    const lastDay = new Date(Date.UTC(w.getUTCFullYear(), target + 1, 0)).getUTCDate();
+    return Date.UTC(
+      w.getUTCFullYear(),
+      target,
+      Math.min(w.getUTCDate(), lastDay),
+      w.getUTCHours(),
+      w.getUTCMinutes(),
+    );
+  });
+}
+
+/** `at` plus whole calendar days in London, same wall time (a day across a clock change is 23 or 25 h). */
+export function addLondonDays(at: Date, days: number): Date {
+  wholeCount(days, "days");
+  return shiftWall(at, (w) => w.getTime() + days * DAY);
+}

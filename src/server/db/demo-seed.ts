@@ -2,6 +2,8 @@ import "server-only";
 import { createHmac, hkdfSync } from "node:crypto";
 import { symmetricEncrypt } from "better-auth/crypto";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { type MemberId, type ShopCode, type ShopId, parseShopId } from "@/lib/brand";
+import { normaliseMemberId, normaliseShopCode } from "@/lib/codes";
 import type { LngLat } from "@/lib/geo";
 import { TEMPLATES } from "@/lib/loyalty/programme";
 import { hashPassword } from "@/server/auth/password";
@@ -36,10 +38,20 @@ import type { Database } from "./client";
 
 type AdminRole = (typeof adminMembers.$inferInsert)["role"];
 
+/** Fixed demo values go through the same minting checks as real ones (C-56); a typo fails at load. */
+function fixed<T>(value: string, parse: (s: string) => T | null): T {
+  const out = parse(value);
+  if (out === null) throw new Error(`demo seed: invalid fixed value ${value}`);
+  return out;
+}
+const fixedShopId = (s: string): ShopId => fixed(s, parseShopId);
+const fixedShopCode = (s: string): ShopCode => fixed(s, normaliseShopCode);
+const fixedMemberId = (s: string): MemberId => fixed(s, normaliseMemberId);
+
 export type DemoShop = {
-  id: string;
+  id: ShopId;
   slug: string;
-  shopCode: string;
+  shopCode: ShopCode;
   name: string;
   category: string;
   description: string;
@@ -52,9 +64,9 @@ export type DemoShop = {
 /** Invented addresses in real towns (never a real business's details). */
 export const DEMO_SHOPS = [
   {
-    id: "0199d3e0-0000-7000-8000-000000000011",
+    id: fixedShopId("0199d3e0-0000-7000-8000-000000000011"),
     slug: "brew-and-bloom-cafe",
-    shopCode: "BREW22",
+    shopCode: fixedShopCode("BREW22"),
     name: "Brew & Bloom Café",
     category: "cafe",
     description: "Speciality coffee, fresh bakes and flowers by the canal.",
@@ -64,9 +76,9 @@ export const DEMO_SHOPS = [
     location: { lng: -0.1426, lat: 51.539 },
   },
   {
-    id: "0199d3e0-0000-7000-8000-000000000012",
+    id: fixedShopId("0199d3e0-0000-7000-8000-000000000012"),
     slug: "patels-corner-store",
-    shopCode: "PATE22",
+    shopCode: fixedShopCode("PATE22"),
     name: "Patel's Corner Store",
     category: "convenience",
     description: "Your everyday essentials, open early till late.",
@@ -76,9 +88,9 @@ export const DEMO_SHOPS = [
     location: { lng: -1.1332, lat: 52.6344 },
   },
   {
-    id: "0199d3e0-0000-7000-8000-000000000013",
+    id: fixedShopId("0199d3e0-0000-7000-8000-000000000013"),
     slug: "glow-studio",
-    shopCode: "GKQW22",
+    shopCode: fixedShopCode("GKQW22"),
     name: "Glow Studio",
     category: "beauty",
     description: "Skin, brows and nails in the Northern Quarter.",
@@ -95,7 +107,7 @@ type DemoAccount = {
   name: string;
   /** Shown by `pnpm demo:credentials`. */
   label: string;
-  memberId?: string;
+  memberId?: MemberId;
   staff?: { shopId: string; role: "owner" | "staff" };
   admin?: AdminRole;
 };
@@ -113,7 +125,7 @@ export const DEMO_ACCOUNTS = [
     id: "0199d3e0-0000-7000-8000-000000000001",
     name: "Aisha Khan",
     label: "Customer (email link)",
-    memberId: "DEMQ22",
+    memberId: fixedMemberId("DEMQ22"),
   },
   {
     key: "staff",

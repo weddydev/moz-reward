@@ -1,5 +1,6 @@
 import "server-only";
 import { MARKETING_CONSENT_VERSION } from "@/features/join/consent";
+import type { MemberId } from "@/lib/brand";
 import type { CustomerScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import { AppError } from "@/server/errors";
@@ -24,7 +25,7 @@ export type JoinInput = {
 export type JoinResult = {
   shopId: string;
   membershipId: string;
-  memberId: string;
+  memberId: MemberId;
   /** True when this call created or re-opened the membership (first-join welcome on the shop page). */
   firstJoin: boolean;
 };

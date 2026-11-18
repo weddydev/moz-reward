@@ -8,6 +8,7 @@ import {
   normaliseCode,
   withUniqueCode,
 } from "./codes";
+import type { MemberId } from "./brand";
 
 describe("[P0-03] code generator", () => {
   it("emits only allowed characters at the requested length", () => {
@@ -33,7 +34,7 @@ describe("[P0-03] code generator", () => {
   });
 
   it("formats member IDs as XXX-XXX", () => {
-    expect(formatMemberId("K7Q42M")).toBe("K7Q-42M");
+    expect(formatMemberId("K7Q42M" as MemberId)).toBe("K7Q-42M");
   });
 
   it("retries on a unique violation and returns the first code that inserts", async () => {
@@ -43,25 +44,27 @@ describe("[P0-03] code generator", () => {
       .mockRejectedValueOnce(unique)
       .mockRejectedValueOnce(unique)
       .mockResolvedValueOnce("row");
-    await expect(withUniqueCode(insert, { length: 6 })).resolves.toBe("row");
+    await expect(withUniqueCode(insert, () => generateCode(6))).resolves.toBe("row");
     expect(insert).toHaveBeenCalledTimes(3);
   });
 
   it("also recognises a unique violation wrapped in `cause` (Drizzle errors)", async () => {
     const wrapped = Object.assign(new Error("Failed query"), { cause: { code: "23505" } });
     const insert = vi.fn().mockRejectedValueOnce(wrapped).mockResolvedValueOnce("ok");
-    await expect(withUniqueCode(insert, { length: 6 })).resolves.toBe("ok");
+    await expect(withUniqueCode(insert, () => generateCode(6))).resolves.toBe("ok");
   });
 
   it("gives up after 5 attempts with a clear error", async () => {
     const insert = vi.fn().mockRejectedValue(Object.assign(new Error("dup"), { code: "23505" }));
-    await expect(withUniqueCode(insert, { length: 6 })).rejects.toBeInstanceOf(CodeCollisionError);
+    await expect(withUniqueCode(insert, () => generateCode(6))).rejects.toBeInstanceOf(
+      CodeCollisionError,
+    );
     expect(insert).toHaveBeenCalledTimes(5);
   });
 
   it("does not retry other errors", async () => {
     const insert = vi.fn().mockRejectedValue(new Error("connection lost"));
-    await expect(withUniqueCode(insert, { length: 6 })).rejects.toThrow("connection lost");
+    await expect(withUniqueCode(insert, () => generateCode(6))).rejects.toThrow("connection lost");
     expect(insert).toHaveBeenCalledTimes(1);
   });
 });
@@ -121,7 +124,7 @@ describe("[P1-01] code generator injection (collision tests)", () => {
         if (seen.length < 3) throw Object.assign(new Error("dup"), { code: "23505" });
         return code;
       },
-      { length: 6, generate: () => codes.shift() ?? "ZZZZZZ" },
+      () => codes.shift() ?? "ZZZZZZ",
     );
     expect(out).toBe("BBBBBB");
     expect(seen).toEqual(["AAAAAA", "AAAAAA", "BBBBBB"]);

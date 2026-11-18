@@ -1,6 +1,12 @@
 import "server-only";
 import { and, asc, eq, gte, lt } from "drizzle-orm";
-import { CodeCollisionError, normaliseCode, SHOP_CODE_LENGTH, withUniqueCode } from "@/lib/codes";
+import type { ShopCode, ShopId } from "@/lib/brand";
+import {
+  CodeCollisionError,
+  generateShopCode,
+  normaliseShopCode,
+  withUniqueCode,
+} from "@/lib/codes";
 import type { LngLat } from "@/lib/geo";
 import { addDays } from "@/lib/time";
 import {
@@ -23,7 +29,7 @@ const PUBLIC_SHOP_READ = publicScope(
  * The code is normalised first (case, spaces, a dash); anything that can't be a code returns null without a query.
  */
 export async function findActiveShopName(input: string): Promise<string | null> {
-  const shopCode = normaliseCode(input, SHOP_CODE_LENGTH);
+  const shopCode = normaliseShopCode(input);
   if (!shopCode) return null;
   const [row] = await withScope(PUBLIC_SHOP_READ, (q) =>
     q
@@ -49,8 +55,8 @@ export type NewShop = Omit<
 export async function createShop(
   scope: AdminScope,
   input: NewShop,
-  opts: { tx?: Transaction; /** Tests only: force collisions. */ generate?: () => string } = {},
-): Promise<{ id: string; shopCode: string }> {
+  opts: { tx?: Transaction; /** Tests only: force collisions. */ generate?: () => ShopCode } = {},
+): Promise<{ id: ShopId; shopCode: ShopCode }> {
   return withScope(
     scope,
     async (q) => {
@@ -65,7 +71,7 @@ export async function createShop(
               if (!row) throw new Error("createShop: no row returned");
               return row;
             }),
-          { length: SHOP_CODE_LENGTH, generate: opts.generate },
+          opts.generate ?? generateShopCode,
         );
       } catch (err) {
         if (err instanceof CodeCollisionError) {
@@ -146,12 +152,12 @@ const PUBLIC_LANDING_READ = publicScope(
 );
 
 /**
- * Reads a shop's public landing data by an already-normalised code (`normaliseCode`). Pending and unknown
+ * Reads a shop's public landing data by an already-normalised code (`normaliseShopCode`). Pending and unknown
  * shops are `none` (RLS hides pending shops from the public too); suspended and closed shops return only
  * their name. Callers go through `loadShopLanding` (src/server/services/shop-landing.ts), which caches this.
  */
 export async function readShopLanding(
-  shopCode: string,
+  shopCode: ShopCode,
   /** Today in London (YYYY-MM-DD, `londonDate`): the closures window is built around it, never the DB clock. */
   today: string,
 ): Promise<ShopLandingData> {
@@ -223,7 +229,7 @@ export async function findJoinableShop(
   shopCode: string,
   tx: Transaction,
 ): Promise<{ kind: "live"; id: string; name: string } | { kind: "gone" } | { kind: "none" }> {
-  const code = normaliseCode(shopCode, SHOP_CODE_LENGTH);
+  const code = normaliseShopCode(shopCode);
   if (!code) return { kind: "none" };
   const [row] = await withScope(
     scope,

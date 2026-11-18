@@ -9,7 +9,7 @@ import { MARKETING_CONSENT_VERSION, marketingConsentParts } from "@/features/joi
 import { JoinSheet } from "@/features/join/JoinSheet";
 import { LandingFooter, ShopLanding } from "@/features/landing/ShopLanding";
 import { StatePage } from "@/features/portal/StatePage";
-import { normaliseCode, SHOP_CODE_LENGTH } from "@/lib/codes";
+import { normaliseShopCode } from "@/lib/codes";
 import { gateEntrySource } from "@/lib/motion/gilded-gate";
 import { requireCustomer } from "@/server/authz";
 import { currentPrincipal } from "@/server/authz/principal";
@@ -37,7 +37,7 @@ async function landing(raw: string): Promise<{ code: string | null; data: ShopLa
   } catch {
     return { code: null, data: { kind: "none" } }; // a malformed escape is just an unknown code
   }
-  const code = normaliseCode(decoded, SHOP_CODE_LENGTH);
+  const code = normaliseShopCode(decoded);
   return { code, data: code ? await loadShopLanding(code) : { kind: "none" } };
 }
 

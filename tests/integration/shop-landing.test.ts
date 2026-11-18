@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { Redis } from "ioredis";
 import { afterAll, describe, expect, it } from "vitest";
+import type { ShopCode } from "@/lib/brand";
 import { addDays, londonDate } from "@/lib/time";
 import { cacheKey, cacheRedis } from "@/server/cache";
 import { testOwnerDb as db } from "@/server/db/client";
@@ -32,7 +33,7 @@ afterAll(() => {
 function counted() {
   let reads = 0;
   return {
-    read: async (code: string, today: string): Promise<ShopLandingData> => {
+    read: async (code: ShopCode, today: string): Promise<ShopLandingData> => {
       reads += 1;
       return readShopLanding(code, today);
     },
@@ -113,7 +114,7 @@ describe("[P1-02] shop landing data: states", () => {
       name: "Gone Ltd",
     });
     expect(await readShopLanding(pending.shopCode, TODAY)).toEqual({ kind: "none" });
-    expect(await readShopLanding("ZZZZZZ", TODAY)).toEqual({ kind: "none" });
+    expect(await readShopLanding("ZZZZZZ" as ShopCode, TODAY)).toEqual({ kind: "none" });
   });
 
   it("an impossible code is none without a cache or database touch; case and spaces are normalised", async () => {

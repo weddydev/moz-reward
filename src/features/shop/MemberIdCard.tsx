@@ -1,3 +1,4 @@
+import type { MemberId } from "@/lib/brand";
 import { formatMemberId } from "@/lib/codes";
 
 /**
@@ -9,7 +10,7 @@ export function MemberIdCard({
   memberId,
   fullName,
 }: {
-  memberId: string;
+  memberId: MemberId;
   fullName: string;
 }): React.JSX.Element {
   return (

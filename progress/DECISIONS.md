@@ -777,3 +777,23 @@ Consequence: P1-12 stores the ingot start time on the membership (C-60). Saves a
 Decision: earn rate 1–500 gold per visit (the 500-gold single-award cap) or 1–100 gold per £1; ingot 100–100,000; reward texts 2–60 characters (hidden characters refused); tiers Silver ≥ 1 < Gold ≤ 1,000 ingots; expiry off or 12–60 months; streak stored as `{ bonusGold }` or off, with the ISO-week rule fixed (PRODUCT §6 wins over "window days" in the phase build list). The page is owner-only (was open to staff in the P0-12 route table). A shop has no programme until its owner saves one (templates fill the form); the demo seed gives Brew & Bloom Café v1 (Café classic). `created_by` has no FK (an immutable row can't be nulled on erasure; like audit_logs).
 Why: PRODUCT is silent on the bounds; these keep every value meaningful and inside the award cap. Auto-creating a programme would pick terms the owner never saw.
 Consequence: P1-11 refuses requests at a shop with no programme (edge case added). Main reward image waits for the P2-05 upload pipeline (C-61).
+
+## 2026-11-18 — Loyalty engine rules where PRODUCT is silent (P1-06)
+Decision: per-pound = floor(pence × rate / 100), floored once after multipliers (whole-percent factors 100–1000, multiplied); the streak bonus is not multiplied; a late approval from an earlier week leaves the streak alone; a new ingot starts at the approval time; tier thresholds come from the version in force at the award; expiry uses the version in force now, needs an approved visit to measure from, and keeps any shortfall; milestones reached stay reached after a reversal or expiry (no second unlock in that ingot); "visits to next" averages the last 10 awards.
+Why: the phase brief names floor(pence/100 × rate) and one rounding after stacking; the rest is the simplest rule that keeps gold conserved and rewards unrevocable (property-tested).
+Consequence: P1-12 stores `ingot_started_at`, `milestones_reached`, `gold_shortfall`, tier and streak on the membership (with C-60) and writes `earn` + `bonus_streak` rows from `Award`; P1-13 runs `computeExpiry`.
+
+## 2026-11-18 — fast-check for property tests (P1-06)
+Decision: dev dependency `fast-check` 4.10 (MIT, no runtime deps, releases monthly, test-only so no bundle impact).
+Why: TESTING §2 / P1-06 require property-based tests of the loyalty engine; fast-check is the standard for Vitest and shrinks failures to a minimal counterexample.
+Consequence: property tests keep hot loops `expect`-free (a plain throwing `check`) so 300 runs × 40 steps stay ~0.25 s under the 5 s unit timeout.
+
+## 2026-11-18 — Branded types: how they are minted (C-56, P1-06)
+Decision: `src/lib/brand.ts` defines `ShopCode`, `MemberId`, `ShopId`, `Points`, `Pence`; codes are minted only by `normaliseShopCode`/`normaliseMemberId`/`generateShopCode`/`generateMemberId`, ids by `parseShopId`, amounts by `points()`/`pence()` (throw on negatives, fractions, unsafe integers); DB rows carry the brands through schema `$type` on `shops.id`, `shops.shop_code`, `customer_profiles.member_id`. `withUniqueCode` now takes the generator. Tests cast only where a bad value is the point (DB check constraints).
+Why: ENGINEERING §2; a member ID and a shop code share alphabet and length, so only a brand stops a swap.
+Consequence: new code takes the branded type at the boundary; `@ts-expect-error` swaps in `brand.test.ts` fail typecheck if a brand is ever weakened (shown once).
+
+## 2026-11-18 — Audit scrubber keeps data-key ids whole (P1-04 fix, found in the P1-06 gate)
+Decision: `scrubAuditMeta` keeps a string that is exactly a key id (`isKeyId`: `k` + 10 lower-case hex) and scrubs everything else as before.
+Why: ~1 in 12 key ids has 7+ digits in a row, so the phone rule cut them out of `keys.reencrypt` audit rows (and `key-rotation.test.ts` failed at that rate). Key ids are derived, not secret, and stored beside every sealed value; a phone number can't have that shape.
+Consequence: regression test `src/server/services/audit.test.ts`; reviewed with the P1-B close (scrubber change).
