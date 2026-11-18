@@ -7,19 +7,19 @@ Baton: held by talha.syed since 2026-11-18 11:49 IST (Mac)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handed over by talha.syed, 2026-11-17 21:55 IST (Mac). Baton free.** Finished today: P1-02, P1-03, P1-04 and the **P1-A MEDIUM batch** (`e05c785` on main): M1 rejoin DB wall (migration **0021**), M2 consent answer checked against the shop name shown (`consentShopName`), L3 `errorSummary` in `keys:reencrypt`, P1-02 design M2 (landing shots with a real cover: `tests/e2e/fixtures/shop-cover.jpg`, `cover: true` on `/api/test/shop`) and M5 (cookie notice first paint with JS off + hydrated at 320/390).
-- **Next = `/subphase-complete` P1-A**: CI green, staging smoke (deploy of `e05c785`), Sentry, code/design reviews of commits not yet reviewed (P1-01..04 non-security parts + the P0-E commits, C-49), scoped QA of landing + join screens. Then P1-B's first task.
-- **Half-done:** nothing. No wip branch to continue; merged `wip/P1-02/03/04` await deletion (H-38).
-- **Tested:** gate:task P1-04 P1-02 J1 on the `e05c785` tree PASS (unit 1511/0, int 1341/0/1 skip C-53, sast, e2e 30/0 Chromium + WebKit); cookie-notice spec 5/5 projects; screenshots 320/390/1440 inspected; security-reviewer on the batch PASS. CI `44107979353` (P1-04) green; Deploy `44110092209` green.
-- **Not yet tested:** CI `44123070994` on `e05c785` (queued at handoff) and its deploy — check first; red CI is fixed before anything else. The join sheet on a real iPhone (H-13); earlier list (Gilded Gate on a real phone, C-48 items, SSE via Cloudflare, Sentry staging releases, seed-reset timer Mon 23 Nov).
-- **Do first:** `git pull`; other laptop: `pnpm install` and `pnpm db:migrate` (0020, 0021). Mac: long gates under `caffeinate -i`. VPS access as before: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`; `sudo -n` works.
+- **Checkpoint by talha.syed, 2026-11-18 (Mac). Baton held.** `/subphase-complete` P1-A in progress on **`wip/P1-A-close`, HEAD `576bd33`**. **Everything about the close is in `progress/P1-A-close-plan.md`** (verdicts, full finding text, fix order) — read it first.
+- **Done:** CI `44123070994` green after re-running a gitleaks job that never got a runner; deploy `44250664237` (e05c785) green; staging smoke PASS (in-container, 3 demo shops); 4 reviews + QA ran. Fixed on the wip branch (uncommitted on main): P0-E HIGH H1 + M1 + M2 (`infra/host/moz-deploy` put-back on roll_rest failure, `scripts/moz-deploy-release.test.ts` 20 tests, 6 red on the old script) and the SENTRY_DSN shape check (`src/server/env.ts`, H-48).
+- **Next exact step:** `/resume` → `git switch wip/P1-A-close` → follow the plan's "Order for the next session": QA-MAJ1 (stale landing after back), QA-MAJ2 (logo shrink), SEC-M1/M2 (memberships + shops column guards), DES-M1..M3, CR-M1..M3; then gate:task, security-reviewer on the batch, design re-check, one commit, merge, close commit.
+- **Half-done:** the close itself (PHASES P1-A line not ticked). **Not yet tested:** the wip changes ran only as unit files (env 24/0, moz-deploy + release 180/0 total) + typecheck; no gate:task, no CI on them yet.
+- **🔴 H-48:** staging `SENTRY_DSN_STAGING` = "gh secret list" → no staging error reporting; with the new boot check a deploy will roll back until the human fixes it.
+- **Do first:** `git pull`; other laptop: `pnpm install`, `pnpm db:migrate`. Mac: long gates under `caffeinate -i`. VPS: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`.
 
 ## Status
 - **Phase:** **P1**. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
-- **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → ~~P1-02~~ → ~~P1-03~~ → ~~P1-04~~ → ~~MEDIUM batch~~ → **`/subphase-complete`**.
+- **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → ~~P1-02~~ → ~~P1-03~~ → ~~P1-04~~ → ~~MEDIUM batch~~ → **`/subphase-complete`** (in progress, `wip/P1-A-close`, plan in `progress/P1-A-close-plan.md`).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-17, talha.syed (handoff after the P1-A MEDIUM batch)
+- **Last updated:** 2026-11-18, talha.syed (checkpoint during `/subphase-complete` P1-A)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -27,9 +27,9 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **P0 closed 17 Nov (human: no more time on P0).** P0-15 ticked; leftovers C-48/C-49 → P1-18. **P1-A:** P1-01 (13 Nov), P1-02, P1-03, P1-04 and the MEDIUM batch (17 Nov) done; next `/subphase-complete` P1-A.
 
 ## Next (top 3)
-1. `/subphase-complete` P1-A (also reviews the unreviewed P0-E commits, C-49).
+1. Finish `/subphase-complete` P1-A: fix batch per `progress/P1-A-close-plan.md` (reviews of P1-A + P0-E done 18 Nov, C-49 review part).
 2. P1-B, first task (phase file).
-3. Human, any time: H-45 UptimeRobot monitors (then the stop-staging phone alert test, C-48); H-46 Cloudflare `/s/*` rule; H-47 re-enable the Scheduled workflow? (🟢).
+3. Human, any time: H-45 UptimeRobot monitors (then the stop-staging phone alert test, C-48); H-46 Cloudflare `/s/*` rule.
 
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -58,7 +58,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-49 | P0 close (human 17 Nov) | P1-18 + P1 `/phase-complete` | P0's heavy gate and definition of done: `gate:phase` covers P0 + P1; code/security/design reviews of P0-E commits not yet reviewed (at the P1-A close); P0 DoD bullets checked; client demo covers P0 + P1 together (`docs/DEMO_GUIDE.md` + Demo 2). (P0 close lines in PHASES ticked 17 Nov by the human's decision.) | gate:phase summary + SESSION_LOG + DEMO_NOTES |
 
 ## Blockers
-- Human: none blocking. Now: H-45 (UptimeRobot staging monitors, after the `e9aa786` deploy), H-42 tail (delete the old `moz-backups` B2 key). Needed later: at the P0 close H-29 (`backup:verify`), H-13 (real devices), H-23 (drafts to the solicitor), H-14 (send demo notes).
+- Human: **H-48 🔴** (staging Sentry DSN; blocks the next staging deploy once the batch lands). Now: H-45 (UptimeRobot staging monitors, after the `e9aa786` deploy), H-42 tail (delete the old `moz-backups` B2 key). Needed later: at the P0 close H-29 (`backup:verify`), H-13 (real devices), H-23 (drafts to the solicitor), H-14 (send demo notes).
 - Technical: C-40 (quarantined test) blocks the P0 phase gate. Known risk: wal-g `wal-push` hangs without `ca-certificates` in the Postgres image (wal-g #2550).
 
 ## Map of the codebase
