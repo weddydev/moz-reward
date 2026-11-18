@@ -684,3 +684,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - gate:task P1-05 P0-12 PASS: unit 1548/0, int 1373/0/12, sast, e2e 72/0/6 (Chromium + WebKit). Screens inspected: not-set-up / reward-notice / field-errors at 320 + 1440 (Chromium, WebKit), staff 403.
 - Push: pre-push re-ran the gate with IDs taken from the commit body (P1-10, P1-08, P1-12, P2-05 → 0 E2E); first attempt failed (log overwritten, cause NOT VERIFIED), second PASS. Staging deploy of ab29272 failed at the seed on the placeholder SENTRY_DSN (H-48); staging still serves 8353e00 (`/api/health/ready` 200); 0022/0023 applied there.
 - Not security-list task: its diff is reviewed at the P1-B close.
+
+## 2026-11-18 — P1 — P1-06 loyalty engine (Windows, Syedbadeshah76)
+- Built pure `src/lib/loyalty/engine.ts` (calculateAward, applyAward, applyReversal, estimateVisitsToNext, computeExpiry) + `src/lib/time.ts` London week/month/day helpers; fast-check added. C-56 closed: `src/lib/brand.ts` brands threaded through schema `$type`, repos, services, tests. Commit `2479b62`.
+- Engine tests 50/0 (47 unit + 3 properties, 300 runs × 40 steps in ~0.25 s); coverage engine.ts 98.0% lines / 96.2% branches / 100% functions. Negative checks shown once: broken reversal → property counterexample; weakened brand → typecheck "unused @ts-expect-error".
+- Gate runs 1–2 red: my join.test assertion (fixed); `key-rotation.test.ts` — real P1-04 bug: audit scrubber cut 7+ digit runs out of key ids (~1 in 12 keys) → `isKeyId` exemption + regression test `audit.test.ts`.
+- gate:task P1-06 P1-02 P1-04 PASS: unit 1609/0, int 1373/0/12, build, sast, e2e 40/0 (Chromium + WebKit). Pre-push reused the stamp. CI for `f1b2658` green; Deploy still fails on the placeholder SENTRY_DSN (H-48).
+- Not security-list task: diff (incl. the scrubber fix) reviewed at the P1-B close.
