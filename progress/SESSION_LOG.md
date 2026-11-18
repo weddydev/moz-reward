@@ -677,3 +677,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - gate:task P1-04 P1-02 J1 P0-15 PASS (unit 1513/0, int 1342/0/12, sast, e2e 40/0); CI `44276804681` green; full local E2E 972 passed (long-task test passes alone and in CI; WebKit fails are Linux run `44283257480`'s to judge).
 - security-reviewer (batch): PASS, 1 MEDIUM fixed (boot: web pool logs in as moz_app itself), 3 LOW → FOLLOWUPS. design-reviewer re-check: PASS WITH FIXES, 2 LOW → FOLLOWUPS; missing states shot with a throwaway spec and inspected.
 - code-review done 01652c3 (P1-A close batch). Staging step waits for H-48.
+
+## 2026-11-18 — P1 — P1-05 loyalty programme (Windows, Syedbadeshah76)
+- Built `loyalty_programs` (0024: immutable, CHECKs, RLS team/admin read + owner insert as self), pure rules `src/lib/loyalty/programme.ts` (active_from / rewards_from, 14-day notice, revert, ingotTerms), `saveProgramme` (advisory lock, base-version CONFLICT), owner-only `/dashboard/loyalty`, demo seed v1 for Brew. Commit `f1b2658`.
+- Red/first runs caught: P0-03 db-foundation guards (updated_at trigger, TRUNCATE guard, grants list) on the new table; Semgrep bidi char in a test; WebKit hydration race (typing before hydration lost) → form disabled until hydrated (C-20), spec 12/12 with --repeat-each 2.
+- gate:task P1-05 P0-12 PASS: unit 1548/0, int 1373/0/12, sast, e2e 72/0/6 (Chromium + WebKit). Screens inspected: not-set-up / reward-notice / field-errors at 320 + 1440 (Chromium, WebKit), staff 403.
+- Push: pre-push re-ran the gate with IDs taken from the commit body (P1-10, P1-08, P1-12, P2-05 → 0 E2E); first attempt failed (log overwritten, cause NOT VERIFIED), second PASS. Staging deploy of ab29272 failed at the seed on the placeholder SENTRY_DSN (H-48); staging still serves 8353e00 (`/api/health/ready` 200); 0022/0023 applied there.
+- Not security-list task: its diff is reviewed at the P1-B close.
