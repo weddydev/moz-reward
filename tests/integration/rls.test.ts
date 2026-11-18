@@ -258,12 +258,14 @@ describe("[P0-20] AC1: with the app filter removed, RLS alone blocks cross-shop 
 describe("[P0-20] AC1: with the app filter removed, RLS alone blocks cross-shop writes", () => {
   it("shop scope: an unfiltered UPDATE touches only its own shop; inserting into another shop fails", async () => {
     const { shopA } = scopes();
+    // The visit counter: the one kind of membership column a shop's team may write (0022).
+    const visit = new Date("2026-11-18T09:00:00Z");
     const updated = await withScope(shopA, (q) =>
-      q.update(memberships).set({ muted: true }).returning({ shopId: memberships.shopId }),
+      q.update(memberships).set({ lastVisitAt: visit }).returning({ shopId: memberships.shopId }),
     );
     expect(updated.map((r) => r.shopId)).toEqual([w.shopA.id, w.shopA.id]);
     const [bRow] = await db().select().from(memberships).where(eq(memberships.shopId, w.shopB.id));
-    expect(bRow?.muted).toBe(false);
+    expect(bRow?.lastVisitAt).toBeNull();
 
     const renamed = await withScope(shopA, (q) =>
       q.execute(sql`UPDATE shops SET description = 'rls probe' RETURNING id`),

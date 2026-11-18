@@ -195,6 +195,11 @@ export function databaseRoleProblem(
     row.ownsTables ? "owns (or is a member of the owner of) tables in public" : null,
     row.canCreate ? "can create in schema public" : null,
     role && !row.memberOf.includes(role) ? `is not a member of ${role}` : null,
+    // P1-A close (security review): the column guards (drizzle/0014, 0020–0023) limit `current_user = 'moz_app'`
+    // and let other roles through, so the web pool must log in as moz_app itself, not a login that is a member.
+    role === "moz_app" && row.name !== role
+      ? "logs in under another name (the column guards need the moz_app login itself)"
+      : null,
     others.length > 0 ? `can act as ${others.join(", ")}` : null,
     row.createRole ? "can create roles" : null,
     row.createDb ? "can create databases" : null,

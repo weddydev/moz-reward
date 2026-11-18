@@ -337,7 +337,8 @@ test("[P1-04] the marketing question is a short label with its details below; a 
   page,
   signInAs,
 }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  // iPhone SE height: the first-join form runs past the fold here (at 390×844 it now fits, so no fade there).
+  await page.setViewportSize({ width: 375, height: 667 });
   await signInAs("customer", { profile: false });
   const shopName = "Fade Mask Florist";
   const { shopCode } = await seedShop(page.request, { status: "active", name: shopName });
