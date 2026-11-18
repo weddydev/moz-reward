@@ -271,3 +271,55 @@ test("[P1-04] sheet and shop page at 1440: the sheet is a centred modal", async 
   await expect(page).toHaveURL(`/shops/${shopId}?welcome=1`);
   await shoot("shop-page-welcome-1440");
 });
+
+test("[P1-04] back after joining shows the member landing, never the stale sheet (P1-A QA-MAJ1)", async ({
+  page,
+  signInAs,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signInAs("customer", { profile: false });
+  const shopName = "Back Button Bakery";
+  const { shopId, shopCode } = await seedShop(page.request, { status: "active", name: shopName });
+  await page.goto(`/s/${shopCode}`);
+  await page.getByTestId("landing-collect").click();
+  const sheet = joinSheet(page, shopName);
+  await expect(sheet).toBeVisible();
+  await fillProfile(page, { name: "Ben Carter", phone: "07400 555666" });
+  await sheet.getByTestId("join-submit").click();
+  await expect(page).toHaveURL(`/shops/${shopId}?welcome=1`);
+
+  // Browser back: the landing the router kept from before the join must not come back.
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`/s/${shopCode}$`));
+  await expect(page.getByText("You’re a member")).toBeVisible();
+  await expect(page.getByTestId("landing-collect")).toHaveAttribute("href", `/shops/${shopId}`);
+  await page.getByTestId("landing-collect").click();
+  await expect(page).toHaveURL(`/shops/${shopId}`);
+  await expect(joinSheet(page, shopName)).toHaveCount(0);
+});
+
+test("[P1-04] an 80-character shop name wraps; the logo on the shop page stays square (P1-A QA-MAJ2)", async ({
+  page,
+  signInAs,
+  shoot,
+}) => {
+  const shopName =
+    "The Extraordinarily Long Named Neighbourhood Coffee House and Bakery of Leeds Ltd";
+  expect(shopName.length).toBeLessThanOrEqual(80);
+  const { userId } = await signInAs("customer");
+  const { shopId } = await seedShop(page.request, {
+    status: "active",
+    name: shopName,
+    memberUserId: userId,
+  });
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`/shops/${shopId}`);
+    const logo = page.getByTestId("shop-logo");
+    const box = await logo.boundingBox();
+    expect(box, `logo at ${String(width)}`).not.toBeNull();
+    expect(box!.width, `logo width at ${String(width)}`).toBe(80);
+    expect(box!.height, `logo height at ${String(width)}`).toBe(80);
+    await shoot(`shop-page-long-name-${String(width)}`, { fullPage: false });
+  }
+});
