@@ -186,7 +186,9 @@ test("[J1][P1-04] international number refused with the UK-only message; abandon
 test("[J1][P1-04] a shop suspended while the sheet is open: the join is refused with a message", async ({
   page,
   signInAs,
+  shoot,
 }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await signInAs("customer", { profile: false });
   const { shopId, shopCode } = await seedShop(page.request, {
     status: "active",
@@ -200,9 +202,15 @@ test("[J1][P1-04] a shop suspended while the sheet is open: the join is refused 
 
   await setShopStatus(page.request, shopId, "suspended");
   await sheet.getByTestId("join-submit").click();
-  await expect(sheet.getByTestId("join-error")).toHaveText(
-    "This shop isn't taking new members on Moz Rewards right now.",
-  );
+  const error = sheet.getByTestId("join-error");
+  await expect(error).toHaveText("This shop isn't taking new members on Moz Rewards right now.");
+  // P1-A DES-M1: the message sits by the button, on screen, and the button can only close the sheet now.
+  await expect(sheet.locator('[data-part="footer"]').getByTestId("join-error")).toHaveCount(1);
+  await expect(error).toBeInViewport();
+  await expect(sheet.getByTestId("join-submit")).toHaveText("Close");
+  await shoot("join-sheet-not-joinable-390", { fullPage: false });
+  await sheet.getByTestId("join-submit").click();
+  await expect(sheet).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`/s/${shopCode}$`));
   // No membership was made: the shop page stays "not found" for this customer.
   await page.goto(`/shops/${shopId}`);
@@ -316,10 +324,69 @@ test("[P1-04] an 80-character shop name wraps; the logo on the shop page stays s
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/shops/${shopId}`);
     const logo = page.getByTestId("shop-logo");
+    await expect(logo).toBeVisible();
     const box = await logo.boundingBox();
     expect(box, `logo at ${String(width)}`).not.toBeNull();
     expect(box!.width, `logo width at ${String(width)}`).toBe(80);
     expect(box!.height, `logo height at ${String(width)}`).toBe(80);
     await shoot(`shop-page-long-name-${String(width)}`, { fullPage: false });
   }
+});
+
+test("[P1-04] the marketing question is a short label with its details below; a long form fades until scrolled (P1-A DES-M2, DES-M3)", async ({
+  page,
+  signInAs,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signInAs("customer", { profile: false });
+  const shopName = "Fade Mask Florist";
+  const { shopCode } = await seedShop(page.request, { status: "active", name: shopName });
+  await page.goto(`/s/${shopCode}`);
+  await page.getByTestId("landing-collect").click();
+  const sheet = joinSheet(page, shopName);
+  await expect(sheet).toBeVisible();
+  await expect(
+    sheet.getByRole("checkbox", { name: `Get offers and news from ${shopName}?`, exact: true }),
+  ).toHaveCount(1);
+  await expect(
+    sheet.getByText("We'll send them in the app only, never by email.", { exact: false }),
+  ).toBeVisible();
+  const body = sheet.locator('[data-part="body"]');
+  await expect(body).toHaveAttribute("data-overflow");
+  await body.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  await expect(body).not.toHaveAttribute("data-overflow");
+});
+
+test("[P1-04] a double tap on Join makes one join and still shows the welcome (P1-A QA minor 4)", async ({
+  page,
+  signInAs,
+}) => {
+  await signInAs("customer");
+  const shopName = "Double Tap Deli";
+  const { shopId, shopCode } = await seedShop(page.request, { status: "active", name: shopName });
+  await page.goto(`/s/${shopCode}`);
+  await page.getByTestId("landing-collect").click();
+  const sheet = joinSheet(page, shopName);
+  await expect(sheet).toBeVisible();
+  await sheet.getByTestId("join-submit").dblclick();
+  await expect(page).toHaveURL(`/shops/${shopId}?welcome=1`);
+  await expect(page.getByTestId("join-welcome")).toBeVisible();
+});
+
+test("[P1-04] a session that ends while the sheet is open goes to sign-in and back to the sheet (P1-A QA minor 3)", async ({
+  page,
+  signInAs,
+}) => {
+  await signInAs("customer");
+  const shopName = "Expired Espresso";
+  const { shopCode } = await seedShop(page.request, { status: "active", name: shopName });
+  await page.goto(`/s/${shopCode}`);
+  await page.getByTestId("landing-collect").click();
+  const sheet = joinSheet(page, shopName);
+  await expect(sheet).toBeVisible();
+  await page.context().clearCookies();
+  await sheet.getByTestId("join-submit").click();
+  await expect(page).toHaveURL(`/sign-in?returnTo=${encodeURIComponent(`/s/${shopCode}?join=1`)}`);
 });

@@ -1,4 +1,5 @@
 import "server-only";
+import { LONDON_TZ } from "@/lib/time";
 import { sealEnvelope } from "./envelope";
 import { getQueue } from "./queues";
 import { DEFAULT_JOB_OPTIONS, jobDef } from "./registry";
@@ -9,7 +10,7 @@ import type { JobName, JobPayload, QueueName } from "./registry";
  * "06:00" means 06:00 UK time across the BST change. Registration is idempotent (upsert by id), so restarts
  * never double-register; only schedules listed in RETIRED_SCHEDULES are removed.
  */
-export const SCHEDULE_TZ = "Europe/London";
+export const SCHEDULE_TZ = LONDON_TZ;
 
 export type ScheduleDef = {
   id: string;

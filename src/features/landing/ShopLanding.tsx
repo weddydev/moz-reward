@@ -6,8 +6,9 @@ import { Icon } from "@/components/ui/Icon";
 import { initialsOf } from "@/lib/initials";
 import { openStatus } from "@/lib/open-status";
 import { directionsUrl, telHref } from "@/lib/shop-links";
+import { londonDate } from "@/lib/time";
 import type { ShopLandingData } from "@/server/repos/shops";
-import { addressLine, areaLine, londonDate, statusLabel, weekRows } from "./view";
+import { addressLine, areaLine, statusLabel, weekRows } from "./view";
 
 type Live = Extract<ShopLandingData, { kind: "live" }>;
 

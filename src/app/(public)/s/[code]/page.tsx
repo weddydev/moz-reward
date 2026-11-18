@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { GildedGate, GildedGateMorph } from "@/components/motion/GildedGate";
 import { buttonClasses } from "@/components/ui/Button";
-import { MARKETING_CONSENT_VERSION, marketingConsentText } from "@/features/join/consent";
+import { MARKETING_CONSENT_VERSION, marketingConsentParts } from "@/features/join/consent";
 import { JoinSheet } from "@/features/join/JoinSheet";
 import { LandingFooter, ShopLanding } from "@/features/landing/ShopLanding";
 import { StatePage } from "@/features/portal/StatePage";
@@ -141,7 +141,7 @@ export default async function ShopLandingPage({
         needsProfile={visitor.needsProfile}
         consent={{
           version: MARKETING_CONSENT_VERSION,
-          text: marketingConsentText(data.shop.name),
+          ...marketingConsentParts(data.shop.name),
           shopName: data.shop.name,
         }}
         autoOpen={query.join === "1"}

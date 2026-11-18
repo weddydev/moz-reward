@@ -12,8 +12,10 @@ import {
   runDemoSeed,
   totpCode,
 } from "@/server/db/demo-seed";
-import { sessions, shops, users } from "@/server/db/schema";
+import { customerProfiles, sessions, shops, users } from "@/server/db/schema";
 import { env } from "@/server/env";
+import { openField } from "@/server/security/field-crypto";
+import { fieldKeyring, phoneBlindIndex, profilePhoneContext } from "@/server/security/field-keys";
 import { purposeKey } from "@/server/security/keys";
 import { checkDemoSignIn } from "../../scripts/demo-signin-check";
 import { cookieHeaderFrom } from "../fixtures/auth";
@@ -93,6 +95,26 @@ describe("[P0-16] demo seed is idempotent and consistent", () => {
     });
     expect(await seed()).toEqual({ users: 0, shops: 0, staff: 0, admins: 0, memberships: 0 });
     expect(await counts()).toEqual(after1);
+  });
+
+  it("[P1-04] the demo customer's profile is complete like one made by a join: sealed UK mobile, 13+ declared (P1-A CR-M2)", async () => {
+    await resetDemo(dbAs("system"));
+    await seed();
+    const customer = DEMO_ACCOUNTS.find((a) => a.key === "customer");
+    const [row] = await db()
+      .select()
+      .from(customerProfiles)
+      .where(eq(customerProfiles.userId, customer?.id ?? ""));
+    expect(row?.ageDeclaredAt).toBeInstanceOf(Date);
+    expect(row?.phoneEnc && row.phoneKeyId).toBeTruthy();
+    const phone = openField(
+      fieldKeyring(),
+      { keyId: row?.phoneKeyId ?? "", ciphertext: row?.phoneEnc ?? "" },
+      profilePhoneContext(customer?.id ?? ""),
+    );
+    // Ofcom's drama range: never a real person's number.
+    expect(phone).toMatch(/^\+447700900\d{3}$/);
+    expect(row?.phoneHash).toBe(phoneBlindIndex(phone));
   });
 
   it("a re-run keeps what someone changed (shop name), --reset restores it with the same ids and codes", async () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { addressLine, areaLine, londonDate, statusLabel, weekRows } from "./view";
+import { londonDate } from "@/lib/time";
+import { addressLine, areaLine, statusLabel, weekRows } from "./view";
 
 describe("[P1-02] landing view helpers", () => {
   it("status line for each open state, with midnight and other-day openings", () => {

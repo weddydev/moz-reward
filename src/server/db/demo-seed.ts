@@ -4,6 +4,8 @@ import { symmetricEncrypt } from "better-auth/crypto";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type { LngLat } from "@/lib/geo";
 import { hashPassword } from "@/server/auth/password";
+import { sealField } from "@/server/security/field-crypto";
+import { fieldKeyring, phoneBlindIndex, profilePhoneContext } from "@/server/security/field-keys";
 import {
   accounts,
   adminMembers,
@@ -97,6 +99,8 @@ type DemoAccount = {
 };
 
 const BREW = DEMO_SHOPS[0].id;
+/** The demo customer's mobile (E.164), from Ofcom's drama range 07700 900000–900999: never a real number. */
+const DEMO_PHONE = "+447700900123";
 
 /** One account per role. Staff and owner belong to Brew & Bloom Café. Names are invented. */
 export const DEMO_ACCOUNTS = [
@@ -329,12 +333,19 @@ export async function runDemoSeed(
           await tx.insert(twoFactors).values({ userId: account.id, ...totp, verified: true });
         }
         if (account.memberId) {
+          // Complete like a profile made by a join (UK mobile + 13+ declared): the app treats "has a profile"
+          // as "profile complete" (DECISIONS 18 Nov, P1-A CR-M2). The number is in Ofcom's drama range.
+          const sealed = sealField(fieldKeyring(), DEMO_PHONE, profilePhoneContext(account.id));
           await tx.insert(customerProfiles).values({
             userId: account.id,
             fullName: account.name,
             memberId: account.memberId,
+            phoneEnc: sealed.ciphertext,
+            phoneKeyId: sealed.keyId,
+            phoneHash: phoneBlindIndex(DEMO_PHONE),
             isAdultConfirmed: true,
             adultConfirmedAt: new Date(),
+            ageDeclaredAt: new Date(),
           });
         }
       }

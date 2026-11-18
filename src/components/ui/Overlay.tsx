@@ -142,19 +142,26 @@ export function Overlay({
   }, [phase, finish]);
 
   // A body that scrolls must be reachable by keyboard (axe scrollable-region-focusable); one that fits is not a stop.
+  // While more of it sits below the fold, `data-overflow` fades its bottom edge as a scroll cue (P1-A DES-M2).
   useEffect(() => {
     const body = bodyRef.current;
     if (phase !== "open" || !body || typeof ResizeObserver === "undefined") return;
     const update = () => {
       if (body.scrollHeight > body.clientHeight + 1) body.tabIndex = 0;
       else body.removeAttribute("tabindex");
+      body.toggleAttribute(
+        "data-overflow",
+        body.scrollTop + body.clientHeight < body.scrollHeight - 1,
+      );
     };
     const observer = new ResizeObserver(update);
     observer.observe(body);
     for (const child of body.children) observer.observe(child);
+    body.addEventListener("scroll", update, { passive: true });
     update();
     return () => {
       observer.disconnect();
+      body.removeEventListener("scroll", update);
     };
   }, [phase, hydrated]);
 

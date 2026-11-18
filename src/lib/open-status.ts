@@ -1,6 +1,6 @@
 /**
  * Open / closed status of a shop (P1-01, PRODUCT §4). Pure: the caller passes the shop's hours, special
- * closures and the current instant. All shops are in Europe/London (ARCHITECTURE §4: timezone fixed).
+ * closures and the current instant. All shops are in UK time (ARCHITECTURE §4; src/lib/time.ts).
  *
  * Each opening window is turned into real instants first, so "closes soon" counts real minutes on the nights
  * the clocks change, and an opening time inside the missing spring hour starts when the clocks reach 02:00.
@@ -11,6 +11,8 @@
  *  - `closes_soon` when 30 minutes or fewer remain; `opens_at` names the next opening within 7 days,
  *    otherwise `closed`.
  */
+import { londonInstant as instantOf, londonWall } from "./time";
+
 export type HoursRow = { weekday: number; opens: string; closes: string };
 export type ClosureRow = { date: string };
 export type OpenStatus =
@@ -24,42 +26,8 @@ const LOOKAHEAD_DAYS = 7;
 const MINUTE = 60_000;
 const DAY = 24 * 60 * MINUTE;
 
-const londonFormat = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-});
-
-/** The London wall clock at `ms`, as the UTC timestamp with the same digits (minute precision). */
-function londonWall(ms: number): number {
-  const p: Record<string, number> = {};
-  for (const part of londonFormat.formatToParts(new Date(ms))) {
-    if (part.type !== "literal") p[part.type] = Number(part.value);
-  }
-  return Date.UTC(p.year ?? 0, (p.month ?? 1) - 1, p.day ?? 1, p.hour ?? 0, p.minute ?? 0);
-}
-
 const isoDate = (wallMs: number): string => new Date(wallMs).toISOString().slice(0, 10);
 const hhmm = (wallMs: number): string => new Date(wallMs).toISOString().slice(11, 16);
-
-/**
- * The earliest instant whose London wall clock reads `wallMs`. In the missing spring hour, the first instant
- * after the gap (02:00 BST); in the repeated autumn hour, the first occurrence (BST).
- */
-function instantOf(wallMs: number): number {
-  for (let gap = 0; gap <= 60; gap++) {
-    const wall = wallMs + gap * MINUTE;
-    for (const offset of [60, 0]) {
-      const utc = wall - offset * MINUTE;
-      if (londonWall(utc) === wall) return utc;
-    }
-  }
-  throw new Error("no London instant found within an hour"); // unreachable for Europe/London
-}
 
 function minutesOf(time: string): number {
   const m = /^(\d{2}):(\d{2})(?::\d{2})?$/.exec(time);

@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type SyntheticEvent, useEffect, useState } from "react";
+import { type SyntheticEvent, useEffect, useRef, useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { buttonClasses } from "@/components/ui/Button";
+import { Button, buttonClasses } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Modal } from "@/components/ui/Modal";
-import { Select } from "@/components/ui/Select";
-import { TextField } from "@/components/ui/TextField";
 import { withNetworkGuard } from "@/features/auth/network";
 import { useHydrated } from "@/lib/use-hydrated";
 import { DESKTOP_QUERY, useMediaQuery } from "@/lib/use-media-query";
@@ -16,40 +14,21 @@ import { joinShopAction } from "./actions";
 import {
   BIRTHDAY_INVALID,
   cleanPersonName,
-  NAME_MAX,
   OVER_13_REQUIRED,
   validBirthday,
 } from "./profile-input";
+import {
+  EMPTY_PROFILE,
+  PROFILE_FIELD_IDS,
+  PROFILE_FIELD_ORDER,
+  type ProfileDraft,
+  type ProfileErrors,
+  type ProfileField,
+  ProfileFields,
+} from "./ProfileFields";
 
-type Field = "fullName" | "phone" | "birthday" | "over13";
-type Errors = Partial<Record<Field, string>>;
-
-const FIELD_IDS: Record<Field, string> = {
-  fullName: "join-name",
-  phone: "join-phone",
-  birthday: "join-birthday-day",
-  over13: "join-over13",
-};
-const FIELD_ORDER: readonly Field[] = ["fullName", "phone", "birthday", "over13"];
-
-const DAYS = Array.from({ length: 31 }, (_, i) => ({
-  value: String(i + 1),
-  label: String(i + 1),
-}));
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-].map((label, i) => ({ value: String(i + 1), label }));
+/** Longer names make the footer button "Join" so it stays one line at 320 (P1-A QA minor 5). */
+const BUTTON_NAME_MAX = 24;
 
 /**
  * "Collect points" for a signed-in visitor who isn't a member (PRODUCT §3, P1-04, C-52): the CTA and the join
@@ -57,7 +36,8 @@ const MONTHS = [
  * birthday, 13+); every join asks the shop's marketing question, unticked. The consent text and version come
  * from the server render, so a wording change reaches the sheet with `router.refresh()` (security design L11).
  * Before hydration the CTA is a link to `?join=1`, which opens the sheet once the page is interactive. What was
- * typed survives closing and reopening the sheet; nothing is stored until the join succeeds.
+ * typed survives closing and reopening the sheet; nothing is stored until the join succeeds. A form-level error
+ * shows in the footer, by the button, so it is on screen however far the form is scrolled (P1-A DES-M1).
  */
 export function JoinSheet({
   shopCode,
@@ -70,22 +50,22 @@ export function JoinSheet({
   shopName: string;
   needsProfile: boolean;
   /** The question as rendered; `shopName` is sent back so the server can tell the customer saw today's text. */
-  consent: { version: string; text: string; shopName: string };
+  consent: { version: string; question: string; details: string; shopName: string };
   autoOpen: boolean;
 }): React.JSX.Element {
   const router = useRouter();
   const hydrated = useHydrated();
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const [open, setOpen] = useState(autoOpen);
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [day, setDay] = useState("");
-  const [month, setMonth] = useState("");
-  const [over13, setOver13] = useState(false);
+  const [profile, setProfile] = useState<ProfileDraft>(EMPTY_PROFILE);
   const [optIn, setOptIn] = useState(false);
-  const [errors, setErrors] = useState<Errors>({});
+  const [errors, setErrors] = useState<ProfileErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  /** The shop refused the join (not taking members): the button can only close the sheet. */
+  const [refused, setRefused] = useState(false);
   const [pending, setPending] = useState(false);
+  // State lags a second tap in the same task (double tap, Enter + click): the ref doesn't (P1-A QA minor 4).
+  const inFlight = useRef(false);
 
   // `?join=1` (back from sign-in, or a tap before hydration) has done its job once the sheet is open.
   useEffect(() => {
@@ -96,33 +76,43 @@ export function JoinSheet({
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
   }, [autoOpen]);
 
-  function check(): Errors {
+  function check(): ProfileErrors {
     if (!needsProfile) return {};
-    const out: Errors = {};
-    const name = cleanPersonName(fullName);
+    const out: ProfileErrors = {};
+    const name = cleanPersonName(profile.fullName);
     if (!name.ok) out.fullName = name.message;
-    if (!phone.trim()) out.phone = "Please enter your UK mobile number.";
-    if (day || month) {
-      if (!day || !month || !validBirthday(Number(day), Number(month)))
+    if (!profile.phone.trim()) out.phone = "Please enter your UK mobile number.";
+    if (profile.day || profile.month) {
+      if (
+        !profile.day ||
+        !profile.month ||
+        !validBirthday(Number(profile.day), Number(profile.month))
+      )
         out.birthday = BIRTHDAY_INVALID;
     }
-    if (!over13) out.over13 = OVER_13_REQUIRED;
+    if (!profile.over13) out.over13 = OVER_13_REQUIRED;
     return out;
   }
 
-  function showErrors(next: Errors): boolean {
+  function showErrors(next: ProfileErrors): boolean {
     setErrors(next);
-    const first = FIELD_ORDER.find((f) => next[f]);
+    const first = PROFILE_FIELD_ORDER.find((f) => next[f]);
     if (!first) return false;
-    document.getElementById(FIELD_IDS[first])?.focus();
+    document.getElementById(PROFILE_FIELD_IDS[first])?.focus();
     return true;
+  }
+
+  function done(): void {
+    inFlight.current = false;
+    setPending(false);
   }
 
   async function submit(e: SyntheticEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
-    if (pending) return;
+    if (inFlight.current || refused) return;
     setFormError(null);
     if (showErrors(check())) return;
+    inFlight.current = true;
     setPending(true);
     const res = await withNetworkGuard(() =>
       joinShopAction({
@@ -132,40 +122,49 @@ export function JoinSheet({
         consentShopName: consent.shopName,
         profile: needsProfile
           ? {
-              fullName,
-              phone,
-              birthdayDay: day ? Number(day) : null,
-              birthdayMonth: month ? Number(month) : null,
-              over13,
+              fullName: profile.fullName,
+              phone: profile.phone,
+              birthdayDay: profile.day ? Number(profile.day) : null,
+              birthdayMonth: profile.month ? Number(profile.month) : null,
+              over13: profile.over13,
             }
           : null,
       }),
     );
     if (!res.ok) {
       setFormError(res.message);
-      setPending(false);
+      done();
       return;
     }
     if (!res.value.ok) {
       const { error } = res.value;
-      const fromServer: Errors = {};
+      if (error.code === "UNAUTHENTICATED") {
+        // The session ended while the sheet was open: sign in again and come back to it (P1-A QA minor 3).
+        router.push(`/sign-in?returnTo=${encodeURIComponent(`/s/${shopCode}?join=1`)}`);
+        return;
+      }
+      const fromServer: ProfileErrors = {};
       for (const [key, messages] of Object.entries(error.fieldErrors ?? {})) {
-        const field = key.replace(/^profile\./, "") as Field;
-        if (field in FIELD_IDS && messages[0]) fromServer[field] = messages[0];
+        const field = key.replace(/^profile\./, "") as ProfileField;
+        if (field in PROFILE_FIELD_IDS && messages[0]) fromServer[field] = messages[0];
       }
       if (!showErrors(fromServer)) setFormError(error.message);
+      if (error.code === "FORBIDDEN") setRefused(true);
       if (error.code === "CONFLICT") {
         // The consent wording changed: fetch the new text and ask again, unticked.
         setOptIn(false);
         router.refresh();
       }
-      setPending(false);
+      done();
       return;
     }
     const { shopId, firstJoin } = res.value.data;
     router.push(`/shops/${shopId}${firstJoin ? "?welcome=1" : ""}`);
   }
 
+  const close = (): void => {
+    if (!pending) setOpen(false);
+  };
   const Overlay = desktop ? Modal : BottomSheet;
   return (
     <>
@@ -183,9 +182,7 @@ export function JoinSheet({
       </Link>
       <Overlay
         open={open}
-        onClose={() => {
-          if (!pending) setOpen(false);
-        }}
+        onClose={close}
         title={`Join ${shopName}`}
         description={
           needsProfile
@@ -193,117 +190,54 @@ export function JoinSheet({
             : "One question, then you can start collecting."
         }
         footer={
-          <button
-            type="submit"
-            form="join-form"
-            className={buttonClasses({ size: 56, block: true })}
-            aria-disabled={pending}
-            data-testid="join-submit"
-          >
-            {pending ? "Joining…" : `Join ${shopName}`}
-          </button>
+          <div className="flex w-full flex-col gap-3">
+            {formError ? (
+              <p role="alert" className="text-small text-danger" data-testid="join-error">
+                {formError}
+              </p>
+            ) : null}
+            {refused ? (
+              <Button size={56} block variant="secondary" onClick={close} data-testid="join-submit">
+                Close
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                form="join-form"
+                size={56}
+                block
+                loading={pending}
+                data-testid="join-submit"
+              >
+                {shopName.length > BUTTON_NAME_MAX ? "Join" : `Join ${shopName}`}
+              </Button>
+            )}
+          </div>
         }
       >
         <form
           id="join-form"
           noValidate
-          className="flex flex-col gap-5"
+          className="flex flex-col gap-4"
           onSubmit={(e) => void submit(e)}
           data-testid="join-form"
         >
           {needsProfile ? (
-            <>
-              <TextField
-                id={FIELD_IDS.fullName}
-                label="Full name"
-                autoComplete="name"
-                maxLength={NAME_MAX}
-                value={fullName}
-                onChange={(e) => {
-                  setFullName(e.target.value);
-                }}
-                error={errors.fullName}
-                required
-              />
-              <TextField
-                id={FIELD_IDS.phone}
-                label="UK mobile number"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                maxLength={20}
-                value={phone}
-                onChange={(e) => {
-                  setPhone(e.target.value);
-                }}
-                hint="Shops you join see it partly hidden. We don't send you texts."
-                error={errors.phone}
-                required
-              />
-              <fieldset className="flex flex-col gap-2">
-                <legend className="text-small text-ink mb-2 font-semibold">
-                  Birthday (optional)
-                </legend>
-                <div className="grid grid-cols-[1fr_2fr] gap-3">
-                  <Select
-                    id={FIELD_IDS.birthday}
-                    label="Day"
-                    options={DAYS}
-                    placeholder="Day"
-                    value={day}
-                    onChange={(e) => {
-                      setDay(e.target.value);
-                    }}
-                    aria-invalid={errors.birthday ? true : undefined}
-                    aria-describedby={
-                      errors.birthday ? "join-birthday-error" : "join-birthday-hint"
-                    }
-                  />
-                  <Select
-                    label="Month"
-                    options={MONTHS}
-                    placeholder="Month"
-                    value={month}
-                    onChange={(e) => {
-                      setMonth(e.target.value);
-                    }}
-                    aria-invalid={errors.birthday ? true : undefined}
-                    aria-describedby={
-                      errors.birthday ? "join-birthday-error" : "join-birthday-hint"
-                    }
-                  />
-                </div>
-                {errors.birthday ? (
-                  <p id="join-birthday-error" className="text-small text-danger">
-                    {errors.birthday}
-                  </p>
-                ) : null}
-                <p id="join-birthday-hint" className="text-small text-ink-2">
-                  If you say yes to a shop&rsquo;s offers, it may send you a birthday treat. We
-                  never ask for the year here.
-                </p>
-              </fieldset>
-              <Checkbox
-                id={FIELD_IDS.over13}
-                label="I am 13 or over"
-                checked={over13}
-                onCheckedChange={setOver13}
-                error={errors.over13}
-                data-testid="join-over13"
-              />
-            </>
+            <ProfileFields
+              value={profile}
+              onChange={(patch) => {
+                setProfile((p) => ({ ...p, ...patch }));
+              }}
+              errors={errors}
+            />
           ) : null}
           <Checkbox
-            label={consent.text}
+            label={consent.question}
+            description={consent.details}
             checked={optIn}
             onCheckedChange={setOptIn}
             data-testid="join-marketing"
           />
-          {formError ? (
-            <p role="alert" className="text-small text-danger" data-testid="join-error">
-              {formError}
-            </p>
-          ) : null}
         </form>
       </Overlay>
     </>

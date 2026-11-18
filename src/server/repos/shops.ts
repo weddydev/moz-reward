@@ -1,7 +1,8 @@
 import "server-only";
-import { and, asc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, eq, gte, lt } from "drizzle-orm";
 import { CodeCollisionError, normaliseCode, SHOP_CODE_LENGTH, withUniqueCode } from "@/lib/codes";
 import type { LngLat } from "@/lib/geo";
+import { addDays } from "@/lib/time";
 import {
   type AdminScope,
   type CustomerScope,
@@ -136,7 +137,7 @@ export type ShopLandingData =
         status: LandingLiveStatus;
       };
       hours: { weekday: number; opens: string; closes: string }[];
-      /** Closures from yesterday (Europe/London) for 9 days: enough for today, overnight and this week. */
+      /** Closures from yesterday (London date) for 9 days: enough for today, overnight and this week. */
       closures: { date: string; note: string | null }[];
     };
 
@@ -149,7 +150,11 @@ const PUBLIC_LANDING_READ = publicScope(
  * shops are `none` (RLS hides pending shops from the public too); suspended and closed shops return only
  * their name. Callers go through `loadShopLanding` (src/server/services/shop-landing.ts), which caches this.
  */
-export async function readShopLanding(shopCode: string): Promise<ShopLandingData> {
+export async function readShopLanding(
+  shopCode: string,
+  /** Today in London (YYYY-MM-DD, `londonDate`): the closures window is built around it, never the DB clock. */
+  today: string,
+): Promise<ShopLandingData> {
   return withScope(PUBLIC_LANDING_READ, async (q) => {
     const [row] = await q
       .select({
@@ -191,8 +196,8 @@ export async function readShopLanding(shopCode: string): Promise<ShopLandingData
         .where(
           and(
             eq(shopClosures.shopId, row.id),
-            gte(shopClosures.date, sql`((now() AT TIME ZONE 'Europe/London')::date - 1)`),
-            sql`${shopClosures.date} < ((now() AT TIME ZONE 'Europe/London')::date + 8)`,
+            gte(shopClosures.date, addDays(today, -1)),
+            lt(shopClosures.date, addDays(today, 8)),
           ),
         )
         .orderBy(asc(shopClosures.date)),
