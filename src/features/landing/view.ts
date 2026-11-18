@@ -84,7 +84,3 @@ export function addressLine(parts: (string | null)[]): string | null {
   const set = parts.map((p) => p?.trim()).filter((p): p is string => Boolean(p));
   return set.length ? set.join(", ") : null;
 }
-
-/** The London calendar date for `now` (YYYY-MM-DD). */
-export const londonDate = (now: Date): string =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(now);

@@ -9,6 +9,14 @@ import moz from "./scripts/eslint-rules/no-server-in-client.mjs";
 const HEX_COLOUR = "(^|[^&\\w])#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})(?![0-9a-zA-Z_-])";
 const hexMessage =
   "Hard-coded hex colour: use a design token (var(--…) or a Tailwind token class from tokens.css).";
+/** UK time has one home (ENGINEERING §8, P1-A CR-M1): src/lib/time.ts names the zone; everything else imports it. */
+const londonMessage =
+  'Use LONDON_TZ / londonDate / londonWall from "@/lib/time" instead of naming the zone.';
+const londonRules = [
+  { selector: "Literal[value=/Europe\\u002FLondon/]", message: londonMessage },
+  { selector: "TemplateElement[value.raw=/Europe\\u002FLondon/]", message: londonMessage },
+];
+
 const hexRules = [
   { selector: `Literal[value=/${HEX_COLOUR}/]`, message: hexMessage },
   { selector: `TemplateElement[value.raw=/${HEX_COLOUR}/]`, message: hexMessage },
@@ -163,8 +171,13 @@ const eslintConfig = defineConfig([
         authScopeRule,
         uiBarrelRule,
       ),
-      "no-restricted-syntax": ["error", ...scopeCastRules, ...authApiRules],
+      "no-restricted-syntax": ["error", ...londonRules, ...scopeCastRules, ...authApiRules],
     },
+  },
+  // The one module allowed to name the zone.
+  {
+    files: ["src/lib/time.ts"],
+    rules: { "no-restricted-syntax": ["error", ...scopeCastRules, ...authApiRules] },
   },
   {
     files: ["src/server/repos/**/*.ts", "src/server/db/**/*.ts"],
@@ -201,12 +214,20 @@ const eslintConfig = defineConfig([
   {
     files: ["src/components/**/*.{ts,tsx}", "src/app/**/*.{ts,tsx}", "src/features/**/*.{ts,tsx}"],
     ignores: ["**/*.test.{ts,tsx}"],
-    rules: { "no-restricted-syntax": ["error", ...hexRules, ...scopeCastRules, ...authApiRules] },
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        ...hexRules,
+        ...londonRules,
+        ...scopeCastRules,
+        ...authApiRules,
+      ],
+    },
   },
   // The APP_ENV=test seeding API enrols TOTP through auth.api on purpose (it is never served elsewhere).
   {
     files: ["src/app/api/test/**/*.ts"],
-    rules: { "no-restricted-syntax": ["error", ...hexRules, ...scopeCastRules] },
+    rules: { "no-restricted-syntax": ["error", ...hexRules, ...londonRules, ...scopeCastRules] },
   },
   globalIgnores([
     ".next/**",

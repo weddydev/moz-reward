@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { defineAction } from "@/server/actionTemplate";
 import { requireCustomer } from "@/server/authz";
@@ -81,9 +82,15 @@ export const joinShopAction = defineAction({
           meta: { shopId: result.shopId, marketingOptIn: input.marketingOptIn },
         }
       : null,
-  handler: async (input, scope, { tx }): Promise<JoinShopResult> => {
+  handler: async (input, scope, { tx, afterCommit }): Promise<JoinShopResult> => {
     if (!tx) throw new Error("join.shop runs in a transaction");
     const result = await joinShop(scope, input, tx);
+    // P1-A QA-MAJ1: the router kept the non-member landing from before the join, so browser back showed
+    // "Collect points" and re-opened the profile form. Purging the client cache once the join has committed
+    // makes back re-render the landing as a member (Next 16: from a Server Action this purges the client cache).
+    afterCommit(() => {
+      revalidatePath("/s/[code]", "page");
+    });
     if (result.firstJoin) {
       try {
         await limitOrThrow({

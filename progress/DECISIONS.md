@@ -742,3 +742,28 @@ Consequence: DESIGN.md §8 signature moments are documented exceptions to the sk
 Decision: Next.js App Router + TypeScript, Drizzle + Postgres (PostGIS), Better Auth, Redis + BullMQ, SSE, Cloudflare R2, Web Push, Bubblewrap TWA for Android. No iOS App Store build.
 Why: one codebase for three portals, low running costs, free tiers available, no vendor lock-in for realtime.
 Consequence: record exact versions here after scaffolding.
+
+## 2026-11-18 — Shop columns: the owner edits Settings (VAT included); status, code and slug are the admins'
+Decision: `shops_team_guard` (0023) lets the shop owner change the PRODUCT §14 Settings fields, `vat_number` included; staff change nothing; `status`, `shop_code`, `slug`, `id`, `created_at` only through `shops_admin_write` (admin owner/support).
+Why: the P1-A security review suggested VAT admin-only, but PRODUCT §14 puts "VAT details (optional)" in the owner's Settings, and PRODUCT outranks a review.
+Consequence: a new shops column is admin-only until classified in the guard and `tests/integration/shop-guard.test.ts`.
+
+## 2026-11-18 — A customer profile that exists is complete
+Decision: the join asks for the profile only when none exists (no `isProfileComplete`); every profile the app creates has a sealed UK mobile and the 13+ declaration, and the demo seed now does too.
+Why: completing a partial profile in place would need the profile guard to allow `age_declared_at` NULL → now() on update, a security change with no product need today (P1-A CR-M2 offered both options).
+Consequence: CARRIED C-57 (P2-13): anything that clears the phone or the declaration but keeps the row must make the join ask again.
+
+## 2026-11-18 — Branded id and money types land with the loyalty engine (P1-06)
+Decision: CR-M3 (`ShopCode`, `MemberId`, `ShopId`, `Points`, `Pence`) is CARRIED C-56 to P1-06 instead of the P1-A close batch.
+Why: `Points`/`Pence` don't exist until P1-06, and branding codes touches every `shopCode: string` across props, repos and tests; the close plan allowed carrying it if it ballooned.
+Consequence: P1-06 can't be ticked until C-56 is done.
+
+## 2026-11-18 — The web pool must log in as `moz_app` itself
+Decision: boot refuses a `DATABASE_URL` login that is only a member of `moz_app`.
+Why: the column guards (0014, 0020–0023) limit `current_user = 'moz_app'` and let every other role through, so a differently named member login would switch them off (P1-A security review MEDIUM).
+Consequence: a new environment creates the login as `moz_app` (moz-deploy already does).
+
+## 2026-11-18 — Join sheet: long names, single-letter names
+Decision: shop names over 24 characters make the footer button read "Join" (the title keeps the full name: it is the dialog's accessible name); a one-letter full name ("A") is accepted.
+Why: QA minors 5 and 7 (P1-A). PRODUCT is silent on name rules; mononyms and initials are real, and staff see the member ID anyway.
+Consequence: revisit the name rule if staff report unusable names.

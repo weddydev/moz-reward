@@ -464,6 +464,11 @@
     overflow-y: auto;
     overscroll-behavior: contain;
   }
+  /* More content below the fold (Overlay.tsx sets data-overflow): fade the last 32px as a scroll cue (P1-A DES-M2).
+     A mask, not an overlay element, so nothing covers the content or catches taps; no motion involved. */
+  .overlay-body[data-overflow] {
+    mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent);
+  }
   .overlay[data-state="closing"] .overlay-backdrop,
   .overlay[data-state="closing"] .overlay-panel {
     opacity: 0;

@@ -30,6 +30,9 @@ import { makeShop, makeUser } from "@/server/testing/factories";
  * and what a refusal leaves behind (nothing).
  */
 const faults = vi.hoisted(() => ({ redisDown: null as Redis | null }));
+// Outside a Next request there is no cache store to purge; the spy records what the action asks for.
+const nextCache = vi.hoisted(() => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => nextCache);
 vi.mock("@/server/security/rate-limit", async (importOriginal) => {
   const actual = await importOriginal<typeof RateLimitModule>();
   return {
@@ -49,6 +52,7 @@ const down = new Redis("redis://127.0.0.1:1", {
 });
 afterEach(() => {
   faults.redisDown = null;
+  nextCache.revalidatePath.mockClear();
 });
 afterAll(() => {
   down.disconnect();
@@ -122,6 +126,18 @@ const rowsFor = async (userId: string) => ({
 const nothingWritten = { profiles: [], memberships: [], consents: [], audits: [] };
 
 describe("[P1-04] join.shop action", () => {
+  it("purges the cached landing pages after a join commits, so back shows the member landing (P1-A QA-MAJ1)", async () => {
+    const c = await customer();
+    const shop = await makeShop();
+    expect(await call(c, shop.shopCode)).toMatchObject({ ok: true });
+    expect(nextCache.revalidatePath).toHaveBeenCalledExactlyOnceWith("/s/[code]", "page");
+
+    nextCache.revalidatePath.mockClear();
+    const closed = await makeShop({ status: "suspended" });
+    expect(await call(c, closed.shopCode, { profile: null })).toMatchObject({ ok: false });
+    expect(nextCache.revalidatePath).not.toHaveBeenCalled();
+  });
+
   it("first join: cleaned profile, membership, consent row and one audit row; a re-scan changes nothing", async () => {
     const c = await customer();
     const shop = await makeShop();

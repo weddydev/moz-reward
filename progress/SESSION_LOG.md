@@ -670,3 +670,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 ## 2026-11-18 (~13:00 IST) — P1 — handoff mid-close (Mac, talha.syed)
 - Human asked for a handoff: the other developer continues the P1-A fix batch. `wip/P1-A-close` HEAD `8ebb633`: red-first E2E for QA-MAJ1 (back after join) and QA-MAJ2 (80-char name, logo 80×80 at 320/390/1440), not run yet; pre-push `pnpm check` passed.
 - CI at handoff: `44256927967` (576bd33) running, `44257662896` (8ebb633) queued and expected red on the new tests. Baton freed.
+
+## 2026-11-18 — P1 — `/subphase-complete` P1-A part 2: fix batch (Windows, Syedbadeshah76)
+- Fixed on `wip/P1-A-close` (squashed to main): QA-MAJ1 (join purges the client cache after commit), QA-MAJ2 (logo `shrink-0`), SEC-M1 (0022 memberships guard by explicit lists), SEC-M2 (0023 shops column guard), DES-M1..M3, CR-M1 (`src/lib/time.ts` + lint), CR-M2 (complete demo profile, DECISIONS), QA minors 3/4/5/6, ci:usage public = unbilled (dispatch `44277158062` had disabled Scheduled again; re-enabled). CR-M3 → C-56.
+- Red first: MAJ1 (CI 8ebb633), MAJ2 (logo 23 px, after fixing the test's 81-char name), guard cases, closures window, seed profile, ci:usage. moz-deploy-release.test.ts: 60 s timeouts (Git Bash spawn under parallel load on Windows).
+- gate:task P1-04 P1-02 J1 P0-15 PASS (unit 1513/0, int 1342/0/12, sast, e2e 40/0); CI `44276804681` green; full local E2E 972 passed (long-task test passes alone and in CI; WebKit fails are Linux run `44283257480`'s to judge).
+- security-reviewer (batch): PASS, 1 MEDIUM fixed (boot: web pool logs in as moz_app itself), 3 LOW → FOLLOWUPS. design-reviewer re-check: PASS WITH FIXES, 2 LOW → FOLLOWUPS; missing states shot with a throwaway spec and inspected.
+- code-review done 01652c3 (P1-A close batch). Staging step waits for H-48.

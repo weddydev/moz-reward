@@ -6,8 +6,9 @@ import { Icon } from "@/components/ui/Icon";
 import { initialsOf } from "@/lib/initials";
 import { openStatus } from "@/lib/open-status";
 import { directionsUrl, telHref } from "@/lib/shop-links";
+import { londonDate } from "@/lib/time";
 import type { ShopLandingData } from "@/server/repos/shops";
-import { addressLine, areaLine, londonDate, statusLabel, weekRows } from "./view";
+import { addressLine, areaLine, statusLabel, weekRows } from "./view";
 
 type Live = Extract<ShopLandingData, { kind: "live" }>;
 
@@ -186,7 +187,10 @@ export function ShopLogo({
   logoUrl: string | null;
 }): React.JSX.Element {
   return (
-    <span className="border-surface bg-gold-100 grid size-20 place-items-center overflow-hidden rounded-[var(--r-md)] border-4 shadow-[var(--shadow-2)]">
+    <span
+      data-testid="shop-logo"
+      className="border-surface bg-gold-100 grid size-20 shrink-0 place-items-center overflow-hidden rounded-[var(--r-md)] border-4 shadow-[var(--shadow-2)]"
+    >
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={logoUrl} alt="" width={80} height={80} className="size-full object-cover" />

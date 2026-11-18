@@ -262,6 +262,28 @@ describe("[P0-02] server env", () => {
     expect(run).not.toThrow(/prodution-typo-value|short-secret-value/);
   });
 
+  it("[P0-13] a set SENTRY_DSN must be a DSN, or the boot fails without echoing it (H-48: staging held a command)", () => {
+    const dsn = "https://abc123def456@o4500000.ingest.de.sentry.io/4500001";
+    expect(parseServerEnv({ ...base, SENTRY_DSN: dsn }).SENTRY_DSN).toBe(dsn);
+    expect(parseServerEnv({ ...base, SENTRY_DSN: "" }).SENTRY_DSN).toBeUndefined();
+    for (const bad of [
+      "gh secret list",
+      "https://o4500000.ingest.de.sentry.io/4500001", // no public key
+      "https://abc@o4500000.ingest.de.sentry.io/", // no project id
+      "https://abc@o4500000.ingest.de.sentry.io/notanid",
+      "ftp://abc@o4500000.ingest.de.sentry.io/1",
+    ]) {
+      let message = "";
+      try {
+        parseServerEnv({ ...base, SENTRY_DSN: bad });
+      } catch (e) {
+        message = (e as Error).message;
+      }
+      expect(message).toMatch(/SENTRY_DSN: must be a Sentry DSN/);
+      expect(message).not.toContain(bad);
+    }
+  });
+
   it("treats a blank optional variable as unset (copied .env.example lines are empty)", () => {
     expect(parseServerEnv({ ...base, GOOGLE_CLIENT_ID: "" }).GOOGLE_CLIENT_ID).toBeUndefined();
   });

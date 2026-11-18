@@ -140,7 +140,12 @@ describe("[P0-19] boot refuses the database owner role, its members and BYPASSRL
     expect(await asProbe("moz_app")).toMatch(/is not a member of moz_app/);
     await owner.unsafe(`GRANT moz_app TO ${role}`);
     try {
-      expect(await asProbe("moz_app")).toBeNull();
+      // P1-A close (security review): membership isn't enough for the web pool; the column guards check
+      // `current_user = 'moz_app'`, so a differently named member login would skip them.
+      expect(await asProbe("moz_app")).toMatch(
+        /logs in under another name \(the column guards need the moz_app login itself\)/,
+      );
+      expect(await asProbe("moz_app")).not.toMatch(/is not a member/);
       for (const other of ["moz_worker", "moz_auth", "moz_rls"]) {
         // NOINHERIT still allows SET ROLE (PG 16+ grant options): membership itself is refused.
         await owner.unsafe(`GRANT ${other} TO ${role} WITH INHERIT FALSE`);

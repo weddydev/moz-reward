@@ -39,6 +39,8 @@ readonly MAX_ENV_BYTES=65536
 readonly WAIT_SECONDS=180
 # How long the host mTLS probe waits for a just-started Caddy to listen (not readonly: the tests shorten it).
 MTLS_WAIT_SECONDS=30
+# Where harden.sh installs the units init-env enables (not readonly: the tests point it at a temporary directory).
+SYSTEMD_DIR=/etc/systemd/system
 readonly EX_USAGE=64
 readonly EX_INPUT=65
 # The staging origin certificate (T-5): refused with less than this left; each release warns, and the health
@@ -319,13 +321,13 @@ cmd_init_env() {
     log "WAL archiving is off until the B2 keys are delivered and 'moz-backup wal-on $env' runs"
   fi
   for unit in moz-backup moz-basebackup; do
-    [[ -f /etc/systemd/system/$unit@.timer ]] || die "$unit@.timer is not installed: run harden.sh first"
+    [[ -f $SYSTEMD_DIR/$unit@.timer ]] || die "$unit@.timer is not installed: run harden.sh first"
     systemctl enable --now --quiet "$unit@$env.timer"
   done
   log "backup timers enabled (dump 02:30 daily, base backup Sun 03:30, Europe/London)"
   if [[ $env == staging ]]; then
     # Weekly demo reset (C-38); it finds no release on a brand-new host and fails loudly until the first deploy.
-    [[ -f /etc/systemd/system/moz-seed-reset.timer ]] || die "moz-seed-reset.timer is not installed: run harden.sh first"
+    [[ -f $SYSTEMD_DIR/moz-seed-reset.timer ]] || die "moz-seed-reset.timer is not installed: run harden.sh first"
     systemctl enable --now --quiet moz-seed-reset.timer
     log "demo reset timer enabled (Mon 04:30, Europe/London)"
   fi
@@ -628,7 +630,7 @@ wait_ready() {
 # Replace web-1 then web-2 (Caddy retries the other replica meanwhile); any failure puts every replaced
 # replica back on <prev>, so the previous version keeps serving.
 roll_web() {
-  local env=$1 sha=$2 prev=$3 svc back done_svcs=()
+  local env=$1 sha=$2 prev=$3 svc done_svcs=()
   for svc in web-1 web-2; do
     done_svcs+=("$svc")
     if compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" "$svc" &&
@@ -638,29 +640,68 @@ roll_web() {
     fi
     log "$svc failed its health check on $sha"
     if [[ -n $prev ]]; then
-      for back in "${done_svcs[@]}"; do
-        compose "$env" "$prev" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" "$back" ||
-          log "could not put $back back on $prev"
-      done
+      put_back "$env" "$prev" "${done_svcs[@]}"
       log "web replicas are back on $prev"
     fi
     return 1
   done
 }
 
+# put_back <env> <prev> <service>...: each service recreated on <prev>; a failure is logged, the rest still run.
+put_back() {
+  local env=$1 prev=$2 svc
+  shift 2
+  for svc in "$@"; do
+    compose "$env" "$prev" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" "$svc" ||
+      log "could not put $svc back on $prev"
+  done
+}
+
+# Worker, then the edge services, on <sha>. ROLLED lists every service it has started to replace, so the EXIT
+# trap armed by cmd_release/cmd_rollback (put_back_on_exit) puts exactly those back, with both web replicas, when
+# any step fails or dies (worker `up --wait`, the origin firewall, Caddy, the mTLS probe).
 roll_rest() {
-  local env=$1 sha=$2
+  local env=$1 sha=$2 svc
+  ROLLED=()
   # The worker drains for 60 s on SIGTERM (stop_grace_period 90 s, C-27).
-  compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" worker
+  ROLLED+=(worker)
+  compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" worker || return 1
   if [[ $env == production ]]; then
-    compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" umami
-    compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" caddy cloudflared
+    for svc in umami caddy cloudflared; do
+      ROLLED+=("$svc")
+      compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" "$svc" || return 1
+    done
   else
     # Staging has no Tunnel until launch (T-5): Cloudflare's proxy reaches Caddy's published 443.
     require_origin_firewall "$env"
-    compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" caddy
+    ROLLED+=(caddy)
+    compose "$env" "$sha" up -d --no-deps --wait --wait-timeout "$WAIT_SECONDS" caddy || return 1
     check_origin_mtls "$env"
   fi
+}
+
+# EXIT trap between a successful roll_web and the end of roll_rest: on a non-zero exit, the web replicas and every
+# service roll_rest touched go back on PUT_BACK_PREV, so the version recorded in release-current keeps serving.
+put_back_on_exit() {
+  local rc=$?
+  trap - EXIT
+  ((rc != 0)) || return 0
+  if [[ -n ${PUT_BACK_PREV:-} ]]; then
+    log "roll_rest failed: putting web-1 web-2 ${ROLLED[*]:-} back on $PUT_BACK_PREV"
+    put_back "$PUT_BACK_ENV" "$PUT_BACK_PREV" web-1 web-2 "${ROLLED[@]}"
+  else
+    log "roll_rest failed on a first release: nothing to put back"
+  fi
+  exit "$rc"
+}
+
+# roll_rest_or_put_back <env> <sha> <prev>: roll_rest under the put-back trap.
+roll_rest_or_put_back() {
+  PUT_BACK_ENV=$1 PUT_BACK_PREV=$3
+  ROLLED=()
+  trap put_back_on_exit EXIT
+  roll_rest "$1" "$2" || die "release $2: worker or edge services failed; ${3:-nothing} is put back"
+  trap - EXIT
 }
 
 # require_origin_firewall <env> [binary]: staging's Caddy publishes 443, so it may only start while the host
@@ -794,7 +835,7 @@ cmd_release() {
 
   log "rolling web"
   roll_web "$env" "$sha" "$prev" || die "release $sha aborted; ${prev:-nothing} keeps serving"
-  roll_rest "$env" "$sha"
+  roll_rest_or_put_back "$env" "$sha" "$prev"
   record_release "$env" "$sha" "$prev"
   check_published_ports "$env" "$sha"
   [[ $env != staging ]] || demo_signin_check "$env" "$sha"
@@ -812,7 +853,7 @@ cmd_rollback() {
   # Migrations are expand-only, so the previous code runs on the current schema; data services stay as they are.
   log "rolling back $env from ${cur:-?} to $prev"
   roll_web "$env" "$prev" "$cur" || die "rollback aborted; ${cur:-nothing} keeps serving"
-  roll_rest "$env" "$prev"
+  roll_rest_or_put_back "$env" "$prev" "$cur"
   record_release "$env" "$prev" "$cur"
   check_published_ports "$env" "$prev"
   log "rollback $env: now on $prev"

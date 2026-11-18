@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { Redis } from "ioredis";
 import { afterAll, describe, expect, it } from "vitest";
+import { addDays, londonDate } from "@/lib/time";
 import { cacheKey, cacheRedis } from "@/server/cache";
 import { testOwnerDb as db } from "@/server/db/client";
 import { shopClosures, shopHours } from "@/server/db/schema";
@@ -31,9 +32,9 @@ afterAll(() => {
 function counted() {
   let reads = 0;
   return {
-    read: async (code: string): Promise<ShopLandingData> => {
+    read: async (code: string, today: string): Promise<ShopLandingData> => {
       reads += 1;
-      return readShopLanding(code);
+      return readShopLanding(code, today);
     },
     get reads() {
       return reads;
@@ -41,13 +42,16 @@ function counted() {
   };
 }
 
+/** Today in London, as the landing service computes it for a live request. */
+const TODAY = londonDate(new Date());
+
 const raw = (code: string) => cacheRedis().get(cacheKey(landingCacheKey(code)));
 
 describe("[P1-02] shop landing data: states", () => {
   it("live for active, expiring, grace and restricted shops, with hours and this week's closures", async () => {
     for (const status of ["active", "expiring", "grace", "restricted"] as const) {
       const shop = await makeShop({ status, tradingName: `Trading ${status}` });
-      const data = await readShopLanding(shop.shopCode);
+      const data = await readShopLanding(shop.shopCode, TODAY);
       expect(data.kind).toBe("live");
       if (data.kind === "live") {
         expect(data.shop.status).toBe(status);
@@ -65,33 +69,51 @@ describe("[P1-02] shop landing data: states", () => {
       .insert(shopClosures)
       .values([
         { shopId: shop.id, date: "2001-01-01", note: "long ago" },
-        { shopId: shop.id, date: londonDate(2), note: "Refit" },
+        { shopId: shop.id, date: londonDayFrom(2), note: "Refit" },
       ]);
-    const data = await readShopLanding(shop.shopCode);
+    const data = await readShopLanding(shop.shopCode, TODAY);
     if (data.kind !== "live") throw new Error("expected live");
     expect(data.hours).toEqual([
       { weekday: 1, opens: "09:00", closes: "17:30" },
       { weekday: 5, opens: "18:00", closes: "02:00" },
     ]);
-    expect(data.closures).toEqual([{ date: londonDate(2), note: "Refit" }]);
+    expect(data.closures).toEqual([{ date: londonDayFrom(2), note: "Refit" }]);
+  });
+
+  it("takes this week's closures around the London date it is given, not the database clock (P1-A CR-M1)", async () => {
+    const shop = await makeShop({ status: "active" });
+    await db()
+      .insert(shopClosures)
+      .values([
+        { shopId: shop.id, date: "2030-06-08", note: "too early" },
+        { shopId: shop.id, date: "2030-06-09", note: "yesterday" },
+        { shopId: shop.id, date: "2030-06-17", note: "last day" },
+        { shopId: shop.id, date: "2030-06-18", note: "too late" },
+      ]);
+    const data = await readShopLanding(shop.shopCode, "2030-06-10");
+    if (data.kind !== "live") throw new Error("expected live");
+    expect(data.closures).toEqual([
+      { date: "2030-06-09", note: "yesterday" },
+      { date: "2030-06-17", note: "last day" },
+    ]);
   });
 
   it("suspended and closed shops give only their name; pending and unknown are none", async () => {
     const suspended = await makeShop({ status: "suspended", name: "Paused Ltd" });
     const closed = await makeShop({ status: "closed", name: "Gone Ltd" });
     const pending = await makeShop({ status: "pending" });
-    expect(await readShopLanding(suspended.shopCode)).toEqual({
+    expect(await readShopLanding(suspended.shopCode, TODAY)).toEqual({
       kind: "gone",
       status: "suspended",
       name: "Paused Ltd",
     });
-    expect(await readShopLanding(closed.shopCode)).toEqual({
+    expect(await readShopLanding(closed.shopCode, TODAY)).toEqual({
       kind: "gone",
       status: "closed",
       name: "Gone Ltd",
     });
-    expect(await readShopLanding(pending.shopCode)).toEqual({ kind: "none" });
-    expect(await readShopLanding("ZZZZZZ")).toEqual({ kind: "none" });
+    expect(await readShopLanding(pending.shopCode, TODAY)).toEqual({ kind: "none" });
+    expect(await readShopLanding("ZZZZZZ", TODAY)).toEqual({ kind: "none" });
   });
 
   it("an impossible code is none without a cache or database touch; case and spaces are normalised", async () => {
@@ -259,7 +281,7 @@ async function waitForCache(code: string): Promise<string> {
   throw new Error("cache entry never written");
 }
 
-function londonDate(offsetDays: number): string {
-  const d = new Date(Date.now() + offsetDays * 86_400_000);
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(d);
+/** The London date `offsetDays` from today. */
+function londonDayFrom(offsetDays: number): string {
+  return addDays(TODAY, offsetDays);
 }

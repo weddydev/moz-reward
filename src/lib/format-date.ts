@@ -2,10 +2,12 @@
  * Customer-facing dates (CLAUDE.md §5): `7 Nov 2026`, 24-hour times, always UK time so server and browser
  * agree. Month names come from a fixed list because ICU versions differ ("Sep" vs "Sept").
  */
+import { LONDON_TZ } from "./time";
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const PARTS = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
+  timeZone: LONDON_TZ,
   year: "numeric",
   month: "numeric",
   day: "numeric",

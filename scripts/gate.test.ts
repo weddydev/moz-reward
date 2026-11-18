@@ -181,6 +181,12 @@ describe("[P0-14] ci:usage", () => {
     expect(level(1400, 2000)).toBe("warn");
     expect(level(1600, 2000)).toBe("pause");
   });
+
+  it("never pauses for a public repository: standard runners are unbilled there (P1-A close)", () => {
+    expect(level(2040, 2000, "public")).toBe("ok");
+    expect(level(1600, 2000, "private")).toBe("pause");
+    expect(level(1600, 2000, "internal")).toBe("pause");
+  });
 });
 
 describe("[P0-14] e2e build reuse", () => {

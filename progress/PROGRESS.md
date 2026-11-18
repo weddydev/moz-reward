@@ -7,29 +7,27 @@ Baton: held by Syedbadeshah76 since 2026-11-18 07:35 PKT
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handed over by talha.syed, 2026-11-18 ~13:00 IST (Mac), mid-close at the human's request: the other developer continues the P1-A fix batch.** `/subphase-complete` P1-A in progress on **`wip/P1-A-close`, HEAD `8ebb633`**. **Everything about the close is in `progress/P1-A-close-plan.md`** (verdicts, full finding text, fix order); read it first.
-- **Done:** CI `44123070994` green (gitleaks re-run); deploy `44250664237` (e05c785) green; staging smoke PASS; 4 reviews + QA ran. On the wip branch: P0-E HIGH H1 + M1 + M2 fixed (`576bd33`: `infra/host/moz-deploy` put-back on roll_rest failure, `scripts/moz-deploy-release.test.ts` 20 tests) and the SENTRY_DSN shape check (`src/server/env.ts`, H-48). `8ebb633`: **two red-first E2E tests** at the end of `tests/e2e/join.spec.ts` for QA-MAJ1 and QA-MAJ2 (written, **never run**).
-- **Next exact step:** `/resume` → `git switch wip/P1-A-close` + `git merge --ff-only origin/wip/P1-A-close` (HEAD must be `8ebb633`) → run the two new tests (`pnpm e2e -- tests/e2e/join.spec.ts -g "QA-MAJ"`, Chromium) and see them **fail for the right reason** → **QA-MAJ1:** in `src/features/join/actions.ts` handler, after a successful join call `revalidatePath("/s/[code]", "page")` from `next/cache` (Next 16.4.5 docs: from a Server Action it purges the client cache; `refresh()` also exists) — if back still restores the stale page, make the landing re-check membership on restore → **QA-MAJ2:** `ShopLogo` outer span (`src/features/landing/ShopLanding.tsx` ~189) gets `shrink-0` **and `data-testid="shop-logo"`** (the test needs it) → then the rest of the plan's order: SEC-M1/M2, DES-M1..M3, CR-M2, CR-M1, CR-M3 → gate:task → security-reviewer → design re-check → one commit, merge, close commit.
-- **Half-done:** the close (PHASES P1-A not ticked). When merging the wip branch to main, `progress/*` conflicts with main's checkpoint/handoff commits: take **main's** copy of the progress files.
-- **Tested:** P0-E fixes as unit files only (env 24/0, moz-deploy + release 180/0) + typecheck; pre-push `pnpm check` passed on `8ebb633`. **Not yet tested:** no gate:task on the wip branch; CI `44256927967` (576bd33) was running and `44257662896` (8ebb633) queued at handoff, and **8ebb633 is expected red** on the two new tests until the fixes land; the new tests themselves have never been run.
-- **🔴 H-48:** staging `SENTRY_DSN_STAGING` = "gh secret list" → no staging error reporting; with the new boot check a deploy will roll back until the human fixes it.
-- **Do first:** `git pull`; other laptop: `pnpm install`, `pnpm db:migrate`. VPS: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`.
+- **18 Nov, Syedbadeshah76 (Windows): the P1-A fix batch is on main** (squash of `wip/P1-A-close` @ `01652c3`). Every HIGH/MAJOR/MEDIUM of the close plan is fixed except CR-M3 (branded types → **C-56, P1-06**). `wip/P1-A-close` can be deleted (add to H-38).
+- **P1-A is NOT ticked yet:** `/subphase-complete` step 3 needs a green staging deploy of this commit, the staging smoke and Sentry, and the deploy rolls back until **H-48 🔴** (real `SENTRY_DSN_STAGING`; the boot check now refuses the placeholder). **Next exact step:** once the human confirms H-48 → `gh run list --workflow Deploy --limit 1` (re-run the deploy if it ran before the fix) → staging smoke (inside web-1: `/s/BREW22` 200 member/non-member, join sheet, `/api/health/ready`) → Sentry shows the release with no new errors → tick the P1-A line in PHASES + SESSION_LOG "staging smoke" line (docs-only commit). Without H-48, carry on with **P1-B's first task** and close P1-A when the deploy passes.
+- **Demo data:** the demo customer's profile is complete only after a reseed: run `moz-deploy seed-reset staging` (or wait for the weekly reset) once the deploy is green; locally `pnpm db:seed --reset`.
+- **Tested:** see Last verified. **Not yet tested:** Linux 5-project run `44283257480` (WebKit/iPhone evidence for the batch) — check its result first; a red WebKit join test (QA minor 3 / fade) is fixed before P1-B.
+- **Do first on the other laptop:** `git pull`, `pnpm install`, `pnpm db:migrate` (0022, 0023), `pnpm db:seed --reset`. VPS: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`.
 
 ## Status
 - **Phase:** **P1**. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
-- **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → ~~P1-02~~ → ~~P1-03~~ → ~~P1-04~~ → ~~MEDIUM batch~~ → **`/subphase-complete`** (in progress, `wip/P1-A-close`, plan in `progress/P1-A-close-plan.md`).
+- **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → ~~P1-02~~ → ~~P1-03~~ → ~~P1-04~~ → ~~MEDIUM batch~~ → `/subphase-complete`: reviews, QA and the fix batch done (18 Nov); **waits for the staging deploy (H-48)** to tick.
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-18, talha.syed (handoff during `/subphase-complete` P1-A)
+- **Last updated:** 2026-11-18, Syedbadeshah76 (P1-A close fix batch merged)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `8353e00`; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`.
-- **P0 closed 17 Nov (human: no more time on P0).** P0-15 ticked; leftovers C-48/C-49 → P1-18. **P1-A:** P1-01 (13 Nov), P1-02, P1-03, P1-04 and the MEDIUM batch (17 Nov) done; next `/subphase-complete` P1-A.
+- **P1-A:** all tasks and the close fix batch done (18 Nov: 2 MAJOR, 1 HIGH, 9 MEDIUM fixed; CR-M3 → C-56). Only the staging step of `/subphase-complete` is left (H-48).
 
 ## Next (top 3)
-1. Finish `/subphase-complete` P1-A: fix batch per `progress/P1-A-close-plan.md` (reviews of P1-A + P0-E done 18 Nov, C-49 review part).
-2. P1-B, first task (phase file).
+1. Human: **H-48** (staging Sentry DSN) → then close P1-A (handoff note: deploy, smoke, Sentry, tick).
+2. P1-B, first task (phase file; brief review of the sub-phase tasks first if not done).
 3. Human, any time: H-45 UptimeRobot monitors (then the stop-staging phone alert test, C-48); H-46 Cloudflare `/s/*` rule.
 
 
@@ -54,6 +52,8 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-54 | P1-04 design check M6 | P1-09 | "Leave shop" sets `marketing_opt_in` false and writes a consent row (`recordConsentChange`, source `leave`) in the same transaction; rejoin (already in `joinOwnMembership`) restores frozen progress | integration |
 | C-55 | P1-04 security review LOW 4 | P5-01 | Customers can withdraw (and give) per-shop marketing consent themselves through `recordConsentChange` (source `settings`) before any real customer joins; the join sheet's wording ("change this any time in the shop's settings") names where it really is | E2E: toggle off → consent row false + membership false |
 | C-53 | P1-02 gate (gpg 2.5) | P1-18 | backup-pitr "WAL object without integrity protection" fixture is unprotected on every gpg (hand-built SED packet), so the case runs on developer laptops (gpg 2.5 writes AEAD even with `--rfc2440`) as well as CI | integration passes on Mac gpg 2.5 without the skip |
+| C-56 | P1-A close CR-M3 | P1-06 | Branded types in `src/lib` (ENGINEERING §2): `ShopCode`, `MemberId`, `ShopId`, `Points`, `Pence`, minted only by `normaliseCode` / the generators / the engine, so a member ID never type-checks as a shop code (they share alphabet and length) | typecheck test (`@ts-expect-error` on a swap) |
+| C-57 | P1-A close CR-M2 | P2-13 | "Has a profile" = "profile complete" (DECISIONS 18 Nov): an erasure or edit that clears the phone or the 13+ declaration but keeps the profile row must make the next join ask again (`isProfileComplete`), or delete the row | integration |
 | C-17 | Stryker | P1-18 (human 17 Nov) | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 | C-48 | P0-15 E (human 17 Nov) | P1-18 | P0-15 leftovers: health.backup shows no alert on staging with `BACKUPS_ENABLED=true` (health snapshot); UptimeRobot staging monitors (H-45) + alert on both phones when staging is stopped (AC8); ZAP baseline (weekly) + k6 smoke (twice weekly) wired against staging, zero failed requests during a deploy under k6 (AC2) and rollback under load (AC3); B2 overwrite leaves the locked version (D design HIGH 1); two workers run each scheduled job once (AC6) if not already proven | staging snapshots + workflow runs + SESSION_LOG |
 | C-49 | P0 close (human 17 Nov) | P1-18 + P1 `/phase-complete` | P0's heavy gate and definition of done: `gate:phase` covers P0 + P1; code/security/design reviews of P0-E commits not yet reviewed (at the P1-A close); P0 DoD bullets checked; client demo covers P0 + P1 together (`docs/DEMO_GUIDE.md` + Demo 2). (P0 close lines in PHASES ticked 17 Nov by the human's decision.) | gate:phase summary + SESSION_LOG + DEMO_NOTES |
@@ -65,12 +65,12 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 ## Map of the codebase
 In **`progress/MAP.md`** (read when you need to locate code; add new important paths there).
 
-## Last verified (17 Nov 2026)
+## Last verified (18 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- P1-A batch: guard + join + action + authz 46+52/0 (M1/M2 tests red before the fix); redact unit 12/0; landing spec Chromium 8/0, cookie shots 320/390 first paint + hydrated inspected (no overlap with Collect); gate:task counts in the commit message; security-reviewer PASS.
-- P1-04 (`3c30e69` tree): gate:task PASS (unit 1507, int 1336/0/1 skip, sast, e2e P1-04,J1,P1-02 28/0); join spec 25/0 on 5 projects; security-reviewer PASS (2 MEDIUM → batch).
-- P1-04 rotation on 15 real E2E rows: 8 batches, all on the new key id, blind indexes unchanged, second run no-op, unknown key id → exit 1 unchanged.
-- P1-04 step B (`1b7575a`): CI `44094608880` green. P1-03: CI `44073336752` + Deploy `44074972808` green.
+- P1-A close batch (`01652c3` code tree = main): gate:task P1-04 P1-02 J1 P0-15 PASS — unit 1513/0, int 1342/0/12 skip, sast, e2e 40/0; CI `44276804681` green (1e24001).
+- Full local E2E (Windows): 972 passed; Chromium-family fail only gilded-gate long-task under 4× throttle at full parallel load (2/0 alone, green in CI); 4 WebKit/iPhone fails are not evidence on Windows → Linux run `44283257480`.
+- Red first: QA-MAJ1/MAJ2 E2E, SEC-M1 3 + SEC-M2 2 guard cases, CR-M1 closures window, CR-M2 seed profile, ci:usage public; security-reviewer PASS (1 MEDIUM fixed: web pool must log in as moz_app), design re-check PASS WITH FIXES (2 LOW).
+- Screens inspected: join sheet 320 (80-char name, fade, scrolled), 375 pending spinner + fade, 390 not-joinable footer error + Close, welcome 390, shop page long name 320/390/1440.
 
 
 ## Follow-ups (LOW)
