@@ -3,23 +3,24 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-18 11:49 IST (Mac)
+Baton: free — last held by talha.syed, 2026-11-18 13:00 IST
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 2026-11-18 (Mac). Baton held.** `/subphase-complete` P1-A in progress on **`wip/P1-A-close`, HEAD `576bd33`**. **Everything about the close is in `progress/P1-A-close-plan.md`** (verdicts, full finding text, fix order) — read it first.
-- **Done:** CI `44123070994` green after re-running a gitleaks job that never got a runner; deploy `44250664237` (e05c785) green; staging smoke PASS (in-container, 3 demo shops); 4 reviews + QA ran. Fixed on the wip branch (uncommitted on main): P0-E HIGH H1 + M1 + M2 (`infra/host/moz-deploy` put-back on roll_rest failure, `scripts/moz-deploy-release.test.ts` 20 tests, 6 red on the old script) and the SENTRY_DSN shape check (`src/server/env.ts`, H-48).
-- **Next exact step:** `/resume` → `git switch wip/P1-A-close` → follow the plan's "Order for the next session": QA-MAJ1 (stale landing after back), QA-MAJ2 (logo shrink), SEC-M1/M2 (memberships + shops column guards), DES-M1..M3, CR-M1..M3; then gate:task, security-reviewer on the batch, design re-check, one commit, merge, close commit.
-- **Half-done:** the close itself (PHASES P1-A line not ticked). **Not yet tested:** the wip changes ran only as unit files (env 24/0, moz-deploy + release 180/0 total) + typecheck; no gate:task, no CI on them yet.
+- **Handed over by talha.syed, 2026-11-18 ~13:00 IST (Mac), mid-close at the human's request: the other developer continues the P1-A fix batch.** `/subphase-complete` P1-A in progress on **`wip/P1-A-close`, HEAD `8ebb633`**. **Everything about the close is in `progress/P1-A-close-plan.md`** (verdicts, full finding text, fix order); read it first.
+- **Done:** CI `44123070994` green (gitleaks re-run); deploy `44250664237` (e05c785) green; staging smoke PASS; 4 reviews + QA ran. On the wip branch: P0-E HIGH H1 + M1 + M2 fixed (`576bd33`: `infra/host/moz-deploy` put-back on roll_rest failure, `scripts/moz-deploy-release.test.ts` 20 tests) and the SENTRY_DSN shape check (`src/server/env.ts`, H-48). `8ebb633`: **two red-first E2E tests** at the end of `tests/e2e/join.spec.ts` for QA-MAJ1 and QA-MAJ2 (written, **never run**).
+- **Next exact step:** `/resume` → `git switch wip/P1-A-close` + `git merge --ff-only origin/wip/P1-A-close` (HEAD must be `8ebb633`) → run the two new tests (`pnpm e2e -- tests/e2e/join.spec.ts -g "QA-MAJ"`, Chromium) and see them **fail for the right reason** → **QA-MAJ1:** in `src/features/join/actions.ts` handler, after a successful join call `revalidatePath("/s/[code]", "page")` from `next/cache` (Next 16.4.5 docs: from a Server Action it purges the client cache; `refresh()` also exists) — if back still restores the stale page, make the landing re-check membership on restore → **QA-MAJ2:** `ShopLogo` outer span (`src/features/landing/ShopLanding.tsx` ~189) gets `shrink-0` **and `data-testid="shop-logo"`** (the test needs it) → then the rest of the plan's order: SEC-M1/M2, DES-M1..M3, CR-M2, CR-M1, CR-M3 → gate:task → security-reviewer → design re-check → one commit, merge, close commit.
+- **Half-done:** the close (PHASES P1-A not ticked). When merging the wip branch to main, `progress/*` conflicts with main's checkpoint/handoff commits: take **main's** copy of the progress files.
+- **Tested:** P0-E fixes as unit files only (env 24/0, moz-deploy + release 180/0) + typecheck; pre-push `pnpm check` passed on `8ebb633`. **Not yet tested:** no gate:task on the wip branch; CI `44256927967` (576bd33) was running and `44257662896` (8ebb633) queued at handoff, and **8ebb633 is expected red** on the two new tests until the fixes land; the new tests themselves have never been run.
 - **🔴 H-48:** staging `SENTRY_DSN_STAGING` = "gh secret list" → no staging error reporting; with the new boot check a deploy will roll back until the human fixes it.
-- **Do first:** `git pull`; other laptop: `pnpm install`, `pnpm db:migrate`. Mac: long gates under `caffeinate -i`. VPS: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`.
+- **Do first:** `git pull`; other laptop: `pnpm install`, `pnpm db:migrate`. VPS: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`.
 
 ## Status
 - **Phase:** **P1**. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
 - **Current sub-phase:** P1-A shops and entry: ~~P1-01~~ → ~~P1-02~~ → ~~P1-03~~ → ~~P1-04~~ → ~~MEDIUM batch~~ → **`/subphase-complete`** (in progress, `wip/P1-A-close`, plan in `progress/P1-A-close-plan.md`).
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-18, talha.syed (checkpoint during `/subphase-complete` P1-A)
+- **Last updated:** 2026-11-18, talha.syed (handoff during `/subphase-complete` P1-A)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now

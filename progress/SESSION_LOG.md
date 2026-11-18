@@ -666,3 +666,7 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Staging smoke (inside web-1, no secret read): `/s/BREW22|PATE22|GKQW22` (+ `?src=qr|nfc`) 200, unknown 404, `/api/test/shop` 404, CSP + `private, no-store`, no emails in HTML. Sentry NOT VERIFIED: `SENTRY_DSN_STAGING` is the text `gh secret list` → H-48 🔴; env now refuses a malformed DSN (env.test red → green 24/0).
 - Reviews: design (P1-04) PASS WITH FIXES 3M/7L; code P0-E APPROVE WITH FIXES 1H/2M/7L; security P1-01..03 PASS WITH FIXES 2M/4L; code P1-A APPROVE WITH FIXES 3M/7L; QA 2 MAJOR/7 MINOR (screens inspected). Full text: `progress/P1-A-close-plan.md`.
 - P0-E H1/M1/M2 fixed on `wip/P1-A-close`: moz-deploy puts web + touched services back when roll_rest fails/dies (EXIT trap); `scripts/moz-deploy-release.test.ts` 20/0 (6 red on the old script); source-regex tests replaced. code-review done e9aa786 (P0-E), code-review done e05c785 (P1-A) — fixes pending.
+
+## 2026-11-18 (~13:00 IST) — P1 — handoff mid-close (Mac, talha.syed)
+- Human asked for a handoff: the other developer continues the P1-A fix batch. `wip/P1-A-close` HEAD `8ebb633`: red-first E2E for QA-MAJ1 (back after join) and QA-MAJ2 (80-char name, logo 80×80 at 320/390/1440), not run yet; pre-push `pnpm check` passed.
+- CI at handoff: `44256927967` (576bd33) running, `44257662896` (8ebb633) queued and expected red on the new tests. Baton freed.
