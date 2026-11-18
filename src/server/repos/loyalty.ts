@@ -8,7 +8,8 @@ import { inShop, withScope } from "./_base";
 
 type Row = typeof loyaltyPrograms.$inferSelect;
 
-const toVersion = (r: Row): ProgrammeVersion => ({
+/** One stored row as a `ProgrammeVersion` (also the Wallet read, P1-07). */
+export const toVersion = (r: Row): ProgrammeVersion => ({
   id: r.id,
   version: r.version,
   earnMode: r.earnMode,

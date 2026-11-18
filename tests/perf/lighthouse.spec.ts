@@ -4,6 +4,7 @@ import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { chromium, type APIRequestContext } from "@playwright/test";
 import {
+  CUSTOMER_BUDGET,
   LANDING_BUDGET,
   evaluateBudget,
   formatVerdict,
@@ -23,9 +24,13 @@ const OUT = path.join(".artifacts", "lighthouse");
 
 type Route = {
   name: string;
+  /** The task that added the route (test title tag). */
+  task: string;
   budget: Budget;
-  /** Creates the route's data and returns its path. */
-  setup: (request: APIRequestContext) => Promise<string>;
+  /** Creates the route's data and returns its path, plus request headers (a session cookie) when signed in. */
+  setup: (
+    request: APIRequestContext,
+  ) => Promise<{ path: string; headers?: Record<string, string> }>;
   /** Metrics accepted in the judgment zone (≤ 15% over), each with the DECISIONS entry that accepts it. */
   judgment?: Partial<Record<keyof Metrics, string>>;
 };
@@ -33,6 +38,7 @@ type Route = {
 const ROUTES: Route[] = [
   {
     name: "landing",
+    task: "P1-02",
     budget: LANDING_BUDGET,
     setup: async (request) => {
       const res = await request.post("/api/test/shop", {
@@ -41,10 +47,45 @@ const ROUTES: Route[] = [
       });
       expect(res.ok()).toBe(true);
       const { shopCode } = (await res.json()) as { shopCode: string };
-      return `/s/${shopCode}?src=qr`;
+      return { path: `/s/${shopCode}?src=qr` };
     },
     // Next 16 + React 19's own runtime is ~131 KB gzip, over the 130 KB landing budget by itself.
     judgment: { jsGzipBytes: "DECISIONS 2026-11-17 landing JS" },
+  },
+  {
+    // P1-07 edge case: 50 memberships stay within the LCP budget (one fixed-count read, server-rendered list).
+    name: "wallet-50",
+    task: "P1-07",
+    budget: CUSTOMER_BUDGET,
+    setup: async (request) => {
+      const session = await request.post("/api/test/session", {
+        data: { role: "customer" },
+        headers: testApiHeaders(),
+      });
+      expect(session.ok()).toBe(true);
+      const { userId } = (await session.json()) as { userId: string };
+      const cookie = session
+        .headersArray()
+        .filter((h) => h.name.toLowerCase() === "set-cookie")
+        .map((h) => h.value.split(";")[0])
+        .join("; ");
+      expect(cookie).not.toBe("");
+      for (let i = 0; i < 50; i++) {
+        const res = await request.post("/api/test/shop", {
+          data: {
+            status: "active",
+            name: `Wallet Shop ${String(i + 1)}`,
+            details: true,
+            programme: true,
+            memberUserId: userId,
+            member: { purchaseCount: i % 7, progressGold: (i * 37) % 1000, ingotsCompleted: i % 3 },
+          },
+          headers: testApiHeaders(),
+        });
+        expect(res.ok()).toBe(true);
+      }
+      return { path: "/wallet", headers: { cookie } };
+    },
   },
 ];
 
@@ -63,12 +104,13 @@ function freePort(): Promise<number> {
 }
 
 for (const route of ROUTES) {
-  test(`[P1-02] Lighthouse mobile: ${route.name} within DESIGN §12 budget`, async ({
+  // Tags are literal for the title check: landing is P1-02, wallet-50 is P1-07 (`route.task`).
+  test(`[P1-02][P1-07] Lighthouse mobile: ${route.task} ${route.name} within DESIGN §12 budget`, async ({
     request,
     baseURL,
   }) => {
     test.setTimeout(180_000);
-    const routePath = await route.setup(request);
+    const { path: routePath, headers = {} } = await route.setup(request);
     const url = new URL(routePath, baseURL).toString();
     const port = await freePort();
     const browser = await chromium.launch({ args: [`--remote-debugging-port=${port}`] });
@@ -80,7 +122,7 @@ for (const route of ROUTES) {
         output: "html",
         onlyCategories: ["performance"],
         // A fresh client IP, as every spec uses: the lookup limit is per IP (P1-02).
-        extraHeaders: clientHeaders(),
+        extraHeaders: { ...clientHeaders(), ...headers },
       });
       if (!result) throw new Error("Lighthouse returned no result");
       const { lhr } = result;
@@ -89,7 +131,7 @@ for (const route of ROUTES) {
       expect(lhr.configSettings.throttlingMethod).toBe("simulate");
 
       // Initial JS: the scripts this route's HTML loads (lazy chunks such as Sentry-on-idle excluded).
-      const html = await request.get(routePath, { headers: clientHeaders() });
+      const html = await request.get(routePath, { headers: { ...clientHeaders(), ...headers } });
       expect(html.ok()).toBe(true);
       const scripts = htmlScriptUrls(await html.text(), url);
       expect(scripts.length).toBeGreaterThan(0);

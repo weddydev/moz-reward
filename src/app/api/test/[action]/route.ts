@@ -16,6 +16,7 @@ import {
   makeActor,
   makeAdmin,
   makeMembership,
+  makeProgramme,
   makeOpsSnapshot,
   makeShop,
   makeShopHours,
@@ -141,6 +142,18 @@ const shopInput = z
     /** A cover at a same-origin path the spec serves with `page.route` (tests/e2e/fixtures/shop-cover.jpg). */
     cover: z.boolean().default(false),
     memberUserId: z.uuid().optional(),
+    /** P1-07: the member's counters (Wallet sort order and progress). */
+    member: z
+      .object({
+        purchaseCount: z.number().int().min(0).max(10_000).default(0),
+        progressGold: z.number().int().min(0).max(100_000).default(0),
+        ingotsCompleted: z.number().int().min(0).max(10_000).default(0),
+        lastVisitDaysAgo: z.number().int().min(0).max(3650).optional(),
+      })
+      .strict()
+      .optional(),
+    /** P1-07: a loyalty programme (Café classic template, ingot 1,000 gold), version 1, owned by nobody real. */
+    programme: z.boolean().default(false),
   })
   .strict();
 
@@ -197,7 +210,7 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
     case "shop": {
       const parsed = shopInput.safeParse(body);
       if (!parsed.success) return invalid();
-      const { status, name, details, cover, memberUserId } = parsed.data;
+      const { status, name, details, cover, memberUserId, member, programme } = parsed.data;
       const shop = await makeShop({
         status,
         ...(name ? { name } : {}),
@@ -223,7 +236,16 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
           })),
         );
       }
-      if (memberUserId) await makeMembership(memberUserId, shop.id);
+      if (programme) await makeProgramme(shop.id);
+      if (memberUserId) {
+        const { lastVisitDaysAgo, ...counters } = member ?? {};
+        await makeMembership(memberUserId, shop.id, {
+          ...counters,
+          ...(lastVisitDaysAgo === undefined
+            ? {}
+            : { lastVisitAt: new Date(Date.now() - lastVisitDaysAgo * 24 * 60 * 60 * 1000) }),
+        });
+      }
       return NextResponse.json({ shopId: shop.id, shopCode: shop.shopCode });
     }
     case "shop-status": {

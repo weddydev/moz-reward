@@ -1,0 +1,44 @@
+/*
+ * ---- Wallet pull-to-refresh (P1-07, PullToRefresh.tsx) ----
+ * An ingot outline that slides down with the finger (`--pull` px, set per move) and fills (`--pull-fill` 0–1).
+ * While the finger moves there is no transition (it tracks the touch); on release it eases back. While the
+ * page refreshes the fill breathes. Reduced motion: the outline stays in place and only fades in.
+ */
+.pull-indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 1;
+  color: var(--gold-700);
+  pointer-events: none;
+  opacity: calc(var(--pull-fill, 0) * 1);
+  transform: translate(-50%, calc(var(--pull, 0) * 1px - 100%));
+}
+.pull-indicator:not([data-dragging="true"]) {
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    opacity var(--dur-base) ease;
+}
+.pull-indicator-fill {
+  fill: var(--gold-500);
+  transform-box: fill-box;
+  transform-origin: bottom;
+  transform: scaleY(var(--pull-fill, 0));
+}
+.pull-indicator[data-refreshing] .pull-indicator-fill {
+  animation: moz-pull-breathe 900ms var(--ease-in-out) infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-reduce-motion="false"]) .pull-indicator {
+    transform: translate(-50%, 8px);
+  }
+}
+:root[data-reduce-motion="true"] .pull-indicator {
+  transform: translate(-50%, 8px);
+}
+
+@keyframes moz-pull-breathe {
+  to {
+    opacity: 0.45;
+  }
+}

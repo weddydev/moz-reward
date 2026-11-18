@@ -1,5 +1,6 @@
 import { PartyPopper } from "lucide-react";
 import Link from "next/link";
+import { SharedElement } from "@/components/motion/SharedElement";
 import { buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
@@ -16,7 +17,7 @@ export function MemberShopPage({
   member,
   welcome,
 }: {
-  shop: { name: string; shopCode: string; logoUrl: string | null };
+  shop: { shopId: string; name: string; shopCode: string; logoUrl: string | null };
   member: { memberId: MemberId; fullName: string };
   welcome: boolean;
 }): React.JSX.Element {
@@ -26,10 +27,15 @@ export function MemberShopPage({
       data-page="member-shop"
     >
       <header className="flex items-center gap-4">
-        <ShopLogo name={shop.name} logoUrl={shop.logoUrl} />
-        <h1 className="text-h1 min-w-0 break-words" data-testid="member-shop-name">
-          {shop.name}
-        </h1>
+        {/* The Wallet card's logo and name morph into these (P1-07). */}
+        <SharedElement kind="shoplogo" id={shop.shopId} fit="cover">
+          <ShopLogo name={shop.name} logoUrl={shop.logoUrl} />
+        </SharedElement>
+        <SharedElement kind="shopname" id={shop.shopId}>
+          <h1 className="text-h1 min-w-0 break-words" data-testid="member-shop-name">
+            {shop.name}
+          </h1>
+        </SharedElement>
       </header>
 
       {welcome ? (

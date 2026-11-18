@@ -28,7 +28,15 @@ const CLASSIFIED = {
   identity: ["id", "user_id", "shop_id"],
   customerWritable: ["muted", "marketing_opt_in", "left_at"],
   dbMaintained: ["updated_at"],
-  serverOwned: ["joined_at", "purchase_count", "last_visit_at", "created_at"],
+  serverOwned: [
+    "joined_at",
+    "purchase_count",
+    "last_visit_at",
+    "created_at",
+    // P1-07 (0025): loyalty counters, written by P1-12 approvals only.
+    "progress_gold",
+    "ingots_completed",
+  ],
 } as const;
 
 let w: Awaited<ReturnType<typeof world>>;
@@ -94,6 +102,9 @@ describe("[P1-01] C-34 memberships: customers can't write counters", () => {
       { createdAt: new Date("2020-01-01T00:00:00Z") },
       { shopId: w.shopB.id },
       { muted: false, purchaseCount: 1 },
+      { progressGold: 999 },
+      { ingotsCompleted: 5 },
+      { muted: true, progressGold: 1 },
     ] satisfies Partial<typeof memberships.$inferInsert>[]) {
       expect(await pgCode(() => update(w.customer, w.own.id, set)), JSON.stringify(set)).toBe(
         DENIED,
@@ -116,6 +127,8 @@ describe("[P1-01] C-34 memberships: customers can't write counters", () => {
       { lastVisitAt: new Date() },
       { joinedAt: new Date("2020-01-01T00:00:00Z") },
       { createdAt: new Date("2020-01-01T00:00:00Z") },
+      { progressGold: 720 },
+      { ingotsCompleted: 3 },
     ] satisfies Partial<typeof memberships.$inferInsert>[]) {
       expect(await pgCode(() => join(over)), JSON.stringify(over)).toBe(DENIED);
     }
@@ -218,6 +231,9 @@ describe("[P1-04] memberships: what a shop's team may change (P1-A close, securi
       { muted: true },
       { leftAt: new Date() },
       { purchaseCount: 2, marketingOptIn: true },
+      // P1-07 (0025): the loyalty counters stay with the approval flow (P1-12), not a staff write.
+      { progressGold: 500 },
+      { ingotsCompleted: 1 },
     ] satisfies Partial<typeof memberships.$inferInsert>[]) {
       expect(await pgCode(() => update(t.staff, t.memberRow.id, set)), JSON.stringify(set)).toBe(
         DENIED,
