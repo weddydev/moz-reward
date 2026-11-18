@@ -16,6 +16,7 @@ const helper = path
   .resolve(import.meta.dirname, "..", "infra", "host", "moz-deploy")
   .replaceAll("\\", "/");
 const bash = findBash();
+// Each test spawns Git Bash: on Windows, under the parallel unit run, that alone can pass 5 s (as in moz-deploy.test.ts).
 
 const SHA = "a".repeat(40);
 const PREV = "b".repeat(40);
@@ -118,111 +119,115 @@ const ups = (calls: string[], sha: string): string[] =>
 /** Index of the first call matching, or -1. */
 const at = (calls: string[], pattern: RegExp): number => calls.findIndex((c) => pattern.test(c));
 
-describe("[P0-15] moz-deploy release: rolling order and failure paths (P0-E review H1, M1)", () => {
-  it("[P0-15] a staging release migrates first, then web-1, web-2, worker, firewall, Caddy, mTLS; records it, then the sign-in check and prune", () => {
-    setRelease("staging", PREV);
-    const r = run(`cmd_release staging ${SHA}`);
-    expect(r.stderr).toMatch(/release staging a+: done/);
-    expect(r.status).toBe(0);
-    expect(ups(r.calls, SHA)).toEqual([
-      "redis-cache", // data services: `up ... postgres redis-queue redis-cache`
-      "web-1",
-      "web-2",
-      "worker",
-      "caddy",
-    ]);
-    const migrate = at(r.calls, /^migrate /);
-    expect(migrate).toBeGreaterThan(-1);
-    expect(migrate).toBeLessThan(at(r.calls, / up .* web-1$/));
-    expect(at(r.calls, /^firewall 2$/)).toBeLessThan(at(r.calls, / up .* caddy$/));
-    expect(at(r.calls, /^mtls$/)).toBeGreaterThan(at(r.calls, / up .* caddy$/));
-    expect(at(r.calls, /demo-signin-check/)).toBeGreaterThan(at(r.calls, /^ports /));
-    expect(release("staging", "current")).toBe(SHA);
-    expect(release("staging", "previous")).toBe(PREV);
-    expect(ups(r.calls, PREV)).toEqual([]);
-  });
+describe(
+  "[P0-15] moz-deploy release: rolling order and failure paths (P0-E review H1, M1)",
+  { timeout: 60_000 },
+  () => {
+    it("[P0-15] a staging release migrates first, then web-1, web-2, worker, firewall, Caddy, mTLS; records it, then the sign-in check and prune", () => {
+      setRelease("staging", PREV);
+      const r = run(`cmd_release staging ${SHA}`);
+      expect(r.stderr).toMatch(/release staging a+: done/);
+      expect(r.status).toBe(0);
+      expect(ups(r.calls, SHA)).toEqual([
+        "redis-cache", // data services: `up ... postgres redis-queue redis-cache`
+        "web-1",
+        "web-2",
+        "worker",
+        "caddy",
+      ]);
+      const migrate = at(r.calls, /^migrate /);
+      expect(migrate).toBeGreaterThan(-1);
+      expect(migrate).toBeLessThan(at(r.calls, / up .* web-1$/));
+      expect(at(r.calls, /^firewall 2$/)).toBeLessThan(at(r.calls, / up .* caddy$/));
+      expect(at(r.calls, /^mtls$/)).toBeGreaterThan(at(r.calls, / up .* caddy$/));
+      expect(at(r.calls, /demo-signin-check/)).toBeGreaterThan(at(r.calls, /^ports /));
+      expect(release("staging", "current")).toBe(SHA);
+      expect(release("staging", "previous")).toBe(PREV);
+      expect(ups(r.calls, PREV)).toEqual([]);
+    });
 
-  it("[P0-15] a failing migration stops before any replica is switched; the previous release stays recorded", () => {
-    setRelease("staging", PREV);
-    const r = run(`cmd_release staging ${SHA}`, "migrate");
-    expect(r.status).not.toBe(0);
-    expect(ups(r.calls, SHA).filter((s) => s !== "redis-cache")).toEqual([]);
-    expect(release("staging", "current")).toBe(PREV);
-  });
+    it("[P0-15] a failing migration stops before any replica is switched; the previous release stays recorded", () => {
+      setRelease("staging", PREV);
+      const r = run(`cmd_release staging ${SHA}`, "migrate");
+      expect(r.status).not.toBe(0);
+      expect(ups(r.calls, SHA).filter((s) => s !== "redis-cache")).toEqual([]);
+      expect(release("staging", "current")).toBe(PREV);
+    });
 
-  it("[P0-15] web-2 failing its readiness check puts web-1 and web-2 back on the previous release and records nothing", () => {
-    setRelease("staging", PREV, OLDER);
-    const r = run(`cmd_release staging ${SHA}`, "ready:web-2");
-    expect(r.status).toBe(1);
-    expect(r.stderr).toMatch(/release a+ aborted; b+ keeps serving/);
-    expect(ups(r.calls, SHA)).toEqual(["redis-cache", "web-1", "web-2"]);
-    expect(ups(r.calls, PREV)).toEqual(["web-1", "web-2"]);
-    expect(release("staging", "current")).toBe(PREV);
-    expect(release("staging", "previous")).toBe(OLDER);
-  });
-
-  it("[P0-15] a first release whose web fails has nothing to put back and says so", () => {
-    const r = run(`cmd_release staging ${SHA}`, "ready:web-1");
-    expect(r.status).toBe(1);
-    expect(r.stderr).toMatch(/aborted; nothing keeps serving/);
-    expect(release("staging", "current")).toBe("");
-  });
-
-  it.each([
-    ["the worker's up --wait fails", `up:${SHA}:worker`, ["web-1", "web-2", "worker"]],
-    ["the in-release firewall check dies", "firewall2", ["web-1", "web-2", "worker"]],
-    ["Caddy fails to start", `up:${SHA}:caddy`, ["web-1", "web-2", "worker", "caddy"]],
-    ["the mTLS probe dies", "mtls", ["web-1", "web-2", "worker", "caddy"]],
-  ])(
-    "[P0-15] staging: when %s after web rolled, web and every touched service go back on the previous release",
-    (_label, fail, back) => {
+    it("[P0-15] web-2 failing its readiness check puts web-1 and web-2 back on the previous release and records nothing", () => {
       setRelease("staging", PREV, OLDER);
-      const r = run(`cmd_release staging ${SHA}`, fail);
+      const r = run(`cmd_release staging ${SHA}`, "ready:web-2");
       expect(r.status).toBe(1);
-      expect(r.stderr).toMatch(/putting web-1 web-2 .* back on b+/);
-      expect(ups(r.calls, PREV)).toEqual(back);
+      expect(r.stderr).toMatch(/release a+ aborted; b+ keeps serving/);
+      expect(ups(r.calls, SHA)).toEqual(["redis-cache", "web-1", "web-2"]);
+      expect(ups(r.calls, PREV)).toEqual(["web-1", "web-2"]);
       expect(release("staging", "current")).toBe(PREV);
       expect(release("staging", "previous")).toBe(OLDER);
+    });
+
+    it("[P0-15] a first release whose web fails has nothing to put back and says so", () => {
+      const r = run(`cmd_release staging ${SHA}`, "ready:web-1");
+      expect(r.status).toBe(1);
+      expect(r.stderr).toMatch(/aborted; nothing keeps serving/);
+      expect(release("staging", "current")).toBe("");
+    });
+
+    it.each([
+      ["the worker's up --wait fails", `up:${SHA}:worker`, ["web-1", "web-2", "worker"]],
+      ["the in-release firewall check dies", "firewall2", ["web-1", "web-2", "worker"]],
+      ["Caddy fails to start", `up:${SHA}:caddy`, ["web-1", "web-2", "worker", "caddy"]],
+      ["the mTLS probe dies", "mtls", ["web-1", "web-2", "worker", "caddy"]],
+    ])(
+      "[P0-15] staging: when %s after web rolled, web and every touched service go back on the previous release",
+      (_label, fail, back) => {
+        setRelease("staging", PREV, OLDER);
+        const r = run(`cmd_release staging ${SHA}`, fail);
+        expect(r.status).toBe(1);
+        expect(r.stderr).toMatch(/putting web-1 web-2 .* back on b+/);
+        expect(ups(r.calls, PREV)).toEqual(back);
+        expect(release("staging", "current")).toBe(PREV);
+        expect(release("staging", "previous")).toBe(OLDER);
+        expect(r.calls.some((c) => c.includes("demo-signin-check"))).toBe(false);
+      },
+    );
+
+    it("[P0-15] production: Caddy failing after umami puts web, worker, umami and Caddy back; cloudflared never moves", () => {
+      setRelease("production", PREV);
+      const r = run(`cmd_release production ${SHA}`, `up:${SHA}:caddy`);
+      expect(r.status).toBe(1);
+      expect(ups(r.calls, SHA)).not.toContain("cloudflared");
+      expect(ups(r.calls, PREV)).toEqual(["web-1", "web-2", "worker", "umami", "caddy"]);
+      expect(release("production", "current")).toBe(PREV);
       expect(r.calls.some((c) => c.includes("demo-signin-check"))).toBe(false);
-    },
-  );
+    });
 
-  it("[P0-15] production: Caddy failing after umami puts web, worker, umami and Caddy back; cloudflared never moves", () => {
-    setRelease("production", PREV);
-    const r = run(`cmd_release production ${SHA}`, `up:${SHA}:caddy`);
-    expect(r.status).toBe(1);
-    expect(ups(r.calls, SHA)).not.toContain("cloudflared");
-    expect(ups(r.calls, PREV)).toEqual(["web-1", "web-2", "worker", "umami", "caddy"]);
-    expect(release("production", "current")).toBe(PREV);
-    expect(r.calls.some((c) => c.includes("demo-signin-check"))).toBe(false);
-  });
+    it("[P0-15] production releases run no demo sign-in check", () => {
+      setRelease("production", PREV);
+      const r = run(`cmd_release production ${SHA}`);
+      expect(r.status).toBe(0);
+      expect(ups(r.calls, SHA)).toEqual([
+        "redis-cache",
+        "web-1",
+        "web-2",
+        "worker",
+        "umami",
+        "caddy",
+        "cloudflared",
+      ]);
+      expect(r.calls.some((c) => c.includes("demo-signin-check"))).toBe(false);
+      expect(r.calls.some((c) => c.includes("seed.mjs"))).toBe(false);
+    });
 
-  it("[P0-15] production releases run no demo sign-in check", () => {
-    setRelease("production", PREV);
-    const r = run(`cmd_release production ${SHA}`);
-    expect(r.status).toBe(0);
-    expect(ups(r.calls, SHA)).toEqual([
-      "redis-cache",
-      "web-1",
-      "web-2",
-      "worker",
-      "umami",
-      "caddy",
-      "cloudflared",
-    ]);
-    expect(r.calls.some((c) => c.includes("demo-signin-check"))).toBe(false);
-    expect(r.calls.some((c) => c.includes("seed.mjs"))).toBe(false);
-  });
+    it("[P0-15] a failed staging sign-in check fails the release", () => {
+      setRelease("staging", PREV);
+      const r = run(`cmd_release staging ${SHA}`, "signin");
+      expect(r.status).toBe(1);
+      expect(r.stderr).toMatch(/demo sign-in check failed/);
+    });
+  },
+);
 
-  it("[P0-15] a failed staging sign-in check fails the release", () => {
-    setRelease("staging", PREV);
-    const r = run(`cmd_release staging ${SHA}`, "signin");
-    expect(r.status).toBe(1);
-    expect(r.stderr).toMatch(/demo sign-in check failed/);
-  });
-});
-
-describe("[P0-15] moz-deploy rollback", () => {
+describe("[P0-15] moz-deploy rollback", { timeout: 60_000 }, () => {
   it("[P0-15] rollback moves every service to release-previous and swaps the records", () => {
     setRelease("staging", SHA, PREV);
     const r = run("cmd_rollback staging");
@@ -249,7 +254,7 @@ describe("[P0-15] moz-deploy rollback", () => {
   });
 });
 
-describe("[P0-15] moz-deploy prune", () => {
+describe("[P0-15] moz-deploy prune", { timeout: 60_000 }, () => {
   it("[P0-15] keeps current, previous and the newest three images; removes the rest with their release dirs", () => {
     const tags = ["1", "2", "3", "4", "5", "6"].map((n) => n.repeat(40));
     const [t1, t2, t3, t4, t5, t6] = tags as [string, string, string, string, string, string];
@@ -270,70 +275,74 @@ describe("[P0-15] moz-deploy prune", () => {
   });
 });
 
-describe("[P0-15] moz-deploy seed-reset and init-env (P0-E review M2: behaviour, not source text)", () => {
-  it("[P0-15] seed-reset re-seeds with --reset on the current release, then runs the sign-in check on it", () => {
-    setRelease("staging", SHA);
-    const r = run("cmd_seed_reset staging");
-    expect(r.status).toBe(0);
-    const seed = at(r.calls, new RegExp(`^compose ${SHA} run .*cli/seed\\.mjs --reset$`));
-    const check = at(
-      r.calls,
-      new RegExp(`^compose ${SHA} run .*cli/demo-signin-check\\.mjs --url http://web-1:3000$`),
-    );
-    expect(seed).toBeGreaterThan(-1);
-    expect(check).toBeGreaterThan(seed);
-  });
+describe(
+  "[P0-15] moz-deploy seed-reset and init-env (P0-E review M2: behaviour, not source text)",
+  { timeout: 60_000 },
+  () => {
+    it("[P0-15] seed-reset re-seeds with --reset on the current release, then runs the sign-in check on it", () => {
+      setRelease("staging", SHA);
+      const r = run("cmd_seed_reset staging");
+      expect(r.status).toBe(0);
+      const seed = at(r.calls, new RegExp(`^compose ${SHA} run .*cli/seed\\.mjs --reset$`));
+      const check = at(
+        r.calls,
+        new RegExp(`^compose ${SHA} run .*cli/demo-signin-check\\.mjs --url http://web-1:3000$`),
+      );
+      expect(seed).toBeGreaterThan(-1);
+      expect(check).toBeGreaterThan(seed);
+    });
 
-  it("[P0-15] seed-reset fails loudly without a release, and when the sign-in check fails", () => {
-    expect(run("cmd_seed_reset staging").stderr).toMatch(/no release recorded for staging/);
-    setRelease("staging", SHA);
-    const failed = run("cmd_seed_reset staging", "signin");
-    expect(failed.status).toBe(1);
-    expect(failed.stderr).toMatch(/demo sign-in check failed/);
-  });
+    it("[P0-15] seed-reset fails loudly without a release, and when the sign-in check fails", () => {
+      expect(run("cmd_seed_reset staging").stderr).toMatch(/no release recorded for staging/);
+      setRelease("staging", SHA);
+      const failed = run("cmd_seed_reset staging", "signin");
+      expect(failed.status).toBe(1);
+      expect(failed.stderr).toMatch(/demo sign-in check failed/);
+    });
 
-  const units = (names: string[]): void => {
-    mkdirSync(path.join(t, "systemd"), { recursive: true });
-    for (const n of names) writeFileSync(path.join(t, "systemd", n), "");
-  };
+    const units = (names: string[]): void => {
+      mkdirSync(path.join(t, "systemd"), { recursive: true });
+      for (const n of names) writeFileSync(path.join(t, "systemd", n), "");
+    };
 
-  it("[P0-15] init-env pins the backup key, sets the archive-off lever, enables both backup timers and (staging) the demo reset timer", () => {
-    units(["moz-backup@.timer", "moz-basebackup@.timer", "moz-seed-reset.timer"]);
-    const r = run("cmd_init_env staging");
-    expect(r.stderr).toMatch(/init-env staging: done/);
-    expect(r.status).toBe(0);
-    expect(r.calls).toContain("pin_backup_key staging");
-    expect(
-      readFileSync(path.join(t, "etc", "staging", "backup-lever", "archive-off"), "utf8"),
-    ).toBe("");
-    const enabled = r.calls.filter((c) => c.startsWith("systemctl enable"));
-    expect(enabled).toEqual([
-      "systemctl enable --now --quiet moz-backup@staging.timer",
-      "systemctl enable --now --quiet moz-basebackup@staging.timer",
-      "systemctl enable --now --quiet moz-seed-reset.timer",
-    ]);
-  });
+    it("[P0-15] init-env pins the backup key, sets the archive-off lever, enables both backup timers and (staging) the demo reset timer", () => {
+      units(["moz-backup@.timer", "moz-basebackup@.timer", "moz-seed-reset.timer"]);
+      const r = run("cmd_init_env staging");
+      expect(r.stderr).toMatch(/init-env staging: done/);
+      expect(r.status).toBe(0);
+      expect(r.calls).toContain("pin_backup_key staging");
+      expect(
+        readFileSync(path.join(t, "etc", "staging", "backup-lever", "archive-off"), "utf8"),
+      ).toBe("");
+      const enabled = r.calls.filter((c) => c.startsWith("systemctl enable"));
+      expect(enabled).toEqual([
+        "systemctl enable --now --quiet moz-backup@staging.timer",
+        "systemctl enable --now --quiet moz-basebackup@staging.timer",
+        "systemctl enable --now --quiet moz-seed-reset.timer",
+      ]);
+    });
 
-  it("[P0-15] init-env leaves the lever alone once wal-g has its keys, and production gets no demo reset timer", () => {
-    units(["moz-backup@.timer", "moz-basebackup@.timer"]);
-    mkdirSync(path.join(t, "etc", "production", "walg"), { recursive: true });
-    writeFileSync(path.join(t, "etc", "production", "walg", "walg.env"), "WALG=1\n");
-    const r = run("cmd_init_env production");
-    expect(r.status).toBe(0);
-    expect(() =>
-      readFileSync(path.join(t, "etc", "production", "backup-lever", "archive-off")),
-    ).toThrow();
-    expect(r.calls.filter((c) => c.startsWith("systemctl enable"))).toEqual([
-      "systemctl enable --now --quiet moz-backup@production.timer",
-      "systemctl enable --now --quiet moz-basebackup@production.timer",
-    ]);
-    expect(r.calls).toContain("gen_secret db-umami");
-  });
+    it("[P0-15] init-env leaves the lever alone once wal-g has its keys, and production gets no demo reset timer", () => {
+      units(["moz-backup@.timer", "moz-basebackup@.timer"]);
+      mkdirSync(path.join(t, "etc", "production", "walg"), { recursive: true });
+      writeFileSync(path.join(t, "etc", "production", "walg", "walg.env"), "WALG=1\n");
+      const r = run("cmd_init_env production");
+      expect(r.status).toBe(0);
+      expect(() =>
+        readFileSync(path.join(t, "etc", "production", "backup-lever", "archive-off")),
+      ).toThrow();
+      expect(r.calls.filter((c) => c.startsWith("systemctl enable"))).toEqual([
+        "systemctl enable --now --quiet moz-backup@production.timer",
+        "systemctl enable --now --quiet moz-basebackup@production.timer",
+      ]);
+      expect(r.calls).toContain("gen_secret db-umami");
+    });
 
-  it("[P0-15] init-env refuses when harden.sh has not installed a timer", () => {
-    units(["moz-backup@.timer", "moz-basebackup@.timer"]);
-    const r = run("cmd_init_env staging");
-    expect(r.status).toBe(1);
-    expect(r.stderr).toMatch(/moz-seed-reset\.timer is not installed: run harden\.sh first/);
-  });
-});
+    it("[P0-15] init-env refuses when harden.sh has not installed a timer", () => {
+      units(["moz-backup@.timer", "moz-basebackup@.timer"]);
+      const r = run("cmd_init_env staging");
+      expect(r.status).toBe(1);
+      expect(r.stderr).toMatch(/moz-seed-reset\.timer is not installed: run harden\.sh first/);
+    });
+  },
+);

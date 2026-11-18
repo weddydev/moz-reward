@@ -155,6 +155,20 @@
       "when": 1794930770688,
       "tag": "0021_rejoin_shop_status",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794988792810,
+      "tag": "0022_memberships_staff_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794988951303,
+      "tag": "0023_shops_column_guard",
+      "breakpoints": true
     }
   ]
 }

@@ -438,7 +438,8 @@ describe("[P1-04] consent walls (0020)", () => {
       q.select({ shopId: marketingConsents.shopId }).from(marketingConsents),
     );
     expect(seen.map((r) => r.shopId)).toEqual([a.id]);
-    // Staff can't change a member's opt-in: they can't write the consent row it needs.
+    // Staff can't change a member's opt-in: the memberships guard refuses the column (0022, 42501) before the
+    // missing consent row would (0020, 23000).
     const [m] = await db()
       .select()
       .from(memberships)
@@ -452,7 +453,7 @@ describe("[P1-04] consent walls (0020)", () => {
             .where(eq(memberships.id, m?.id ?? "")),
         ),
       ),
-    ).toBe("23000");
+    ).toBe("42501");
   });
 
   it("the database refuses a customer joining a suspended, closed or pending shop directly", async () => {

@@ -304,8 +304,8 @@ test("[P1-04] an 80-character shop name wraps; the logo on the shop page stays s
   shoot,
 }) => {
   const shopName =
-    "The Extraordinarily Long Named Neighbourhood Coffee House and Bakery of Leeds Ltd";
-  expect(shopName.length).toBeLessThanOrEqual(80);
+    "The Extraordinarily Long Named Neighbourhood Coffee House and Bakery of Leeds Co";
+  expect(shopName.length).toBe(80);
   const { userId } = await signInAs("customer");
   const { shopId } = await seedShop(page.request, {
     status: "active",
