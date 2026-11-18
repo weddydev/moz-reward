@@ -660,3 +660,9 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 ## 2026-11-17 (21:55 IST) — P1 — handoff (Mac, talha.syed)
 - `e05c785` (P1-A MEDIUM batch) pushed; pre-push reused the gate stamp (PASS on the same tree). CI `44123070994` queued at handoff; previous CI `44107979353` + Deploy `44110092209` green.
 - H-38 extended with `wip/P1-02/03/04` (Claude's branch delete refused by permissions). Baton freed; next `/subphase-complete` P1-A.
+
+## 2026-11-18 — P1 — `/subphase-complete` P1-A part 1 (Mac, talha.syed)
+- CI `44123070994` (e05c785) red only on gitleaks never getting an `ubuntu-slim` runner (0 steps) → re-run green; local gitleaks v8.30.1 full history: no leaks. Deploy `44250664237` green (image e05c785). H-47: Scheduled re-enabled (human). `ci:usage` 102% estimate = false alarm (public repo, FOLLOWUP).
+- Staging smoke (inside web-1, no secret read): `/s/BREW22|PATE22|GKQW22` (+ `?src=qr|nfc`) 200, unknown 404, `/api/test/shop` 404, CSP + `private, no-store`, no emails in HTML. Sentry NOT VERIFIED: `SENTRY_DSN_STAGING` is the text `gh secret list` → H-48 🔴; env now refuses a malformed DSN (env.test red → green 24/0).
+- Reviews: design (P1-04) PASS WITH FIXES 3M/7L; code P0-E APPROVE WITH FIXES 1H/2M/7L; security P1-01..03 PASS WITH FIXES 2M/4L; code P1-A APPROVE WITH FIXES 3M/7L; QA 2 MAJOR/7 MINOR (screens inspected). Full text: `progress/P1-A-close-plan.md`.
+- P0-E H1/M1/M2 fixed on `wip/P1-A-close`: moz-deploy puts web + touched services back when roll_rest fails/dies (EXIT trap); `scripts/moz-deploy-release.test.ts` 20/0 (6 red on the old script); source-regex tests replaced. code-review done e9aa786 (P0-E), code-review done e05c785 (P1-A) — fixes pending.

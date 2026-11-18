@@ -31,6 +31,24 @@ const connectionUrl = (protocols: readonly string[]) =>
 const optionalConnectionUrl = (protocols: readonly string[]) =>
   optional.refine((v) => v === undefined || hasProtocol(v, protocols), protocolMessage(protocols));
 
+/**
+ * Sentry DSN (`https://<public key>@<host>/<project id>`). The SDK only logs "Invalid Sentry Dsn" and turns itself
+ * off on a bad value, so staging ran without error reporting for days (H-48); a set value must parse. Never echoed.
+ */
+const isSentryDsn = (value: string): boolean => {
+  if (!URL.canParse(value)) return false;
+  const url = new URL(value);
+  return (
+    (url.protocol === "https:" || url.protocol === "http:") &&
+    url.username !== "" &&
+    /^\/(?:[^/]+\/)*\d+$/.test(url.pathname)
+  );
+};
+const optionalSentryDsn = optional.refine(
+  (v) => v === undefined || isSentryDsn(v),
+  "must be a Sentry DSN (https://<key>@<host>/<project id>)",
+);
+
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
@@ -116,7 +134,7 @@ export const serverEnvSchema = z
     S3_PUBLIC_BASE_URL: optional,
 
     TURNSTILE_SECRET_KEY: optional,
-    SENTRY_DSN: optional,
+    SENTRY_DSN: optionalSentryDsn,
     LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
     /**
      * P0-16: the one real inbox the demo accounts plus-address (`team+moz-owner@…`). Needed only by

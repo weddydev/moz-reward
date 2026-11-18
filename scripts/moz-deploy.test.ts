@@ -313,14 +313,6 @@ describe("[P0-15] D2: wal-g settings are built on the host from the B2 key pair 
     expect(value(deploy, "BACKUP_PUBKEY")).toBe(value(backup, "PUBKEY"));
     expect(value(deploy, "BACKUP_KEY_FPR")).toMatch(/^[0-9A-F]{40}$/);
   });
-
-  it("[P0-15] init-env starts with the archive-off lever set and enables both backup timers", () => {
-    const deploy = readFileSync(path.join(root, "infra", "host", "moz-deploy"), "utf8");
-    const init = /cmd_init_env\(\) \{[\s\S]*?\n\}/.exec(deploy)?.[0] ?? "";
-    expect(init).toContain('pin_backup_key "$env"');
-    expect(init).toMatch(/! -s \$etc\/walg\/walg.env && ! -e \$etc\/backup-lever\/archive-off/);
-    expect(init).toContain("for unit in moz-backup moz-basebackup; do");
-  });
 });
 
 describe("[P0-15] C1b: only staging's Caddy publishes a port, and only IPv4 TCP 443", () => {
@@ -578,8 +570,7 @@ echo "tries=$(<"$t/n")"`,
 describe("[P0-15] weekly staging demo reset (C-38)", () => {
   const systemd = (name: string): string =>
     readFileSync(path.join(root, "infra", "host", "files", "systemd", name), "utf8");
-  const helper = readFileSync(path.join(root, "infra", "host", "moz-deploy"), "utf8");
-
+  // Behaviour of init-env and seed-reset: scripts/moz-deploy-release.test.ts.
   it("[P0-15] the timer runs moz-deploy seed-reset staging on Mondays 04:30 London time, hardened like the backup units", () => {
     const service = systemd("moz-seed-reset.service");
     expect(service).toMatch(/^ExecStart=\/usr\/local\/sbin\/moz-deploy seed-reset staging$/m);
@@ -599,20 +590,5 @@ describe("[P0-15] weekly staging demo reset (C-38)", () => {
     expect(timer).toMatch(/^WantedBy=timers.target$/m);
     const harden = readFileSync(path.join(root, "infra", "host", "harden.sh"), "utf8");
     expect(harden).toContain("moz-seed-reset.service moz-seed-reset.timer");
-    expect(helper).toContain("systemctl enable --now --quiet moz-seed-reset.timer");
-  });
-
-  it("[P0-15] the reset re-seeds with --reset on the current release, then re-runs the sign-in check; every staging release runs the check", () => {
-    const reset = helper.slice(helper.indexOf("cmd_seed_reset() {"));
-    expect(reset.slice(0, reset.indexOf("\n}\n"))).toMatch(
-      /run --rm --no-deps -T worker node cli\/seed\.mjs --reset\n\s+demo_signin_check "\$env" "\$cur"/,
-    );
-    expect(helper).toMatch(
-      /worker node cli\/demo-signin-check\.mjs --url http:\/\/web-1:3000 >&2 \|\|\n\s+die "demo sign-in check failed/,
-    );
-    const release = helper.slice(helper.indexOf("cmd_release() {"));
-    expect(release.slice(0, release.indexOf("\n}\n"))).toContain(
-      '[[ $env != staging ]] || demo_signin_check "$env" "$sha"',
-    );
   });
 });
