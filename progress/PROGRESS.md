@@ -3,29 +3,31 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by Syedbadeshah76 since 2026-11-18 07:35 PKT
+Baton: free — last held by Syedbadeshah76, 2026-11-18 21:45 PKT
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **18 Nov, Syedbadeshah76 (Windows): P1-06 done** (`2479b62` on main, ticked; C-56 closed). Pure engine `src/lib/loyalty/engine.ts` + branded types `src/lib/brand.ts`; also fixed a P1-04 audit-scrubber bug (key ids with 7+ digits were redacted). Nothing half-done. **Next exact step:** P1-07 Wallet. Note: memberships have no progress/ingot columns yet (P1-12 adds them with C-60, see DECISIONS "Loyalty engine rules"); P1-07 should read progress through one membership-state read (0 until P1-12) or add the columns early — decide at its start. The "< 3 visits" unreliable-estimate rule is the Wallet's (the engine estimates from any history).
-- **P1-A still not ticked:** waits for **H-48 🔴** (real `SENTRY_DSN_STAGING`). The Deploy of `ab29272` failed at the demo seed on the placeholder DSN (as expected); staging still serves `8353e00` (`/api/health/ready` 200), and migrations 0022/0023 did apply there (guards only). Once H-48 is done: re-run Deploy for current main → staging smoke (`/s/BREW22` member/non-member, join sheet, `/dashboard/loyalty` as the demo owner, `/api/health/ready`) → Sentry release with no new errors → tick P1-A in PHASES + SESSION_LOG line (docs-only commit).
-- **Not yet seen:** CI for `2479b62` and this progress commit (check first; red is fixed first). CI for `f1b2658` green.
-- **Do first on the other laptop:** `git pull`, `pnpm install` (fast-check added), `pnpm db:migrate` (0024), `pnpm db:seed` (Brew gets programme v1; or `pnpm db:seed --reset`). VPS: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`.
+- **18 Nov 21:45 PKT, handed over by Syedbadeshah76 (Windows): P1-07 Wallet built, NOT ticked — on `wip/P1-07`, HEAD `d05e6c0` (pushed).** `git switch wip/P1-07 && git merge --ff-only origin/wip/P1-07`, check HEAD = `d05e6c0`. Contains: migration 0025 (`memberships.progress_gold` / `ingots_completed`, server-owned via the guard; RLS `loyalty_programs_member_read`), `readOwnWallet` + `loadWallet` + pure `src/features/wallet/view.ts`, `WalletPage` (mobile list, desktop 3-col grid + right column, empty state, suspended/closed greyed), pull-to-refresh, ShopCard shared-element names, demo seed (Aisha at Brew: 720/1,000, 3 ingots), Lighthouse route `wallet-50`, 3 DECISIONS entries, FOLLOWUPS, MAP, carried criteria already written into P1.md / P4.md.
+- **Half-done, exactly how to finish P1-07:** (1) AC "cards transition into the shop page via shared element": both pages carry `SharedElement` `shoplogo`/`shopname` keyed by shop id, but the E2E only checks the navigation. Add to `tests/e2e/wallet.spec.ts` the view-transition group check from `tests/e2e/motion.spec.ts` (~lines 640–670: `record(page)`, click, `groupNames` contains `vtName("shoplogo", shopId)` and `vtName("shopname", shopId)`; Chromium; WebKit: navigation still works). (2) `pnpm gate:task P1-07 P1-04 P0-12 P0-09 J1`. (3) One task commit: tick P1-07 in PHASES, add the CARRIED rows below, SESSION_LOG ≤ 5 lines, push to main.
+- **CARRIED rows to add with the P1-07 commit** (criteria already in the phase files on the branch): C-62 → P1-12 (approvals write the two counters; Wallet reads rewards-ready count, recent activity, last 10 awards for "N more visits", statement count unchanged); C-63 → P4-06 (Wallet daily game card); C-64 → P1-08 (landing initial JS 155.2 KB > 149.5 KB judgment limit: the P1-04 join-sheet chunk, 12 KB, loads eagerly → `next/dynamic`; pre-existing, found by the new Lighthouse run); C-65 → P1-16 (right-column rewards list with Redeem).
+- **Tested (18 Nov, Windows):** unit 1630/0 (21 wallet cases); int 1380/0/12 skip (`wallet.test.ts`: 1 vs 50 memberships send identical statements via test-only `observeQueries`; left and other customers hidden; suspended/closed flagged; programme RLS for member/stranger/leaver/staff; `membership-guard`: new columns refused for customer, staff and joins); gate:task run 2: typecheck, lint, format, titles, unit, int, build, check:bundle, sast, lint:sh PASS; e2e 155/5 → 4 fixed (a live region inside the route content; h1 must be exactly "Wallet"), affected specs re-run 59/0; Lighthouse `wallet-50` PASS (LCP 0.99 s, CLS 0, JS 165.1/170 KB). Screens inspected at 390/320/1440 (Chromium, WebKit): `.artifacts/screens/P1-07/`.
+- **Not yet tested:** a full green `gate:task` after the two E2E fixes (only the affected specs were re-run); the morph check (above); pull-to-refresh on real phones (H-13; E2E drives it through Chromium touch emulation); CI for `d05e6c0` (wip push, not looked at yet). **Known, not P1-07:** `ui-states.spec.ts` "[P0-09] AC3 Tab order" fails on WebKit **on Windows**, also on clean main `594a25c` (FOLLOWUPS on the branch); Linux CI passes it.
+- **Do first on the other laptop:** `git fetch`, switch to `wip/P1-07` (above), `pnpm install`, `pnpm db:migrate` (0025), `pnpm db:seed --reset` (demo progress). **P1-A still not ticked:** waits for **H-48 🔴**; then re-run Deploy for current main → staging smoke → Sentry check → tick P1-A (docs-only commit). CI for `2479b62` green. VPS: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`.
 
 ## Status
 - **Phase:** **P1**. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
 - **Current sub-phase:** P1-B loyalty engine, Wallet, Vault: ~~P1-05~~ → ~~P1-06~~ → P1-07 → P1-08 → P1-09 → `/subphase-complete`. (P1-A: everything done except the staging step, which waits for H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-18, Syedbadeshah76 (P1-06 done)
+- **Last updated:** 2026-11-18, Syedbadeshah76 (handoff: P1-07 on `wip/P1-07` `d05e6c0`, not ticked)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `8353e00`; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys roll back until H-48.
-- **P1-B:** P1-05, P1-06 done (18 Nov). Next P1-07.
+- **P1-B:** P1-05, P1-06 done (18 Nov). P1-07 built on `wip/P1-07` (`d05e6c0`), not ticked: morph E2E check + full gate left (Handoff note).
 
 ## Next (top 3)
-1. P1-07 Wallet.
+1. Finish P1-07 on `wip/P1-07` (morph check, gate, tick, CARRIED C-62..C-65), then P1-08.
 2. Human: **H-48** (staging Sentry DSN) → then close P1-A (handoff note: deploy, smoke, Sentry, tick).
 3. Human, any time: H-45 UptimeRobot monitors (then the stop-staging phone alert test, C-48); H-46 Cloudflare `/s/*` rule.
 
@@ -69,11 +71,10 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (18 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- P1-06 (`2479b62`): gate:task P1-06 P1-02 P1-04 PASS — unit 1609/0, int 1373/0/12 skip, build, sast, e2e 40/0 (Chromium + WebKit, production build); pre-push reused the stamp.
-- Engine 47 unit + 3 fast-check properties (gold conserved, progress in range, no double milestone, rewards never revoked); coverage engine.ts 98.0% lines / 96.2% branches / 100% functions.
-- C-56: `brand.test.ts` `@ts-expect-error` swaps; weakening a brand fails typecheck (shown once).
-- Audit scrubber fix: `audit.test.ts` regression (failing key id `kc011910373`) + key-rotation int 6/0.
-- P1-05 evidence (`f1b2658`, CI green) moved to SESSION_LOG.
+- P1-07 (`wip/P1-07` `d05e6c0`, not ticked): gate:task run 2 — unit 1630/0, int 1380/0/12 skip, build, sast PASS; e2e 155/5 → 4 fixed, affected specs re-run 59/0; the 5th is the Windows-WebKit P0-09 Tab test, failing on clean main too.
+- Wallet query count: 1 and 50 memberships send identical SQL statements (`tests/integration/wallet.test.ts`, test-only `observeQueries`).
+- Lighthouse mobile `wallet-50`: LCP 0.99 s, CLS 0, JS 165.1 KB (≤ 170) PASS; landing JS 155.2 KB FAIL (pre-existing, C-64 → P1-08).
+- P1-06 evidence (`2479b62`, CI green) is in SESSION_LOG.
 
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).

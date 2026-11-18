@@ -691,3 +691,9 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Gate runs 1–2 red: my join.test assertion (fixed); `key-rotation.test.ts` — real P1-04 bug: audit scrubber cut 7+ digit runs out of key ids (~1 in 12 keys) → `isKeyId` exemption + regression test `audit.test.ts`.
 - gate:task P1-06 P1-02 P1-04 PASS: unit 1609/0, int 1373/0/12, build, sast, e2e 40/0 (Chromium + WebKit). Pre-push reused the stamp. CI for `f1b2658` green; Deploy still fails on the placeholder SENTRY_DSN (H-48).
 - Not security-list task: diff (incl. the scrubber fix) reviewed at the P1-B close.
+
+## 2026-11-18 — P1 — P1-07 Wallet, handoff (Windows, Syedbadeshah76)
+- Built the Wallet on `wip/P1-07` (`d05e6c0`): 0025 counters + member programme read, fixed-statement read, pure view (sort, engine label), WalletPage mobile/desktop, empty state, pull-to-refresh, shared-element card → shop page, demo progress, Lighthouse `wallet-50`.
+- gate:task run 1 red: dynamic Lighthouse title tag (title check) + progress files edited mid-run; run 2: everything PASS except e2e 155/5: live region inside the route content and h1 not exactly "Wallet" (both fixed, specs re-run 59/0), plus the Windows-WebKit P0-09 Tab test, red on clean main `594a25c` too (FOLLOWUPS).
+- Lighthouse: `wallet-50` PASS (LCP 0.99 s, JS 165.1 KB); landing JS 155.2 KB > judgment (P1-04 join sheet chunk) → C-64 for P1-08.
+- Not ticked: the morph check in E2E and a full green gate are left (Handoff note). Not a security-list task: diff reviewed at the P1-B close.
