@@ -6,6 +6,8 @@
  *   Source 2 (estimate): this repo's jobs this month, each rounded up to a whole minute as GitHub bills them.
  * ≥ 70% → warning (free-tier rule). ≥ 80% → scheduled workflows must pause: `--enforce` disables them
  * (`gh workflow disable`); push CI keeps running. Re-enable next month with `gh workflow enable <file>`.
+ * A public repository never pauses: GitHub doesn't bill standard runners there (DECISIONS 14 Nov; the minutes are
+ * still printed). Going private before launch (CARRIED C-43) brings the budget back automatically.
  * Env: ACTIONS_MONTHLY_MINUTES (default 2000, GitHub Free).
  */
 import { spawnSync } from "node:child_process";
@@ -37,7 +39,14 @@ export function minutesFromJobs(jobs: Job[]): number {
   }, 0);
 }
 
-export function level(used: number, allowance: number): "ok" | "warn" | "pause" {
+export type Visibility = "public" | "private" | "internal";
+
+export function level(
+  used: number,
+  allowance: number,
+  visibility: Visibility = "private",
+): "ok" | "warn" | "pause" {
+  if (visibility === "public") return "ok";
   const share = used / allowance;
   return share >= PAUSE_AT ? "pause" : share >= WARN_AT ? "warn" : "ok";
 }
@@ -47,12 +56,21 @@ function gh(args: string[]): { ok: boolean; out: string } {
   return { ok: r.status === 0, out: r.status === 0 ? r.stdout : `${r.stdout}${r.stderr}` };
 }
 
-function repo(): { owner: string; name: string } {
-  const r = gh(["repo", "view", "--json", "owner,name", "--jq", '.owner.login + "/" + .name']);
-  const [owner, name] = r.out.trim().split("/");
-  if (!r.ok || !owner || !name)
+function repo(): { owner: string; name: string; visibility: Visibility } {
+  const r = gh([
+    "repo",
+    "view",
+    "--json",
+    "owner,name,visibility",
+    "--jq",
+    '.owner.login + "/" + .name + "/" + (.visibility | ascii_downcase)',
+  ]);
+  const [owner, name, vis] = r.out.trim().split("/");
+  if (!r.ok || !owner || !name || !vis)
     throw new Error(`can't read the GitHub repository: ${r.out.trim()}`);
-  return { owner, name };
+  // Anything unexpected counts as billed (fail towards pausing, never towards spending).
+  const visibility: Visibility = vis === "public" || vis === "internal" ? vis : "private";
+  return { owner, name, visibility };
 }
 
 function exactMinutes(owner: string, now: Date): number | null {
@@ -94,7 +112,7 @@ function main(): void {
   const enforce = process.argv.includes("--enforce");
   const allowance = Number(process.env.ACTIONS_MONTHLY_MINUTES ?? 2000);
   const now = new Date();
-  const { owner, name } = repo();
+  const { owner, name, visibility } = repo();
   const exact = exactMinutes(owner, now);
   const used = exact ?? estimatedMinutes(owner, name, now);
   const source =
@@ -102,12 +120,14 @@ function main(): void {
       ? "billing report (exact, all of the owner's repos)"
       : "estimate from this repo's job durations (exact needs: gh auth refresh -h github.com -s user)";
   const share = Math.round((used / allowance) * 100);
-  const state = level(used, allowance);
+  const state = level(used, allowance, visibility);
   // In GitHub Actions, scheduled.yml reads `state` to skip its suites at ≥ 80%.
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `state=${state}\n`);
   console.warn(
     `[ci:usage] ${now.toISOString().slice(0, 7)}: ${used} of ${allowance} Actions minutes (${share}%) — ${source}`,
   );
+  if (visibility === "public")
+    console.warn("[ci:usage] public repository: standard runners are unbilled, so nothing pauses");
   if (state === "warn")
     console.warn(`[ci:usage] WARN: past ${WARN_AT * 100}% of the free allowance`);
   if (state === "pause") {
