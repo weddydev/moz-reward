@@ -169,6 +169,13 @@
       "when": 1794988951303,
       "tag": "0023_shops_column_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795001999321,
+      "tag": "0024_loyalty_programs",
+      "breakpoints": true
     }
   ]
 }

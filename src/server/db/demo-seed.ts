@@ -3,6 +3,7 @@ import { createHmac, hkdfSync } from "node:crypto";
 import { symmetricEncrypt } from "better-auth/crypto";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type { LngLat } from "@/lib/geo";
+import { TEMPLATES } from "@/lib/loyalty/programme";
 import { hashPassword } from "@/server/auth/password";
 import { sealField } from "@/server/security/field-crypto";
 import { fieldKeyring, phoneBlindIndex, profilePhoneContext } from "@/server/security/field-keys";
@@ -10,6 +11,7 @@ import {
   accounts,
   adminMembers,
   customerProfiles,
+  loyaltyPrograms,
   memberships,
   shopStaff,
   shops,
@@ -99,6 +101,8 @@ type DemoAccount = {
 };
 
 const BREW = DEMO_SHOPS[0].id;
+/** Brew & Bloom's demo owner (Maya Bloom in DEMO_ACCOUNTS). */
+const DEMO_OWNER = "0199d3e0-0000-7000-8000-000000000003";
 /** The demo customer's mobile (E.164), from Ofcom's drama range 07700 900000–900999: never a real number. */
 const DEMO_PHONE = "+447700900123";
 
@@ -120,7 +124,7 @@ export const DEMO_ACCOUNTS = [
   },
   {
     key: "owner",
-    id: "0199d3e0-0000-7000-8000-000000000003",
+    id: DEMO_OWNER,
     name: "Maya Bloom",
     label: "Shop owner, Brew & Bloom Café",
     staff: { shopId: BREW, role: "owner" },
@@ -263,6 +267,8 @@ export type DemoSeedResult = {
   staff: number;
   admins: number;
   memberships: number;
+  /** P1-05: loyalty programme versions. */
+  programmes: number;
 };
 
 /**
@@ -297,7 +303,14 @@ export async function runDemoSeed(
   );
 
   return database.transaction(async (tx) => {
-    const result: DemoSeedResult = { users: 0, shops: 0, staff: 0, admins: 0, memberships: 0 };
+    const result: DemoSeedResult = {
+      users: 0,
+      shops: 0,
+      staff: 0,
+      admins: 0,
+      memberships: 0,
+      programmes: 0,
+    };
 
     const insertedShops = await tx
       .insert(shops)
@@ -380,6 +393,21 @@ export async function runDemoSeed(
         result.memberships += rows.length;
       }
     }
+    // P1-05: Brew & Bloom starts on the Café classic template, saved by its demo owner (the shop the demo
+    // walks through). The other demo shops have no owner account and stay "not set up yet".
+    const programmes = await tx
+      .insert(loyaltyPrograms)
+      .values({
+        shopId: BREW,
+        version: 1,
+        ...TEMPLATES.cafe.rules,
+        activeFrom: new Date(),
+        rewardsFrom: new Date(),
+        createdBy: DEMO_OWNER,
+      })
+      .onConflictDoNothing()
+      .returning({ id: loyaltyPrograms.id });
+    result.programmes = programmes.length;
     return result;
   });
 }

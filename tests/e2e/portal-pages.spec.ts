@@ -89,7 +89,7 @@ test.describe("[P0-12] portal pages", () => {
     signInAs,
   }) => {
     await signInAs("staff");
-    for (const path of ["/dashboard/settings", "/dashboard/staff"]) {
+    for (const path of ["/dashboard/settings", "/dashboard/staff", "/dashboard/loyalty"]) {
       const res = await page.goto(path);
       expect(res?.status(), path).toBe(403);
       await expect(page.getByRole("heading", { level: 1, name: FORBIDDEN })).toBeVisible();

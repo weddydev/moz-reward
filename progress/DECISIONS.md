@@ -767,3 +767,13 @@ Consequence: a new environment creates the login as `moz_app` (moz-deploy alread
 Decision: shop names over 24 characters make the footer button read "Join" (the title keeps the full name: it is the dialog's accessible name); a one-letter full name ("A") is accepted.
 Why: QA minors 5 and 7 (P1-A). PRODUCT is silent on name rules; mononyms and initials are real, and staff see the member ID anyway.
 Consequence: revisit the name rule if staff report unusable names.
+
+## 2026-11-18 — Loyalty programme versions carry two dates (P1-05)
+Decision: each immutable version has `active_from` (earn rules; ingot size of ingots that start from then) and `rewards_from` (main reward + milestones). A rewards change gets `rewards_from` = save + 14 days; a save whose rewards equal those in force applies at once (an edit reverted inside the window is cancelled for good: resolution is "highest version whose date has passed"); a save that only edits other fields while a notice runs keeps that notice's date; a second rewards change restarts its own 14 days. A member's ingot is resolved by the time it started (`ingotTerms`).
+Why: PRODUCT §6 needs both "current ingot completes under the version it started" and "14 days' notice" with the phase file's edge cases (two changes, revert); one pin per ingot (its start time) answers both without storing two version ids.
+Consequence: P1-12 stores the ingot start time on the membership (C-60). Saves are serialised per shop (advisory lock) and carry the form's base version: a stale form gets CONFLICT; identical rules create no version.
+
+## 2026-11-18 — Loyalty settings: limits, streak shape, owner only, no programme until set up (P1-05)
+Decision: earn rate 1–500 gold per visit (the 500-gold single-award cap) or 1–100 gold per £1; ingot 100–100,000; reward texts 2–60 characters (hidden characters refused); tiers Silver ≥ 1 < Gold ≤ 1,000 ingots; expiry off or 12–60 months; streak stored as `{ bonusGold }` or off, with the ISO-week rule fixed (PRODUCT §6 wins over "window days" in the phase build list). The page is owner-only (was open to staff in the P0-12 route table). A shop has no programme until its owner saves one (templates fill the form); the demo seed gives Brew & Bloom Café v1 (Café classic). `created_by` has no FK (an immutable row can't be nulled on erasure; like audit_logs).
+Why: PRODUCT is silent on the bounds; these keep every value meaningful and inside the award cap. Auto-creating a programme would pick terms the owner never saw.
+Consequence: P1-11 refuses requests at a shop with no programme (edge case added). Main reward image waits for the P2-05 upload pipeline (C-61).

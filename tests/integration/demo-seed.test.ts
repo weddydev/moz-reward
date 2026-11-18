@@ -46,6 +46,7 @@ const TABLES = [
   "shop_staff",
   "admin_members",
   "memberships",
+  "loyalty_programs",
 ] as const;
 
 async function counts(): Promise<Record<string, number>> {
@@ -81,6 +82,7 @@ describe("[P0-16] demo seed is idempotent and consistent", () => {
       staff: 2,
       admins: 4,
       memberships: 3,
+      programmes: 1,
     });
     const after1 = await counts();
     expect(after1).toMatchObject({
@@ -92,8 +94,16 @@ describe("[P0-16] demo seed is idempotent and consistent", () => {
       shop_staff: 2,
       admin_members: 4,
       memberships: 3,
+      loyalty_programs: 1,
     });
-    expect(await seed()).toEqual({ users: 0, shops: 0, staff: 0, admins: 0, memberships: 0 });
+    expect(await seed()).toEqual({
+      users: 0,
+      shops: 0,
+      staff: 0,
+      admins: 0,
+      memberships: 0,
+      programmes: 0,
+    });
     expect(await counts()).toEqual(after1);
   });
 

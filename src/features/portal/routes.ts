@@ -163,7 +163,8 @@ export const SHOP_ROUTES: readonly ShopRoute[] = [
     path: "/dashboard/loyalty",
     label: "Loyalty programme",
     icon: "Gem",
-    roles: SHOP_ALL,
+    // Owner only (P1-05, PRODUCT §2: staff handle requests, scans and the customer list).
+    roles: SHOP_OWNER,
   },
   {
     portal: "shop",

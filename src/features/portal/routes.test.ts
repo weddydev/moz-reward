@@ -91,9 +91,9 @@ describe("[P0-12] portal route table", () => {
     }
   });
 
-  it("role matrix (brief): shop staff can't open Staff or Settings", () => {
+  it("role matrix (brief): shop staff can't open Loyalty programme (P1-05), Staff or Settings", () => {
     const staffCant = SHOP_ROUTES.filter((r) => !r.roles.includes("staff")).map((r) => r.label);
-    expect(staffCant).toEqual(["Staff", "Settings"]);
+    expect(staffCant).toEqual(["Loyalty programme", "Staff", "Settings"]);
   });
 
   it("role matrix (brief): admin roles", () => {

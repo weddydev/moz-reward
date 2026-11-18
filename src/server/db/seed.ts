@@ -111,7 +111,7 @@ async function main(): Promise<void> {
     authSecret: env().AUTH_SECRET,
   });
   console.warn(
-    `[db] demo seed done: ${String(demo.shops)} shops, ${String(demo.users)} accounts, ${String(demo.staff)} staff, ${String(demo.admins)} admin and ${String(demo.memberships)} membership rows inserted (existing rows kept). Sign-in details: pnpm demo:credentials`,
+    `[db] demo seed done: ${String(demo.shops)} shops, ${String(demo.users)} accounts, ${String(demo.staff)} staff, ${String(demo.admins)} admin, ${String(demo.memberships)} membership and ${String(demo.programmes)} loyalty programme rows inserted (existing rows kept). Sign-in details: pnpm demo:credentials`,
   );
   assertNoPasswordOnlyStaff(appEnv, await privilegedWithoutTotp(database));
   process.exit(0);
