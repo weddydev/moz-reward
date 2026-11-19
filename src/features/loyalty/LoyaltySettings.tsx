@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
+import { Ingot } from "@/components/ui/Ingot";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Switch } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
@@ -29,7 +30,6 @@ import {
 } from "@/lib/loyalty/programme";
 import { useHydrated } from "@/lib/use-hydrated";
 import { saveLoyaltyProgramme } from "./actions";
-import { IngotPreview } from "./IngotPreview";
 import { HISTORY_SHOWN, type LoyaltyView } from "./view";
 
 type MilestoneDraft = { on: boolean; reward: string; isMystery: boolean };
@@ -459,7 +459,14 @@ export function LoyaltySettings({
         <aside className="flex flex-col gap-6 lg:sticky lg:top-6">
           <Card className="flex flex-col items-center gap-3 p-4 text-center md:p-6">
             <h2 className="text-h3 self-start">Preview</h2>
-            <IngotPreview percent={SAMPLE_PERCENT} milestones={previewMilestones} />
+            {/* The text below says everything the picture shows (C-59: the real Ingot, static). */}
+            <Ingot
+              gold={SAMPLE_PERCENT}
+              size={100}
+              marks={previewMilestones.map((m) => m.percent)}
+              decorative
+              className="max-w-60"
+            />
             <p className="text-small text-ink-2">A member {SAMPLE_PERCENT}% of the way to:</p>
             <p className="text-body font-semibold [overflow-wrap:anywhere]">
               {draft.mainReward.trim() || "Main reward"}

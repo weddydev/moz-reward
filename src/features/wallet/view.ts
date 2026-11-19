@@ -2,6 +2,7 @@ import { addressLine, statusLabel } from "@/features/landing/view";
 import type { ShopId } from "@/lib/brand";
 import { points } from "@/lib/brand";
 import { estimateVisitsToNext, initialMemberState } from "@/lib/loyalty/engine";
+import { ingotPercent } from "@/lib/loyalty/ingot";
 import { ingotTerms, type ProgrammeVersion } from "@/lib/loyalty/programme";
 import { type ClosureRow, type HoursRow, openStatus } from "@/lib/open-status";
 import { londonDate, londonWall } from "@/lib/time";
@@ -38,11 +39,7 @@ export function compareWallet(a: WalletSortKey, b: WalletSortKey): number {
 export const sortWallet = <T extends WalletSortKey>(cards: readonly T[]): T[] =>
   [...cards].sort(compareWallet);
 
-/** Whole percent of the ingot, rounded down: 999 of 1,000 reads 99%, never a full ingot that isn't. */
-export function ingotPercent(progressGold: number, ingotSize: number): number {
-  if (!(ingotSize > 0) || !(progressGold > 0)) return 0;
-  return Math.min(100, Math.floor((progressGold * 100) / ingotSize));
-}
+export { ingotPercent };
 
 /**
  * The card's progress label: "72% · 1 more visit". The visits part only when the estimate is reliable (at least

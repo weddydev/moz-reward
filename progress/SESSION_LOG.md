@@ -704,3 +704,8 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - Morph check found a real gap: `/shops/[id]` loading fallback commits first, card loses its partner (diag: WebKit 0/3, Chromium ~½ under load) → hero handoff into `shops/[id]/loading.tsx` (DECISIONS 19 Nov). Spec holds the page 800 ms: 52/0 × 4 repeats; negative check fails without it; Linux container 97/0.
 - gate:task P1-07 P1-04 P0-12 P0-09 P0-10 J1 PASS: unit 1658/0, int 1391/0/1, sast, e2e 212/0/18. CARRIED C-62 → P1-12, C-63 → P4-06, C-64 → P1-08, C-65 → P1-16.
 - Not security-list task: diff reviewed at the P1-B close.
+
+## 2026-11-19 17:30 — P1 — P1-08 Ingot, pour-on-view, Gold Vault (talha.syed, Mac)
+Done: Ingot SVG (static) + IngotPour (WAAPI, once per mount; 0.9 s pour / 0.5 s rise; finishes on scroll-away, hidden tab, reduced motion, tap); `/vault/[id]` screen 5; C-59 settings preview, C-50 landing preview via `shop_reward_preview` (0026), C-64 join sheet on demand; member pages render not-found inline (#419). Design review: 4 MEDIUM fixed in the task, LOWs → FOLLOWUPS.
+Tests: gate:task suites PASS (unit 1693, int 1418, e2e 148/0/8/0); pour 60.0 fps p95 16.8 ms at 4× throttle; Lighthouse landing JS 149.2 KB judgment. NOT VERIFIED: Linux-container run (helper needs .env.local; denied) → CI is the evidence.
+Left off: P1-09 shop page (C-54), then `/subphase-complete` P1-B.

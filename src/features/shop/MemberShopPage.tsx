@@ -1,5 +1,6 @@
 import { PartyPopper } from "lucide-react";
 import Link from "next/link";
+import { TransitionLink } from "@/components/motion/TransitionLink";
 import { buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
@@ -39,6 +40,15 @@ export function MemberShopPage({
       <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
         <MemberIdCard memberId={member.memberId} fullName={member.fullName} />
         <div className="mt-6 flex flex-col gap-3 lg:mt-0">
+          {/* P1-09 replaces this with the Gold Vault card (the pour on every shop view). */}
+          <TransitionLink
+            href={`/vault/${shop.shopId}`}
+            direction="forward"
+            className={buttonClasses({ variant: "secondary", block: true })}
+            data-testid="shop-vault-link"
+          >
+            Your Gold Vault
+          </TransitionLink>
           <Link
             href={`/s/${shop.shopCode}`}
             className={buttonClasses({ variant: "secondary", block: true })}

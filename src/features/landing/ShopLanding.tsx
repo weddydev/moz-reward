@@ -1,8 +1,9 @@
-import { Clock, MapPin, Navigation, Phone, Store } from "lucide-react";
+import { Clock, Gift, MapPin, Navigation, Phone, Store } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
+import { Ingot } from "@/components/ui/Ingot";
 import { initialsOf } from "@/lib/initials";
 import { openStatus } from "@/lib/open-status";
 import { directionsUrl, telHref } from "@/lib/shop-links";
@@ -22,7 +23,8 @@ const rise = (i: number): { "data-gate-rise": ""; style: React.CSSProperties } =
  * Shop landing, screen 1 (DESIGN §15; P1-02). Server component, no client JS of its own. Mobile: cover with
  * an ivory fade, overlapping logo, stacked CTAs, details. Desktop (≥ 1024px): split hero, cover left, details
  * and CTAs right, cards row below. "Rate your visit" and "Today's offer" stay hidden until P3 provides
- * them; the reward preview arrives with the loyalty programme (P1-05/P1-08, CARRIED C-50).
+ * them. The reward preview (P1-08, C-50) shows once the shop has a programme: a static ingot filled to the
+ * first reward, what it is and the gold it needs, and the full-ingot reward.
  */
 export function ShopLanding({
   data,
@@ -86,7 +88,10 @@ export function ShopLanding({
         </section>
       </div>
 
-      <div className="mx-auto grid w-full max-w-[560px] gap-4 px-5 pb-10 lg:mt-10 lg:max-w-[1280px] lg:grid-cols-2 lg:gap-6 lg:px-10">
+      <div
+        className={`mx-auto grid w-full max-w-[560px] gap-4 px-5 pb-10 lg:mt-10 lg:max-w-[1280px] lg:gap-6 lg:px-10 ${data.reward ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}
+      >
+        {data.reward ? <RewardPreviewCard reward={data.reward} /> : null}
         <Card className="flex flex-col gap-3 p-5" data-testid="landing-hours" {...rise(4)}>
           <h2 className="text-h2 flex items-center gap-2">
             <Icon icon={Clock} className="text-gold-700" /> Opening hours
@@ -137,6 +142,41 @@ export function ShopLanding({
 
       <LandingFooter />
     </main>
+  );
+}
+
+const gb = (n: number): string => n.toLocaleString("en-GB");
+
+function RewardPreviewCard({ reward }: { reward: NonNullable<Live["reward"]> }): React.JSX.Element {
+  const { next, main, ingotSize } = reward;
+  return (
+    <Card className="flex flex-col gap-4 p-5" data-testid="landing-reward" {...rise(4)}>
+      <h2 className="text-h2 flex items-center gap-2">
+        <Icon icon={Gift} className="text-gold-700" /> Rewards
+      </h2>
+      <div className="flex items-center gap-4">
+        {/* Filled to the first reward; the text beside it says everything it shows. */}
+        <div className="w-24 shrink-0">
+          <Ingot gold={next.gold} size={ingotSize} decorative />
+        </div>
+        <dl className="flex min-w-0 flex-col gap-3">
+          <div className="flex flex-col">
+            <dt className="text-caption text-ink-2">
+              {next.percent === 100 ? "Fill the ingot for" : "First reward"}
+            </dt>
+            <dd className="text-body font-semibold [overflow-wrap:anywhere]">{next.title}</dd>
+            <dd className="text-small text-ink-2">at {gb(next.gold)} gold</dd>
+          </div>
+          {next.percent === 100 ? null : (
+            <div className="flex flex-col">
+              <dt className="text-caption text-ink-2">Full ingot</dt>
+              <dd className="text-body font-semibold [overflow-wrap:anywhere]">{main.text}</dd>
+              <dd className="text-small text-ink-2">at {gb(main.gold)} gold</dd>
+            </div>
+          )}
+        </dl>
+      </div>
+    </Card>
   );
 }
 

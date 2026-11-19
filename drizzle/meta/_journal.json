@@ -183,6 +183,13 @@
       "when": 1795014786477,
       "tag": "0025_wallet_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795085745363,
+      "tag": "0026_landing_reward_preview",
+      "breakpoints": true
     }
   ]
 }

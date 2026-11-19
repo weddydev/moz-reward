@@ -1,14 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type SyntheticEvent, useEffect, useRef, useState } from "react";
+import { type SyntheticEvent, useRef, useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { Button, buttonClasses } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Modal } from "@/components/ui/Modal";
 import { withNetworkGuard } from "@/features/auth/network";
-import { useHydrated } from "@/lib/use-hydrated";
 import { DESKTOP_QUERY, useMediaQuery } from "@/lib/use-media-query";
 import { joinShopAction } from "./actions";
 import {
@@ -31,12 +29,11 @@ import {
 const BUTTON_NAME_MAX = 24;
 
 /**
- * "Collect points" for a signed-in visitor who isn't a member (PRODUCT §3, P1-04, C-52): the CTA and the join
- * sheet (BottomSheet on phones, Modal from 1024px). First join asks for the profile (name, UK mobile, optional
+ * The join sheet for a signed-in visitor who isn't a member (PRODUCT §3, P1-04, C-52): BottomSheet on phones,
+ * Modal from 1024px. Loaded on demand by `JoinCta` (C-64), which owns the CTA and whether the sheet is open. First join asks for the profile (name, UK mobile, optional
  * birthday, 13+); every join asks the shop's marketing question, unticked. The consent text and version come
  * from the server render, so a wording change reaches the sheet with `router.refresh()` (security design L11).
- * Before hydration the CTA is a link to `?join=1`, which opens the sheet once the page is interactive. What was
- * typed survives closing and reopening the sheet; nothing is stored until the join succeeds. A form-level error
+ * What was typed survives closing and reopening the sheet (it stays mounted once loaded); nothing is stored until the join succeeds. A form-level error
  * shows in the footer, by the button, so it is on screen however far the form is scrolled (P1-A DES-M1).
  */
 export function JoinSheet({
@@ -44,19 +41,19 @@ export function JoinSheet({
   shopName,
   needsProfile,
   consent,
-  autoOpen,
+  open,
+  onOpenChange,
 }: {
   shopCode: string;
   shopName: string;
   needsProfile: boolean;
   /** The question as rendered; `shopName` is sent back so the server can tell the customer saw today's text. */
   consent: { version: string; question: string; details: string; shopName: string };
-  autoOpen: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }): React.JSX.Element {
   const router = useRouter();
-  const hydrated = useHydrated();
   const desktop = useMediaQuery(DESKTOP_QUERY);
-  const [open, setOpen] = useState(autoOpen);
   const [profile, setProfile] = useState<ProfileDraft>(EMPTY_PROFILE);
   const [optIn, setOptIn] = useState(false);
   const [errors, setErrors] = useState<ProfileErrors>({});
@@ -66,15 +63,6 @@ export function JoinSheet({
   const [pending, setPending] = useState(false);
   // State lags a second tap in the same task (double tap, Enter + click): the ref doesn't (P1-A QA minor 4).
   const inFlight = useRef(false);
-
-  // `?join=1` (back from sign-in, or a tap before hydration) has done its job once the sheet is open.
-  useEffect(() => {
-    if (!autoOpen) return;
-    const url = new URL(window.location.href);
-    if (!url.searchParams.has("join")) return;
-    url.searchParams.delete("join");
-    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
-  }, [autoOpen]);
 
   function check(): ProfileErrors {
     if (!needsProfile) return {};
@@ -163,23 +151,11 @@ export function JoinSheet({
   }
 
   const close = (): void => {
-    if (!pending) setOpen(false);
+    if (!pending) onOpenChange(false);
   };
   const Overlay = desktop ? Modal : BottomSheet;
   return (
     <>
-      <Link
-        href={`/s/${shopCode}?join=1`}
-        className={buttonClasses({ size: 56, block: true })}
-        data-testid="landing-collect"
-        onClick={(e) => {
-          if (!hydrated) return;
-          e.preventDefault();
-          setOpen(true);
-        }}
-      >
-        Collect points
-      </Link>
       <Overlay
         open={open}
         onClose={close}

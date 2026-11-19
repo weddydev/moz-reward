@@ -602,6 +602,7 @@ describe("[P0-20] re-review (0011): admin writes bound to the admin role; define
       "record_host_heartbeat",
       "record_host_metric",
       "revoke_sessions_on_privilege_change",
+      "shop_reward_preview",
     ]);
     for (const f of fns) {
       expect(f.canLogin, `${f.name} owner can log in`).toBe(false);

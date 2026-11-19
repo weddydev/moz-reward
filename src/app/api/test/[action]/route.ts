@@ -18,6 +18,7 @@ import {
   makeMembership,
   makeProgramme,
   makeOpsSnapshot,
+  SAMPLE_PROGRAMME,
   makeShop,
   makeShopHours,
   makeStaff,
@@ -152,8 +153,11 @@ const shopInput = z
       })
       .strict()
       .optional(),
-    /** P1-07: a loyalty programme (Café classic template, ingot 1,000 gold), version 1, owned by nobody real. */
-    programme: z.boolean().default(false),
+    /**
+     * P1-07: a loyalty programme (Café classic template, ingot 1,000 gold), version 1, owned by nobody real.
+     * P1-08: "sample" = the DESIGN §15 sample rewards (milestones 25/50 and a mystery at 75).
+     */
+    programme: z.union([z.boolean(), z.literal("sample")]).default(false),
   })
   .strict();
 
@@ -236,7 +240,9 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
           })),
         );
       }
-      if (programme) await makeProgramme(shop.id);
+      if (programme) {
+        await makeProgramme(shop.id, 1_000, programme === "sample" ? SAMPLE_PROGRAMME : {});
+      }
       if (memberUserId) {
         const { lastVisitDaysAgo, ...counters } = member ?? {};
         await makeMembership(memberUserId, shop.id, {

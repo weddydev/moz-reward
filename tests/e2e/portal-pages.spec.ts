@@ -69,6 +69,7 @@ test.describe("[P0-12] portal pages", () => {
     const { shopId } = (await seeded.json()) as { shopId: string };
     await expectPages(page, CUSTOMER_ROUTES, {
       "/shops/[id]": { url: `/shops/${shopId}`, heading: "Route Table Café" },
+      "/vault/[id]": { url: `/vault/${shopId}`, heading: "Your Gold Vault" },
     });
   });
 

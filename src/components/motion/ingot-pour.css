@@ -1,0 +1,15 @@
+/*
+ * Ingot pour (P1-08, DESIGN §8.3). Until the pour runs, the liquid is hidden when scripts run and motion is on
+ * (`--motion-on` is 1), so the first painted frame is the empty mould the pour starts from. Without scripts,
+ * or with reduced motion (`--motion-on` 0 → opacity 1), the final picture shows at once.
+ */
+@media (scripting: enabled) {
+  .ingot-pour[data-ingot-state="pending"] [data-ingot-part="fill"] {
+    opacity: calc(1 - var(--motion-on));
+  }
+}
+
+/* Taps and scrolls go through the picture; a tap on the ingot is caught on the wrapper to skip the pour. */
+.ingot-pour svg {
+  pointer-events: none;
+}

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, gte, lt } from "drizzle-orm";
+import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
 import type { ShopCode, ShopId } from "@/lib/brand";
 import {
   CodeCollisionError,
@@ -8,6 +8,8 @@ import {
   withUniqueCode,
 } from "@/lib/codes";
 import type { LngLat } from "@/lib/geo";
+import { type RewardPreview, rewardPreview } from "@/lib/loyalty/preview";
+import type { MilestoneRule } from "@/lib/loyalty/programme";
 import { addDays } from "@/lib/time";
 import {
   type AdminScope,
@@ -145,7 +147,18 @@ export type ShopLandingData =
       hours: { weekday: number; opens: string; closes: string }[];
       /** Closures from yesterday (London date) for 9 days: enough for today, overnight and this week. */
       closures: { date: string; note: string | null }[];
+      /** P1-08 (C-50): what a member joining now works towards; null until the shop sets up its programme. */
+      reward: RewardPreview | null;
     };
+
+type PreviewRow = {
+  version: number;
+  ingot_size: number;
+  main_reward: string;
+  milestones: MilestoneRule[];
+  active_from: string | Date;
+  rewards_from: string | Date;
+};
 
 const PUBLIC_LANDING_READ = publicScope(
   "public shop landing page (profile, hours and closures of a shop, as printed on its QR code)",
@@ -160,6 +173,8 @@ export async function readShopLanding(
   shopCode: ShopCode,
   /** Today in London (YYYY-MM-DD, `londonDate`): the closures window is built around it, never the DB clock. */
   today: string,
+  /** The moment the reward preview resolves the programme version at (cached with the rest for 60 s). */
+  now: Date = new Date(),
 ): Promise<ShopLandingData> {
   return withScope(PUBLIC_LANDING_READ, async (q) => {
     const [row] = await q
@@ -190,7 +205,7 @@ export async function readShopLanding(
       return { kind: "gone", status: row.status, name };
     }
     const { tradingName: _t, ...shop } = row;
-    const [hours, closures] = await Promise.all([
+    const [hours, closures, versions] = await Promise.all([
       q
         .select({ weekday: shopHours.weekday, opens: shopHours.opens, closes: shopHours.closes })
         .from(shopHours)
@@ -207,12 +222,25 @@ export async function readShopLanding(
           ),
         )
         .orderBy(asc(shopClosures.date)),
+      // Public part only, mystery texts blanked, live shops only (0026; loyalty_programs itself stays closed).
+      q.execute<PreviewRow>(sql`SELECT * FROM public.shop_reward_preview(${row.id})`),
     ]);
     return {
       kind: "live",
       shop: { ...shop, name, status: row.status },
       hours: hours.map((h) => ({ ...h, opens: h.opens.slice(0, 5), closes: h.closes.slice(0, 5) })),
       closures,
+      reward: rewardPreview(
+        [...versions].map((v) => ({
+          version: v.version,
+          ingotSize: v.ingot_size,
+          mainReward: { text: v.main_reward },
+          milestones: v.milestones,
+          activeFrom: new Date(v.active_from),
+          rewardsFrom: new Date(v.rewards_from),
+        })),
+        now,
+      ),
     };
   });
 }

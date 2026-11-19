@@ -2,6 +2,7 @@ import { SharedElement, TransitionLink } from "@/components/motion";
 import { Section } from "../Section";
 import { DEMO_SHOPS, DEMO_TABS } from "./demo-data";
 import { GatePreview } from "./GatePreview";
+import { IngotDemo } from "./IngotDemo";
 import { MotionPrimitives } from "./MotionPrimitives";
 import { ShopThumb } from "./ShopThumb";
 
@@ -92,6 +93,8 @@ export function MotionGallery(): React.JSX.Element {
       </Section>
 
       <GatePreview />
+
+      <IngotDemo />
 
       <MotionPrimitives />
     </main>

@@ -194,7 +194,7 @@ describe("[P1-02] shop landing data: redis-cache (60 s)", () => {
       expect(value).not.toContain(personal);
     }
     const parsed = JSON.parse(value) as ShopLandingData;
-    expect(Object.keys(parsed).sort()).toEqual(["closures", "hours", "kind", "shop"]);
+    expect(Object.keys(parsed).sort()).toEqual(["closures", "hours", "kind", "reward", "shop"]);
   });
 });
 
@@ -247,18 +247,27 @@ describe("[P1-02] shop lookup rate limit (C-15)", () => {
 });
 
 describe("[P1-02] every writer of shop landing data invalidates the cache", () => {
-  it("files that update or delete shops / shop_hours / shop_closures call invalidateShopLanding", () => {
+  it("files that update or delete shops / shop_hours / shop_closures (or add a programme version) call invalidateShopLanding", () => {
     const root = join(process.cwd(), "src");
     // Exempt: schema, migrations/seed/reset tooling (demo resets; the 60 s TTL bounds them) and test factories.
     const exempt = [/^server\/db\//, /^server\/testing\//, /\.test\.tsx?$/];
     const writes =
-      /\.(update|delete)\(\s*(shops|shopHours|shopClosures)\s*\)|\.insert\(\s*(shopHours|shopClosures)\s*\)|\b(UPDATE|DELETE FROM|INSERT INTO)\s+(shops|shop_hours|shop_closures)\b/;
+      /\.(update|delete)\(\s*(shops|shopHours|shopClosures)\s*\)|\.insert\(\s*(shopHours|shopClosures|loyaltyPrograms)\s*\)|\b(UPDATE|DELETE FROM|INSERT INTO)\s+(shops|shop_hours|shop_closures|loyalty_programs)\b/;
+    // A repo that writes inside a caller's transaction can't invalidate after commit: its caller does (P1-08).
+    const invalidatedBy: Record<string, string> = {
+      "server/repos/loyalty.ts": "features/loyalty/actions.ts",
+    };
     const offenders: string[] = [];
     for (const file of walk(root)) {
       const rel = relative(root, file).replaceAll("\\", "/");
       if (exempt.some((re) => re.test(rel))) continue;
       const text = readFileSync(file, "utf8");
-      if (writes.test(text) && !text.includes("invalidateShopLanding")) offenders.push(rel);
+      const caller = invalidatedBy[rel];
+      const covered =
+        text.includes("invalidateShopLanding") ||
+        (caller !== undefined &&
+          readFileSync(join(root, caller), "utf8").includes("invalidateShopLanding"));
+      if (writes.test(text) && !covered) offenders.push(rel);
     }
     expect(offenders).toEqual([]);
   });

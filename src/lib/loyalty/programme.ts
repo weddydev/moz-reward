@@ -150,39 +150,42 @@ export const sameRewards = (a: ProgrammeRules, b: ProgrammeRules): boolean =>
 export const sameRules = (a: ProgrammeRules, b: ProgrammeRules): boolean =>
   JSON.stringify(rulesOf(a)) === JSON.stringify(rulesOf(b));
 
-const byVersion = (versions: readonly ProgrammeVersion[]): ProgrammeVersion[] =>
+/** The fields version resolution needs (the landing preview resolves public rows with them too). */
+export type VersionDates = { version: number; activeFrom: Date; rewardsFrom: Date };
+
+const byVersion = <V extends VersionDates>(versions: readonly V[]): V[] =>
   [...versions].sort((a, b) => a.version - b.version);
 
 /**
  * The highest version for which `pick(v) <= at`. A time before the first version (an ingot started when the
  * member joined, before the shop set up its programme) resolves to the first version. Null only for none.
  */
-function versionAt(
-  versions: readonly ProgrammeVersion[],
+function versionAt<V extends VersionDates>(
+  versions: readonly V[],
   at: Date,
-  pick: (v: ProgrammeVersion) => Date,
-): ProgrammeVersion | null {
+  pick: (v: V) => Date,
+): V | null {
   const sorted = byVersion(versions);
-  let found: ProgrammeVersion | null = null;
+  let found: V | null = null;
   for (const v of sorted) if (pick(v).getTime() <= at.getTime()) found = v;
   return found ?? sorted[0] ?? null;
 }
 
 /** The version whose earn rules apply at `at` (earn mode and rate, streak, expiry). */
-export const versionActiveAt = (
-  versions: readonly ProgrammeVersion[],
+export const versionActiveAt = <V extends VersionDates = ProgrammeVersion>(
+  versions: readonly V[],
   at: Date,
-): ProgrammeVersion | null => versionAt(versions, at, (v) => v.activeFrom);
+): V | null => versionAt(versions, at, (v) => v.activeFrom);
 
 /**
  * The version whose rewards apply at `at`. Ordered by version, not by date: a later save that reverts the
  * rewards inside a notice window (its `rewardsFrom` is earlier) wins from its own date on, which cancels the
  * pending change for good.
  */
-export const rewardsVersionAt = (
-  versions: readonly ProgrammeVersion[],
+export const rewardsVersionAt = <V extends VersionDates = ProgrammeVersion>(
+  versions: readonly V[],
   at: Date,
-): ProgrammeVersion | null => versionAt(versions, at, (v) => v.rewardsFrom);
+): V | null => versionAt(versions, at, (v) => v.rewardsFrom);
 
 /** What a member's ingot that started at `ingotStartedAt` completes under (PRODUCT §6 "Programme changes"). */
 export function ingotTerms(

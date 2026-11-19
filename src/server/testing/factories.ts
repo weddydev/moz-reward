@@ -8,7 +8,7 @@ import { eq } from "drizzle-orm";
 import type { ShopId } from "@/lib/brand";
 import { generateMemberId, generateShopCode, withUniqueCode } from "@/lib/codes";
 import { newId } from "@/lib/id";
-import { TEMPLATES } from "@/lib/loyalty/programme";
+import { type ProgrammeRules, TEMPLATES } from "@/lib/loyalty/programme";
 import { hashPassword } from "@/server/auth/password";
 import { testOwnerDb as db } from "@/server/db/client";
 import {
@@ -111,7 +111,21 @@ export async function setShopStatus(shopId: ShopId, status: ShopRow["status"]): 
  * A shop's loyalty programme, version 1 (P1-07): the Café classic template with the given ingot size, in
  * force since 1 Jan 2026. `createdBy` is a random id (no FK; P1-05).
  */
-export async function makeProgramme(shopId: string, ingotSize = 1_000): Promise<void> {
+/** DESIGN §15 sample data: "Free coffee & cake", milestones at 25/50 and a mystery at 75 (P1-08 E2E). */
+export const SAMPLE_PROGRAMME: Partial<ProgrammeRules> = {
+  mainReward: { text: "Free coffee & cake" },
+  milestones: [
+    { percent: 25, reward: "Bonus 50 gold", isMystery: false },
+    { percent: 50, reward: "Free pastry", isMystery: false },
+    { percent: 75, reward: "Secret brownie", isMystery: true },
+  ],
+};
+
+export async function makeProgramme(
+  shopId: string,
+  ingotSize = 1_000,
+  over: Partial<ProgrammeRules> = {},
+): Promise<void> {
   const at = new Date("2026-01-01T00:00:00Z");
   await db()
     .insert(loyaltyPrograms)
@@ -119,6 +133,7 @@ export async function makeProgramme(shopId: string, ingotSize = 1_000): Promise<
       shopId,
       version: 1,
       ...TEMPLATES.cafe.rules,
+      ...over,
       ingotSize,
       activeFrom: at,
       rewardsFrom: at,

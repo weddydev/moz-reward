@@ -48,7 +48,7 @@ Use the **latest stable** version of each at project start; record exact version
 ├─ src/
 │  ├─ app/
 │  │  ├─ (public)/          # /, /join, /legal/*, /s/[code]
-│  │  ├─ (customer)/        # /wallet, /shops/[id], /vault/[shopId], /offers, /market, /me, /notifications, /game
+│  │  ├─ (customer)/        # /wallet, /shops/[id], /vault/[id], /offers, /market, /me, /notifications, /game
 │  │  ├─ (shop)/dashboard/  # shop dashboard routes
 │  │  ├─ (admin)/admin/     # super admin routes
 │  │  ├─ api/               # route handlers: sse, uploads, push, health, cron hooks

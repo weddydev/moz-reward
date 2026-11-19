@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { PortalNotFound } from "@/features/portal/StatePage";
 import { MemberShopPage } from "@/features/shop/MemberShopPage";
 import { requireCustomer } from "@/server/authz";
 import { gateCustomerRoute } from "@/server/portal/gate";
@@ -9,7 +9,8 @@ import type { Metadata } from "next";
 /**
  * The customer's shop page `/shops/[id]` (P1-04 minimal; P1-09 builds screen 4 on it). Members only: anyone
  * else (never joined, left, staff or admin without a membership, a malformed or unknown id) gets the same 404,
- * so the page never confirms that a shop id exists. `?welcome=1` (set by the join sheet) shows the first-join
+ * so the page never confirms that a shop id exists. Rendered here, not thrown: a `notFound()` after the
+ * loading fallback has streamed is React error #419 in the browser (DECISIONS 19 Nov). `?welcome=1` (set by the join sheet) shows the first-join
  * welcome; it only changes copy on the caller's own page.
  */
 type Params = Promise<{ id: string }>;
@@ -28,13 +29,13 @@ export default async function ShopPage({
 }): Promise<React.JSX.Element> {
   const principal = await gateCustomerRoute("/shops/[id]");
   const { id } = await params;
-  if (!UUID.test(id)) notFound();
+  if (!UUID.test(id)) return <PortalNotFound portal="customer" />;
   const scope = await requireCustomer(principal);
   const [shop, member] = await Promise.all([
     readOwnMemberShop(scope, id.toLowerCase()),
     ownMemberCard(scope),
   ]);
-  if (!shop || !member) notFound();
+  if (!shop || !member) return <PortalNotFound portal="customer" />;
   const welcome = (await searchParams).welcome === "1";
   return <MemberShopPage shop={shop} member={member} welcome={welcome} />;
 }

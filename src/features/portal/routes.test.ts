@@ -63,6 +63,7 @@ describe("[P0-12] portal route table", () => {
       "/notifications",
       "/me",
       "/shops/[id]",
+      "/vault/[id]",
       "/me/security",
     ]);
     expect(CUSTOMER_ROUTES.filter((r) => r.access === "public").map((r) => r.path)).toEqual([

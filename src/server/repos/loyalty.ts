@@ -3,7 +3,7 @@ import { asc, sql } from "drizzle-orm";
 import type { ProgrammeRules, ProgrammeVersion } from "@/lib/loyalty/programme";
 import type { ShopScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
-import { loyaltyPrograms } from "@/server/db/schema";
+import { loyaltyPrograms, shops } from "@/server/db/schema";
 import { inShop, withScope } from "./_base";
 
 type Row = typeof loyaltyPrograms.$inferSelect;
@@ -96,4 +96,18 @@ export async function insertProgrammeVersion(
   );
   if (!row) throw new Error("loyalty programme insert returned no row");
   return toVersion(row);
+}
+
+/**
+ * The shop's code, read in the save's transaction, so the action can drop the shop's cached landing page
+ * (its reward preview, C-50) once the new version has committed.
+ */
+export async function ownShopCode(scope: ShopScope, tx?: Transaction): Promise<string | null> {
+  const [row] = await withScope(
+    scope,
+    (q) =>
+      q.select({ shopCode: shops.shopCode }).from(shops).where(inShop(shops.id, scope)).limit(1),
+    tx,
+  );
+  return row?.shopCode ?? null;
 }

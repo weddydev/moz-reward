@@ -99,6 +99,14 @@ export const CUSTOMER_ROUTES: readonly CustomerRoute[] = [
   },
   {
     portal: "customer",
+    path: "/vault/[id]",
+    label: "Gold Vault",
+    icon: "Store",
+    access: "signed-in",
+    nav: "hidden",
+  },
+  {
+    portal: "customer",
     path: "/me/security",
     label: "Your devices",
     icon: "CircleUser",

@@ -3,8 +3,10 @@ import { expect, it } from "vitest";
 import { saveLoyaltyProgramme } from "@/features/loyalty/actions";
 import { TEMPLATES } from "@/lib/loyalty/programme";
 import { runAsPrincipal } from "@/server/authz/principal";
+import { cacheKey, cacheRedis } from "@/server/cache";
 import { testOwnerDb as db } from "@/server/db/client";
-import { auditLogs, loyaltyPrograms } from "@/server/db/schema";
+import { auditLogs, loyaltyPrograms, shops } from "@/server/db/schema";
+import { landingCacheKey, loadShopLanding } from "@/server/services/shop-landing";
 import { authzMatrix, world } from "./harness";
 
 /** The latest version of a shop's programme (0 = none), so each run saves on top of whatever is there. */
@@ -69,4 +71,29 @@ it("[P1-05] saveLoyaltyProgramme returns field errors for bad input", async () =
       expect.arrayContaining(["rules.ingotSize", "rules.mainReward.text"]),
     );
   }
+});
+
+it("[P1-08] a saved programme drops the shop's cached landing page, so the reward preview is current (C-50)", async () => {
+  const w = await world();
+  const [shop] = await db()
+    .select({ shopCode: shops.shopCode })
+    .from(shops)
+    .where(eq(shops.id, w.shopA.id));
+  if (!shop) throw new Error("no shop");
+  const size = 2_000 + (Date.now() % 50_000);
+  await loadShopLanding(shop.shopCode); // primes the 60 s cache
+  const key = cacheKey(landingCacheKey(shop.shopCode));
+  expect(await cacheRedis().exists(key)).toBe(1);
+  const res = await runAsPrincipal(w.principals.owner_own_shop, async () =>
+    saveLoyaltyProgramme({
+      shopId: w.shopA.id,
+      baseVersion: await latestVersion(w.shopA.id),
+      // The ingot size applies at once (a reward change waits 14 days' notice, so the preview keeps the old one).
+      rules: { ...TEMPLATES.cafe.rules, ingotSize: size },
+    }),
+  );
+  expect(res.ok && res.data.kind).toBe("saved");
+  expect(await cacheRedis().exists(key)).toBe(0);
+  const fresh = await loadShopLanding(shop.shopCode);
+  expect(fresh.kind === "live" && fresh.reward?.ingotSize).toBe(size);
 });

@@ -1,7 +1,8 @@
 import { Check } from "lucide-react";
 import { cx } from "@/lib/cx";
 
-export type Milestone = { label: string; reached: boolean };
+/** `detail` (optional) shows on its own line under the label, e.g. "25%" over "Free pastry". */
+export type Milestone = { label: string; detail?: string; reached: boolean };
 
 /**
  * Static milestone track (DESIGN §6): horizontal on phones, vertical from `lg`. Each milestone says its
@@ -61,7 +62,10 @@ export function MilestoneTrack({
                 s.reached || i === current ? "text-ink font-semibold" : "text-ink-2",
               )}
             >
-              {s.label}
+              {s.detail ? <span className="block">{s.label}</span> : s.label}
+              {s.detail ? (
+                <span className="text-caption block font-normal"> {s.detail}</span>
+              ) : null}
               <span className="sr-only">, {state}</span>
             </span>
           </li>

@@ -6,7 +6,7 @@ import { connection } from "next/server";
 import { GildedGate, GildedGateMorph } from "@/components/motion/GildedGate";
 import { buttonClasses } from "@/components/ui/Button";
 import { MARKETING_CONSENT_VERSION, marketingConsentParts } from "@/features/join/consent";
-import { JoinSheet } from "@/features/join/JoinSheet";
+import { JoinCta } from "@/features/join/JoinCta";
 import { LandingFooter, ShopLanding } from "@/features/landing/ShopLanding";
 import { StatePage } from "@/features/portal/StatePage";
 import { normaliseShopCode } from "@/lib/codes";
@@ -135,7 +135,7 @@ export default async function ShopLandingPage({
         Collect points
       </Link>
     ) : (
-      <JoinSheet
+      <JoinCta
         shopCode={code}
         shopName={data.shop.name}
         needsProfile={visitor.needsProfile}

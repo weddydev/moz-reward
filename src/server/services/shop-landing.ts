@@ -16,7 +16,7 @@ import type { Redis } from "ioredis";
 export const LANDING_TTL_SEC = 60;
 
 /** Bump when `ShopLandingData` changes shape, so a release never reads the previous release's entries. */
-const KEY_VERSION = "v1";
+const KEY_VERSION = "v2"; // v2 (P1-08): `reward` preview added
 export const landingCacheKey = (shopCode: string): string =>
   `shop-landing:${KEY_VERSION}:${shopCode}`;
 
@@ -26,7 +26,7 @@ const inflight = new Map<string, Promise<ShopLandingData>>();
 export type LandingDeps = {
   redis?: Redis;
   /** Injectable for tests (query counter). */
-  read?: (shopCode: ShopCode, today: string) => Promise<ShopLandingData>;
+  read?: (shopCode: ShopCode, today: string, now: Date) => Promise<ShopLandingData>;
   /** Injectable clock: today's London date frames the closures window. */
   now?: () => Date;
 };
@@ -47,7 +47,10 @@ export async function loadShopLanding(
   const load = cached(
     landingCacheKey(shopCode),
     LANDING_TTL_SEC,
-    () => read(shopCode, londonDate(deps.now?.() ?? new Date())),
+    () => {
+      const now = deps.now?.() ?? new Date();
+      return read(shopCode, londonDate(now), now);
+    },
     deps.redis ?? cacheRedis(),
   ).finally(() => inflight.delete(shopCode));
   inflight.set(shopCode, load);

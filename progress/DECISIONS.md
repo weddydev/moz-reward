@@ -11,6 +11,26 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-19 — Ingot pour: once per mount, liquid hidden until it runs; Vault at `/vault/[id]` (P1-08)
+Decision: `IngotPour` pours once per mount, when ≥ 40% of the ingot is first on screen: 0.9 s with the stream on the first view of that shop's ingot in the tab session (sessionStorage `moz.ingot-poured.<shopId>`), a 0.5 s rise after. Scrolled away, tab hidden, reduced motion switched on, or a tap → every part `finish()`es (each timeline ends on the static picture, no forwards fill), and that mount never pours again. Until it runs, `@media (scripting: enabled)` hides the liquid with `opacity: calc(1 - var(--motion-on))`, so the first paint is the empty mould and reduced motion/no-JS show the final state. WAAPI on SVG parts (SVG attributes allowed in signature moments, DESIGN §7). The route is `/vault/[id]` (ARCHITECTURE said `[shopId]`; table paths are lower-case segments).
+Why: DESIGN §8.3 "every time it becomes visible" read with the P1-08 edge case "no catch-up animation later". Measured 60.0 fps, p95 16.8 ms under 4× CPU throttle (Chromium).
+Consequence: P1-09's Vault card uses `IngotPour` with `seenKey` = shop id, so the Vault card and the Vault page share "first view" per shop.
+
+## 2026-11-19 — Landing reward preview through a SECURITY DEFINER function, not a public policy (P1-08, C-50)
+Decision: `shop_reward_preview(shop_id)` (0026, owned by moz_rls, EXECUTE for moz_app only, column-level grants) returns a live shop's versions with only ingot size, main reward text, milestones (every mystery text blanked inside Postgres) and the two dates; `rewardPreview` resolves what a member joining now gets. Landing cache key → `shop-landing:v2`; the save action drops it after commit (the guard test now covers `loyalty_programs` writers through their caller). A pending reward change shows once its notice ends (≤ 60 s late, TTL).
+Why: keeps the 0025 wall (only team, admins and current members read `loyalty_programs`; earn rules and `created_by` stay private) while the landing gets public data only.
+Consequence: any other public use of programme data goes through this function (or a sibling), never a public policy.
+
+## 2026-11-19 — Member pages render their not-found instead of throwing `notFound()` (P1-08)
+Decision: `/shops/[id]` and `/vault/[id]` return `<PortalNotFound portal="customer" />` for a non-member, unknown or malformed id instead of calling `notFound()`. Still a soft 404 (200, `noindex`) as decided 17 Nov.
+Why: under the group `loading.tsx`, a `notFound()` thrown after the fallback has streamed is React error #419 in the browser (Next 16.4 reports it as a recoverable error): reproduced under parallel load, 5/20 runs on `/shops/[id]` and 10/20 on `/vault/[id]`; 0/40 after the change. It would also be Sentry noise.
+Consequence: new member-only dynamic pages under `(pages)` do the same.
+
+## 2026-11-19 — Gold Vault parts waiting on the ledger (P1-08)
+Decision: the Vault shows what the counters hold today: progress, milestones reached, tier from lifetime ingots against the version in force now, the shelf (count), streak rules, "how it works". The current streak, the rewards-ready list with Redeem, and "tier never lowered" when an owner raises a threshold need the ledger/rewards tables: CARRIED C-66 (P1-12) and C-67 (P1-16). Landing initial JS 149.2 KB gzip is inside the judgment zone (≤ 149.5 KB, 130 KB + 15%) after the join sheet went on demand (C-64).
+Why: P1-12 creates `ledger_entries`/`rewards`; showing guessed streaks or rewards would be wrong data.
+Consequence: until P1-12 the streak chip states the rule ("Visit 2 weeks running for +50 bonus gold"), and "Rewards ready" says nothing is ready.
+
 ## 2026-11-19 — Card → page morph carries its header into the loading state (P1-07)
 Decision: `TransitionLink` takes an optional `hero` (id, name, image: only what the card shows) and records it like `nav-intent` (`src/lib/motion/hero-handoff.ts`: same-origin, one path, 5 s, peeked not taken). `/shops/[id]` has its own `loading.tsx` (`ShopPageLoading`) that draws the page's real header (`ShopPageHeader`, the `shoplogo`/`shopname` shared elements) from the handoff, else a skeleton of the same size; the page uses the same header in the same column.
 Why: a pair forms only when both ends are on screen in one commit, but `/shops/[id]` is dynamic under `loading.tsx`, so once the loading shell is prefetched the fallback commits first and the card has no partner: measured 19 Nov, WebKit never morphed and Chromium missed it in ~half the runs under load (always on a phone network). Native apps move the hero first and load the rest behind it.
