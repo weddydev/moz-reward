@@ -3,9 +3,9 @@ import Link from "next/link";
 import { buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
-import { ShopLogo } from "@/features/landing/ShopLanding";
 import type { MemberId } from "@/lib/brand";
 import { MemberIdCard } from "./MemberIdCard";
+import { SHOP_PAGE_CLASS, ShopPageHeader } from "./ShopPageHeader";
 
 /**
  * The customer's shop page, minimal first version (P1-04): shop identity, the first-join welcome and the member
@@ -16,21 +16,13 @@ export function MemberShopPage({
   member,
   welcome,
 }: {
-  shop: { name: string; shopCode: string; logoUrl: string | null };
+  shop: { shopId: string; name: string; shopCode: string; logoUrl: string | null };
   member: { memberId: MemberId; fullName: string };
   welcome: boolean;
 }): React.JSX.Element {
   return (
-    <div
-      className="mx-auto flex w-full max-w-[560px] flex-col gap-6 px-4 py-8 lg:max-w-3xl"
-      data-page="member-shop"
-    >
-      <header className="flex items-center gap-4">
-        <ShopLogo name={shop.name} logoUrl={shop.logoUrl} />
-        <h1 className="text-h1 min-w-0 break-words" data-testid="member-shop-name">
-          {shop.name}
-        </h1>
-      </header>
+    <div className={SHOP_PAGE_CLASS} data-page="member-shop">
+      <ShopPageHeader shopId={shop.shopId} name={shop.name} logoUrl={shop.logoUrl} />
 
       {welcome ? (
         <Card className="flex items-start gap-3 p-5" role="status" data-testid="join-welcome">

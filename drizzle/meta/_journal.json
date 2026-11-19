@@ -176,6 +176,13 @@
       "when": 1795001999321,
       "tag": "0024_loyalty_programs",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1795014786477,
+      "tag": "0025_wallet_progress",
+      "breakpoints": true
     }
   ]
 }

@@ -43,7 +43,26 @@ const URL_NAME = {
   system: "DATABASE_URL_WORKER",
 } as const;
 
-function createDb(url: string, kind: DbProcess, max: number) {
+const globalForQueries = globalThis as unknown as { __mozQueryObserver?: (sql: string) => void };
+
+/**
+ * Tests only (APP_ENV=test): calls `observer` with every SQL statement the role pools send until the returned
+ * function is called, so an integration test can assert a read's query count (P1-07 "fixed number of queries").
+ * Outside tests the pools have no logger at all, so this costs nothing in production.
+ */
+export function observeQueries(observer: (sql: string) => void): () => void {
+  if (env().APP_ENV !== "test") throw new Error("observeQueries() is only available in tests");
+  globalForQueries.__mozQueryObserver = observer;
+  return () => {
+    delete globalForQueries.__mozQueryObserver;
+  };
+}
+
+const testQueryLogger = {
+  logQuery: (sql: string): void => globalForQueries.__mozQueryObserver?.(sql),
+};
+
+function createDb(url: string, kind: DbProcess, max: number, observable = true) {
   const client = postgres(url, {
     max,
     // A transaction-mode pooler (PgBouncer, ARCHITECTURE §12) needs no server-side prepared statements.
@@ -51,7 +70,11 @@ function createDb(url: string, kind: DbProcess, max: number) {
     onnotice: () => {},
     connection: { ...DB_SESSION[kind] },
   });
-  return drizzle(client, { schema, casing: "snake_case" });
+  return drizzle(client, {
+    schema,
+    casing: "snake_case",
+    logger: observable && env().APP_ENV === "test" ? testQueryLogger : false,
+  });
 }
 
 const globalForDb = globalThis as unknown as {
@@ -111,7 +134,7 @@ export function testOwnerDb(): Db {
   if (e.APP_ENV !== "test") throw new Error("testOwnerDb() is only available in tests");
   if (!globalForOwner.__mozOwnerDb) {
     if (!e.DATABASE_URL_MIGRATIONS) throw new Error("DATABASE_URL_MIGRATIONS is not set");
-    globalForOwner.__mozOwnerDb = createDb(e.DATABASE_URL_MIGRATIONS, "web", 4);
+    globalForOwner.__mozOwnerDb = createDb(e.DATABASE_URL_MIGRATIONS, "web", 4, false);
   }
   return globalForOwner.__mozOwnerDb;
 }

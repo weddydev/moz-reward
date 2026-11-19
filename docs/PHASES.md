@@ -75,7 +75,7 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 
 - [x] P1-05 · Loyalty programme model and basic settings (18 Nov; C-58..C-61 carried)
 - [x] P1-06 · Loyalty engine (pure services) (18 Nov; C-56 closed)
-- [ ] P1-07 · Wallet
+- [x] P1-07 · Wallet
 - [ ] P1-08 · Ingot component, pour-on-view, Gold Vault page
 - [ ] P1-09 · Shop page (customer)
 - [ ] P1-B closed with `/subphase-complete`

@@ -7,27 +7,25 @@ Baton: held by talha.syed since 2026-11-19 14:57 PKT
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **18 Nov 21:45 PKT, handed over by Syedbadeshah76 (Windows): P1-07 Wallet built, NOT ticked — on `wip/P1-07`, HEAD `d05e6c0` (pushed).** `git switch wip/P1-07 && git merge --ff-only origin/wip/P1-07`, check HEAD = `d05e6c0`. Contains: migration 0025 (`memberships.progress_gold` / `ingots_completed`, server-owned via the guard; RLS `loyalty_programs_member_read`), `readOwnWallet` + `loadWallet` + pure `src/features/wallet/view.ts`, `WalletPage` (mobile list, desktop 3-col grid + right column, empty state, suspended/closed greyed), pull-to-refresh, ShopCard shared-element names, demo seed (Aisha at Brew: 720/1,000, 3 ingots), Lighthouse route `wallet-50`, 3 DECISIONS entries, FOLLOWUPS, MAP, carried criteria already written into P1.md / P4.md.
-- **Half-done, exactly how to finish P1-07:** (1) AC "cards transition into the shop page via shared element": both pages carry `SharedElement` `shoplogo`/`shopname` keyed by shop id, but the E2E only checks the navigation. Add to `tests/e2e/wallet.spec.ts` the view-transition group check from `tests/e2e/motion.spec.ts` (~lines 640–670: `record(page)`, click, `groupNames` contains `vtName("shoplogo", shopId)` and `vtName("shopname", shopId)`; Chromium; WebKit: navigation still works). (2) `pnpm gate:task P1-07 P1-04 P0-12 P0-09 J1`. (3) One task commit: tick P1-07 in PHASES, add the CARRIED rows below, SESSION_LOG ≤ 5 lines, push to main.
-- **CARRIED rows to add with the P1-07 commit** (criteria already in the phase files on the branch): C-62 → P1-12 (approvals write the two counters; Wallet reads rewards-ready count, recent activity, last 10 awards for "N more visits", statement count unchanged); C-63 → P4-06 (Wallet daily game card); C-64 → P1-08 (landing initial JS 155.2 KB > 149.5 KB judgment limit: the P1-04 join-sheet chunk, 12 KB, loads eagerly → `next/dynamic`; pre-existing, found by the new Lighthouse run); C-65 → P1-16 (right-column rewards list with Redeem).
-- **Tested (18 Nov, Windows):** unit 1630/0 (21 wallet cases); int 1380/0/12 skip (`wallet.test.ts`: 1 vs 50 memberships send identical statements via test-only `observeQueries`; left and other customers hidden; suspended/closed flagged; programme RLS for member/stranger/leaver/staff; `membership-guard`: new columns refused for customer, staff and joins); gate:task run 2: typecheck, lint, format, titles, unit, int, build, check:bundle, sast, lint:sh PASS; e2e 155/5 → 4 fixed (a live region inside the route content; h1 must be exactly "Wallet"), affected specs re-run 59/0; Lighthouse `wallet-50` PASS (LCP 0.99 s, CLS 0, JS 165.1/170 KB). Screens inspected at 390/320/1440 (Chromium, WebKit): `.artifacts/screens/P1-07/`.
-- **Not yet tested:** a full green `gate:task` after the two E2E fixes (only the affected specs were re-run); the morph check (above); pull-to-refresh on real phones (H-13; E2E drives it through Chromium touch emulation); CI for `d05e6c0` (wip push, not looked at yet). **Known, not P1-07:** `ui-states.spec.ts` "[P0-09] AC3 Tab order" fails on WebKit **on Windows**, also on clean main `594a25c` (FOLLOWUPS on the branch); Linux CI passes it.
-- **Do first on the other laptop:** `git fetch`, switch to `wip/P1-07` (above), `pnpm install`, `pnpm db:migrate` (0025), `pnpm db:seed --reset` (demo progress). **P1-A still not ticked:** waits for **H-48 🔴**; then re-run Deploy for current main → staging smoke → Sentry check → tick P1-A (docs-only commit). CI for `2479b62` green. VPS: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`.
+- **19 Nov, talha.syed (Mac): P1-07 Wallet done and on main** (one commit, branch `wip/P1-07` folded in; delete it on GitHub with the H-38 batch). **Next: P1-08** (Ingot component, pour-on-view, Gold Vault page) on main: read its section in `docs/phases/P1.md`; it takes incoming C-50, C-59, C-64 (landing JS 155.2 KB: load the join sheet with `next/dynamic`).
+- **What changed beyond the handoff plan:** the card → shop morph almost never ran (the `/shops/[id]` loading fallback commits first, so the card had no partner: WebKit 0/3, Chromium ~½ under load). Fixed with a hero handoff (DECISIONS 19 Nov): `TransitionLink` `hero`, `src/lib/motion/hero-handoff.ts`, `shops/[id]/loading.tsx` drawing the shared `ShopPageHeader`. P1-09 builds screen 4 on `ShopPageHeader`. CI's red on `d05e6c0` (pull-to-refresh flake on Pixel 7: touch before hydration) fixed with a `data-listening` marker.
+- **Not yet tested:** CI for the P1-07 push (look before the next push); pull-to-refresh on real phones (H-13). **P1-A still not ticked:** waits for **H-48 🔴**; then re-run Deploy for current main → staging smoke → Sentry check → tick P1-A (docs-only commit).
+- After pulling on the other laptop: `pnpm install`, `pnpm db:migrate` (0025), `pnpm db:seed --reset`. VPS: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`.
 
 ## Status
 - **Phase:** **P1**. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
-- **Current sub-phase:** P1-B loyalty engine, Wallet, Vault: ~~P1-05~~ → ~~P1-06~~ → P1-07 → P1-08 → P1-09 → `/subphase-complete`. (P1-A: everything done except the staging step, which waits for H-48.)
+- **Current sub-phase:** P1-B loyalty engine, Wallet, Vault: ~~P1-05~~ → ~~P1-06~~ → ~~P1-07~~ → P1-08 → P1-09 → `/subphase-complete`. (P1-A: everything done except the staging step, which waits for H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-18, Syedbadeshah76 (handoff: P1-07 on `wip/P1-07` `d05e6c0`, not ticked)
+- **Last updated:** 2026-11-19, talha.syed (P1-07 done on main; next P1-08)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `8353e00`; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys roll back until H-48.
-- **P1-B:** P1-05, P1-06 done (18 Nov). P1-07 built on `wip/P1-07` (`d05e6c0`), not ticked: morph E2E check + full gate left (Handoff note).
+- **P1-B:** P1-05, P1-06 (18 Nov), P1-07 (19 Nov) done. Next P1-08, then P1-09 and `/subphase-complete`.
 
 ## Next (top 3)
-1. Finish P1-07 on `wip/P1-07` (morph check, gate, tick, CARRIED C-62..C-65), then P1-08.
+1. P1-08 (Ingot, pour-on-view, Gold Vault; takes C-50, C-59, C-64), then P1-09 and the P1-B close.
 2. Human: **H-48** (staging Sentry DSN) → then close P1-A (handoff note: deploy, smoke, Sentry, tick).
 3. Human, any time: H-45 UptimeRobot monitors (then the stop-staging phone alert test, C-48); H-46 Cloudflare `/s/*` rule.
 
@@ -58,6 +56,10 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-59 | P1-05 | P1-08 | Loyalty settings preview uses the Ingot component (static mode) instead of `IngotPreview` | screenshot 320/1440 |
 | C-60 | P1-05 | P1-12 | Membership stores its current ingot's start; approval uses `ingotTerms(versions, ingotStartedAt)` and `versionActiveAt(versions, requestedAt)`; a programme save mid-progress leaves ledger and unlocked rewards untouched | integration |
 | C-61 | P1-05 | P2-05 | Loyalty main reward optional image (PRODUCT §6) via the upload pipeline (`main_reward.imageKey`); changing it is a rewards change (14 days' notice) | E2E + integration |
+| C-62 | P1-07 | P1-12 | Approvals write `progress_gold` / `ingots_completed`; the Wallet reads rewards-ready count, recent activity, and the last 10 awards for "N more visits"; Wallet statement count unchanged | integration |
+| C-63 | P1-07 | P4-06 | Wallet daily game card (hidden until P4) | E2E |
+| C-64 | P1-07 Lighthouse | P1-08 | Landing initial JS 155.2 KB > 149.5 KB judgment limit: the P1-04 join-sheet chunk (12 KB) loads eagerly → `next/dynamic` | Lighthouse landing PASS |
+| C-65 | P1-07 | P1-16 | Wallet right column: rewards list with Redeem | E2E |
 | C-17 | Stryker | P1-18 (human 17 Nov) | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 | C-48 | P0-15 E (human 17 Nov) | P1-18 | P0-15 leftovers: health.backup shows no alert on staging with `BACKUPS_ENABLED=true` (health snapshot); UptimeRobot staging monitors (H-45) + alert on both phones when staging is stopped (AC8); ZAP baseline (weekly) + k6 smoke (twice weekly) wired against staging, zero failed requests during a deploy under k6 (AC2) and rollback under load (AC3); B2 overwrite leaves the locked version (D design HIGH 1); two workers run each scheduled job once (AC6) if not already proven | staging snapshots + workflow runs + SESSION_LOG |
 | C-49 | P0 close (human 17 Nov) | P1-18 + P1 `/phase-complete` | P0's heavy gate and definition of done: `gate:phase` covers P0 + P1; code/security/design reviews of P0-E commits not yet reviewed (at the P1-A close); P0 DoD bullets checked; client demo covers P0 + P1 together (`docs/DEMO_GUIDE.md` + Demo 2). (P0 close lines in PHASES ticked 17 Nov by the human's decision.) | gate:phase summary + SESSION_LOG + DEMO_NOTES |
@@ -69,12 +71,11 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 ## Map of the codebase
 In **`progress/MAP.md`** (read when you need to locate code; add new important paths there).
 
-## Last verified (18 Nov 2026)
+## Last verified (19 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- P1-07 (`wip/P1-07` `d05e6c0`, not ticked): gate:task run 2 — unit 1630/0, int 1380/0/12 skip, build, sast PASS; e2e 155/5 → 4 fixed, affected specs re-run 59/0; the 5th is the Windows-WebKit P0-09 Tab test, failing on clean main too.
-- Wallet query count: 1 and 50 memberships send identical SQL statements (`tests/integration/wallet.test.ts`, test-only `observeQueries`).
-- Lighthouse mobile `wallet-50`: LCP 0.99 s, CLS 0, JS 165.1 KB (≤ 170) PASS; landing JS 155.2 KB FAIL (pre-existing, C-64 → P1-08).
-- P1-06 evidence (`2479b62`, CI green) is in SESSION_LOG.
+- P1-07: gate:task P1-07 P1-04 P0-12 P0-09 P0-10 J1 PASS (Mac): unit 1658/0, int 1391/0/1 skip, sast, e2e 212/0/18 skip/0 flaky.
+- Card → shop morph: wallet spec 52/0 over `--repeat-each 4` on all 5 projects with the page held back 800 ms; fails without the handoff (Chromium + WebKit). Linux container `playwright:v1.65.0-noble`: wallet + motion 97/0/8 skip.
+- Wallet query count: 1 and 50 memberships send identical SQL statements (`tests/integration/wallet.test.ts`). Lighthouse `wallet-50`: LCP 0.99 s, CLS 0, JS 165.1/170 KB (18 Nov, Windows).
 
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).

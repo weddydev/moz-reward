@@ -697,3 +697,10 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 - gate:task run 1 red: dynamic Lighthouse title tag (title check) + progress files edited mid-run; run 2: everything PASS except e2e 155/5: live region inside the route content and h1 not exactly "Wallet" (both fixed, specs re-run 59/0), plus the Windows-WebKit P0-09 Tab test, red on clean main `594a25c` too (FOLLOWUPS).
 - Lighthouse: `wallet-50` PASS (LCP 0.99 s, JS 165.1 KB); landing JS 155.2 KB > judgment (P1-04 join sheet chunk) → C-64 for P1-08.
 - Not ticked: the morph check in E2E and a full green gate are left (Handoff note). Not a security-list task: diff reviewed at the P1-B close.
+
+## 2026-11-19 — P1 — P1-07 Wallet finished (Mac, talha.syed)
+- Built on 18 Nov by Syedbadeshah76 (`wip/P1-07` `d05e6c0`: migration 0025, `readOwnWallet`, WalletPage, pull-to-refresh, seed); finished and folded into one commit on main.
+- CI red on `d05e6c0`: pull-to-refresh spec touched before hydration on Pixel 7 → `data-listening` marker set once listeners attach; spec waits for it.
+- Morph check found a real gap: `/shops/[id]` loading fallback commits first, card loses its partner (diag: WebKit 0/3, Chromium ~½ under load) → hero handoff into `shops/[id]/loading.tsx` (DECISIONS 19 Nov). Spec holds the page 800 ms: 52/0 × 4 repeats; negative check fails without it; Linux container 97/0.
+- gate:task P1-07 P1-04 P0-12 P0-09 P0-10 J1 PASS: unit 1658/0, int 1391/0/1, sast, e2e 212/0/18. CARRIED C-62 → P1-12, C-63 → P4-06, C-64 → P1-08, C-65 → P1-16.
+- Not security-list task: diff reviewed at the P1-B close.

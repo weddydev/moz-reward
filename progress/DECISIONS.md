@@ -11,6 +11,11 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-19 — Card → page morph carries its header into the loading state (P1-07)
+Decision: `TransitionLink` takes an optional `hero` (id, name, image: only what the card shows) and records it like `nav-intent` (`src/lib/motion/hero-handoff.ts`: same-origin, one path, 5 s, peeked not taken). `/shops/[id]` has its own `loading.tsx` (`ShopPageLoading`) that draws the page's real header (`ShopPageHeader`, the `shoplogo`/`shopname` shared elements) from the handoff, else a skeleton of the same size; the page uses the same header in the same column.
+Why: a pair forms only when both ends are on screen in one commit, but `/shops/[id]` is dynamic under `loading.tsx`, so once the loading shell is prefetched the fallback commits first and the card has no partner: measured 19 Nov, WebKit never morphed and Chromium missed it in ~half the runs under load (always on a phone network). Native apps move the hero first and load the rest behind it.
+Consequence / revisit when: any new card → page morph to a dynamic page needs `hero` on its link and the page's loading state drawing the same shared elements; P1-09 builds screen 4 on `ShopPageHeader` and keeps the header row first in `SHOP_PAGE_CLASS`.
+
 ## 2026-11-17 — Consent answers are checked against the shop name shown; rejoin behind the DB status wall (P1-A batch)
 Decision: the join sheet sends back the shop name its marketing question showed (`consentShopName`); `joinShop` refuses with CONFLICT ("wording changed", nothing written) when it isn't the shop's current display name, exactly like an outdated `consentVersion`. Migration 0021 applies the 0020 shop-status check to a customer's rejoin (`left_at` set → null) as well as to an insert; leaving and muting stay allowed in any status.
 Why: security review M1/M2 (P1-04): the stored wording hash is of the fresh name, while the landing is cached 60 s and a sheet can stay open across a rename, so the hash could describe text the customer never saw; and the app's rejoin check had no DB wall behind it.
@@ -797,3 +802,17 @@ Consequence: new code takes the branded type at the boundary; `@ts-expect-error`
 Decision: `scrubAuditMeta` keeps a string that is exactly a key id (`isKeyId`: `k` + 10 lower-case hex) and scrubs everything else as before.
 Why: ~1 in 12 key ids has 7+ digits in a row, so the phone rule cut them out of `keys.reencrypt` audit rows (and `key-rotation.test.ts` failed at that rate). Key ids are derived, not secret, and stored beside every sealed value; a phone number can't have that shape.
 Consequence: regression test `src/server/services/audit.test.ts`; reviewed with the P1-B close (scrubber change).
+
+## 2026-11-18 — Wallet progress columns and programme read (P1-07)
+Decision: `memberships.progress_gold` and `ingots_completed` are added now (0025, default 0, CHECK ≥ 0 NOT VALID), server-owned: no web-role write may set them (guard: joins must leave them 0; updates already refused because neither is in `customer_writable`/`staff_writable`). P1-12 approvals write them with the ledger and add `ingot_started_at` etc. (C-60); until then the Wallet treats the current ingot as started at `joined_at` (version 1 applies before any version is active). New RLS policy `loyalty_programs_member_read`: a current (not left) member reads their own shops' programme versions.
+Why: the Wallet must show engine progress from one membership read; adding the two counters now with the demo seed (720/1,000, 3 ingots) makes the screen demonstrable and testable, and the guard keeps them unwritable until their writer exists.
+Consequence: rewards ready, recent activity and the ledger history behind "N more visits" are wired by P1-12 (C-62); the empty states ship now.
+
+## 2026-11-18 — Wallet sort tie-break and query count evidence (P1-07)
+Decision: after PRODUCT §4's three keys (purchase count, current points, last visit — never-visited last), cards fall back to shop name (en-GB collation), then membership id, so equal cards never swap between renders. Query count is proven with a test-only statement observer (`observeQueries` in `src/server/db/client.ts`: a Drizzle logger installed only when APP_ENV=test; production pools have no logger) — 1 and 50 memberships send the same statements (scope settings + 4 reads).
+Why: a stable order avoids cards jumping on refresh; counting real SQL is stronger evidence than counting repo calls.
+
+## 2026-11-18 — Wallet pull-to-refresh (P1-07)
+Decision: custom pull-to-refresh on touch only: passive window touch listeners (never preventDefault), active only at scrollY 0; the page's `overscroll-behavior-y` is `none` while the Wallet is mounted (no browser reload / rubber band fighting it); threshold 64 px of indicator travel (finger travel / 2, max 96); release → `router.refresh()` in a transition (server re-render, no reload, scroll kept). Indicator = ingot outline filling with the pull, drawn through CSS variables (no React render per frame); styles in `src/features/wallet/pull-to-refresh.css`, not globals.
+Why: DESIGN §15 screen 3 asks for pull-to-refresh with the ingot outline; mobile-native skill rules (no scroll hijack, passive listeners).
+Consequence: real-device feel (Android Chrome, iOS Safari standalone) is NOT VERIFIED until H-13 (real devices); E2E drives it through Chromium touch emulation.

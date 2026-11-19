@@ -115,6 +115,13 @@ type DemoAccount = {
 const BREW = DEMO_SHOPS[0].id;
 /** Brew & Bloom's demo owner (Maya Bloom in DEMO_ACCOUNTS). */
 const DEMO_OWNER = "0199d3e0-0000-7000-8000-000000000003";
+/** The demo customer's progress at Brew & Bloom (P1-07 Wallet; DESIGN §15 sample data). */
+const DEMO_BREW_PROGRESS = {
+  purchaseCount: 12,
+  progressGold: 720,
+  ingotsCompleted: 3,
+  lastVisitAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+};
 /** The demo customer's mobile (E.164), from Ofcom's drama range 07700 900000–900999: never a real number. */
 const DEMO_PHONE = "+447700900123";
 
@@ -396,10 +403,18 @@ export async function runDemoSeed(
         result.admins += rows.length;
       }
       if (account.memberId) {
-        // The customer is a member of all three shops; marketing consent stays "not asked" (PECR).
+        // The customer is a member of all three shops; marketing consent stays "not asked" (PECR). At Brew &
+        // Bloom they hold the DESIGN §15 sample progress (720 of 1,000 gold, 3 ingots filled) so the Wallet has
+        // something to show; P1-12 replaces this with real ledger history.
         const rows = await tx
           .insert(memberships)
-          .values(DEMO_SHOPS.map((shop) => ({ userId: account.id, shopId: shop.id })))
+          .values(
+            DEMO_SHOPS.map((shop) => ({
+              userId: account.id,
+              shopId: shop.id,
+              ...(shop.id === BREW ? DEMO_BREW_PROGRESS : {}),
+            })),
+          )
           .onConflictDoNothing()
           .returning({ id: memberships.id });
         result.memberships += rows.length;

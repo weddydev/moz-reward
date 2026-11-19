@@ -169,12 +169,20 @@ export const memberships = pgTable(
     leftAt: tz(),
     purchaseCount: integer().notNull().default(0),
     lastVisitAt: tz(),
+    /**
+     * P1-07: gold in the current ingot and ingots filled so far (the Wallet reads them; P1-12 approvals write
+     * them with the ledger). Server-owned: the web role can't set them (memberships guard, 0025).
+     */
+    progressGold: integer().notNull().default(0),
+    ingotsCompleted: integer().notNull().default(0),
     ...timestamps(),
   },
   (t) => [
     uniqueIndex("memberships_user_shop_uq").on(t.userId, t.shopId),
     index("memberships_shop_id_idx").on(t.shopId),
     check("memberships_purchase_count_non_negative", sql`${t.purchaseCount} >= 0`),
+    check("memberships_progress_gold_non_negative", sql`${t.progressGold} >= 0`),
+    check("memberships_ingots_completed_non_negative", sql`${t.ingotsCompleted} >= 0`),
   ],
 );
 

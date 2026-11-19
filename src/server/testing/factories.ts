@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import type { ShopId } from "@/lib/brand";
 import { generateMemberId, generateShopCode, withUniqueCode } from "@/lib/codes";
 import { newId } from "@/lib/id";
+import { TEMPLATES } from "@/lib/loyalty/programme";
 import { hashPassword } from "@/server/auth/password";
 import { testOwnerDb as db } from "@/server/db/client";
 import {
@@ -15,6 +16,7 @@ import {
   adminMembers,
   customerProfiles,
   featureFlags,
+  loyaltyPrograms,
   memberships,
   opsSnapshot,
   sessions,
@@ -103,6 +105,25 @@ export async function setShopStatus(shopId: ShopId, status: ShopRow["status"]): 
     .where(eq(shops.id, shopId))
     .returning({ id: shops.id });
   if (rows.length !== 1) throw new Error("setShopStatus: no such shop");
+}
+
+/**
+ * A shop's loyalty programme, version 1 (P1-07): the Café classic template with the given ingot size, in
+ * force since 1 Jan 2026. `createdBy` is a random id (no FK; P1-05).
+ */
+export async function makeProgramme(shopId: string, ingotSize = 1_000): Promise<void> {
+  const at = new Date("2026-01-01T00:00:00Z");
+  await db()
+    .insert(loyaltyPrograms)
+    .values({
+      shopId,
+      version: 1,
+      ...TEMPLATES.cafe.rules,
+      ingotSize,
+      activeFrom: at,
+      rewardsFrom: at,
+      createdBy: newId(),
+    });
 }
 
 /** Opening hours (ISO weekday 1–7, "HH:MM") and closure dates for a shop (P1-01/P1-02). */
