@@ -69,14 +69,14 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 - [x] P1-02 · Shop landing page `/s/[code]`
 - [x] P1-03 · Gilded Gate entry animation
 - [x] P1-04 · Join flow, profile completion, member ID
-- [ ] P1-A closed with `/subphase-complete`
+- [ ] P1-A closed with `/subphase-complete` (everything done except the staging step: waits for H-48)
 
 **P1-B · Loyalty engine, Wallet, Vault**
 
 - [x] P1-05 · Loyalty programme model and basic settings (18 Nov; C-58..C-61 carried)
 - [x] P1-06 · Loyalty engine (pure services) (18 Nov; C-56 closed)
-- [x] P1-07 · Wallet
-- [x] P1-08 · Ingot component, pour-on-view, Gold Vault page
+- [x] P1-07 · Wallet (19 Nov, 4703422; C-62..C-65 carried)
+- [x] P1-08 · Ingot component, pour-on-view, Gold Vault page (19 Nov, db18c95; C-50, C-59, C-64 closed; C-66, C-67 carried)
 - [ ] P1-09 · Shop page (customer)
 - [ ] P1-B closed with `/subphase-complete`
 

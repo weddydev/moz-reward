@@ -709,3 +709,8 @@ Human: H-20 done (`NEXT_PUBLIC_TURNSTILE_SITE_KEY_STAGING` seen in `gh secret li
 Done: Ingot SVG (static) + IngotPour (WAAPI, once per mount; 0.9 s pour / 0.5 s rise; finishes on scroll-away, hidden tab, reduced motion, tap); `/vault/[id]` screen 5; C-59 settings preview, C-50 landing preview via `shop_reward_preview` (0026), C-64 join sheet on demand; member pages render not-found inline (#419). Design review: 4 MEDIUM fixed in the task, LOWs → FOLLOWUPS.
 Tests: gate:task suites PASS (unit 1693, int 1418, e2e 148/0/8/0); pour 60.0 fps p95 16.8 ms at 4× throttle; Lighthouse landing JS 149.2 KB judgment. NOT VERIFIED: Linux-container run (helper needs .env.local; denied) → CI is the evidence.
 Left off: P1-09 shop page (C-54), then `/subphase-complete` P1-B.
+
+## 2026-11-19 14:27 UTC — P1 — handoff by talha.syed (Mac)
+Done: P1-08 (db18c95); trackers: PHASES annotations (P1-07/P1-08 dates, carries; P1-A waits for H-48), HUMAN_TASKS H-38 (+ wip/P1-07), H-37 needed-by → P1-15.
+CI: P1-08 push attempt 1 failed in E2E setup (apt mirror timeout installing browsers; unit 1693 + integration had passed); failed job re-run (attempt 2).
+Left off: P1-09 on main. Baton free.

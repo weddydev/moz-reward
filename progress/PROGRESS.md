@@ -3,21 +3,22 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-19 14:57 PKT
+Baton: free — last held by talha.syed, 2026-11-19 14:27 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **19 Nov, talha.syed (Mac): P1-08 Ingot + Gold Vault done and on main** (one commit). **Next: P1-09** (shop page, screen 4) on main: read its section in `docs/phases/P1.md`; it takes incoming C-54. Its Gold Vault card uses `IngotPour` (`seenKey` = shop id) and replaces the temporary "Your Gold Vault" link on `MemberShopPage`. Then `/subphase-complete` for P1-B (design-review MEDIUMs of P1-08 already fixed in the task commit; LOWs in FOLLOWUPS).
-- **What changed beyond the plan:** migration **0026** `shop_reward_preview` (SECURITY DEFINER, public reward fields only; `loyalty_programs` stays member-only); landing cache key `v2`; `/shops/[id]` and `/vault/[id]` render their not-found instead of throwing (`notFound()` under `loading.tsx` = React #419 under load; DECISIONS 19 Nov).
-- **Not yet tested:** CI for the P1-08 push (look before the next push). **NOT VERIFIED locally: the Linux-container run of `vault.spec.ts`** (blocked: the helper had to load `.env.local`; FOLLOWUPS P1-03 `pnpm e2e:linux`); CI's Linux run is the evidence. First `pnpm test:lighthouse` run failed landing LCP once, re-run PASS (judgment JS 149.2 KB). **P1-A still not ticked:** waits for **H-48 🔴**; then re-run Deploy for current main → staging smoke → Sentry check → tick P1-A (docs-only commit).
-- After pulling on the other laptop: `pnpm install`, `pnpm db:migrate` (0026), `pnpm db:seed --reset`. VPS: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`. Visual baselines for `vault.spec.ts` exist for darwin only (Windows: `pnpm e2e:visual --update-snapshots` at the phase gate).
+- **Handed over by talha.syed (Mac), 19 Nov 2026 14:27 UTC.** Finished: **P1-08** Ingot + pour + Gold Vault page `/vault/[id]` (`db18c95`, ticked; C-50, C-59, C-64 closed; C-66 → P1-12, C-67 → P1-16). Nothing half-done, no wip branch. **Next: P1-09** (shop page, screen 4) on main: its section in `docs/phases/P1.md`, incoming C-54. Its Gold Vault card uses `IngotPour` (`seenKey` = shop id) and replaces the temporary "Your Gold Vault" link in `MemberShopPage`. Then `/subphase-complete` for P1-B (P1-08's design-review MEDIUMs are already fixed; LOWs in FOLLOWUPS).
+- **Beyond the plan:** migration **0026** `shop_reward_preview` (SECURITY DEFINER, public reward fields only; `loyalty_programs` stays member-only); landing cache key `v2`; `/shops/[id]` and `/vault/[id]` render their not-found instead of throwing (React #419 under load; DECISIONS 19 Nov).
+- **Tested:** gate:task P1-08 P1-04 P1-02 P1-05 P1-07 P0-12 PASS on the final tree (unit 1693/0, int 1418/0/1 skip, sast, e2e 148/0/8 skip/0 flaky); pour 60.0 fps p95 16.8 ms at 4× CPU throttle; #419 0/40 under `--repeat-each 10`; Lighthouse landing JUDGMENT 149.2 KB (first run failed LCP once, re-run PASS). **CI:** run `44520092373` attempt 1 failed in E2E setup only (apt mirror timeout installing browsers; unit 1693 + integration passed in it); attempt 2 (failed job re-run) running at handoff: **check `gh run view 44520092373` before the next push**.
+- **Not yet tested:** Linux-container run of `vault.spec.ts` (NOT VERIFIED locally: the helper had to load `.env.local`, refused by the permission check; FOLLOWUPS P1-03 `pnpm e2e:linux`; CI's Linux E2E is the evidence); real phones (H-13). **P1-A still not ticked:** waits for **H-48 🔴**, then re-run Deploy for current main → staging smoke → Sentry check → tick P1-A (docs-only commit).
+- **First on the other laptop:** `git pull`, `pnpm install`, `pnpm services:up`, `pnpm db:migrate` (new: 0026), `pnpm db:seed --reset`. No new env vars. Visual baselines for `vault.spec.ts` are darwin-only (Windows: `pnpm e2e:visual --update-snapshots` at the phase gate). VPS: Mac `ssh talha@72.61.17.208`, Windows `C:/Windows/System32/OpenSSH/ssh.exe badeshah@72.61.17.208`.
 
 ## Status
 - **Phase:** **P1**. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
 - **Current sub-phase:** P1-B loyalty engine, Wallet, Vault: ~~P1-05~~ → ~~P1-06~~ → ~~P1-07~~ → ~~P1-08~~ → P1-09 → `/subphase-complete`. (P1-A: everything done except the staging step, which waits for H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-19, talha.syed (P1-08 done on main; next P1-09)
+- **Last updated:** 2026-11-19, talha.syed (handoff after P1-08; next P1-09)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
