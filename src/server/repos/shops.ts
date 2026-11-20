@@ -278,3 +278,23 @@ export async function findJoinableShop(
   if (!JOINABLE.has(row.status)) return { kind: "gone" };
   return { kind: "live", id: row.id, name: row.tradingName ?? row.name };
 }
+
+/**
+ * The code of a shop that is taking members, by id (P1-09: `/shops/[id]` for a signed-in non-member shows the
+ * shop's public page with the join CTA). Null for pending (RLS hides them), suspended, closed and unknown
+ * shops, which all get the not-found page. Only the public code: the page reads the rest from the cached
+ * landing data, as `/s/[code]` does.
+ */
+export async function findJoinableShopCode(
+  scope: CustomerScope,
+  shopId: ShopId,
+): Promise<string | null> {
+  const [row] = await withScope(scope, (q) =>
+    q
+      .select({ shopCode: shops.shopCode, status: shops.status })
+      .from(shops)
+      .where(eq(shops.id, shopId))
+      .limit(1),
+  );
+  return row && JOINABLE.has(row.status) ? row.shopCode : null;
+}

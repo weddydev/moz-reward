@@ -1,22 +1,29 @@
+import { MARKETING_CONSENT_VERSION, marketingConsentParts } from "@/features/join/consent";
+import { JoinCta } from "@/features/join/JoinCta";
 import { PortalNotFound } from "@/features/portal/StatePage";
 import { MemberShopPage } from "@/features/shop/MemberShopPage";
+import { vaultView } from "@/features/vault/view";
+import { parseShopId } from "@/lib/brand";
 import { requireCustomer } from "@/server/authz";
 import { gateCustomerRoute } from "@/server/portal/gate";
 import { readOwnMemberShop } from "@/server/repos/memberships";
 import { ownMemberCard } from "@/server/repos/profiles";
+import { findJoinableShopCode } from "@/server/repos/shops";
+import { readOwnVault } from "@/server/repos/vault";
+import { loadShopLanding } from "@/server/services/shop-landing";
 import type { Metadata } from "next";
 
 /**
- * The customer's shop page `/shops/[id]` (P1-04 minimal; P1-09 builds screen 4 on it). Members only: anyone
- * else (never joined, left, staff or admin without a membership, a malformed or unknown id) gets the same 404,
- * so the page never confirms that a shop id exists. Rendered here, not thrown: a `notFound()` after the
- * loading fallback has streamed is React error #419 in the browser (DECISIONS 19 Nov). `?welcome=1` (set by the join sheet) shows the first-join
- * welcome; it only changes copy on the caller's own page.
+ * The customer's shop page `/shops/[id]` (screen 4, P1-09). A current member gets the full page. A signed-in
+ * non-member (never joined, or left) of a shop that is taking members gets its public sections with the join
+ * CTA instead of the member sections (DECISIONS 19 Nov). Everyone else (a malformed or unknown id, a pending,
+ * suspended or closed shop they aren't in) gets the same not-found page. Rendered here, not thrown: a
+ * `notFound()` after the loading fallback has streamed is React error #419 in the browser (DECISIONS 19 Nov).
+ * `?welcome=1` (set by the join sheet) shows the first-join welcome; it only changes copy on the caller's own
+ * page. The shop's public profile comes from the cached landing data (60 s), as on `/s/[code]`.
  */
 type Params = Promise<{ id: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const metadata: Metadata = { title: "Shop", robots: { index: false, follow: false } };
 
@@ -29,13 +36,56 @@ export default async function ShopPage({
 }): Promise<React.JSX.Element> {
   const principal = await gateCustomerRoute("/shops/[id]");
   const { id } = await params;
-  if (!UUID.test(id)) return <PortalNotFound portal="customer" />;
+  const shopId = parseShopId(id);
+  if (!shopId) return <PortalNotFound portal="customer" />;
   const scope = await requireCustomer(principal);
-  const [shop, member] = await Promise.all([
-    readOwnMemberShop(scope, id.toLowerCase()),
+  const [shop, member, vault] = await Promise.all([
+    readOwnMemberShop(scope, shopId),
     ownMemberCard(scope),
+    readOwnVault(scope, shopId),
   ]);
-  if (!shop || !member) return <PortalNotFound portal="customer" />;
-  const welcome = (await searchParams).welcome === "1";
-  return <MemberShopPage shop={shop} member={member} welcome={welcome} />;
+  const now = new Date();
+
+  if (shop) {
+    if (!member) return <PortalNotFound portal="customer" />;
+    const landing = await loadShopLanding(shop.shopCode);
+    return (
+      <MemberShopPage
+        shop={{ shopId, name: shop.name, logoUrl: shop.logoUrl, muted: shop.muted }}
+        details={landing.kind === "live" ? landing : null}
+        member={member}
+        vault={vault ? vaultView(vault, now) : null}
+        welcome={(await searchParams).welcome === "1"}
+        now={now}
+      />
+    );
+  }
+
+  const code = await findJoinableShopCode(scope, shopId);
+  const landing = code ? await loadShopLanding(code) : null;
+  if (!code || landing?.kind !== "live") return <PortalNotFound portal="customer" />;
+  const name = landing.shop.name;
+  return (
+    <MemberShopPage
+      shop={{ shopId, name, logoUrl: landing.shop.logoUrl, muted: false }}
+      details={landing}
+      member={null}
+      vault={null}
+      welcome={false}
+      join={
+        <JoinCta
+          shopCode={code}
+          shopName={name}
+          needsProfile={!member}
+          consent={{
+            version: MARKETING_CONSENT_VERSION,
+            ...marketingConsentParts(name),
+            shopName: name,
+          }}
+          autoOpen={false}
+        />
+      }
+      now={now}
+    />
+  );
 }

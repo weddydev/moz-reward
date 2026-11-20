@@ -333,6 +333,7 @@ test.describe("[P0-10] motion gallery", () => {
       "Card to page",
       "Tab order",
       "Gilded Gate",
+      "Ingot pour", // P1-08
       "Presets",
       "Popover",
       "Stagger",
