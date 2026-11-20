@@ -725,3 +725,9 @@ Left off: `/subphase-complete` P1-B next.
 Done: final `gate:task P1-09 P1-04 P1-08 P1-07 P0-10`: every step PASS (unit 1676/0, int 1445/0/12, sast, build) except e2e 116/2: P1-08 `vault.spec` timing tests only (`:268` 60 fps on Windows Chromium, p95 33.3 ms; `:212` Windows WebKit 161 ms). Alone ×3: still intermittent on this laptop; both green on Linux CI.
 P1-09 committed to `wip/P1-09` `67b8012` (hook refuses main without a green gate; `--no-verify` forbidden). CI push run 44689671179 + Linux 5-project E2E 44689683099 dispatched, in progress at handoff.
 Left off: land `wip/P1-09` on main (Mac gate:task + green CI), then `/subphase-complete` P1-B. FOLLOWUPS lines for both timing tests (in the wip commit).
+
+## 2026-11-20 — P1 → PD — P1-09 landed + PD-00 by talha.syed (Mac)
+Done: `wip/P1-09` rebased on main and landed as `2dd6039` (message: wip tag dropped, Mac gate added). Mac `gate:task P1-09 P1-04 P1-08 P1-07 P0-10` PASS: unit 1697/0, int 1456/0/1 skip, e2e 118/0/2 skip/0 flaky, sast, build; the pre-push hook re-ran it with the carries: PASS. Branch CI 44689671179 green.
+PD-00: human approved the Molten redesign (design first, no deadline, animation budget bands, exact parity). Reference frozen in `design/reference/molten/` (index.html sha256 81a2994f…, 12 photos, 15 JPEG screenshots, 4.1 MB). DESIGN v2, CLAUDE.md (§1 Pace/design first/spec, §2 order, §3 budgets, §6 tiers, §7 test:parity, §9 index), PHASES (PD block; P1-B close after PD-C), `docs/phases/PD.md`, P2 target line, DECISIONS ×4, HUMAN_TASKS H-49 + H-38 `wip/P1-09`, MAP, design-reviewer agent.
+Not done: deleting remote `wip/P1-09` (auto-mode refused; H-38). Linux 5-project run 44689683099 for the wip branch still running.
+Left off: PD-01 parity harness next.

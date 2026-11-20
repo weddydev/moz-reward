@@ -5,32 +5,28 @@ _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is 
 ## Baton
 Baton: held by talha.syed since 2026-11-20 06:59 UTC
 
-## Handoff note
-_Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handed over by Syedbadeshah76 (Windows), 20 Nov 2026 06:50 UTC.** **P1-09** customer shop page (screen 4) is built and committed, but **on branch `wip/P1-09` (HEAD `67b8012`), not on main**: `gate:task` on this laptop is red only on two P1-08 timing tests in `vault.spec` (`:268` 60 fps under 4× throttle on Windows Chromium, p95 33.3 > 20 ms, ~1 in 3; `:212` "scrolled out of view" on Windows WebKit, 161 > 150 ms, not evidence per DECISIONS 12 Nov). Both passed on Linux CI for P1-08, and the hook (free mode) refuses main without a green gate. The wip commit carries the PHASES tick, P1/P3 phase edits, DECISIONS (19 Nov non-member join CTA), FOLLOWUPS, MAP. Main still has P1-08's red CI (motion gallery AC9 list missing "Ingot pour"); the fix is in `67b8012`.
-- **How to continue (Mac, talha.syed):** `git fetch && git switch wip/P1-09 && git rebase origin/main` (no overlap: main's handoff only touches PROGRESS + SESSION_LOG), check CI run `44689671179` (push) and Linux 5-project E2E `44689683099` (dispatched) are green, run `pnpm gate:task P1-09 P1-04 P1-08 P1-07 P0-10` on the Mac, then fast-forward main to it and push (`git switch main && git merge --ff-only wip/P1-09 && git push`), delete `wip/P1-09`. Then move the P1-09 lines below into place (Now → done, Last verified) and run `/subphase-complete` for P1-B (P1-09 is not on the security list: diff reviewed at the close; design review of screen 4 there).
-- **Beyond the plan (in the wip commit):** `/shops/[id]` shows a signed-in non-member of a joinable shop its public sections + `JoinCta` (the P1-04 E2E now checks a suspended shop for the 404). Test API `/api/test/shop` takes `closureInDays`. `vault.spec` live-region test waits for the demos to hydrate.
-- **Tested (Windows, 20 Nov):** `gate:task P1-09 P1-04 P1-08 P1-07 P0-10`: typecheck, lint, format, titles, unit 1676/0/21, int 1445/0/12, build, bundle, sast, lint:sh PASS; e2e 116/2 (the two above). `vault.spec` alone ×3: Chromium `:268` 1 of 3 failed; WebKit `:212` 2/3 and `:147` 1/3 failed (Windows WebKit). 19 Nov: leave-shop int 10/0, membership authz 28/0, shop view unit 4/0, shop-page E2E 5/0 Chromium + WebKit; screens 390/320/1440 + leave sheet + non-member inspected.
-- **Not yet tested:** CI on `wip/P1-09` (both runs above were in progress at handoff); Linux run of `shop-page.spec.ts` (= run `44689683099`); real phones (H-13). **P1-A still not ticked:** waits for **H-48 🔴**, then re-run Deploy for current main → staging smoke → Sentry check → tick P1-A.
-- **First on the other laptop:** `git pull`, `pnpm install`, `pnpm services:up`, `pnpm db:migrate` (no new migration), `pnpm db:seed --reset`. No new env vars.
+\1- **Checkpoint by talha.syed (Mac), 20 Nov 2026.** **P1-09 landed on main** (`2dd6039`, rebased from `wip/P1-09`; Mac `gate:task` PASS, branch CI `44689671179` green). **PD-00 done:** the human approved the Molten redesign and made it phase **PD**, which runs **before every other open task** (DECISIONS 20 Nov). Reference frozen in `design/reference/molten/`; CLAUDE.md, DESIGN.md v2, PHASES, `docs/phases/PD.md`, DECISIONS, HUMAN_TASKS (H-49), MAP and the design-reviewer agent updated. **No deadline any more** (human, 20 Nov). Nothing half-done, no wip branch.
+- **Next: PD-01 Parity harness** (its section in `docs/phases/PD.md`, plus the phase's "How to work this phase"). Then PD-02 → PD-11 in order. The P1-B close (`/subphase-complete`) waits until after the PD-C close.
+- **Not yet tested:** the Linux 5-project E2E run `44689683099` dispatched for `wip/P1-09` was still in progress at this checkpoint (the push CI for main `2dd6039` is the evidence; check it before the next push); real phones (H-13). **P1-A still not ticked:** waits for **H-48 🔴**.
+- **Leftover:** remote branch `wip/P1-09` (content on main) is in H-38 for the human to delete (the auto-mode check refused the deletion).
 
 ## Status
-- **Phase:** **P1**. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
-- **Current sub-phase:** P1-B loyalty engine, Wallet, Vault: ~~P1-05~~ → ~~P1-06~~ → ~~P1-07~~ → ~~P1-08~~ → P1-09 (built, on `wip/P1-09`, lands after a green gate) → `/subphase-complete`. (P1-A: everything done except the staging step, which waits for H-48.)
+- **Phase:** **PD — Molten design** (runs first; human 20 Nov; `docs/phases/PD.md`). Then P1 resumes with the P1-B close. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
+- **Current sub-phase:** **PD-A** Foundation: ~~PD-00~~ → PD-01 → PD-02 → PD-03 → `/subphase-complete`; then PD-B (controls), PD-C (structure + signature moments, needs H-49). **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done except the staging step, which waits for H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
-- **Target:** everything done by **Thu 10 Dec 2026** (human, 10 Nov). Per-phase dates are not tracked (CLAUDE.md "Pace").
-- **Last updated:** 2026-11-20, Syedbadeshah76 (handoff; P1-09 on `wip/P1-09` `67b8012` awaiting gate + land)
+- **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
+- **Last updated:** 2026-11-20, talha.syed (P1-09 landed `2dd6039`; PD-00 Molten docs; next PD-01)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `8353e00`; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys roll back until H-48.
-- **P1-B:** P1-05, P1-06 (18 Nov), P1-07, P1-08 (19 Nov) done; P1-09 built on `wip/P1-09` (`67b8012`), lands on main after a green gate (handoff note). Then `/subphase-complete`.
+- **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
+- **PD (Molten design):** PD-00 done 20 Nov (reference `design/reference/molten/`, sha256 `81a2994f…`; DESIGN v2; rules in CLAUDE.md). Next PD-01 parity harness. Estimate ≈ 10 working days for PD-01..PD-11.
 
 ## Next (top 3)
-1. Land `wip/P1-09` on main (handoff note: CI + Linux run green, Mac `gate:task`, fast-forward). Then `/subphase-complete` for P1-B (reviews of P1-05..P1-09 commits not yet reviewed; scoped QA of Wallet, Vault, shop page).
-2. Human: **H-48** (staging Sentry DSN) → then close P1-A (handoff note: deploy, smoke, Sentry, tick).
-3. Human, any time: H-45 UptimeRobot monitors (then the stop-staging phone alert test, C-48); H-46 Cloudflare `/s/*` rule.
-
+1. **PD-01 Parity harness**, then PD-02, PD-03 and the PD-A close (`docs/phases/PD.md`).
+2. Human: **H-48** (staging Sentry DSN) → then close P1-A (deploy, smoke, Sentry, tick).
+3. Human, any time: H-38 (delete merged branches, now incl. `wip/P1-09`), H-45 UptimeRobot monitors (then C-48), H-46 Cloudflare `/s/*` rule.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |

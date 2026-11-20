@@ -841,3 +841,23 @@ Why: a stable order avoids cards jumping on refresh; counting real SQL is strong
 Decision: custom pull-to-refresh on touch only: passive window touch listeners (never preventDefault), active only at scrollY 0; the page's `overscroll-behavior-y` is `none` while the Wallet is mounted (no browser reload / rubber band fighting it); threshold 64 px of indicator travel (finger travel / 2, max 96); release → `router.refresh()` in a transition (server re-render, no reload, scroll kept). Indicator = ingot outline filling with the pull, drawn through CSS variables (no React render per frame); styles in `src/features/wallet/pull-to-refresh.css`, not globals.
 Why: DESIGN §15 screen 3 asks for pull-to-refresh with the ingot outline; mobile-native skill rules (no scroll hijack, passive listeners).
 Consequence: real-device feel (Android Chrome, iOS Safari standalone) is NOT VERIFIED until H-13 (real devices); E2E drives it through Chromium touch emulation.
+
+## 2026-11-20 — Molten design approved; phase PD runs first (human)
+Decision: the client found the v1 design too plain. The human approved the "Molten" concept built on 20 Nov and made its demo the exact spec: frozen at `design/reference/molten/` (`index.html` sha256 `81a2994fe23bacb77d08c9c05ec41677724c9ebedace59347dd7f69bc395ef76`, 12 photos, screenshots). New phase **PD** (`docs/phases/PD.md`: PD-00…PD-11 in three sub-phases, ≈ 10 working days estimated) runs **before every other open task**; the P1-B close moves after the PD-C close so its design review and QA see the Molten screens. DESIGN.md v2: gold area cap retired, three motion tiers (quiet < 300 ms, expressive 300–760 ms, signature 0.9–2.6 s), named paint exceptions (goo filter, `@property` border, text shine, Gate letter weight, stroke-dash light, clip-path reveals), Gilded Gate 2.0 (2.4 s), floating dock, wallet card stack + gold wipe, gilded edge (corner gem) on hero cards, shop photos everywhere instead of initials.
+Why: client feedback after the P1 demo; doing the design first means the remaining screens are built once, in the final style.
+Consequence: CLAUDE.md §1 (design first, Molten is the spec), §2 (reference above DESIGN.md), §3 (animation budgets), §6 (motion tiers) updated; the design-reviewer agent judges against the reference; every PD tick needs the parity harness (PD-01) green; screens the reference doesn't show are labelled "extended from the reference".
+
+## 2026-11-20 — No deadline (human)
+Decision: the "everything done by 10 Dec 2026" target (human, 10 Nov) is withdrawn: "don't worry about deadlines and don't follow them; we move as we want". No target dates in CLAUDE.md, PROGRESS, PHASES or phase files.
+Why: the human's call, made together with the design-first order.
+Consequence: CLAUDE.md "Pace" rewritten; quality rules unchanged (no scope cuts, every criterion, edge case and test stays).
+
+## 2026-11-20 — Performance judgment bands for Molten motion (human)
+Decision: budgets may grow slightly when it clearly buys the approved look: customer route initial JS ≤ 180 KB gzip (target 170), landing ≤ 140 KB (target 130), signature-moment chunks ≤ 40 KB (was 35). Each overage inside a band gets its own DECISIONS line. The frame budget doesn't move: 60 fps on mid-range Android, no long task > 50 ms during an animation, INP ≤ 200 ms, CLS ≤ 0.05.
+Why: human, 20 Nov: "even if the performance budget increases slightly because of the animations, it's fine, as long as it's good".
+Consequence: DESIGN §12 and CLAUDE.md §3 carry the bands; Lighthouse budgets file updated in the PD task that first needs it.
+
+## 2026-11-20 — Demo shop photos (Molten)
+Decision: the demo shops use 12 Unsplash photos (cafe, bakery, cycle shop; Unsplash licence: free commercial use, no attribution required), stored in the repo (now in the reference; PD-08 copies optimised versions to `public/demo/shops/`), never hotlinked. Real shops show their own `coverUrl` / `logoUrl` (uploads in P2-05); without photos they get a metal monogram coin, never bare initials.
+Why: the human asked for real images instead of initials on every shop.
+Consequence: CSP `img-src` stays self-only; seed data change in PD-08.

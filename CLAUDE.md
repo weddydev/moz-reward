@@ -32,7 +32,11 @@ This file is loaded every session, so it stays short and points to the single so
 
 **Prove it before saying "clear" (human's standing rule, 11 Nov 2026):** the "Run `/clear`" line may only follow a passing `pnpm clear:check` run in the same reply, after the last commit and push (quote its verdict line). It fails on: uncommitted or stashed work; the current branch or main not pushed; PROGRESS "Last updated" or a SESSION_LOG entry on origin/main not dated today; work on a wip branch whose pushed HEAD and name aren't in PROGRESS. Before running it, also make sure by reading that the handoff names the exact next step, what is half-done, what is untested (incl. CI still running), and that finished tasks are ticked. A failing check → fix and re-run, or say "Don't clear yet: <reason>".
 
-**Pace (human's standing rule, 10 Nov 2026):** the one target is **everything done by 10 Dec 2026**. Don't track or report per-phase dates, projections or slips. Work fast and efficiently, but never by cutting scope: every acceptance criterion, edge case, security measure and test stays. Speed comes from less overhead (fewer re-reads, no repeated green suites, batched progress updates), never from lower quality.
+**Pace (human's standing rule, 20 Nov 2026; replaces the 10 Nov "done by 10 Dec" target):** there is **no deadline**. Don't follow, track or report target dates, per-phase dates, projections or slips; we move at our own pace. Work fast and efficiently, but never by cutting scope: every acceptance criterion, edge case, security measure and test stays. Speed comes from less overhead (fewer re-reads, no repeated green suites, batched progress updates), never from lower quality.
+
+**Design first (human's standing rule, 20 Nov 2026):** the Molten redesign (phase PD, `docs/phases/PD.md`) runs before every other open task. Work resumes with the P1-B close only after PD-C is closed.
+
+**Molten is the visual spec (human's standing rule, 20 Nov 2026):** the app must look, move and feel exactly like the approved demo in `design/reference/molten/` (same design, same animations, same quality), proven by the parity harness (PD-01), never by eye alone.
 
 **Sub-phase close:** `/subphase-complete` (light: CI green, staging smoke, Sentry, reviews of unreviewed commits, scoped QA if screens changed). **Phase close:** `/phase-complete` (the one heavy gate + demo). **Handover:** `/handoff`. **Context heavy:** `/checkpoint`.
 
@@ -43,9 +47,10 @@ This file is loaded every session, so it stays short and points to the single so
 1. Explicit instruction from the human in the current session
 2. `docs/COMPLIANCE.md` and `docs/SECURITY.md` (never traded away)
 3. `docs/PRODUCT.md` (what to build)
-4. `docs/DESIGN.md` (how it looks and moves)
-5. `design/reference/` images (visual guide only; DESIGN.md wins)
-6. `docs/ARCHITECTURE.md` (how it is built)
+4. `design/reference/molten/` (the approved Molten demo: exact visual and motion spec for everything it shows)
+5. `docs/DESIGN.md` (how it looks and moves; v2 quotes the Molten reference)
+6. `design/reference/` images (layout guide for screens Molten doesn't show; DESIGN.md wins)
+7. `docs/ARCHITECTURE.md` (how it is built)
 
 ## 3. Working principles
 
@@ -55,7 +60,7 @@ This file is loaded every session, so it stays short and points to the single so
 - **Free-tier discipline.** Every free quota (Actions credit, R2, Resend/Brevo, Sentry, UptimeRobot) has a 70% alert and a documented degradation (ARCHITECTURE §10). Never add a paid service without a DECISIONS entry and the human's approval.
 - **Secrets:** laptops hold dev-only keys. Staging and production secrets live only in GitHub secrets, root-only files the deploy job writes on the host, and the developers' password manager. Never ask the human to paste a secret into chat; never read one.
 - **Right-sized verification.** Heavy suites run once per level (TESTING §4): fast checks per task, CI on every push, a light sub-phase close, one heavy phase gate. Never re-run a green suite "to be sure"; `--repeat-each` only to diagnose a flake.
-- **Judgment over rigid budgets.** Bundle/Lighthouse/coverage targets: ≤ 15% over for clear user value is accepted with a one-line DECISIONS entry; more → optimise first. Don't spend > ~30 min shaving a few KB.
+- **Judgment over rigid budgets.** Bundle/Lighthouse/coverage targets: ≤ 15% over for clear user value is accepted with a one-line DECISIONS entry; more → optimise first. Don't spend > ~30 min shaving a few KB. **Animation (human, 20 Nov 2026):** budgets may grow slightly when it clearly buys the approved Molten look (DESIGN §12 judgment bands), each with a DECISIONS line; the frame budget (60 fps, no long task > 50 ms, INP ≤ 200 ms) never moves.
 - **Minimise human work; track the rest in `progress/HUMAN_TASKS.md`** (ID, 🔴/🟠/🟢, needed by, why, time, exact steps). Add tasks as early as you can foresee them. Review the list at every sub-phase and phase close.
 - **Do it yourself (human's standing rule, 12 Nov 2026):** every command, script, CLI, SSH or config step Claude can run, Claude runs itself (key generation, `ssh` to the VPS, `gh secret set` piped from a local file without displaying it, installs via `winget`/`brew`). Ask the human only for what needs them: account sign-ups, payments, identity verification, browser dashboards Claude can't reach, typing a passphrase into a prompt, copying a secret that exists only in a provider dashboard into the password manager, approval prompts and decisions. Write HUMAN_TASKS steps that way: the human's part only, with Claude's part named as Claude's.
 - **Don't invent scope.** If PRODUCT.md is silent, choose the simplest sensible behaviour, record it in DECISIONS.md, move on.
@@ -110,7 +115,7 @@ Load a skill only when it applies; DESIGN.md wins on any conflict:
 - `mobile-native`: a **new** customer mobile screen or gesture.
 - `animation-performance`: only when an animation misses its frame budget.
 - `review-animations`: run by `design-reviewer` on diffs that add or change motion; fix what it blocks.
-Signature moments in DESIGN §8 keep their specified durations (exceptions to "UI motion under 300 ms") but follow the skills on easing, interruptibility, skip-on-tap, reduced motion and performance. Everyday UI motion stays under 300 ms.
+Motion follows the three tiers in DESIGN §7.1 (human, 20 Nov 2026; replaces "everyday UI motion under 300 ms"): quiet < 300 ms, expressive 300–760 ms, signature 0.9–2.6 s, with the exact values of the Molten reference (DESIGN §7.4). Where a skill's guidance (e.g. "UI animations stay under 300ms") conflicts with the reference or DESIGN.md, the reference wins; the skills still apply on interruptibility, skip-on-tap, reduced motion and performance.
 
 ## 7. Commands
 
@@ -131,6 +136,7 @@ pnpm test:lighthouse   # Lighthouse CI (tests/perf, mobile throttled, DESIGN §1
 pnpm test:titles       # warn on tests without [Pn-nn]/[Jn]; --strict exits 1
 pnpm clear:check       # safe to /clear? clean tree, branch + main pushed, handoff on origin/main current (§1)
 pnpm test:mutation     # stryker on rules modules (phase gate, changed modules)
+pnpm test:parity       # Molten parity: reference vs /dev/molten (static, frames, curves, spec table)  [built in PD-01]
 pnpm test:load:smoke   # k6 smoke (BASE_URL/VUS/DURATION)
 pnpm test:live         # real-provider smoke; --require-all at phase gate (missing keys = NOT VERIFIED)
 pnpm db:migrate | db:generate | db:seed | db:reset   # drizzle migrations / generate / idempotent seed (baseline + demo data) / LOCAL reset
@@ -164,3 +170,4 @@ Until P0-14 lands `gate:task`/`gate:phase` and the production-build `pnpm e2e`, 
 | `docs/TESTING.md` | §4 (gates) and §7–8 (rules, self-verification) for every task |
 | `docs/PRODUCT.md`, `DESIGN.md`, `ARCHITECTURE.md`, `SECURITY.md`, `COMPLIANCE.md` | The sections the task's Read list names |
 | `progress/DECISIONS.md` | Before changing an established pattern |
+| `design/reference/molten/` | Any visual or motion work: the exact spec (open `index.html`; values quoted in DESIGN §3, §6, §7.4, §8) |

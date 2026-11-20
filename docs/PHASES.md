@@ -9,7 +9,8 @@ Rules (gates are defined once, in TESTING §4):
 - **Sub-phase:** `/subphase-complete` is light — CI green, staging smoke, Sentry, reviews of unreviewed commits, scoped QA if screens changed. No gate may be "pending".
 - **Phase:** `/phase-complete` is the one heavy gate (`pnpm gate:phase`) + DoD + demo; the phase's hardening task is that same run.
 - **Phase start:** a brief review fills missing Edge cases / measurable Acceptance criteria in the phase file before its first task.
-- No per-phase dates (human, 10 Nov 2026): the one target is everything done by 10 Dec 2026 (CLAUDE.md "Pace").
+- No dates and no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
+- **Order (human, 20 Nov 2026):** phase **PD (Molten design)** runs first, before every other open task; then the P1-B close and P1-10 onward.
 
 ## P0 — Foundation and design system
 Details: [`docs/phases/P0.md`](phases/P0.md)
@@ -60,6 +61,33 @@ Details: [`docs/phases/P0.md`](phases/P0.md)
 - [x] P0 closed (officially, human 17 Nov; `gate:phase` for P0 + P1 runs in P1-18, C-49)
 - [x] P0 closed by the human 17 Nov; remaining DoD evidence and the client demo (P0 + P1 together) at the P1 close (C-49)
 
+## PD — Molten design (runs first; human, 20 Nov 2026)
+Details: [`docs/phases/PD.md`](phases/PD.md) · Spec: [`design/reference/molten/`](../design/reference/molten/)
+
+**PD-A · Foundation**
+
+- [x] PD-00 · Reference, rules, docs (20 Nov)
+- [ ] PD-01 · Parity harness
+- [ ] PD-02 · Tokens, fonts, surfaces, living background, gilded edge
+- [ ] PD-03 · Motion core: FX engine, tiers, reduced motion, press kit
+- [ ] PD-A closed with `/subphase-complete`
+
+**PD-B · Controls**
+
+- [ ] PD-04 · Buttons, icon button, toast
+- [ ] PD-05 · Coin switch, liquid choice, segmented control, seal checkbox
+- [ ] PD-06 · Tabs, text field, star rating, slider, member card
+- [ ] PD-B closed with `/subphase-complete`
+
+**PD-C · Structure and signature moments**
+
+- [ ] PD-07 · Floating dock and Scan button
+- [ ] PD-08 · Wallet stack, gold wipe into the shop, shop photos
+- [ ] PD-09 · Gilded Gate 2.0
+- [ ] PD-10 · Vault pour, reward unlocked, redeem code
+- [ ] PD-11 · Restyle built screens, full parity sweep, close
+- [ ] PD-C closed with `/subphase-complete` (needs H-49 human parity sign-off)
+
 ## P1 — Core loyalty
 Details: [`docs/phases/P1.md`](phases/P1.md)
 
@@ -78,7 +106,7 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 - [x] P1-07 · Wallet (19 Nov, 4703422; C-62..C-65 carried)
 - [x] P1-08 · Ingot component, pour-on-view, Gold Vault page (19 Nov, db18c95; C-50, C-59, C-64 closed; C-66, C-67 carried)
 - [x] P1-09 · Shop page (customer) (19 Nov; C-54 closed; C-68..C-74 carried)
-- [ ] P1-B closed with `/subphase-complete`
+- [ ] P1-B closed with `/subphase-complete` (after PD-C, so its design review and QA see the Molten screens)
 
 **P1-C · Requests, approvals, realtime**
 
