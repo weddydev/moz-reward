@@ -121,6 +121,13 @@ describe("[P0-14] gate:task inputs", () => {
     expect(resolveTaskIds([], "", "- [x] P0-01 · done").ids).toEqual([]);
   });
 
+  it("knows design-phase task IDs (PD-nn) in arguments, commits and PHASES.md", () => {
+    const phases = "- [x] PD-01 · Parity harness\n- [ ] PD-02 · Tokens\n- [ ] P1-10 · Next";
+    expect(nextUntickedTask(phases)).toBe("PD-02");
+    expect(resolveTaskIds(["PD-01"], "", phases)).toEqual({ ids: ["PD-01"], source: "arguments" });
+    expect(resolveTaskIds([], "feat(PD-01): harness", phases).ids).toEqual(["PD-01"]);
+  });
+
   it("greps only exact title tags", () => {
     const re = new RegExp(grepFor(["P0-14", "J2"]));
     expect(re.test("[P0-14] production parity › x")).toBe(true);

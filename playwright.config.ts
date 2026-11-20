@@ -56,6 +56,24 @@ export default defineConfig({
     ...(process.env.LIGHTHOUSE
       ? [{ name: "lighthouse", testDir: "./tests/perf", fullyParallel: false }]
       : []),
+    // Molten parity (PD-01, tests/parity): only with PARITY=1 (`pnpm test:parity`, gate:task for PD tasks, CI).
+    // Page against reference in the same browser and OS, at device scale 2; viewports are set per test.
+    ...(process.env.PARITY
+      ? [
+          {
+            name: "parity-chromium",
+            testDir: "./tests/parity",
+            timeout: 90_000, // dozens of DSF-2 captures per test (WebKit ~15 s alone)
+            use: { ...devices["Desktop Chrome"], deviceScaleFactor: 2 },
+          },
+          {
+            name: "parity-webkit",
+            testDir: "./tests/parity",
+            timeout: 90_000, // dozens of DSF-2 captures per test (WebKit ~15 s alone)
+            use: { ...devices["Desktop Safari"], deviceScaleFactor: 2 },
+          },
+        ]
+      : []),
   ],
   // Remote targets (staging) are already running: no local web server at all.
   ...(isRemote

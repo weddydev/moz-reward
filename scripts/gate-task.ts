@@ -29,7 +29,8 @@ import {
 import { writeStamp, workingTreeHash } from "./lib/gate-stamp";
 import { isDirectRun } from "../src/lib/is-direct-run";
 
-const TASK_ID = /\b((?:P\d|S)-\d{2}|J\d{1,2})\b/g;
+// Phase tasks (P1-10), design-phase tasks (PD-01, phase PD), security items (S-03), journeys (J2).
+const TASK_ID = /\b((?:P\d|PD|S)-\d{2}|J\d{1,2})\b/g;
 
 /** Splits the `check` script ("pnpm a && pnpm b …") into its pnpm script names. */
 export function checkParts(checkScript: string): string[] {
@@ -42,7 +43,7 @@ export function checkParts(checkScript: string): string[] {
 
 /** The first unticked task line in PHASES.md (`- [ ] P0-14 · …`). */
 export function nextUntickedTask(phasesMd: string): string | null {
-  return /^- \[ \] ((?:P\d|S)-\d{2})\b/m.exec(phasesMd)?.[1] ?? null;
+  return /^- \[ \] ((?:P\d|PD|S)-\d{2})\b/m.exec(phasesMd)?.[1] ?? null;
 }
 
 export function resolveTaskIds(
@@ -50,7 +51,7 @@ export function resolveTaskIds(
   unpushedMessages: string,
   phasesMd: string,
 ): { ids: string[]; source: string } {
-  const fromArgs = args.filter((a) => /^((?:P\d|S)-\d{2}|J\d{1,2})$/.test(a));
+  const fromArgs = args.filter((a) => /^((?:P\d|PD|S)-\d{2}|J\d{1,2})$/.test(a));
   if (fromArgs.length > 0) return { ids: fromArgs, source: "arguments" };
   const fromCommits = [...new Set([...unpushedMessages.matchAll(TASK_ID)].map((m) => m[1] ?? ""))];
   if (fromCommits.length > 0) return { ids: fromCommits, source: "unpushed commits" };
@@ -164,6 +165,27 @@ function main(): void {
           "--pass-with-no-tests",
         ]),
     });
+    // Molten parity (PD-01): a PD task also runs its parity specs ([PD-nn] titles), both browsers.
+    const pd = ids.filter((id) => id.startsWith("PD-"));
+    if (pd.length > 0) {
+      steps.push({
+        name: `parity ${pd.join(",")}`,
+        run: () =>
+          e2eStep(
+            `parity ${pd.join(",")}`,
+            [
+              "--project",
+              "parity-chromium",
+              "--project",
+              "parity-webkit",
+              "--grep",
+              grepFor(pd),
+              "--pass-with-no-tests",
+            ],
+            { PARITY: "1" },
+          ),
+      });
+    }
   } else {
     steps.push({
       name: "e2e (task)",

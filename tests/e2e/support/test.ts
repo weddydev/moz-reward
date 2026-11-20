@@ -205,7 +205,7 @@ type Fixtures = {
   >;
 };
 
-const TASK_ID = /\[((?:P\d|S)-\d{2}|J\d{1,2})\]/;
+const TASK_ID = /\[((?:P\d|PD|S)-\d{2}|J\d{1,2})\]/;
 
 export function taskIdFrom(info: Pick<TestInfo, "titlePath">): string {
   for (const part of [...info.titlePath].reverse()) {

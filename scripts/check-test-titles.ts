@@ -1,5 +1,5 @@
 /**
- * Test titles must carry a task or journey ID (TESTING §7): `[P1-11] …`, `[J2] …` or `[S-03] …`.
+ * Test titles must carry a task or journey ID (TESTING §7): `[P1-11] …`, `[PD-01] …` (design phase), `[J2] …` or `[S-03] …`.
  * A test is covered if its own title or any enclosing `describe` title has one.
  * Usage: `pnpm test:titles` (warns) · `pnpm test:titles --strict` (exit 1 on any untagged test, used in CI).
  */
@@ -7,7 +7,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 
-const TAG = /\[(?:P\d-\d{2}|S-\d{2}|J\d{1,2})\]/;
+const TAG = /\[(?:P\d-\d{2}|PD-\d{2}|S-\d{2}|J\d{1,2})\]/;
 const TEST_FILE = /\.(test|spec)\.tsx?$/;
 const ROOTS = ["src", "tests"];
 const CALLEES = new Set(["it", "test", "describe"]);
@@ -110,7 +110,7 @@ function main(): void {
     return;
   }
   console.warn(
-    `[titles] ${problems.length} test(s) without [Pn-nn]/[Jn]/[S-nn] in their title or describe:\n${problems.map((p) => `  ${p}`).join("\n")}`,
+    `[titles] ${problems.length} test(s) without [Pn-nn]/[PD-nn]/[Jn]/[S-nn] in their title or describe:\n${problems.map((p) => `  ${p}`).join("\n")}`,
   );
   if (strict) process.exit(1);
 }
