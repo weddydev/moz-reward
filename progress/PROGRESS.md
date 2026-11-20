@@ -3,25 +3,27 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-20 06:59 UTC
+Baton: free — last held by talha.syed, 2026-11-20 07:20 UTC
 
-\1- **Checkpoint by talha.syed (Mac), 20 Nov 2026.** **P1-09 landed on main** (`2dd6039`, rebased from `wip/P1-09`; Mac `gate:task` PASS, branch CI `44689671179` green). **PD-00 done:** the human approved the Molten redesign and made it phase **PD**, which runs **before every other open task** (DECISIONS 20 Nov). Reference frozen in `design/reference/molten/`; CLAUDE.md, DESIGN.md v2, PHASES, `docs/phases/PD.md`, DECISIONS, HUMAN_TASKS (H-49), MAP and the design-reviewer agent updated. **No deadline any more** (human, 20 Nov). Nothing half-done, no wip branch.
-- **Next: PD-01 Parity harness** (its section in `docs/phases/PD.md`, plus the phase's "How to work this phase"). Then PD-02 → PD-11 in order. The P1-B close (`/subphase-complete`) waits until after the PD-C close.
-- **Not yet tested:** the Linux 5-project E2E run `44689683099` dispatched for `wip/P1-09` was still in progress at this checkpoint (the push CI for main `2dd6039` is the evidence; check it before the next push); real phones (H-13). **P1-A still not ticked:** waits for **H-48 🔴**.
-- **Leftover:** remote branch `wip/P1-09` (content on main) is in H-38 for the human to delete (the auto-mode check refused the deletion).
-
+## Handoff note
+_Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
+- **Handed over by talha.syed (Mac), 20 Nov 2026 07:20 UTC.** Finished this session: **P1-09 landed on main** (`2dd6039`: `wip/P1-09` rebased on main, commit message's wip tag dropped, Mac gate added); **PD-00** (`2fd3064`): the human approved the **Molten redesign**; new phase **PD runs before every other open task**; **no deadline** any more; reference frozen in `design/reference/molten/` (open `index.html` in a browser: it is the exact spec); CLAUDE.md, DESIGN.md v2, PHASES, `docs/phases/PD.md`, DECISIONS (4 × 20 Nov), HUMAN_TASKS (H-49; needed-by dates → milestones), MAP and the design-reviewer agent updated. H-48/H-34 steps rewritten so Sentry stays on the free Developer plan (`9c0a1e0`). The human removed the effort table from `PD.md` (committed with this handoff). Nothing half-done, no wip branch.
+- **How to continue:** `/resume`, then **PD-01 Parity harness**: read `docs/phases/PD.md` ("How to work this phase" + PD-01) and DESIGN §7.4. Build the harness first (`/dev/molten`, `tests/parity/` static/frames/curves, `molten-spec.ts` + test, `pnpm test:parity`); no visual change before it exists. Then PD-02 → PD-03 → PD-A close. Read the reference HTML itself for values; the parity tests must prove the match.
+- **Tested (Mac, 20 Nov):** `gate:task P1-09 P1-04 P1-08 P1-07 P0-10` PASS (typecheck, lint, format, titles, unit 1697/0, int 1456/0/1 skip, build, bundle, sast, lint:sh, e2e 118/0/2 skip/0 flaky); the pre-push hook re-ran it with the carried tasks: PASS. After the docs commits: `pnpm check` PASS (unit 1697/0), prettier PASS on every changed doc.
+- **Not yet tested:** **CI run `44692872344` for main `2dd6039` was still in progress at handoff** (same code was green on its branch, run `44689671179`): check `gh run view 44692872344` first; red CI is fixed before anything else. The Linux 5-project run `44689683099` (dispatched for `wip/P1-09`) also still running. Real phones (H-13). **P1-A still not ticked:** waits for **H-48 🔴**.
+- **First on the other laptop:** `git pull`, `pnpm install` (no lockfile change), `pnpm services:up`, `pnpm db:migrate` (no new migration), `pnpm db:seed --reset`. No new env vars. Remote branch `wip/P1-09` is merged content (H-38 lists it for deletion; the auto-mode check refused it here). Local only on the Mac: `.vscode/` (human's Live Server setting) is excluded via `.git/info/exclude`, not in the repo.
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov; `docs/phases/PD.md`). Then P1 resumes with the P1-B close. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
 - **Current sub-phase:** **PD-A** Foundation: ~~PD-00~~ → PD-01 → PD-02 → PD-03 → `/subphase-complete`; then PD-B (controls), PD-C (structure + signature moments, needs H-49). **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done except the staging step, which waits for H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-20, talha.syed (P1-09 landed `2dd6039`; PD-00 Molten docs; next PD-01)
+- **Last updated:** 2026-11-20, talha.syed (handoff: P1-09 landed `2dd6039`; PD-00 done; next PD-01)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `8353e00`; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys roll back until H-48.
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-00 done 20 Nov (reference `design/reference/molten/`, sha256 `81a2994f…`; DESIGN v2; rules in CLAUDE.md). Next PD-01 parity harness. Estimate ≈ 10 working days for PD-01..PD-11.
+- **PD (Molten design):** PD-00 done 20 Nov (reference `design/reference/molten/`, sha256 `81a2994f…`; DESIGN v2; rules in CLAUDE.md). Next PD-01 parity harness.
 
 ## Next (top 3)
 1. **PD-01 Parity harness**, then PD-02, PD-03 and the PD-A close (`docs/phases/PD.md`).
@@ -74,13 +76,11 @@ Baton: held by talha.syed since 2026-11-20 06:59 UTC
 ## Map of the codebase
 In **`progress/MAP.md`** (read when you need to locate code; add new important paths there).
 
-## Last verified (20 Nov 2026; P1-09 lines are from `wip/P1-09`)
+## Last verified (20 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- P1-09: integration leave-shop 10/0 (day-1 leave, C-54 consent row, frozen counters, parallel leave, rejoin same day + day 29, mute); authz membership 28/0.
-- P1-09 E2E shop-page 5/0 Chromium + WebKit (sections, directions/call hrefs, pour lands, mute persists, leave → Wallet, rejoin restores 720 gold, non-member join CTA, 404 for suspended/unknown/malformed).
-- Screens inspected at 390/320/1440 (no horizontal scroll) + leave sheet + non-member 390/1440.
-- CI main red from P1-08 (motion gallery AC9 list) fixed in the P1-09 commit; AC9 passes locally.
-
+- P1-09 landed on main `2dd6039`: Mac `gate:task P1-09 P1-04 P1-08 P1-07 P0-10` PASS (unit 1697/0, int 1456/0/1, e2e 118/0/2/0); pre-push hook gate PASS; branch CI 44689671179 green; main CI 44692872344 in progress at handoff.
+- P1-09 (Windows, 19 Nov): leave-shop int 10/0, membership authz 28/0, shop-page E2E 5/0 Chromium + WebKit, screens 390/320/1440 inspected.
+- PD-00 docs: `pnpm check` PASS after the docs commit; reference fingerprint `81a2994f…` = `shasum -a 256 design/reference/molten/index.html`.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 

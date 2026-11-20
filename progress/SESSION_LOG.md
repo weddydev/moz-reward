@@ -731,3 +731,8 @@ Done: `wip/P1-09` rebased on main and landed as `2dd6039` (message: wip tag drop
 PD-00: human approved the Molten redesign (design first, no deadline, animation budget bands, exact parity). Reference frozen in `design/reference/molten/` (index.html sha256 81a2994f…, 12 photos, 15 JPEG screenshots, 4.1 MB). DESIGN v2, CLAUDE.md (§1 Pace/design first/spec, §2 order, §3 budgets, §6 tiers, §7 test:parity, §9 index), PHASES (PD block; P1-B close after PD-C), `docs/phases/PD.md`, P2 target line, DECISIONS ×4, HUMAN_TASKS H-49 + H-38 `wip/P1-09`, MAP, design-reviewer agent.
 Not done: deleting remote `wip/P1-09` (auto-mode refused; H-38). Linux 5-project run 44689683099 for the wip branch still running.
 Left off: PD-01 parity harness next.
+
+## 2026-11-20 07:20 UTC — PD — handoff by talha.syed (Mac)
+Done: H-48/H-34 steps (Sentry free Developer plan, no card; GlitchTip fallback only with DECISIONS) `9c0a1e0`; fixed a stray `\1` that replaced the PROGRESS "Handoff note" heading in `2fd3064`; committed the human's removal of the PD effort table.
+CI: main `2dd6039` run 44692872344 in progress at handoff (branch run 44689671179 green).
+Left off: PD-01 parity harness next. Baton free.

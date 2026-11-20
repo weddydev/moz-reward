@@ -157,24 +157,6 @@
 
 ---
 
-## Effort (estimate)
-
-| Task | Days |
-|---|---|
-| PD-00 Reference, rules, docs | done 20 Nov |
-| PD-01 Parity harness | 0.5 |
-| PD-02 Tokens, fonts, surfaces, background, gilded edge | 1 |
-| PD-03 Motion core | 1 |
-| PD-04 Buttons, icon button, toast | 0.75 |
-| PD-05 Switch, liquid choice, checkbox | 0.75 |
-| PD-06 Tabs, field, stars, slider, member card | 1 |
-| PD-07 Dock | 0.5 |
-| PD-08 Wallet stack, wipe, photos | 1 |
-| PD-09 Gilded Gate 2.0 | 1.5 |
-| PD-10 Vault, reward, redeem | 0.75 |
-| PD-11 Restyle, sweep, close | 1 |
-| **Total** | **≈ 10** |
-
 ## Risks
 - **Safari** (goo filter cost, `linear()`, `@property`, backdrop blur): per-component fallbacks; WebKit in every parity run; real iPhone (H-13).
 - **Low-end Android frame rate:** device tiers, particle caps, off-screen pausing, traces at 4× throttle; the frame budget never moves.
