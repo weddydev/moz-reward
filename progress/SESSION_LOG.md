@@ -714,3 +714,14 @@ Left off: P1-09 shop page (C-54), then `/subphase-complete` P1-B.
 Done: P1-08 (db18c95); trackers: PHASES annotations (P1-07/P1-08 dates, carries; P1-A waits for H-48), HUMAN_TASKS H-38 (+ wip/P1-07), H-37 needed-by → P1-15.
 CI: P1-08 push attempt 1 failed in E2E setup (apt mirror timeout installing browsers; unit 1693 + integration had passed); failed job re-run (attempt 2).
 Left off: P1-09 on main. Baton free.
+
+## 2026-11-19 — P1 — P1-09 by Syedbadeshah76 (Windows)
+Done: P1-09 shop page (screen 4), leave/mute actions + service, non-member join CTA (DECISIONS 19 Nov); C-54 closed; C-68..C-74 carried. Fixed red CI on main (motion gallery AC9 list missing "Ingot pour", run 44520092373).
+Evidence: integration leave-shop 10/0; authz membership 28/0; unit shop view 4/0; E2E shop-page 5/0 Chromium + WebKit; screens 390/320/1440 inspected.
+Gate run 1: all steps PASS except E2E 116/2 (WebKit vault.spec :309 hydration race, fixed, 6/6 repeat; :212 214 ms > 150 ms under load, passes alone). Final gate result: in the P1-09 commit message.
+Left off: `/subphase-complete` P1-B next.
+
+## 2026-11-20 06:50 UTC — P1 — handoff by Syedbadeshah76 (Windows)
+Done: final `gate:task P1-09 P1-04 P1-08 P1-07 P0-10`: every step PASS (unit 1676/0, int 1445/0/12, sast, build) except e2e 116/2: P1-08 `vault.spec` timing tests only (`:268` 60 fps on Windows Chromium, p95 33.3 ms; `:212` Windows WebKit 161 ms). Alone ×3: still intermittent on this laptop; both green on Linux CI.
+P1-09 committed to `wip/P1-09` `67b8012` (hook refuses main without a green gate; `--no-verify` forbidden). CI push run 44689671179 + Linux 5-project E2E 44689683099 dispatched, in progress at handoff.
+Left off: land `wip/P1-09` on main (Mac gate:task + green CI), then `/subphase-complete` P1-B. FOLLOWUPS lines for both timing tests (in the wip commit).
