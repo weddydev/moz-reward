@@ -167,9 +167,13 @@ test("[J1][P1-04] international number refused with the UK-only message; abandon
   );
   expect(overflow).toBeLessThanOrEqual(0);
   await shoot("shop-page-welcome-320");
-  // Scrolled into view, every action on the page is reachable: none sits under the fixed bottom nav.
-  for (const name of ["Shop details", "Go to my wallet"]) {
-    const action = page.getByRole("link", { name });
+  // Scrolled into view, every action on the page is reachable: none sits under the fixed bottom nav. The last
+  // actions on the page (P1-09): the mute switch and "Leave shop".
+  for (const action of [
+    page.getByRole("switch", { name: "Mute notifications" }),
+    page.getByRole("button", { name: "Leave shop" }),
+  ]) {
+    const name = (await action.textContent()) ?? "";
     await action.scrollIntoViewIfNeeded();
     await page.evaluate(() => {
       window.scrollTo(0, document.documentElement.scrollHeight);
@@ -219,18 +223,24 @@ test("[J1][P1-04] a shop suspended while the sheet is open: the join is refused 
 
 // Under the customer group's loading.tsx the not-found answer streams with status 200 and `noindex` (a soft
 // 404, accepted behind sign-in: DECISIONS 12 Nov "catch-all outside (pages)"). What matters is checked here:
-// every non-member gets the identical not-found page, and the HTML never carries the shop's data.
+// a shop that isn't taking members, an unknown id and a malformed id get the identical not-found page, and the
+// HTML never carries the shop's data. Since P1-09 a non-member of a shop that IS taking members gets its public
+// sections with the join CTA instead (DECISIONS 19 Nov; tests/e2e/shop-page.spec.ts), never the member ones.
 test("[P1-04] /shops/[id] is for members only: everyone else gets the same not-found page", async ({
   page,
   signInAs,
   shoot,
 }) => {
-  const notMine = await seedShop(page.request, { status: "active", name: "Not Joined Café" });
+  const notMine = await seedShop(page.request, { status: "suspended", name: "Not Joined Café" });
+  const joinable = await seedShop(page.request, { status: "active", name: "Open Door Café" });
   // Signed out: the customer gate sends the visitor to sign in first (the id is not looked up).
-  await page.goto(`/shops/${notMine.shopId}`);
+  await page.goto(`/shops/${joinable.shopId}`);
   await expect(page).toHaveURL(/\/sign-in\?returnTo=/);
 
   await signInAs("customer");
+  await page.goto(`/shops/${joinable.shopId}`);
+  await expect(page.getByTestId("shop-join")).toBeVisible();
+  await expect(page.getByTestId("member-card")).toHaveCount(0);
   for (const path of [
     `/shops/${notMine.shopId}`,
     "/shops/00000000-0000-4000-8000-000000000000",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { parseShopId } from "@/lib/brand";
+import { addDays, londonDate } from "@/lib/time";
 import { getAuth } from "@/server/auth/auth";
 import { beginStaffLogin } from "@/server/auth/staff-login";
 import { authScope } from "@/server/authz/scope";
@@ -140,6 +141,8 @@ const shopInput = z
     name: z.string().min(1).max(80).optional(),
     /** Address, phone, location, description and a full week of hours. */
     details: z.boolean().default(false),
+    /** P1-09: one special closure this many days from today (London), noted "Staff training". Needs details. */
+    closureInDays: z.number().int().min(0).max(6).optional(),
     /** A cover at a same-origin path the spec serves with `page.route` (tests/e2e/fixtures/shop-cover.jpg). */
     cover: z.boolean().default(false),
     memberUserId: z.uuid().optional(),
@@ -214,7 +217,8 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
     case "shop": {
       const parsed = shopInput.safeParse(body);
       if (!parsed.success) return invalid();
-      const { status, name, details, cover, memberUserId, member, programme } = parsed.data;
+      const { status, name, details, cover, memberUserId, member, programme, closureInDays } =
+        parsed.data;
       const shop = await makeShop({
         status,
         ...(name ? { name } : {}),
@@ -238,6 +242,9 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
             opens: weekday === 7 ? "10:00" : "07:30",
             closes: weekday >= 5 ? "23:00" : "18:00",
           })),
+          closureInDays === undefined
+            ? []
+            : [{ date: addDays(londonDate(new Date()), closureInDays), note: "Staff training" }],
         );
       }
       if (programme) {

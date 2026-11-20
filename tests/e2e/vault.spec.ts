@@ -313,6 +313,11 @@ test("[P1-08] a progress change after load is announced in a polite live region"
   const live = page.getByTestId("ingot-live");
   await expect(live).toHaveAttribute("aria-live", "polite");
   await expect(live).toHaveText(""); // nothing announced on load
+  // Wait until the demos have hydrated (as motion-primitives' `openGallery` does): a change made before that
+  // is lost, since React hydrates over it (WebKit on Windows hydrates late: the ingot kept 720 while the
+  // slider read 500).
+  await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
+  await expect(page.getByRole("button", { name: "Open modal", exact: true })).toBeEnabled();
   await page.getByTestId("ingot-demo-gold").fill("500");
   await expect(live).toHaveText("500 of 1,000 gold, 50%");
 });

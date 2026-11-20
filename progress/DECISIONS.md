@@ -11,6 +11,11 @@ Why: …
 Consequence / revisit when: …
 ```
 
+## 2026-11-19 — Shop page for non-members; leave/mute; deferred shop-page slots (P1-09)
+Decision: (1) `/shops/[id]` for a signed-in non-member (never joined, or left) of a shop taking members shows its public sections with the join CTA (`JoinCta`, in place); pending, suspended, closed, unknown and malformed ids keep the soft 404 (amends 17 Nov "soft 404"). (2) Leave = lock row, `left_at`, marketing → false with a 'leave' consent row only if it was true; counters untouched, so a rejoin re-opens the same row and restores progress; leaving twice is a no-op. (3) Slots whose data doesn't exist yet stay off the page, no dead buttons: Request points (P1-11), member QR (P1-14; the member ID card stays), offers (P3-05), rate (P3-01); receipts show an empty state until P1-12.
+Why: PRODUCT §4 "non-members see the join CTA"; shop ids are UUIDs and the same data is public on `/s/[code]` (security review 17 Nov: no oracle). One row per user+shop keeps the ledger and makes "never re-earned" structural.
+Consequence / revisit when: tables for requests, redeem and claim codes join `leaveShop`'s transaction when they land (C-68, C-70, C-71).
+
 ## 2026-11-19 — Ingot pour: once per mount, liquid hidden until it runs; Vault at `/vault/[id]` (P1-08)
 Decision: `IngotPour` pours once per mount, when ≥ 40% of the ingot is first on screen: 0.9 s with the stream on the first view of that shop's ingot in the tab session (sessionStorage `moz.ingot-poured.<shopId>`), a 0.5 s rise after. Scrolled away, tab hidden, reduced motion switched on, or a tap → every part `finish()`es (each timeline ends on the static picture, no forwards fill), and that mount never pours again. Until it runs, `@media (scripting: enabled)` hides the liquid with `opacity: calc(1 - var(--motion-on))`, so the first paint is the empty mould and reduced motion/no-JS show the final state. WAAPI on SVG parts (SVG attributes allowed in signature moments, DESIGN §7). The route is `/vault/[id]` (ARCHITECTURE said `[shopId]`; table paths are lower-case segments).
 Why: DESIGN §8.3 "every time it becomes visible" read with the P1-08 edge case "no catch-up animation later". Measured 60.0 fps, p95 16.8 ms under 4× CPU throttle (Chromium).
