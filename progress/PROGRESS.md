@@ -17,13 +17,13 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** **PD-A** Foundation: ~~PD-00~~ → PD-01 → PD-02 → PD-03 → `/subphase-complete`; then PD-B (controls), PD-C (structure + signature moments, needs H-49). **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done except the staging step, which waits for H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-20, talha.syed (handoff: P1-09 landed `2dd6039`; PD-00 done; next PD-01)
+- **Last updated:** 2026-11-20, Syedbadeshah76 (Linux 5-project red fixed on main; next PD-01)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `8353e00`; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys roll back until H-48.
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-00 done 20 Nov (reference `design/reference/molten/`, sha256 `81a2994f…`; DESIGN v2; rules in CLAUDE.md). Next PD-01 parity harness.
+- **PD (Molten design):** PD-00 done 20 Nov (reference `design/reference/molten/`, sha256 `81a2994f…`; DESIGN v2; rules in CLAUDE.md). Next PD-01 parity harness. 20 Nov: the Linux 5-project red (run 44689683099, motion timing specs) fixed on main; CPU-throttled specs calibrated to the CI runner (`tests/e2e/support/cpu-throttle.ts`).
 
 ## Next (top 3)
 1. **PD-01 Parity harness**, then PD-02, PD-03 and the PD-A close (`docs/phases/PD.md`).
@@ -78,6 +78,7 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (20 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
+- Motion timing fix (Windows, 20 Nov): Linux run 44723422284 1108/0 failed/2 flaky (both then fixed); local edge cases 45/0 on 3 browsers, 60 fps 4/4 calibrated; gate long-task spec 2/4 here (pre-existing, FOLLOWUPS).
 - P1-09 landed on main `2dd6039`: Mac `gate:task P1-09 P1-04 P1-08 P1-07 P0-10` PASS (unit 1697/0, int 1456/0/1, e2e 118/0/2/0); pre-push hook gate PASS; branch CI 44689671179 green; main CI 44692872344 in progress at handoff.
 - P1-09 (Windows, 19 Nov): leave-shop int 10/0, membership authz 28/0, shop-page E2E 5/0 Chromium + WebKit, screens 390/320/1440 inspected.
 - PD-00 docs: `pnpm check` PASS after the docs commit; reference fingerprint `81a2994f…` = `shasum -a 256 design/reference/molten/index.html`.

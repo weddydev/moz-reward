@@ -1,4 +1,5 @@
 import { type APIRequestContext, type Page } from "@playwright/test";
+import { throttleCpu } from "./support/cpu-throttle";
 import { expect, test, testApiHeaders } from "./support/test";
 
 // P1-08 on the production build: the Ingot (static + pour), the Gold Vault page, and the carried items — the
@@ -31,12 +32,38 @@ const ingot = (page: Page) => page.locator(".ingot-pour");
 
 type MidPour = "scroll-away" | "tab-hidden" | "reduce-toggle" | "tap";
 
-/** Waits for the pour to start, then does `act` in the page at once and reports how long it took to land. */
-async function landAfter(page: Page, act: MidPour): Promise<number> {
+/** Counts `finish()` calls on the ingot's animations (from before any page script), so a test can prove the pour
+ *  was cut to its end by the component, not left to end on its own. */
+async function recordFinishes(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __finished: number };
+    w.__finished = 0;
+    // Kept unbound on purpose: the wrapper calls it with each animation as `this`.
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const real = Animation.prototype.finish;
+    Animation.prototype.finish = function (this: Animation) {
+      if ((this.effect as KeyframeEffect | null)?.target?.closest(".ingot-pour")) w.__finished += 1;
+      real.call(this);
+    };
+  });
+}
+
+/**
+ * Waits for the pour to start, then does `act` in the page at once and reports how many rendering frames it took
+ * to land, how many pour animations the component finished early, and the wall time (for the report). Frames,
+ * not milliseconds: "at once" means a frame or two, and a starved CI browser can stretch two frames past 600 ms
+ * (runs 44689683099, 44723422284). Needs `recordFinishes` before the page loads.
+ */
+async function landAfter(
+  page: Page,
+  act: MidPour,
+): Promise<{ frames: number; ms: number; finished: number }> {
   await expect(ingot(page)).toHaveAttribute("data-ingot-state", "run");
   return page.evaluate(async (step) => {
     const el = document.querySelector(".ingot-pour");
     if (!el) throw new Error("no ingot");
+    const w = window as unknown as { __finished: number };
+    w.__finished = 0;
     const t0 = performance.now();
     if (step === "scroll-away") window.scrollTo(0, document.documentElement.scrollHeight);
     if (step === "tab-hidden") {
@@ -45,13 +72,40 @@ async function landAfter(page: Page, act: MidPour): Promise<number> {
     }
     if (step === "reduce-toggle") document.documentElement.dataset.reduceMotion = "true";
     if (step === "tap") el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    let frames = 0;
     while (el.getAttribute("data-ingot-state") !== "done") {
       if (performance.now() - t0 > 2_000) throw new Error("the pour never landed");
       await new Promise(requestAnimationFrame);
+      frames += 1;
     }
-    return performance.now() - t0;
+    return { frames, ms: performance.now() - t0, finished: w.__finished };
   }, act);
 }
+
+type Pour = { part: string; end: number };
+
+/**
+ * Records every animation started on an ingot part, from before any page script and again on each load. Reading
+ * `document.getAnimations()` after the fact races the 0.5 s rise: a starved runner can finish it first (WebKit,
+ * run 44689683099: no animations found).
+ */
+async function recordPours(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __pours: Pour[] };
+    w.__pours = [];
+    // Kept unbound on purpose: the wrapper calls it with each element as `this`.
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const real = Element.prototype.animate;
+    Element.prototype.animate = function (this: Element, ...args: Parameters<Element["animate"]>) {
+      const a = real.apply(this, args);
+      const part = this.getAttribute("data-ingot-part");
+      if (part) w.__pours.push({ part, end: Number(a.effect?.getComputedTiming().endTime ?? 0) });
+      return a;
+    };
+  });
+}
+const pours = (page: Page): Promise<Pour[]> =>
+  page.evaluate(() => (window as unknown as { __pours: Pour[] }).__pours);
 
 /** Pour animations still running on the ingot's parts. */
 const running = (page: Page): Promise<number> =>
@@ -150,15 +204,12 @@ test("[P1-08] pour: 0.9 s with the stream on the first view, a 0.5 s rise later 
 }) => {
   const me = await signInAs("customer");
   const { shopId } = await seedVault(page.request, me.userId, { progressGold: 720 });
+  await recordPours(page);
   await page.goto(`/vault/${shopId}`);
   await expect(ingot(page)).toHaveAttribute("data-ingot-kind", "pour");
-  const pourParts = await page.evaluate(() =>
-    document
-      .getAnimations()
-      .map((a) => (a.effect as KeyframeEffect | null)?.target?.getAttribute("data-ingot-part"))
-      .filter(Boolean),
-  );
-  expect(pourParts).toContain("stream");
+  const pourParts = await pours(page);
+  expect(pourParts.map((p) => p.part)).toContain("stream");
+  expect(Math.max(...pourParts.map((p) => p.end))).toBe(900);
   await expect(ingot(page)).toHaveAttribute("data-ingot-state", "done");
   // The resting picture is the static one: liquid at 72%, nothing hidden or running.
   expect(await running(page)).toBe(0);
@@ -166,15 +217,8 @@ test("[P1-08] pour: 0.9 s with the stream on the first view, a 0.5 s rise later 
 
   await page.reload();
   await expect(ingot(page)).toHaveAttribute("data-ingot-kind", "rise");
-  const riseParts = await page.evaluate(() =>
-    document
-      .getAnimations()
-      .map((a) => ({
-        part: (a.effect as KeyframeEffect | null)?.target?.getAttribute("data-ingot-part"),
-        end: (a.effect?.getComputedTiming().endTime as number | undefined) ?? 0,
-      }))
-      .filter((a) => a.part),
-  );
+  const riseParts = await pours(page);
+  expect(riseParts.length).toBeGreaterThan(0);
   expect(riseParts.map((p) => p.part)).not.toContain("stream");
   expect(Math.max(...riseParts.map((p) => p.end))).toBe(500);
 });
@@ -213,9 +257,15 @@ test.describe("[P1-08] pour edge cases land on the final state at once", () => {
       const me = await signInAs("customer");
       const { shopId } = await seedVault(page.request, me.userId, { progressGold: 720 });
       await page.setViewportSize({ width: 390, height: 700 });
+      await recordFinishes(page);
       await page.goto(`/vault/${shopId}`);
-      const ms = await landAfter(page, act);
-      expect(ms).toBeLessThan(150); // a frame or two, never the rest of the 0.9 s
+      const landed = await landAfter(page, act);
+      // At once = a frame or two: one for the observer or event to fire, one for React to commit, one spare
+      // (measured 1–3 on Chromium, WebKit and iPhone, 20 Nov). Frames, not ms: a starved runner stretches two
+      // frames past 600 ms (see landAfter). And never the rest of the pour: the component cut it short (finish()).
+      const report = JSON.stringify(landed);
+      expect(landed.frames, report).toBeLessThanOrEqual(3);
+      expect(landed.finished, report).toBeGreaterThan(0);
       expect(await running(page)).toBe(0);
       // No catch-up later: back in view, nothing pours again on this page.
       await page.evaluate(() => {
@@ -272,18 +322,46 @@ test("[P1-08] the pour holds 60 fps under 4× CPU throttling", async ({ page, si
   );
   const me = await signInAs("customer");
   const { shopId } = await seedVault(page.request, me.userId, { progressGold: 720 });
-  // Throttle, then load scrolled down to "How it works" (the ingot out of view): hydrated, it waits to pour.
+  // The ingot's "first on screen" observer is held until the page has settled, so the pour starts on cue. Loading
+  // scrolled down to "How it works" didn't keep it out of view before hydration (run 44723422284: already done).
+  await page.addInitScript(() => {
+    const w = window as unknown as { __releaseIngot: () => void };
+    const Real = window.IntersectionObserver;
+    const held = new Set<IntersectionObserver>();
+    const targets = new WeakMap<IntersectionObserver, Element[]>();
+    let holding = true;
+    window.IntersectionObserver = class extends Real {
+      constructor(cb: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+        super((entries, observer) => {
+          if (holding && entries.some((e) => e.target.closest(".ingot-pour"))) held.add(observer);
+          else cb(entries, observer);
+        }, options);
+      }
+      override observe(target: Element): void {
+        targets.set(this, [...(targets.get(this) ?? []), target]);
+        super.observe(target);
+      }
+    };
+    w.__releaseIngot = () => {
+      holding = false;
+      for (const observer of held) {
+        for (const t of targets.get(observer) ?? []) {
+          observer.unobserve(t);
+          observer.observe(t); // a fresh first notification, delivered now
+        }
+      }
+    };
+  });
   await page.setViewportSize({ width: 390, height: 500 });
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
-  await page.goto(`/vault/${shopId}#how-it-works`);
+  const { cdp } = await throttleCpu(page, test.info());
+  await page.goto(`/vault/${shopId}`);
   await page.waitForLoadState("networkidle");
   await expect(ingot(page)).toHaveAttribute("data-ingot-state", "pending");
-  // Scroll the ingot into view and record every frame until the pour has landed.
+  // Release the ingot's observer and record every frame until the pour has landed.
   const frames = await page.evaluate(async () => {
     const el = document.querySelector(".ingot-pour");
     if (!el) throw new Error("no ingot");
-    window.scrollTo(0, 0);
+    (window as unknown as { __releaseIngot: () => void }).__releaseIngot();
     const times: number[] = [];
     const start = performance.now();
     while (performance.now() - start < 3_000) {

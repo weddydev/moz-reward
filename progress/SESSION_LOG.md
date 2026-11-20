@@ -736,3 +736,8 @@ Left off: PD-01 parity harness next.
 Done: H-48/H-34 steps (Sentry free Developer plan, no card; GlitchTip fallback only with DECISIONS) `9c0a1e0`; fixed a stray `\1` that replaced the PROGRESS "Handoff note" heading in `2fd3064`; committed the human's removal of the PD effort table.
 CI: main `2dd6039` run 44692872344 in progress at handoff (branch run 44689671179 green).
 Left off: PD-01 parity harness next. Baton free.
+
+## 2026-11-20 — PD — Linux 5-project red fixed by Syedbadeshah76 (Windows)
+Done: run 44689683099 (wip/P1-09 code, now main) failed 5 / flaked 3 on starved WebKit/iPhone: wall-clock bounds. Fix: pour edge cases ≤ 3 frames + component called finish(); pour/rise kinds recorded at animate(); gate ≥ 1300 ms from `play`, < 3000 ms from animationstart; /dev/motion field disabled until hydrated; 60 fps spec holds the ingot's IO until released; CPU throttle calibrated to the CI runner (human's choice; `CI_CPU_SCORE` 28,000).
+Evidence: Linux run 44723422284 (before the last two fixes): 1108 passed, 0 failed, 2 flaky (both fixed after). Local: edge cases 45/0 (Chromium/WebKit/iPhone ×3), 60 fps 4/4 calibrated, gate duration 12/0.
+Open: gate long-task spec 2/4 on this laptop (pre-existing, FOLLOWUPS). CLAUDE.md: never end a turn just to wait (human, `12c9acf`).

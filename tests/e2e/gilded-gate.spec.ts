@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { type APIRequestContext, type Page } from "@playwright/test";
+import { throttleCpu } from "./support/cpu-throttle";
 import { expect, test, testApiHeaders } from "./support/test";
 
 /**
@@ -11,14 +12,25 @@ import { expect, test, testApiHeaders } from "./support/test";
  * .artifacts/screens/P1-03 for inspection (390, 320, 1440).
  */
 
-type GateLog = { states: { s: string | null; t: number }[] };
+type GateLog = { states: { s: string | null; t: number }[]; startedAt: number | null };
 
-/** Records the gate's data-state changes from before any page script; `pause` freezes every animation at
- *  the gate's first frame so a test can seek the timeline (deterministic frames, no race with a slow load). */
+/** Records the gate's data-state changes (and when its own animation really started) from before any page
+ *  script; `pause` freezes every animation at the gate's first frame so a test can seek the timeline
+ *  (deterministic frames, no race with a slow load). */
 async function watchGate(page: Page, pause = false): Promise<void> {
   await page.addInitScript((freeze: boolean) => {
     const w = window as unknown as { __gate: GateLog };
-    w.__gate = { states: [] };
+    w.__gate = { states: [], startedAt: null };
+    // `play` is set before the first paint; the CSS animation starts with it, which a starved runner can
+    // delay by seconds (WebKit, run 44689683099), so the duration is measured from here.
+    addEventListener(
+      "animationstart",
+      (e) => {
+        if ((e.target as HTMLElement).id === "gilded-gate" && w.__gate.startedAt === null)
+          w.__gate.startedAt = performance.now();
+      },
+      true,
+    );
     new MutationObserver((records) => {
       for (const r of records) {
         const el = r.target as HTMLElement;
@@ -78,12 +90,18 @@ test("[P1-03] plays with src=qr, ≈ 1.4s, hides itself; arrival stays silent be
   });
   await page.goto(`/s/${shopCode}?src=qr`);
   await expect.poll(() => gateState(page), { timeout: 5000 }).toBe("done");
-  const { states } = await gateLog(page);
+  const { states, startedAt } = await gateLog(page);
   expect(states.map((x) => x.s)).toEqual(["play", "done"]);
   const [play, done] = states;
-  const ran = (done?.t ?? 0) - (play?.t ?? 0);
-  expect(ran).toBeGreaterThanOrEqual(1300); // it ends itself (animationend), not cut short
-  expect(ran).toBeLessThan(3000);
+  expect(startedAt).not.toBeNull();
+  expect(startedAt ?? 0).toBeGreaterThanOrEqual(play?.t ?? 0);
+  // `play` comes before the animation's real start and `animationstart` is dispatched at or after it, so each
+  // bound uses the clock that can't flatter it: not cut short from `play`, not stuck from `animationstart`
+  // (a starved runner can delay the first paint by seconds; the start event itself can land a frame late).
+  const fromPlay = (done?.t ?? 0) - (play?.t ?? 0);
+  const fromStart = (done?.t ?? 0) - (startedAt ?? 0);
+  expect(fromPlay).toBeGreaterThanOrEqual(1300); // it ends itself (animationend), not cut short
+  expect(fromStart).toBeLessThan(3000);
   await expect(page.getByTestId("gilded-gate")).toBeHidden();
   await expect(page.getByTestId("landing-collect")).toBeVisible();
   expect(
@@ -335,6 +353,7 @@ type LoadProfile = {
 
 /** Long animation frames (with their script attribution) and loaded scripts for one throttled load. */
 async function profileLoad(page: Page, url: string): Promise<LoadProfile> {
+  const info = test.info();
   const p = await page.context().newPage();
   await p.addInitScript(() => {
     const w = window as unknown as { __frames: Frame[] };
@@ -352,8 +371,7 @@ async function profileLoad(page: Page, url: string): Promise<LoadProfile> {
     }).observe({ type: "long-animation-frame", buffered: true });
   });
   await watchGate(p);
-  const cdp = await p.context().newCDPSession(p);
-  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  await throttleCpu(p, info);
   await p.goto(url);
   await p.waitForTimeout(2500); // past the 1.4s gate, slowed down
   const profile = await p.evaluate(() => ({

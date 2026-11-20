@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { buttonClasses } from "@/components/ui/Button";
 import { gateStorageKey } from "@/lib/motion/gilded-gate";
+import { useHydrated } from "@/lib/use-hydrated";
 import { Section } from "../Section";
 
 /**
@@ -11,6 +12,9 @@ import { Section } from "../Section";
  */
 export function GatePreview(): React.JSX.Element {
   const [code, setCode] = useState("");
+  // Typing before hydration would land in the server HTML only, leaving `code` empty and both buttons disabled
+  // (iPhone CI flake, run 44689683099): the field waits for React like every other control (C-20).
+  const hydrated = useHydrated();
   // Not `normaliseCode` from lib/codes: that module uses node:crypto. The landing normalises again anyway.
   const typed = code.replace(/[\s-]/g, "").toUpperCase();
   const shop = /^[A-Z0-9]{6}$/.test(typed) ? typed : null;
@@ -36,6 +40,7 @@ export function GatePreview(): React.JSX.Element {
         Shop code
         <input
           value={code}
+          disabled={!hydrated}
           onChange={(e) => {
             setCode(e.target.value);
           }}
