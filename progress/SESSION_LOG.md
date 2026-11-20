@@ -751,3 +751,7 @@ CI budget: repo PUBLIC (Actions minutes free); parity Chromium ≈ 30 s/push. `p
 Done: Molten tokens (+ detail tones), Fraunces SOFT/WONK + italic module (optional, human), Card placed/dark + gilded, GildedEdge (reference geometry, resize, phase, off-screen pause, hover replay, lite), LivingBackground, tier.ts; /dev/molten Language section; spec rows placed-card, gilded-edge, living-background required (lock); part language required.
 Evidence: `pnpm test:parity --repeat-each 3` 48/0 (Chromium + WebKit; Language static ≤ 1% at 1440 and 390, glint 3% + glide 12% frames); Molten E2E 56/0 ×4 (CLS 0, resize, reduced motion, lite, pause, hover, italic preload per route); unit: geometry 4, tier 1, card 2, tokens/contrast (11 new pairs) pass.
 Fonts: upright Latin 66 → 118 KB preloaded; italic 146 KB only on routes that import it. Screens 320/390/1440 (.artifacts/screens/PD-02) inspected; 390/1440 also pixel-compared by parity.
+
+## 2026-11-20 16:14 UTC — PD — handoff by Syedbadeshah76 (Windows)
+Done today: Linux red fixed (`aa45bcc`), PD-01 (`ac885b4`), PD-02 (`d77392b`), all on main; PD-02 gate PASS, pushed with the stamp. Main CI for PD-01 green; PD-02 run started at handoff.
+Left off: PD-03 Motion core next (handoff note has the FX engine pointers and the tier class change). H-38 gains `wip/e2e-timing`, `wip/PD-01`.
