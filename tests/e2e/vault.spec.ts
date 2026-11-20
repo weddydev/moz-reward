@@ -1,4 +1,5 @@
 import { type APIRequestContext, type Page } from "@playwright/test";
+import { throttleCpu } from "./support/cpu-throttle";
 import { expect, test, testApiHeaders } from "./support/test";
 
 // P1-08 on the production build: the Ingot (static + pour), the Gold Vault page, and the carried items — the
@@ -313,8 +314,7 @@ test("[P1-08] the pour holds 60 fps under 4× CPU throttling", async ({ page, si
   const { shopId } = await seedVault(page.request, me.userId, { progressGold: 720 });
   // Throttle, then load scrolled down to "How it works" (the ingot out of view): hydrated, it waits to pour.
   await page.setViewportSize({ width: 390, height: 500 });
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  const { cdp } = await throttleCpu(page, test.info());
   await page.goto(`/vault/${shopId}#how-it-works`);
   await page.waitForLoadState("networkidle");
   await expect(ingot(page)).toHaveAttribute("data-ingot-state", "pending");

@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { type APIRequestContext, type Page } from "@playwright/test";
+import { throttleCpu } from "./support/cpu-throttle";
 import { expect, test, testApiHeaders } from "./support/test";
 
 /**
@@ -352,6 +353,7 @@ type LoadProfile = {
 
 /** Long animation frames (with their script attribution) and loaded scripts for one throttled load. */
 async function profileLoad(page: Page, url: string): Promise<LoadProfile> {
+  const info = test.info();
   const p = await page.context().newPage();
   await p.addInitScript(() => {
     const w = window as unknown as { __frames: Frame[] };
@@ -369,8 +371,7 @@ async function profileLoad(page: Page, url: string): Promise<LoadProfile> {
     }).observe({ type: "long-animation-frame", buffered: true });
   });
   await watchGate(p);
-  const cdp = await p.context().newCDPSession(p);
-  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  await throttleCpu(p, info);
   await p.goto(url);
   await p.waitForTimeout(2500); // past the 1.4s gate, slowed down
   const profile = await p.evaluate(() => ({
