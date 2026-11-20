@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "../styles/tokens.css";
+@import "../styles/molten.css";
 
 /* Expose tokens to Tailwind (runtime CSS variables, so reduced motion can retune durations). */
 @theme inline {

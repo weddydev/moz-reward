@@ -1,7 +1,9 @@
 import { expect, type Page, test } from "@playwright/test";
 import { diffRatio } from "./support/diff";
 import {
+  attachPair,
   capture,
+  edgesDrawn,
   freezeAt,
   instantScroll,
   REFERENCE_PATH,
@@ -28,6 +30,7 @@ async function open(page: Page, url: string, width: number, height: number): Pro
   await page.goto(url);
   await instantScroll(page);
   await page.evaluate(() => document.fonts.ready);
+  await edgesDrawn(page);
 }
 
 async function shot(page: Page, part: string): Promise<Buffer> {
@@ -81,7 +84,10 @@ test.describe("[PD-01] static parity", () => {
         await serveReference(ref);
         await open(ref, REFERENCE_PATH, vp.width, vp.height);
         await open(page, "/dev/molten", vp.width, vp.height);
-        const d = diffRatio(await shot(ref, part.name), await shot(page, part.name));
+        const a = await shot(ref, part.name);
+        const b = await shot(page, part.name);
+        const d = diffRatio(a, b);
+        if (d.ratio > MAX_DIFF) await attachPair(`${part.name}-${String(vp.width)}`, a, b);
         expect(d.ratio, d.why).toBeLessThanOrEqual(MAX_DIFF);
       });
     }

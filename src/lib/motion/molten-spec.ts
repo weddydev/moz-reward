@@ -307,17 +307,29 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "placed-card",
     element: "Placed card",
     task: "PD-02",
-    status: "pending",
+    status: "required",
     values: [
       {
         name: "lift",
         value: ".5s var(--spring)",
         ref: css(".pr,.pcard", "transition", "translate"),
+        prod: {
+          file: "src/styles/molten.css",
+          css: ".m-placed",
+          prop: "transition",
+          part: "translate",
+        },
       },
       {
         name: "shadow",
         value: ".4s var(--ease-out)",
         ref: css(".pr,.pcard", "transition", "box-shadow"),
+        prod: {
+          file: "src/styles/molten.css",
+          css: ".m-placed",
+          prop: "transition",
+          part: "box-shadow",
+        },
       },
     ],
   },
@@ -325,17 +337,29 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "gilded-edge",
     element: "Gilded edge",
     task: "PD-02",
-    status: "pending",
+    status: "required",
     values: [
       {
         name: "seam light cycle",
         value: "8s infinite",
         ref: css(".sm-shine", "animation", "seamshine"),
+        prod: {
+          file: "src/styles/molten.css",
+          css: ".m-seam .sm-shine",
+          prop: "animation",
+          part: "m-seamshine",
+        },
       },
       {
         name: "gem glint cycle",
         value: "8s infinite",
         ref: css(".sm-glint", "animation", "gemglint"),
+        prod: {
+          file: "src/styles/molten.css",
+          css: ".m-seam .sm-glint",
+          prop: "animation",
+          part: "m-gemglint",
+        },
       },
     ],
   },
@@ -343,22 +367,40 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "living-background",
     element: "Living background",
     task: "PD-02",
-    status: "pending",
+    status: "required",
     values: [
       {
         name: "glow 1",
         value: "26s var(--ease-io) infinite alternate",
         ref: css(".aurora i:nth-child(1)", "animation", "d1"),
+        prod: {
+          file: "src/styles/molten.css",
+          css: ".m-aurora i:nth-child(1)",
+          prop: "animation",
+          part: "m-d1",
+        },
       },
       {
         name: "glow 2",
         value: "32s var(--ease-io) infinite alternate",
         ref: css(".aurora i:nth-child(2)", "animation", "d2"),
+        prod: {
+          file: "src/styles/molten.css",
+          css: ".m-aurora i:nth-child(2)",
+          prop: "animation",
+          part: "m-d2",
+        },
       },
       {
         name: "glow 3",
         value: "38s var(--ease-io) infinite alternate",
         ref: css(".aurora i:nth-child(3)", "animation", "d3"),
+        prod: {
+          file: "src/styles/molten.css",
+          css: ".m-aurora i:nth-child(3)",
+          prop: "animation",
+          part: "m-d3",
+        },
       },
     ],
   },

@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
 import { diffRatio } from "./support/diff";
 import { fire, openForMotion, referenceUrl, seekFraction, TRIGGERS } from "./support/motion";
-import { capture } from "./support/reference";
+import { capture, edgeCycleAt, openStill, REFERENCE_PATH } from "./support/reference";
 import { PARITY_PARTS } from "../../src/features/dev/molten/parity-parts";
 
 /**
@@ -38,6 +38,30 @@ async function attachPair(name: string, a: Buffer, b: Buffer | undefined): Promi
     await info.attach(`${name}-${side}.png`, { path: file, contentType: "image/png" });
   }
 }
+
+/** Gilded edge beats (PD-02): the gem glint at its peak (3% of the 8 s cycle) and the light glide (12%). */
+const EDGE_BEATS = [0.03 * 8000, 0.12 * 8000] as const;
+
+test.describe("[PD-02] gilded edge frames", () => {
+  test("[PD-02] the gem glint (3%) and the glide (12%) match the reference on the Language section", async ({
+    page,
+    context,
+  }) => {
+    // No page clock here: the beats are seeked directly, and /dev/molten streams its content in with timers.
+    const ref = await context.newPage();
+    await openStill(ref, REFERENCE_PATH, 1440, 900);
+    await openStill(page, "/dev/molten", 1440, 900);
+    for (const ms of EDGE_BEATS) {
+      await edgeCycleAt(ref, ms);
+      await edgeCycleAt(page, ms);
+      const a = await capture(ref, "language");
+      const b = await capture(page, "language");
+      const d = diffRatio(a, b);
+      if (d.ratio > MAX_DIFF) await attachPair(`edge-${String(ms)}`, a, b);
+      expect(d.ratio, `edge at ${String(ms)} ms: ${d.why ?? ""}`).toBeLessThanOrEqual(MAX_DIFF);
+    }
+  });
+});
 
 test.describe("[PD-01] frame parity", () => {
   test("[PD-01] self-test: the reference against itself is 0 at every captured frame", async ({

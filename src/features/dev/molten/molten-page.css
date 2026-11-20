@@ -1,0 +1,206 @@
+/*
+ * /dev/molten page layout (PD-02 on): the reference's page frame and section layouts, so its parts can be compared
+ * with the reference (tests/parity). Product styles live in src/styles/molten.css; this is only the demo page.
+ */
+body:has(.m-page) {
+  background: var(--pearl);
+}
+.m-page {
+  font:
+    16px/1.55 var(--font-manrope),
+    system-ui,
+    sans-serif;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+.m-wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 88px;
+}
+.m-wrap > section {
+  scroll-margin-top: 80px;
+}
+/* The reference's eyebrow keeps the browser's default paragraph margins (1em). */
+.m-page .m-eyebrow {
+  margin: 1em 0;
+}
+
+/* Language section */
+.m-lang {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .m-lang {
+    grid-template-columns: 1fr;
+  }
+}
+.m-principles {
+  display: grid;
+  gap: 14px;
+}
+.m-pr {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 18px;
+  border-radius: 20px;
+}
+.m-pr h3 {
+  margin: 0;
+  font:
+    600 20px/1.2 var(--font-fraunces),
+    Georgia,
+    serif;
+  letter-spacing: -0.01em;
+}
+.m-pr p {
+  margin: 4px 0 0;
+  color: var(--ink-2);
+  font-size: 15px;
+}
+.m-ico {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--metal);
+  display: grid;
+  place-items: center;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 246, 214, 0.6),
+    0 6px 16px -6px rgba(124, 85, 16, 0.6);
+}
+.m-ico svg {
+  width: 22px;
+  height: 22px;
+  stroke: var(--ink);
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.m-spec {
+  border-radius: 26px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.m-spec > .m-spec-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.m-spec-bg::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: conic-gradient(
+    from 200deg,
+    rgba(255, 206, 74, 0),
+    rgba(255, 206, 74, 0.22),
+    rgba(255, 206, 74, 0) 30%
+  );
+  animation: m-spin 18s linear infinite;
+  pointer-events: none;
+}
+@keyframes m-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.m-spec > * {
+  position: relative;
+}
+.m-spec > svg.m-seam {
+  position: absolute;
+}
+.m-spec .m-eyebrow {
+  color: var(--gold-light);
+}
+.m-spec small {
+  color: var(--on-obsidian-2);
+  font-size: 13px;
+}
+.m-type-play {
+  font:
+    400 clamp(64px, 11vw, 128px) / 0.9 var(--font-fraunces),
+    Georgia,
+    serif;
+  letter-spacing: -0.04em;
+  margin: 0;
+  cursor: ew-resize;
+  user-select: none;
+  font-variation-settings:
+    "opsz" 144,
+    "SOFT" var(--soft, 30),
+    "WONK" 1,
+    "wght" var(--w, 500);
+  background: linear-gradient(
+    100deg,
+    var(--gild-amber),
+    var(--gild-cream) 40%,
+    var(--gild-honey) 60%,
+    var(--gild-amber)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  transition: font-variation-settings 0.35s var(--ease-out);
+}
+.m-swatches {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.m-sw {
+  border-radius: 14px;
+  padding: 44px 10px 10px;
+  font:
+    700 11px/1.3 var(--font-manrope),
+    system-ui,
+    sans-serif;
+  color: var(--ink);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.m-sw span {
+  display: block;
+  font-weight: 500;
+  opacity: 0.75;
+}
+.m-sw.dk {
+  color: var(--on-obsidian);
+}
+/*
+ * The reference's dark swatches also carry its dock-item class (`.dk`), whose rule then lays them out: no border,
+ * a centred column, 10.5 px / 750 type, 8 px vertical padding. The demo is the spec, so the swatches match it.
+ */
+.m-sw.dk {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  font-weight: 750;
+  padding: 8px 0;
+}
+@media (max-width: 520px) {
+  .m-swatches {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

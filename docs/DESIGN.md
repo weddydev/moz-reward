@@ -81,6 +81,7 @@ Rules (v2): no area cap on gold (it is a material; the v1 "≤ 10%" rule is reti
 ## 4. Typography
 
 - **Display / headings:** Fraunces (variable) with the `opsz`, `wght`, `SOFT` and `WONK` axes plus italic (v2: the reference animates weight and softness and uses italic for brand marks and emphasis). Self-host via `next/font`, subset Latin.
+- **Italic:** its own font module, loaded and preloaded only on routes that show italic, `font-display: optional` (no late swap, CLS 0; DECISIONS 20 Nov). Upright Fraunces and Manrope keep `swap`.
 - **UI / body:** Manrope variable 400–800 (v2: buttons use 750, badges 800). Self-host via `next/font`.
 - Numbers: tabular figures (`font-variant-numeric: tabular-nums`) for points, prices, counters.
 - Scale (mobile / desktop): Display 34/48, H1 28/36, H2 22/28, H3 18/20, Body 16/16, Small 14/14, Caption 12/12. Line-height 1.2 headings, 1.5 body.
@@ -125,7 +126,7 @@ Build in `src/components/ui/` with Storybook-free docs: a `/dev/ui` route (dev o
 - **Living background:** three slow drifting glows (gold light, pearl rose, pearl mint; 26/32/38 s alternate) plus the grain overlay; fixed, `aria-hidden`, static under reduced motion.
 
 ### 6.2 Gilded edge (v2)
-Hero-level cards (tiles, principle cards, plan cards, vault, dark panels) carry the **gilded edge**: a faceted gold gem (8.5 px half-diagonal, five facets + rim) set on the top-left corner arc, a 2 px gold line running out from it along the top and down the side and fading out, and a quieter 1.6 px echo on the bottom-right corner. Every 8 s (random phase per card) the gem glints and light glides outward along the line; hovering a card plays it at once. Cards don't clip, so the gem sits on the corner; effects that need clipping use an inner layer.
+Hero-level cards (tiles, principle cards, plan cards, vault, dark panels) carry the **gilded edge**: a faceted gold gem (8.5 px half-diagonal, five facets + rim) set on the top-left corner arc, a 2 px gold line running out from it along the top and down the side and fading out, and a quieter 1.6 px echo on the bottom-right corner. Every 8 s (random phase per card) the gem glints and light glides outward along the line; hovering a card plays it at once. Cards don't clip, so the gem sits on the corner; effects that need clipping use an inner layer. Hover replays from the start of the cycle (the reference's replay leaves the edge dark for up to 8 s; DECISIONS 20 Nov). Left-to-right only: the gem sits top-left, RTL is not supported (the app is UK English only).
 
 ### 6.3 Controls (v2)
 Each control's reaction is in §7.4: molten / orbit / ghost buttons, heart toggle, coin switch, liquid choice (radio and segmented), seal checkbox, spring tabs with a light trail, beam text field, star rating (same two choices for every rating), molten slider, holographic member card (tilt, glare, flip to QR), obsidian toast.

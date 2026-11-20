@@ -9,10 +9,10 @@
   --bg: #fbf8f1;
   --surface: #ffffff;
   --surface-2: #f4eee2;
-  --ink: #1c1a17;
-  --ink-2: #5c564c;
-  --ink-3: #8e877b;
-  --line: #e8dfce;
+  --ink: #1a140a;
+  --ink-2: #5b4f3c;
+  --ink-3: #8c806b;
+  --line: #e9dcbe;
   --gold-700: #8a6a1f;
   --gold-500: #c9a24a;
   --gold-300: #e9d08a;
@@ -54,8 +54,8 @@
 
   /* Radius */
   --r-sm: 8px;
-  --r-md: 14px;
-  --r-lg: 22px;
+  --r-md: 16px;
+  --r-lg: 26px;
   --r-pill: 999px;
 
   /* Elevation (warm) */
@@ -85,6 +85,93 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
+  /* Molten (DESIGN v2 §3, §6.1, §7.1; PD-02): the reference's :root, value for value. */
+  --pearl: #fffcf5;
+  --ivory: #f8f1e1;
+  --champagne: #efddb0;
+  --gold-deep: #7c5510;
+  --gold: #d2a033;
+  --gold-bright: #ffce4a;
+  --gold-light: #fbe7a6;
+  --ember: #ff7b1c;
+  --obsidian: #15100a;
+  --obsidian-2: #2a2014;
+  --iri-rose: #fbe1e4;
+  --iri-mint: #ddf1ea;
+  --iri-lilac: #e9e3fb;
+  --metal: linear-gradient(
+    115deg,
+    #6e4a0c 0%,
+    #b9862a 16%,
+    #ffe08a 32%,
+    #fff6d6 40%,
+    #e0ae3e 52%,
+    #8e6417 68%,
+    #f5cf6b 84%,
+    #7c5510 100%
+  );
+  --metal-text: linear-gradient(
+    100deg,
+    #6e4a0c 0%,
+    #8e6417 30%,
+    #fff1bf 44%,
+    #d9a43a 52%,
+    #7c5510 66%,
+    #7c5510 100%
+  );
+  /* Placed surfaces: the fill (a gradient, so not --surface, which stays a colour), the gold hairline border,
+     the white inner bevel and the four-layer warm lift. */
+  --surface-placed: linear-gradient(180deg, #fffefa 0%, #fffaef 100%);
+  --edge: linear-gradient(
+    180deg,
+    rgba(214, 170, 80, 0.85) 0%,
+    rgba(214, 170, 80, 0.38) 40%,
+    rgba(176, 130, 44, 0.5) 100%
+  );
+  --inner: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  --lift:
+    0 1px 2px rgba(90, 60, 10, 0.08), 0 4px 8px -2px rgba(90, 60, 10, 0.06),
+    0 16px 32px -12px rgba(124, 85, 16, 0.2), 0 40px 70px -36px rgba(124, 85, 16, 0.32);
+  --lift-hover:
+    0 2px 3px rgba(90, 60, 10, 0.08), 0 8px 14px -4px rgba(90, 60, 10, 0.08),
+    0 24px 44px -14px rgba(124, 85, 16, 0.26), 0 52px 84px -36px rgba(124, 85, 16, 0.38);
+  --lift-dark: inset 0 1px 0 rgba(255, 230, 160, 0.3), 0 0 0 1px rgba(214, 170, 80, 0.5);
+  /* Metal detail tones (gilded edge stops, gem facets, shine, glint; text on obsidian), from the reference. */
+  --gild-amber: #b9862a;
+  --gild-honey: #f2c14e;
+  --gild-sun: #ffe08a;
+  --gild-brass: #d9a43a;
+  --gild-bronze: #9a6e1c;
+  --gild-ochre: #c8922c;
+  --gild-satin: #e0ae3e;
+  --gild-cream: #fff1bf;
+  --gild-shine: #fff6d6;
+  --gild-glint: #fffdf0;
+  --on-obsidian: #f6ebd0;
+  --on-obsidian-2: #bfae88;
+  --on-obsidian-3: #d9cba8;
+  --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  /* The reference's spring, exactly; browsers without linear() get the fallback below. */
+  --spring: linear(
+    0,
+    0.009,
+    0.035 2.1%,
+    0.141 4.4%,
+    0.723 12.9%,
+    0.938 16.7%,
+    1.017 19.4%,
+    1.067,
+    1.099 24.3%,
+    1.108 26%,
+    1.103,
+    1.085 30.6%,
+    1.002 38.5%,
+    0.986 41.4%,
+    0.983 44.5%,
+    0.995 54.1%,
+    1.001 63%,
+    1
+  );
   /* Layout */
   --rail-w: 72px;
   --rail-w-open: 220px;
@@ -95,6 +182,11 @@
   --content-max-desktop: 1280px;
 }
 
+@supports not (transition-timing-function: linear(0, 1)) {
+  :root {
+    --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+}
 /*
  * Reduced motion: the system setting, unless the user turned "Reduce animations" off in Me
  * (data-reduce-motion="false"); or the user turned it on (data-reduce-motion="true"). DESIGN §7: movement

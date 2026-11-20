@@ -27,7 +27,7 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     title: "Design language",
     anchor: 'id="language"',
     task: "PD-02",
-    status: "pending",
+    status: "required",
   },
   {
     name: "molten-button",

@@ -15,10 +15,10 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Other laptop:** `git pull`, `pnpm install` (no lockfile change). No migrations, no env vars. Remote branches `wip/e2e-timing` and `wip/PD-01` are merged content (add to H-38).
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov; `docs/phases/PD.md`). Then P1 resumes with the P1-B close. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
-- **Current sub-phase:** **PD-A** Foundation: ~~PD-00~~ → ~~PD-01~~ → PD-02 → PD-03 → `/subphase-complete`; then PD-B (controls), PD-C (structure + signature moments, needs H-49). **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done except the staging step, which waits for H-48.)
+- **Current sub-phase:** **PD-A** Foundation: ~~PD-00~~ → ~~PD-01~~ → ~~PD-02~~ → PD-03 → `/subphase-complete`; then PD-B (controls), PD-C (structure + signature moments, needs H-49). **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done except the staging step, which waits for H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-20, Syedbadeshah76 (Linux red fixed `aa45bcc`; PD-01 parity harness done; next PD-02)
+- **Last updated:** 2026-11-20, Syedbadeshah76 (PD-02 done; next PD-03)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -27,7 +27,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-00 done 20 Nov (reference `design/reference/molten/`, sha256 `81a2994f…`; DESIGN v2; rules in CLAUDE.md). Next PD-01 parity harness. 20 Nov: the Linux 5-project red (run 44689683099, motion timing specs) fixed on main; CPU-throttled specs calibrated to the CI runner (`tests/e2e/support/cpu-throttle.ts`).
 
 ## Next (top 3)
-1. **PD-02 Tokens, fonts, surfaces, living background, gilded edge**, then PD-03 and the PD-A close (`docs/phases/PD.md`). PD-02 flips its rows in `molten-spec.ts` (placed-card, gilded-edge, living-background) and parts in `parity-parts.ts` (language) to `required`. Note: the app's Fraunces has only the `opsz` axis; the reference uses SOFT/WONK + italics (parity renders both pages with the app's fonts, so add the axes in PD-02 and assert them).
+1. **PD-03 Motion core: FX engine, tiers, reduced motion, press kit**, then the PD-A close (`/subphase-complete`). Pattern per task: build on /dev/molten from production components, flip its rows in `molten-spec.ts` (+ `prod`, + lock) and parts in `parity-parts.ts` to `required`, add `TRIGGERS` for moving parts; `src/lib/motion/tier.ts` exists (PD-02), extend it.
 2. Human: **H-48** (staging Sentry DSN) → then close P1-A (deploy, smoke, Sentry, tick).
 3. Human, any time: H-38 (delete merged branches, now incl. `wip/P1-09`), H-45 UptimeRobot monitors (then C-48), H-46 Cloudflare `/s/*` rule.
 
@@ -79,6 +79,7 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (20 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
+- PD-02 (Windows): parity 48/0 ×3 both browsers (Language static + edge beats); Molten E2E 56/0 (CLS 0); units pass.
 - PD-01 (Windows): `pnpm test:parity --repeat-each 5` 50/0 (Chromium + WebKit: static, frames, curves self-tests; 3 px offset caught; offline); molten-spec + parity-parts units 10/0.
 - Motion timing fix (Windows, 20 Nov): Linux run 44723422284 1108/0 failed/2 flaky (both then fixed); local edge cases 45/0 on 3 browsers, 60 fps 4/4 calibrated; gate long-task spec 2/4 here (pre-existing, FOLLOWUPS).
 - P1-09 landed on main `2dd6039`: Mac `gate:task P1-09 P1-04 P1-08 P1-07 P0-10` PASS (unit 1697/0, int 1456/0/1, e2e 118/0/2/0); pre-push hook gate PASS; branch CI 44689671179 green; main CI 44692872344 in progress at handoff.

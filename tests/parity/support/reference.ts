@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { type APIRequestContext, type Page } from "@playwright/test";
+import { type APIRequestContext, type Page, test } from "@playwright/test";
 
 /**
  * Parity harness plumbing (PD-01). The reference copy (`tests/parity/reference/`, made from the frozen original
@@ -60,7 +60,23 @@ export async function serveReference(page: Page): Promise<void> {
       await route.abort("blockedbyclient");
     },
   );
-  const fonts = await appFonts(page.request);
+  // The app's cookie notice is page chrome, not a part: a stored choice keeps it away (as in the E2E suite).
+  const origin = new URL(test.info().project.use.baseURL ?? "http://localhost:3100").origin;
+  await page
+    .context()
+    .addCookies([
+      { name: "moz_consent", value: "analytics-v1-denied", url: origin, sameSite: "Lax" },
+    ]);
+  // Fonts wait for the real faces on both pages: the app's italic is `font-display: optional` (DECISIONS 20 Nov),
+  // which may keep the fallback on a cold load and make a capture depend on network timing. Parity runs only:
+  // the app's stylesheets and the reference's fonts.css are served with `block` instead.
+  const blockFonts = (css: string): string =>
+    css.replace(/font-display:\s*(optional|swap)/g, "font-display:block");
+  await page.route("**/_next/static/chunks/*.css", async (route) => {
+    const res = await route.fetch();
+    await route.fulfill({ response: res, body: blockFonts(await res.text()) });
+  });
+  const fonts = blockFonts(await appFonts(page.request));
   await page.route(`**${REFERENCE_PATH}**`, async (route) => {
     const rel =
       decodeURIComponent(new URL(route.request().url()).pathname.slice(REFERENCE_PATH.length)) ||
@@ -113,11 +129,101 @@ export async function capture(page: Page, part: string): Promise<Buffer> {
   const box = await page.evaluate((name) => {
     const el = document.querySelector(`[data-parity="${name}"]`);
     if (!el) throw new Error(`no [data-parity="${name}"] on the page`);
+    // The reference page chrome (sticky top bar, toasts) belongs to no part and would overlap one.
+    for (const c of document.querySelectorAll<HTMLElement>("body > .bar, .toasts"))
+      c.style.visibility = "hidden";
+    // Whole pixels on both pages: a part at a fractional page position rasterises its text and edges one device
+    // pixel off, which reads as a mismatch everywhere (20 Nov, Language section). Nudge it onto the pixel grid
+    // (position: relative, so no layer and no layout change) and scroll by whole pixels.
+    if (el instanceof HTMLElement && el.dataset.parityAligned === undefined) {
+      const r0 = el.getBoundingClientRect();
+      const fx = (r0.left + window.scrollX) % 1;
+      const fy = (r0.top + window.scrollY) % 1;
+      if (fx || fy) {
+        if (getComputedStyle(el).position === "static") el.style.position = "relative";
+        el.style.left = `${String(-fx)}px`;
+        el.style.top = `${String(-fy)}px`;
+      }
+      el.dataset.parityAligned = "";
+    }
     el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+    window.scrollTo(Math.round(window.scrollX), Math.round(window.scrollY));
     const r = el.getBoundingClientRect();
     return { x: r.x, y: r.y, width: r.width, height: r.height };
   }, part);
   return page.screenshot({ clip: box, caret: "hide" });
+}
+
+/** Gilded edges draw after hydration on the app (React); waits until every one on the page has its paths. */
+export async function edgesDrawn(page: Page): Promise<void> {
+  // Polled from the test, not with waitForFunction: under a paused page clock its in-page polling never runs.
+  const deadline = Date.now() + 10_000;
+  for (;;) {
+    const ok = await page.evaluate(() =>
+      [...document.querySelectorAll("svg.m-seam, svg.seam")].every((s) => s.querySelector("path")),
+    );
+    if (ok) return;
+    if (Date.now() > deadline) throw new Error("gilded edges never drew");
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+
+/**
+ * Opens a parity page for a still capture: no page clock (the app streams its content in, which needs timers),
+ * seeded randomness, instant scrolling, fonts loaded and every gilded edge drawn. The reference is served too.
+ */
+export async function openStill(
+  page: Page,
+  url: string,
+  width: number,
+  height: number,
+): Promise<void> {
+  await serveReference(page);
+  await page.setViewportSize({ width, height });
+  await seedRandom(page);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto(url);
+  await instantScroll(page);
+  await page.evaluate(() => document.fonts.ready);
+  await edgesDrawn(page);
+}
+
+/** Writes both images of a mismatch next to the test's results and attaches them to the report. */
+export async function attachPair(name: string, a: Buffer, b: Buffer | undefined): Promise<void> {
+  const info = test.info();
+  for (const [side, img] of [
+    ["ref", a],
+    ["app", b],
+  ] as const) {
+    if (!img) continue;
+    const file = info.outputPath(`${name}-${side}.png`);
+    writeFileSync(file, img);
+    await info.attach(`${name}-${side}.png`, { path: file, contentType: "image/png" });
+  }
+}
+
+/**
+ * The gilded edge's 8 s cycle at `ms` on every card: the random phase pinned to 0 (`--sd`) on both pages, the
+ * edge animations seeked to `ms`, everything else frozen as at rest.
+ */
+export async function edgeCycleAt(page: Page, ms: number): Promise<void> {
+  await page.evaluate((t) => {
+    for (const s of document.querySelectorAll<SVGElement>("svg.m-seam, svg.seam")) {
+      s.style.setProperty("--sd", "0s");
+    }
+    void document.documentElement.getBoundingClientRect();
+    for (const a of document.getAnimations()) {
+      if (a.timeline !== document.timeline) {
+        a.cancel();
+        continue;
+      }
+      a.pause();
+      const target = (a.effect as KeyframeEffect | null)?.target;
+      const end = a.effect?.getComputedTiming().endTime;
+      if (target instanceof Element && target.closest("svg.m-seam, svg.seam")) a.currentTime = t;
+      else a.currentTime = typeof end === "number" && Number.isFinite(end) ? end : 0;
+    }
+  }, ms);
 }
 
 /** Pauses every animation (CSS and WAAPI, SVG included) at `ms` from its start, and hides the FX canvas. */

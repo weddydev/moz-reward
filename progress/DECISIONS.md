@@ -871,3 +871,21 @@ Consequence: motion specs written from now on (PD parity included) bound latency
 Decision: `tests/e2e/support/cpu-throttle.ts` (`throttleCpu`) replaces the fixed `setCPUThrottlingRate 4`. CI uses exactly the nominal rate (the CI runner at 4× is the reference device the bounds were written for); any other machine times a fixed in-browser benchmark first and runs at `nominal × host score / CI_CPU_SCORE`, clamped to [1, 20]. Score and rate are attached to each test. Bounds unchanged (60 fps / p95 ≤ 20 ms; no long task ≥ 50 ms). `CI_CPU_SCORE` = 28,000 (run 44723422284, 25,650–30,820). The benchmark runs in a page of its own. Every new throttled spec uses the helper.
 Why: a fixed factor slows each host's own CPU, so on the slower Windows laptop the gate's long-task spec and the vault's 60 fps spec failed about half the time on clean main while passing on Linux CI and the Mac; that blocked `gate:task` there. Options weighed: skip on Windows (loses local evidence; contradicts "Windows Chromium counts", 12 Nov) or landing through the Mac (repeats on every push). The human chose calibration.
 Consequence / revisit when: re-measure `CI_CPU_SCORE` if GitHub changes runner hardware or the benchmark changes; the laptop's score moves ±40% with clock boost; the 60 fps spec passes 4/4 calibrated, the gate long-task spec stays 2/4 here (FOLLOWUPS).
+
+## 2026-11-20 — Molten tokens land beside the v1 names (PD-02)
+Decision: every reference token is added to `tokens.css` under its reference name, plus detail tones (`--gild-*`, `--on-obsidian*`) so no component hard-codes a colour. Same-kind collisions take the Molten value now (`--ink` 1–3, `--line`, `--r-md` 16, `--r-lg` 26). `--surface` stays a colour (it is `background-color` all over the app) and the Molten gradient is `--surface-placed`; `--bg` and the gold-700/500/300/100 names stay until PD-11 restyles the screens.
+Why: no big-bang rename (PD-02 brief); a gradient in `--surface` would break every `bg-surface`. Parity compares rendering, not variable names.
+Consequence: PD-11 retires the v1 names and moves screens to the Molten ones.
+
+## 2026-11-20 — Fraunces axes and the italic (PD-02; italic display: human's choice)
+Decision: Fraunces upright carries opsz + SOFT + WONK (Latin 66 → 118 KB, the one preloaded file: +52 KB). The italic (Latin 146 KB) is its own next/font module (`src/styles/fonts-italic.ts`), imported only where italic shows, so other routes neither load nor preload it; preloaded there with `font-display: optional`. Manrope unchanged (24 KB, its variable file already spans 200–800). `pnpm exec tsx scripts/font-bytes.ts` prints the numbers.
+Why: preloading the italic everywhere would add 146 KB to every route; with `swap`, a late italic moved the heading (CLS 0.0068 on /dev/molten). The human chose `optional` (CLS 0 guaranteed; a slow first visit may show the fallback italic on that page) over keeping `swap` with CLS ≤ 0.05.
+Consequence: the parity harness serves the app's CSS with `font-display: block` (parity runs only) so both pages always render the real faces.
+
+## 2026-11-20 — Gilded edge hover plays at once (deliberate difference from the reference)
+Decision: a fine-pointer hover sets the edge animations' delay to 0 and restarts the cycle. The reference sets `currentTime` to the (negative, random) delay, which parks the animation in its before phase until the phase comes round again (up to 8 s with no glint).
+Why: DESIGN §6.2 says hovering plays it at once; the reference's code doesn't do what its design says. No parity spec covers hover.
+
+## 2026-11-20 — Parity capture normalisation (PD-02)
+Decision: captures put each part on whole pixels (a `position: relative` nudge of its fractional page offset, then whole-pixel scrolling), hide the reference's sticky top bar and toasts, store a cookie choice so the app's cookie notice stays away, and serve fonts with `font-display: block`. The reference's dark swatches also carry its dock class `.dk`, which lays them out; /dev/molten mirrors that (the demo is the spec).
+Why: without these, a 0.5 px offset outlined every glyph (3–21% "different"), and page chrome or font timing decided the result instead of the design.

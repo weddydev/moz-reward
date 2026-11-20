@@ -11,6 +11,19 @@ export const BODY = 4.5;
 export const LARGE_OR_UI = 3;
 
 export const CONTRAST_PAIRS: readonly ContrastPair[] = [
+  // Molten (PD-02): pearl page, placed cards (fill from #fffefa to #fffaef; ivory is the darker bound), obsidian
+  // panels, swatches. Eyebrows are 12 px, so body contrast.
+  { fg: "ink", bg: "pearl", min: BODY, use: "Primary text on the Molten page" },
+  { fg: "ink-2", bg: "pearl", min: BODY, use: "Secondary text and ledes on pearl" },
+  { fg: "ink-2", bg: "ivory", min: BODY, use: "Secondary text on placed cards (darker bound)" },
+  { fg: "gold-deep", bg: "pearl", min: BODY, use: "Eyebrows and gold text on pearl" },
+  { fg: "on-obsidian", bg: "obsidian", min: BODY, use: "Text on dark panels" },
+  { fg: "on-obsidian-2", bg: "obsidian", min: BODY, use: "Small text on dark panels" },
+  { fg: "gold-light", bg: "obsidian", min: BODY, use: "Eyebrows and gold text on obsidian" },
+  { fg: "ink", bg: "gold-bright", min: BODY, use: "Text on hot gold" },
+  { fg: "ink", bg: "champagne", min: BODY, use: "Text on champagne panels" },
+  { fg: "ink", bg: "ember", min: BODY, use: "Text on ember alerts and badges" },
+  { fg: "on-obsidian", bg: "gold-deep", min: BODY, use: "Light text on deep gold" },
   { fg: "ink", bg: "bg", min: BODY, use: "Primary text on ivory" },
   { fg: "ink", bg: "surface", min: BODY, use: "Primary text on cards" },
   { fg: "ink", bg: "surface-2", min: BODY, use: "Input text" },
