@@ -106,6 +106,8 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium webkit
       - name: E2E, all projects (flaky = failure)
         run: pnpm e2e --fail-on-flaky-tests
+      - name: Molten parity, Chromium + WebKit (PD-01)
+        run: pnpm test:parity --fail-on-flaky-tests
       - name: artefacts on failure (small, 7 days)
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

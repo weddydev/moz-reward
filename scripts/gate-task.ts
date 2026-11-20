@@ -164,6 +164,27 @@ function main(): void {
           "--pass-with-no-tests",
         ]),
     });
+    // Molten parity (PD-01): a PD task also runs its parity specs ([PD-nn] titles), both browsers.
+    const pd = ids.filter((id) => id.startsWith("PD-"));
+    if (pd.length > 0) {
+      steps.push({
+        name: `parity ${pd.join(",")}`,
+        run: () =>
+          e2eStep(
+            `parity ${pd.join(",")}`,
+            [
+              "--project",
+              "parity-chromium",
+              "--project",
+              "parity-webkit",
+              "--grep",
+              grepFor(pd),
+              "--pass-with-no-tests",
+            ],
+            { PARITY: "1" },
+          ),
+      });
+    }
   } else {
     steps.push({
       name: "e2e (task)",

@@ -22,6 +22,8 @@
     "e2e:dev": "tsx scripts/e2e.ts --dev",
     "e2e:visual": "tsx scripts/e2e.ts --visual",
     "test:lighthouse": "tsx scripts/e2e.ts --lighthouse",
+    "test:parity": "tsx scripts/e2e.ts --parity",
+    "parity:reference": "tsx scripts/parity-reference.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:titles:strict && pnpm test:unit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/server/db/migrate.ts",

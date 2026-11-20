@@ -53,6 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0 # origin/main for the Molten spec ratchet (molten-spec.lock.json only grows)
           persist-credentials: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -96,6 +97,8 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - name: E2E on the production build (pixel7 + desktop1440; flaky = failure)
         run: pnpm e2e --project pixel7 --project desktop1440 --fail-on-flaky-tests
+      - name: Molten parity, Chromium (PD-01; WebKit in the twice-weekly run)
+        run: pnpm test:parity --project parity-chromium --fail-on-flaky-tests
       - name: artefacts on failure (small, 7 days)
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

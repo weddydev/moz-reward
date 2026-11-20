@@ -4,7 +4,7 @@
  *      reused while the app's sources are unchanged (fingerprint below), so editing a spec costs no rebuild.
  *   2. `playwright test <args>`; playwright.config starts `next start` on :3100 (E2E_MODE=prod).
  * `pnpm e2e:dev` (`--dev`) runs the old `next dev` server instead: fast inner loop only, never evidence.
- * Flags: `--dev`, `--rebuild` (ignore the fingerprint), `--build-only`, `--visual`, `--lighthouse` (only the
+ * Flags: `--dev`, `--rebuild` (ignore the fingerprint), `--build-only`, `--visual`, `--parity` (the Molten parity projects, tests/parity), `--lighthouse` (only the
  * Lighthouse CI project, tests/perf). Everything else goes to Playwright.
  * Needs `pnpm services:up`. Never touches tsconfig.json (it already includes `.next-e2e/types`).
  */
@@ -119,8 +119,11 @@ function main(): void {
   const visual = args.includes("--visual");
   // `--lighthouse`: only the Lighthouse CI project (DESIGN §12 budgets, mobile, throttled).
   const lighthouse = args.includes("--lighthouse");
+  // `--parity`: the Molten parity projects (PD-01); both browsers unless a --project is given.
+  const parity = args.includes("--parity");
   const pwArgs = args.filter(
-    (a) => !["--dev", "--rebuild", "--build-only", "--visual", "--lighthouse"].includes(a),
+    (a) =>
+      !["--dev", "--rebuild", "--build-only", "--visual", "--lighthouse", "--parity"].includes(a),
   );
 
   if (!dev && !process.env.E2E_BASE_URL) {
@@ -135,6 +138,9 @@ function main(): void {
       "test",
       ...(visual ? ["--grep", "@visual"] : []),
       ...(lighthouse ? ["--project", "lighthouse"] : []),
+      ...(parity && !args.includes("--project")
+        ? ["--project", "parity-chromium", "--project", "parity-webkit"]
+        : []),
       ...pwArgs,
     ],
     {
@@ -144,6 +150,7 @@ function main(): void {
         E2E_MODE: dev ? "dev" : "prod",
         ...(visual ? { VISUAL: "1" } : {}),
         ...(lighthouse ? { LIGHTHOUSE: "1" } : {}),
+        ...(parity ? { PARITY: "1" } : {}),
       },
     },
   );
