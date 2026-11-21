@@ -73,6 +73,7 @@ describe("[PD-01] Molten motion spec (DESIGN §7.4) against the reference and pr
     expect(ripple).not.toBe(reference);
     expect(referenceMismatches(ripple)).toEqual([
       'molten-button / ripple: reference "721", spec "720"',
+      'press-kit / ripple duration (ms): reference "721", spec "720"',
     ]);
     const press = reference.replace(
       "transition:transform .45s var(--spring),box-shadow .3s var(--ease-out)",

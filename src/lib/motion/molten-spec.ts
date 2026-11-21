@@ -1,5 +1,7 @@
+import { RM_MAX_MS } from "./anim";
 import { FX } from "./fx";
 import { type Locator } from "./molten-reference";
+import { PRESS } from "./press";
 
 /**
  * DESIGN §7.4 (the Molten motion spec) as data (PD-01). Each value says where it lives in the reference
@@ -555,6 +557,170 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
         value: "2.2, 3.4",
         ref: js("const life = rnd(", /'leaf' \? \[([.\d]+, [.\d]+)\]/g),
         prod: { value: () => FX.life.leaf.join(",") },
+      },
+      {
+        name: "spark size (px)",
+        value: "10, 22",
+        ref: js("size: type === 'coin'", /: rnd\((\d+, \d+)\), rot/g),
+        prod: { value: () => FX.size.spark.join(",") },
+      },
+      {
+        name: "coin size (px)",
+        value: "16, 26",
+        ref: js("size: type === 'coin'", /'coin' \? rnd\((\d+, \d+)\)/g),
+        prod: { value: () => FX.size.coin.join(",") },
+      },
+      {
+        name: "leaf size (px)",
+        value: "7, 13",
+        ref: js("size: type === 'coin'", /'leaf' \? rnd\((\d+, \d+)\)/g),
+        prod: { value: () => FX.size.leaf.join(",") },
+      },
+      {
+        name: "spin (rad/s)",
+        value: "-8, 8",
+        ref: js("vr: rnd(", /vr: rnd\((-\d+, \d+)\)/g),
+        prod: { value: () => FX.spin.join(",") },
+      },
+      {
+        name: "flip speed (rad/s)",
+        value: "6, 14",
+        ref: js("vf: rnd(", /vf: rnd\((\d+, \d+)\)/g),
+        prod: { value: () => FX.flipSpeed.join(",") },
+      },
+      {
+        name: "leaf sway rate",
+        value: "3",
+        ref: js("p.sway += dt", /p\.sway \+= dt \* (\d+)/g),
+        prod: { value: () => FX.leafSway.rate },
+      },
+      {
+        name: "leaf sway (px/s)",
+        value: "40",
+        ref: js("p.sway += dt", /Math\.sin\(p\.sway\) \* (\d+)/g),
+        prod: { value: () => FX.leafSway.px },
+      },
+      {
+        name: "fade-out (last share of life)",
+        value: ".35",
+        ref: js("const t = p.life / p.max", /t < (\.\d+)/g),
+        prod: { value: () => FX.fadeFrom },
+      },
+      {
+        name: "leaf colours",
+        value: "'#F2C14E', '#FFE08A', '#C8922C', '#FFF1BF', '#E0AE3E', '#B9862A'",
+        ref: js("const leafCols", /const leafCols = \[([^\]]+)\]/g),
+        prod: { value: () => FX.leafColours.map((c) => `'${c}'`).join(",") },
+      },
+      {
+        name: "spark trail (s of velocity)",
+        value: ".035",
+        ref: js("ctx.lineTo(p.x - p.vx", /p\.vx \* (\.\d+)/g),
+        prod: { value: () => FX.sparkTrail },
+      },
+      {
+        name: "spark trail width (px)",
+        value: "1.6",
+        ref: js("if (p.type === 'spark') {", /ctx\.lineWidth = ([\d.]+)/g),
+        prod: { value: () => FX.sparkLineWidth },
+      },
+    ],
+  },
+  {
+    id: "press-kit",
+    element: "Press kit (usePress, useMagnetic, ripple, celebrate, useCountUp, anim)",
+    task: "PD-03",
+    status: "required",
+    values: [
+      {
+        name: "press scale",
+        value: ".93",
+        ref: css(".btn.down", "--s"),
+        prod: { file: "src/styles/molten.css", css: ".m-press.down", prop: "--s" },
+      },
+      {
+        name: "press scale (TS)",
+        value: ".93",
+        ref: css(".btn.down", "--s"),
+        prod: { value: () => PRESS.scale },
+      },
+      {
+        name: "ripple duration (ms)",
+        value: "720",
+        ref: js("function ripple", /duration: (\d+)/g),
+        prod: { value: () => PRESS.rippleMs },
+      },
+      {
+        name: "ripple diameter (× longer side)",
+        value: "2.4",
+        ref: js("function ripple", /Math\.max\(r\.width, r\.height\) \* ([\d.]+)/g),
+        prod: { value: () => PRESS.rippleSize },
+      },
+      {
+        name: "celebrate sparks",
+        value: "28",
+        ref: js("function celebrate", /type: 'spark', count: (\d+)/g),
+        prod: { value: () => PRESS.celebrate.sparks },
+      },
+      {
+        name: "celebrate spark speed (px/s)",
+        value: "180, 520",
+        ref: js("function celebrate", /type: 'spark', count: \d+, speed: \[(\d+, \d+)\]/g),
+        prod: { value: () => PRESS.celebrate.sparkSpeed.join(",") },
+      },
+      {
+        name: "celebrate coins",
+        value: "6",
+        ref: js("function celebrate", /coins = (\d+)/g),
+        prod: { value: () => PRESS.celebrate.coins },
+      },
+      {
+        name: "celebrate coin speed (px/s)",
+        value: "260, 520",
+        ref: js("function celebrate", /type: 'coin', count: coins, speed: \[(\d+, \d+)\]/g),
+        prod: { value: () => PRESS.celebrate.coinSpeed.join(",") },
+      },
+      {
+        name: "celebrate coin spread (rad)",
+        value: "1.6",
+        ref: js("function celebrate", /spread: ([\d.]+)/g),
+        prod: { value: () => PRESS.celebrate.coinSpread },
+      },
+      {
+        name: "magnetic lean x (± px)",
+        value: "8",
+        ref: js("function pressable", /clamp\(-(\d+), \d+, \(x - r\.width/g),
+        prod: { value: () => PRESS.magnetic.x },
+      },
+      {
+        name: "magnetic lean y (± px)",
+        value: "6",
+        ref: js("function pressable", /clamp\(-(\d+), \d+, \(y - r\.height/g),
+        prod: { value: () => PRESS.magnetic.y },
+      },
+      {
+        name: "magnetic factor x",
+        value: ".1",
+        ref: js("function pressable", /\(x - r\.width \/ 2\) \* ([.\d]+)/g),
+        prod: { value: () => PRESS.magnetic.kx },
+      },
+      {
+        name: "magnetic factor y",
+        value: ".25",
+        ref: js("function pressable", /\(y - r\.height \/ 2\) \* ([.\d]+)/g),
+        prod: { value: () => PRESS.magnetic.ky },
+      },
+      {
+        name: "count-up duration (ms)",
+        value: "700",
+        ref: js("function countUp", /ms = (\d+)/g),
+        prod: { value: () => PRESS.countUpMs },
+      },
+      {
+        name: "anim() cap under reduced motion (ms)",
+        value: "150",
+        ref: js("function anim(", /Math\.min\(opts\.duration \|\| \d+, (\d+)\)/g),
+        prod: { value: () => RM_MAX_MS },
       },
     ],
   },

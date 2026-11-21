@@ -66,15 +66,43 @@ describe("[PD-03] press kit", () => {
     expect(raf).not.toHaveBeenCalled();
   });
 
-  it("[PD-03] count-up cancel shows the end value and stops the frames", () => {
+  it("[PD-03] count-up cancel keeps the value on screen, returns it and stops the frames", () => {
     const el = document.createElement("span");
     el.textContent = "0";
+    let step: FrameRequestCallback = () => undefined;
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+      step = cb;
+      return 1;
+    });
     const cancel = vi.spyOn(window, "cancelAnimationFrame");
+    vi.spyOn(performance, "now").mockReturnValue(1000);
     const stop = countUp(el, 500, 700, 0);
     expect(el.textContent).toBe("0");
-    stop();
+    step(1350); // half way: cubic out → 437.5
+    expect(el.textContent).toBe("438");
+    expect(stop()).toBeCloseTo(437.5, 6);
+    expect(el.textContent).toBe("438");
+    expect(cancel).toHaveBeenCalledWith(1);
+  });
+
+  it("[PD-03] count-up cancel after the end returns the end value", () => {
+    const el = document.createElement("span");
+    let step: FrameRequestCallback = () => undefined;
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+      step = cb;
+      return 1;
+    });
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    const stop = countUp(el, 500, 700, 0);
+    step(700);
     expect(el.textContent).toBe("500");
-    expect(cancel).toHaveBeenCalled();
+    expect(stop()).toBe(500);
+  });
+
+  it("[PD-03] count-up cancel under reduced motion returns the end value", () => {
+    document.documentElement.classList.add("rm");
+    const el = document.createElement("span");
+    expect(countUp(el, 42, 700, 0)()).toBe(42);
   });
 
   it("[PD-03] ripple: a gold circle 2.4 × the longer side, centred on the press point, aria-hidden", () => {

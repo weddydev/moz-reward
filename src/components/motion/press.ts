@@ -83,13 +83,17 @@ const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayout
 
 /** Render the value as the element's only text (`{formatCount(value)}`); the hook counts it before paint. */
 export function useCountUp(ref: RefObject<Element | null>, value: number, ms?: number): void {
-  const last = useRef<number | null>(null);
+  // The number on screen: the last target, or where an interrupted count stopped.
+  const shown = useRef<number | null>(null);
   useIsoLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const from = last.current;
-    last.current = value;
+    const from = shown.current;
+    shown.current = value;
     if (from === null || from === value) return; // first render: the server-rendered text is already right
-    return countUp(el, value, ms, from);
+    const cancel = countUp(el, value, ms, from);
+    return () => {
+      shown.current = cancel();
+    };
   }, [ref, value, ms]);
 }

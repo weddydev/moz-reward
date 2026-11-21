@@ -99,22 +99,25 @@ export function countUpAt(from: number, to: number, k: number): number {
 /**
  * Counts an element's text from `from` to `to` over `ms` (cubic out) with no React render per frame. When
  * the element holds one text node (React's), its value is written in place so React keeps its node.
- * Under reduced motion it shows `to` at once. Returns a cancel function (which shows `to`).
+ * Under reduced motion it shows `to` at once. Returns a cancel function that stops the frames, leaves the
+ * number on screen and returns it, so an interrupted count can carry on from what the user sees.
  */
 export function countUp(
   el: Element,
   to: number,
   ms: number = PRESS.countUpMs,
   from = 0,
-): () => void {
+): () => number {
   const only = el.childNodes.length === 1 ? el.firstChild : null;
+  let shown = to;
   const show = (n: number): void => {
+    shown = n;
     if (only && only.nodeType === Node.TEXT_NODE) only.nodeValue = formatCount(n);
     else el.textContent = formatCount(n);
   };
   if (reducedMotionNow() || ms <= 0) {
     show(to);
-    return () => undefined;
+    return () => to;
   }
   show(from);
   const t0 = performance.now();
@@ -127,6 +130,7 @@ export function countUp(
   raf = requestAnimationFrame(frame);
   return () => {
     if (raf) cancelAnimationFrame(raf);
-    show(to);
+    raf = 0;
+    return shown;
   };
 }

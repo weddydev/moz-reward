@@ -73,6 +73,9 @@ export const FX = {
   /** The last 35% of a particle's life fades out. */
   fadeFrom: 0.35,
   leafColours: ["#F2C14E", "#FFE08A", "#C8922C", "#FFF1BF", "#E0AE3E", "#B9862A"],
+  /** A spark's trail: a line back along its velocity × this many seconds, this many px wide. */
+  sparkTrail: 0.035,
+  sparkLineWidth: 1.6,
 } as const;
 
 /** Mulberry32: a small, fast seeded RNG for tests and the playground's "seed" field. */
@@ -249,7 +252,7 @@ export function draw(
   dpr: number,
 ): void {
   ctx.strokeStyle = "rgba(214,150,30,.9)";
-  ctx.lineWidth = 1.6;
+  ctx.lineWidth = FX.sparkLineWidth;
   // Backwards, like the reference's single step-and-draw loop: the oldest particle paints last, on top
   // (celebrate's spark glows over its coins).
   for (let i = parts.length - 1; i >= 0; i--) {
@@ -261,7 +264,7 @@ export function draw(
       const s = p.size * (0.5 + t * 0.6);
       ctx.beginPath();
       ctx.moveTo(p.x, p.y);
-      ctx.lineTo(p.x - p.vx * 0.035, p.y - p.vy * 0.035);
+      ctx.lineTo(p.x - p.vx * FX.sparkTrail, p.y - p.vy * FX.sparkTrail);
       ctx.stroke();
       ctx.drawImage(sp.glow, p.x - s / 2, p.y - s / 2, s, s);
     } else if (p.type === "coin") {
