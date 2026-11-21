@@ -91,6 +91,8 @@ Never report done without evidence from this session (command + result, screensh
 **Gate speed rules (human's standing rule, 21 Nov 2026). Same steps, same checks; only waiting is removed.**
 - **Every gate step has a time limit** (`STEP_LIMITS` in `scripts/lib/gate.ts`, about 3× a normal run; `watchdog.mjs` kills the whole process tree). A step that hits it fails as **TIMED OUT**, which means a hung process, not a slow machine: read the step log (Vitest steps carry the hanging-process report), fix the cause at the root, then re-run. Never raise a limit just to get past a hang; a limit grows only when a suite really grew, with a DECISIONS line. `GATE_TIMEOUT_SCALE=2` is for a one-off run on a loaded machine, never a default.
 - **Don't wait blind on a background gate:** while it runs, glance at `.artifacts/gate/` step timestamps when you check in; a step whose log hasn't moved for longer than its limit means something is wrong, so look then, not an hour later.
+- **Docker stays tidy (human, 21 Nov 2026):** `pnpm docker:tidy --apply` at every `/subphase-complete` (step 7), never while a gate, E2E run or test container is running. It only removes what nothing uses (anonymous volumes, dangling images, unreferenced `moz-*` images, build cache older than 7 days and then down to 5 GB, least recently used first), so no build or test gets slower. Leave `.artifacts/screens/` alone (human: not worth it).
+- **Semgrep runs over a tar stream, not a bind mount (21 Nov 2026):** the same files CI scans; it was 20+ min on Windows through the mount, ~1.5 min now. Don't switch `pnpm sast` back to `-v`.
 - **Work beside a gate, not on its tree:** while a gate runs on a checkout, write the next task in a separate git worktree (`git worktree add ../moz-<task> -b wip/<task>`); run nothing CPU-heavy (typecheck, lint, builds, test suites) during a gate's E2E, parity or perf steps, since throttled timing specs then flake.
 - **Security design check first:** for a security-relevant task, `security-reviewer` checks the plan (data flows, limits, defaults, failure modes) before building; the full review of the final diff stays, and so does a re-review after any HIGH.
 - **Linux check for motion and visual specs (14 Nov):** a change to a motion, overlay or `@visual` spec (or the CSS/components they cover) runs those specs in `mcr.microsoft.com/playwright:v<installed version>-noble` against the production build before pushing; Linux-only flakes otherwise surface only in CI.
@@ -153,7 +155,8 @@ pnpm fix               # the same on the whole repo (after an ESLint/Prettier co
 pnpm services:up | services:down   # Docker: Postgres+PostGIS, Redis, Mailpit, MinIO
 pnpm setup:env         # create .env.local with generated local secrets (never overwrites)
 pnpm check:bundle      # after build: fail if server-only env names appear in .next/static
-pnpm sast              # Semgrep SAST in Docker (same command as CI; part of gate:task)
+pnpm sast              # Semgrep SAST in Docker (same command as CI; part of gate:task; files sent as a tar stream)
+pnpm docker:tidy       # dry run of the Docker cleanup; --apply removes (sub-phase close; never during a gate)
 ```
 Until P0-14 lands `gate:task`/`gate:phase` and the production-build `pnpm e2e`, run their steps by hand (TESTING §4). Update this list when scripts change.
 

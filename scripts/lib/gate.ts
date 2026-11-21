@@ -85,18 +85,33 @@ export type ExecResult = { ok: boolean; output: string; seconds: number; timedOu
  * Runs one command under the watchdog: the step's own exit code, or a failure marked `timedOut` once it runs
  * past its limit (the whole process tree is killed). Output is collected exactly as before.
  */
+/**
+ * How to start `pnpm <args>` without a shell: pnpm's own JS entry under node (`npm_execpath`, set whenever the
+ * caller was started by pnpm, as `pnpm gate:task` is). Windows otherwise needs cmd.exe for pnpm.cmd; that
+ * fallback is kept only for a direct `tsx` run, with every argument checked by assertShellSafe.
+ */
+export function pnpmInvocation(
+  args: string[],
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): { cmd: string; args: string[]; shell: boolean } {
+  const entry = env.npm_execpath ?? "";
+  if (/pnpm[^/\\]*\.(c?js|mjs)$/i.test(entry))
+    return { cmd: process.execPath, args: [entry, ...args], shell: false };
+  return { cmd: "pnpm", args, shell };
+}
+
 export function runWatched(cmd: string, args: string[], opts: ExecOptions = {}): ExecResult {
   const { timeoutMin, ...spawnOpts } = opts;
-  const useShell = cmd === "pnpm" && shell;
-  if (useShell) assertShellSafe(args);
+  const run = cmd === "pnpm" ? pnpmInvocation(args) : { cmd, args, shell: false };
+  if (run.shell) assertShellSafe(run.args);
   const started = Date.now();
   const env = childEnv(spawnOpts.env ?? process.env);
-  // Shell only for pnpm.cmd on Windows (inside the watchdog), with arguments checked by assertShellSafe above.
-  if (useShell) env.GATE_WATCHDOG_SHELL = "1";
+  // Shell only for pnpm.cmd on Windows without npm_execpath (inside the watchdog), arguments checked above.
+  if (run.shell) env.GATE_WATCHDOG_SHELL = "1";
   else Reflect.deleteProperty(env, "GATE_WATCHDOG_SHELL");
   const r = spawnSync(
     process.execPath,
-    [WATCHDOG, String(stepTimeoutMs(timeoutMin)), cmd, ...args],
+    [WATCHDOG, String(stepTimeoutMs(timeoutMin)), run.cmd, ...run.args],
     {
       encoding: "utf8",
       maxBuffer: 256 * 1024 * 1024,

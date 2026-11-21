@@ -7,6 +7,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
+import { pnpmInvocation } from "./lib/gate";
 import { isDirectRun } from "../src/lib/is-direct-run";
 
 const LINTABLE = /\.(ts|tsx|mts|mjs|js|cjs)$/;
@@ -29,9 +30,10 @@ function git(args: string[]): string[] {
 }
 
 function run(cmd: string, args: string[]): number {
-  // Windows needs a shell for pnpm.cmd; the arguments are repo file paths from git, passed as an array.
+  // pnpm as `node <pnpm.cjs>` (no shell) when started by pnpm; cmd.exe only as the fallback, paths checked above.
+  const inv = cmd === "pnpm" ? pnpmInvocation(args) : { cmd, args, shell: false };
   // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
-  const r = spawnSync(cmd, args, { stdio: "inherit", shell: process.platform === "win32" });
+  const r = spawnSync(inv.cmd, inv.args, { stdio: "inherit", shell: inv.shell });
   return r.status ?? 1;
 }
 

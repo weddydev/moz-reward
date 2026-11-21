@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "fix": "(eslint --fix --max-warnings=0 . || echo [fix] eslint: errors remain) && prettier --write --log-level warn .",
     "fix:changed": "tsx scripts/fix-changed.ts",
+    "docker:tidy": "tsx scripts/docker-tidy.ts",
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",

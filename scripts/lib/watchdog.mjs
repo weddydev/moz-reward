@@ -20,6 +20,9 @@ if (!cmd || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
   process.exit(2);
 }
 const win = process.platform === "win32";
+// The gate starts pnpm as `node <pnpm.cjs>` (no shell). GATE_WATCHDOG_SHELL is set only for pnpm.cmd on
+// Windows when pnpm's entry is unknown, after the caller's assertShellSafe allowed every argument.
+// nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
 const child = spawn(cmd, args, {
   stdio: ["ignore", "pipe", "pipe"],
   shell: process.env.GATE_WATCHDOG_SHELL === "1",

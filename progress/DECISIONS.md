@@ -905,3 +905,15 @@ Why: whole-repo `pnpm fix` took several minutes on the Windows laptop for one-fi
 ## 2026-11-21 — PD-03 stress trace: p95 allowance up to 19.3 ms (human)
 Decision: the 200-burst stress spec at 4× CPU keeps "60 fps" (≥ 58 fps measured) and "no long task > 50 ms" unchanged; its p95 frame time may reach 19.3 ms (the brief's 16.8 ms + 15%, DESIGN §12 judgment band) if the measured value is above 16.8 ms, with the measured number recorded here and in SESSION_LOG.
 Why: the human accepted it on 21 Nov ("we can compromise a little if it's too tight"); 16.8 ms is stricter than the vault's existing 60 fps spec (p95 ≤ 20 ms). The frame-budget rule for every other animation is unchanged.
+
+## 2026-11-21 — Semgrep gets the files as a tar stream, not a bind mount
+Decision: `pnpm sast` packs the files CI would scan (`git ls-files --cached --others --exclude-standard`, as they are in the working tree) into one tar on stdin; the pinned Semgrep image unpacks it to /src and runs the same rules and flags. No `-v` mount.
+Why: through Docker Desktop's Windows mount the scan took 1,176–1,349 s per gate (870 s today) against 33 s on CI; now ~86 s. Shown still catching findings: a planted `spawn(..., { shell: true })` in an untracked file failed the scan (exit 1). Same files as CI, same rules.
+
+## 2026-11-21 — Gate starts pnpm without a shell
+Decision: gate steps and `fix:changed` run pnpm as `node <npm_execpath>` (pnpm's own JS entry); cmd.exe only as a fallback for a direct `tsx` run, with assertShellSafe on every argument (nosemgrep at the two spawn sites, as before).
+Why: Semgrep blocked the watchdog's shell option (gate 21 Nov); no shell also ends Node's DEP0190 warning.
+
+## 2026-11-21 — Docker tidy at every sub-phase close (human)
+Decision: `pnpm docker:tidy --apply` at `/subphase-complete`: unused anonymous volumes, dangling images, unreferenced `moz-*` images, build cache older than 7 days; `--images` (unused third-party images) approved on this laptop. Named volumes and anything the repo or a container uses are never touched. On 21 Nov the human also had the unrelated `tuitionconnect` project's containers, images, network and database volume removed. `.artifacts/screens/` stays (human: too small to matter).
+Why: Docker held ~11 GB of images, ~19 GB of build cache and ~2.5 GB of orphaned volumes; none of what is removed is used by a build or test, so nothing gets slower.
