@@ -7,8 +7,16 @@ const css = readFileSync("src/styles/molten.css", "utf8");
 function hoverRule(selector: string): string | null {
   const block =
     /@media \(hover: hover\) and \(pointer: fine\) \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? "";
-  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(?:^|\\n)\\s*${escaped} \\{([^}]*)\\}`).exec(block)?.[1] ?? null;
+  // Plain string search (a rule starts on its own line), so no pattern is built from the argument.
+  const start = block.split("\n").findIndex((line) => line.trim() === `${selector} {`);
+  if (start < 0) return null;
+  const rest = block.split("\n").slice(start + 1);
+  return rest
+    .slice(
+      0,
+      rest.findIndex((line) => line.trim() === "}"),
+    )
+    .join("\n");
 }
 
 describe("[PD-02] Molten card lift (DESIGN §6.1; reference `.pcard:hover`, `.spec:hover`)", () => {
