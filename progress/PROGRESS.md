@@ -3,7 +3,7 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: free — last held by talha.syed, 2026-11-21 20:10 IST
+Baton: held by Syedbadeshah76 since 2026-11-21 14:51 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
@@ -28,7 +28,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 ## Next (top 3)
 1. **Main push gate:** root-cause the 5 Linux specs (motion.spec `:482`, `:514`, `:959`×2, molten.spec `:161`) + `:338` WebKit (handoff note); then merge `wip/PD-03` to main.
 2. **PD-A review MEDIUMs** (code M1 `@perf` project filter, M2 watchdog signals; design M2 focus ring, M4 dark lift) in one commit + `gate:task`, then PD-A `/subphase-complete`.
-3. Human: **H-48** (staging Sentry DSN) → then close P1-A and PD-A staging steps; any time H-38, H-45, H-46, H-50.
+3. **H-48 human part done 21 Nov** (real DSN set 13:49 UTC): Claude's part on the next staging deploy (DSN URL-shaped in web + worker, one probe error confirmed in Sentry) → then close P1-A and PD-A staging steps. Human any time: H-38, H-45, H-46.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
