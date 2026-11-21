@@ -947,3 +947,7 @@ Why: 14–21 Nov: main CI red 5 of 28 runs, wip 13 of 25; of 18 red runs 11 were
 ## 2026-11-21 — Reduced motion: the reference's `.rm` wins, except deliberate fades
 Decision: `html:root.rm *` (0,2,1) outranks the globals.css attribute net (0,2,0), so keyframe animations land in .001ms like the reference; `.stagger-item` is exempt and keeps its ≤ 150 ms `moz-fade` (DESIGN §7.2: movement is replaced by short fades). New E2E asserts every keyframe animation on `/dev/molten` resolves to ≤ 1 ms under reduced motion.
 Why: PD-A design review HIGH: the net won and every loop played once over 150 ms (the spec page's conic spun 360°).
+
+## 2026-11-21 — Focus ring follows the Molten reference; Linux WebKit specs hook animations at creation
+Decision: `:focus-visible` is the reference's ring (2px `--ink` outline, offset 3px, 5px `rgba(210,160,51,.55)` halo as `--focus-ring`), replacing v1's two box-shadow rings; DESIGN §3 row updated (PD-A design review M2). Route-transition specs catch animations right after `Element.animate` and on view-transition `ready` (frames only as fallback), not per frame.
+Why: CLAUDE.md "Molten is the visual spec". Playwright's WebKit rasterises on the CPU and runs ~1 frame/s for 1–2 s after a load or navigation (21 Nov: /dev/motion 1 rAF/s on Linux vs 58 on host; JIT fine), so per-frame hooks missed the 380 ms enter; a test artefact, not a product defect (real Safari: H-13).
