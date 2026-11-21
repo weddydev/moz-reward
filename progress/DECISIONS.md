@@ -5,6 +5,7 @@ Newest first. 2–4 lines each: date, decision, why, consequence. Includes accep
 Template:
 
 ```
+
 ## YYYY-MM-DD — <short title>
 Decision: …
 Why: …
@@ -905,6 +906,7 @@ Why: whole-repo `pnpm fix` took several minutes on the Windows laptop for one-fi
 ## 2026-11-21 — PD-03 stress trace: p95 allowance up to 19.3 ms (human)
 Decision: the 200-burst stress spec at 4× CPU keeps "60 fps" (≥ 58 fps measured) and "no long task > 50 ms" unchanged; its p95 frame time may reach 19.3 ms (the brief's 16.8 ms + 15%, DESIGN §12 judgment band) if the measured value is above 16.8 ms, with the measured number recorded here and in SESSION_LOG.
 Why: the human accepted it on 21 Nov ("we can compromise a little if it's too tight"); 16.8 ms is stricter than the vault's existing 60 fps spec (p95 ≤ 20 ms). The frame-budget rule for every other animation is unchanged.
+Measured (talha.syed, 21 Nov): the allowance is **not used**. Mac Chromium at the CI-equivalent rate (5.9–6.3×): 59.6–60 fps, p95 16.7 ms, 0 long tasks (3/3); Linux Playwright container (3.2–3.4×): 59.6–60 fps, p95 16.8 ms, 0 long tasks (3/3). The 45 fps / p95 33 ms failure was the Windows laptop only (its CPU calibration is known to under-rate it, FOLLOWUPS P1-03 20 Nov), so the spec keeps p95 ≤ 16.8 ms and no Worker/OffscreenCanvas redesign is needed. CI (exactly 4× on its runner) confirms on the PD-03 push.
 
 ## 2026-11-21 — Semgrep gets the files as a tar stream, not a bind mount
 Decision: `pnpm sast` packs the files CI would scan (`git ls-files --cached --others --exclude-standard`, as they are in the working tree) into one tar on stdin; the pinned Semgrep image unpacks it to /src and runs the same rules and flags. No `-v` mount.
@@ -918,6 +920,18 @@ Why: Semgrep blocked the watchdog's shell option (gate 21 Nov); no shell also en
 Decision: `pnpm docker:tidy --apply` at `/subphase-complete`: unused anonymous volumes, dangling images, unreferenced `moz-*` images, build cache older than 7 days; `--images` (unused third-party images) approved on this laptop. Named volumes and anything the repo or a container uses are never touched. On 21 Nov the human also had the unrelated `tuitionconnect` project's containers, images, network and database volume removed. `.artifacts/screens/` stays (human: too small to matter).
 Why: Docker held ~11 GB of images, ~19 GB of build cache and ~2.5 GB of orphaned volumes; none of what is removed is used by a build or test, so nothing gets slower.
 
+## 2026-11-21 — Tier and reduced motion as `<html>` classes, like the reference (PD-03)
+Decision: the effect tier is `<html class="lite">` (was `data-tier`, PD-02) and script-driven motion reads one reduced-motion signal, `<html class="rm">`, set before first paint by the head script and kept right by `applyMotionPreference` (user choice) and `watchSystemMotion` (system setting changing mid-page). The `data-reduce-motion` attribute and the media-query rules in globals.css stay as the no-JavaScript net; the reference's `.rm` rules are added in molten.css. `/dev/motion` can override the tier per tab (sessionStorage).
+Why: the PD-03 brief and the reference use classes; one signal means the FX engine, `anim()` and the press kit can't disagree with the CSS.
+
+## 2026-11-21 — FX engine: three deliberate differences from the reference (PD-03)
+Decision: (1) the canvas backing store is allocated on the first burst, not at load (a page that never bursts keeps a 0 × 0 canvas instead of ~5 MB at DPR 2); (2) `count: 0` means no particles (the reference's `o.count || 20` would throw 20; no reference call passes 0); (3) the tier test treats a reported 0 as unknown (`|| 8`), as the reference does (PD-02 used `??`). Physics, caps, sprites and draw order are verbatim.
+Why: no visual difference in anything the reference shows; (1) saves memory on every page now that the canvas lives in the root layout.
+
+## 2026-11-21 — "Reduce animations" stays on /dev/ui until the Me screen (PD-03)
+Decision: the preference already exists (P0-08: device storage, profile sync, `PreferenceToggles`); PD-03 makes it drive `<html class="rm">`. The toggle appears in Me with the Me screen itself (P5-01 lists it); no interim toggle on the placeholder page.
+Why: the brief says "add it if it doesn't exist yet": it exists; building part of Me now would be invented scope.
+
 ## 2026-11-21 — Manrope preloaded with `display: optional` (human; supersedes the P0-08 "Manrope not preloaded")
 Decision: Manrope's Latin file is preloaded and uses `font-display: optional`, like the Fraunces italic; upright Fraunces keeps `swap` + preload. Extra metric-matched fallback faces (`src/styles/font-fallbacks.css`): Manrope → Liberation Sans (Arial's metrics) and Roboto; Fraunces → Liberation Serif (Times' metrics) and Noto Serif; values by next/font's formula from Next's capsize metrics, re-checked by a unit test. DESIGN §4 and §12 updated.
 Why: next/font's fallbacks are `local(Arial)` / `local(Times New Roman)`, which Linux and Android (our main device) don't have, so late-swapped Manrope re-wrapped text (Linux CI: a card lost a line, CLS 0.004; PD-02 requires CLS 0). Cost ≈ 40 KB more font on first load; a very slow first visit shows the matched fallback for that page only. Code: commit `c072a49` on `wip/PD-03` (cherry-pick to main; NOT VERIFIED on Linux yet).
@@ -925,3 +939,15 @@ Why: next/font's fallbacks are `local(Arial)` / `local(Times New Roman)`, which 
 ## 2026-11-21 — `pnpm e2e:linux` for the CLAUDE.md "Linux check"
 Decision: browsers run in `mcr.microsoft.com/playwright:v<installed>-noble` via `playwright run-server`; the test runner and `next start` stay on the developer machine (`connectOptions` from `PW_WS_ENDPOINT`); a TCP forwarder in the container keeps the app on http://localhost:3100. Code with `c072a49`.
 Why: there was no committed helper (FOLLOWUPS P1-03), so Linux-only failures (4-core lite tier, missing Arial) surfaced only in CI; it reproduced CI's PD-02 reds locally on the first try.
+
+## 2026-11-21 — Process audit: local gate judges like CI (human approved)
+Decision: `gate:task` E2E runs in the Linux Playwright container on all five projects (+ `--only-changed` specs); `wip/*` pushes add `pnpm sast`; `@perf` specs (CPU-throttled budgets) run only alone on one worker in gate:task, gate:phase, CI and nightly; timing specs are bounded by frames, perf reds seen only on Windows or under local parallel load are confirmed on Linux first; handoffs only at a clean boundary (CLAUDE.md "Process audit rules", TESTING §4). Not adopted: "merge to main only after wip CI green" (clashes with progress commits on main; revisit if main still goes red) and dropping the local full 5-project run (CI's push run covers only 2 projects).
+Why: 14–21 Nov: main CI red 5 of 28 runs, wip 13 of 25; of 18 red runs 11 were Linux-only E2E, 3 Semgrep on wip, 3 coverage, 2 check; 25 fix vs 28 feat commits. Each red was inherited by the next session. No check, test or criterion is removed; the gate's E2E grows by ~1–2 min.
+
+## 2026-11-21 — Reduced motion: the reference's `.rm` wins, except deliberate fades
+Decision: `html:root.rm *` (0,2,1) outranks the globals.css attribute net (0,2,0), so keyframe animations land in .001ms like the reference; `.stagger-item` is exempt and keeps its ≤ 150 ms `moz-fade` (DESIGN §7.2: movement is replaced by short fades). New E2E asserts every keyframe animation on `/dev/molten` resolves to ≤ 1 ms under reduced motion.
+Why: PD-A design review HIGH: the net won and every loop played once over 150 ms (the spec page's conic spun 360°).
+
+## 2026-11-21 — Focus ring follows the Molten reference; Linux WebKit specs hook animations at creation
+Decision: `:focus-visible` is the reference's ring (2px `--ink` outline, offset 3px, 5px `rgba(210,160,51,.55)` halo as `--focus-ring`), replacing v1's two box-shadow rings; DESIGN §3 row updated (PD-A design review M2). Route-transition specs catch animations right after `Element.animate` and on view-transition `ready` (frames only as fallback), not per frame.
+Why: CLAUDE.md "Molten is the visual spec". Playwright's WebKit rasterises on the CPU and runs ~1 frame/s for 1–2 s after a load or navigation (21 Nov: /dev/motion 1 rAF/s on Linux vs 58 on host; JIT fine), so per-frame hooks missed the 380 ms enter; a test artefact, not a product defect (real Safari: H-13).
