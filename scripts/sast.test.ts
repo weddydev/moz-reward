@@ -67,4 +67,19 @@ describe("[P0-14] pnpm without a shell", () => {
     expect(npm.cmd).toBe("pnpm");
     expect(pnpmInvocation(["x"], {}).cmd).toBe("pnpm");
   });
+
+  it("[P0-14] runs pnpm's native binary (pnpm 12 ships pnpm.exe) directly, so `|` in an argument is never a pipe", () => {
+    const exe = "C:\\Users\\dev\\AppData\\Local\\pnpm\\node_modules\\pnpm\\pnpm.exe";
+    expect(pnpmInvocation(["e2e", "-g", "a|b"], { npm_execpath: exe })).toEqual({
+      cmd: exe,
+      args: ["e2e", "-g", "a|b"],
+      shell: false,
+    });
+    const posix = "/home/dev/.local/share/pnpm/pnpm";
+    expect(pnpmInvocation(["x"], { npm_execpath: posix })).toEqual({
+      cmd: posix,
+      args: ["x"],
+      shell: false,
+    });
+  });
 });

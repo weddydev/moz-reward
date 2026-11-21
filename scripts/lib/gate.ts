@@ -87,8 +87,10 @@ export type ExecResult = { ok: boolean; output: string; seconds: number; timedOu
  */
 /**
  * How to start `pnpm <args>` without a shell: pnpm's own JS entry under node (`npm_execpath`, set whenever the
- * caller was started by pnpm, as `pnpm gate:task` is). Windows otherwise needs cmd.exe for pnpm.cmd; that
- * fallback is kept only for a direct `tsx` run, with every argument checked by assertShellSafe.
+ * caller was started by pnpm, as `pnpm gate:task` is), or pnpm's native binary itself (pnpm 12 ships
+ * `pnpm.exe`; found on the Windows laptop 21 Nov, where every run still went through cmd.exe and a `|` in
+ * `pnpm e2e:linux -g "a|b"` became a pipe). Windows otherwise needs cmd.exe for pnpm.cmd; that fallback is
+ * kept only for a direct `tsx` run, with every argument checked by assertShellSafe.
  */
 export function pnpmInvocation(
   args: string[],
@@ -97,6 +99,7 @@ export function pnpmInvocation(
   const entry = env.npm_execpath ?? "";
   if (/pnpm[^/\\]*\.(c?js|mjs)$/i.test(entry))
     return { cmd: process.execPath, args: [entry, ...args], shell: false };
+  if (/[/\\]pnpm(\.exe)?$/i.test(entry)) return { cmd: entry, args, shell: false };
   return { cmd: "pnpm", args, shell };
 }
 
