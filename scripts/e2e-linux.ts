@@ -1,0 +1,123 @@
+/**
+ * `pnpm e2e:linux [playwright args…]` (CLAUDE.md "Linux check", FOLLOWUPS P1-03; built 21 Nov 2026): the same
+ * production-build E2E as `pnpm e2e`, with the browsers running in the official Linux image
+ * (`mcr.microsoft.com/playwright:v<installed>-noble`, the browsers CI uses), so Linux-only differences (4-core
+ * lite tier, fonts, rendering) show up before a push instead of in CI.
+ *
+ * - The test runner and `next start` stay on this machine; the container runs `playwright run-server` and a
+ *   tiny TCP forwarder so the browser reaches the app as http://localhost:3100 (a non-localhost origin would
+ *   trip COOP and `upgrade-insecure-requests`, unlike CI).
+ * - The container is removed afterwards, also on failure or Ctrl+C.
+ * - Example: `pnpm e2e:linux tests/e2e/molten.spec.ts --project desktop1440 --project pixel7`.
+ */
+import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { createConnection } from "node:net";
+import { pnpmInvocation } from "./lib/gate";
+import { isDirectRun } from "../src/lib/is-direct-run";
+import { E2E_PORT } from "../tests/e2e/support/server-env";
+
+const NAME = "moz-pw-linux";
+const WS_PORT = 3105;
+
+export function playwrightVersion(): string {
+  const require = createRequire(import.meta.url);
+  const pkg = JSON.parse(
+    readFileSync(require.resolve("@playwright/test/package.json"), "utf8"),
+  ) as {
+    version: string;
+  };
+  return pkg.version;
+}
+
+/** Pure: the container command (forwarder + run-server). Only constants and the pinned version go in. */
+export function containerArgs(version: string, appPort: number = E2E_PORT): string[] {
+  if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error(`unexpected Playwright version ${version}`);
+  const forward = `require("net").createServer((c)=>{const u=require("net").connect(${String(appPort)},"host.docker.internal");c.pipe(u);u.pipe(c);u.on("error",()=>c.destroy());c.on("error",()=>u.destroy());}).listen(${String(appPort)},"127.0.0.1")`;
+  return [
+    "run",
+    "-d",
+    "--rm",
+    "--name",
+    NAME,
+    "--init",
+    "--ipc=host",
+    "--add-host",
+    "host.docker.internal:host-gateway",
+    "-p",
+    `127.0.0.1:${String(WS_PORT)}:${String(WS_PORT)}`,
+    "-e",
+    `FWD=${forward}`,
+    `mcr.microsoft.com/playwright:v${version}-noble`,
+    "/bin/sh",
+    "-c",
+    `node -e "$FWD" & exec npx -y playwright@${version} run-server --port ${String(WS_PORT)} --host 0.0.0.0`,
+  ];
+}
+
+const portOpen = (port: number): Promise<boolean> =>
+  new Promise((resolve) => {
+    const s = createConnection({ port, host: "127.0.0.1" });
+    s.once("connect", () => {
+      s.destroy();
+      resolve(true);
+    });
+    s.once("error", () => {
+      resolve(false);
+    });
+  });
+
+function stopContainer(): void {
+  spawnSync("docker", ["rm", "-f", NAME], { stdio: "ignore" });
+}
+
+async function main(): Promise<void> {
+  const version = playwrightVersion();
+  stopContainer();
+  const start = spawnSync("docker", containerArgs(version), { encoding: "utf8" });
+  if (start.status !== 0) {
+    console.error(`[e2e:linux] could not start the container: ${start.stderr}`);
+    process.exitCode = 1;
+    return;
+  }
+  const cleanup = (): void => {
+    stopContainer();
+  };
+  process.once("SIGINT", () => {
+    cleanup();
+    process.exit(130);
+  });
+  try {
+    // First run downloads the Playwright package inside the container (~1 min); later runs are quick.
+    const deadline = Date.now() + 180_000;
+    let ready = false;
+    while (Date.now() < deadline && !(ready = await portOpen(WS_PORT)))
+      await new Promise((r) => setTimeout(r, 1000));
+    // The port opens as soon as Docker maps it; give run-server a moment to listen behind it.
+    await new Promise((r) => setTimeout(r, 3000));
+    if (!ready) {
+      console.error(
+        "[e2e:linux] the Playwright server in the container did not start (docker logs moz-pw-linux)",
+      );
+      process.exitCode = 1;
+      return;
+    }
+    console.warn(
+      `[e2e:linux] browsers: Linux container (Playwright ${version}); app: this machine :${String(E2E_PORT)}`,
+    );
+    const inv = pnpmInvocation(["e2e", ...process.argv.slice(2)]);
+    // pnpm through cmd.exe only when pnpm's entry is unknown; the arguments are the developer's own.
+    // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
+    const r = spawnSync(inv.cmd, inv.args, {
+      stdio: "inherit",
+      shell: inv.shell,
+      env: { ...process.env, PW_WS_ENDPOINT: `ws://127.0.0.1:${String(WS_PORT)}/` },
+    });
+    process.exitCode = r.status ?? 1;
+  } finally {
+    cleanup();
+  }
+}
+
+if (isDirectRun(import.meta.url)) void main();

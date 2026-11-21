@@ -26,13 +26,13 @@ test("[PD-02] no layout shift on /dev/molten (fonts, edges drawn after hydration
         hadRecentInput: boolean;
       })[]) {
         if (e.hadRecentInput) continue;
-        w.__cls += e.value;
         type Src = {
           node?: Node | null;
           previousRect: DOMRectReadOnly;
           currentRect: DOMRectReadOnly;
         };
         const sources = (e as unknown as { sources?: Src[] }).sources ?? [];
+        w.__cls += e.value;
         const r = (q: DOMRectReadOnly): string =>
           `${String(Math.round(q.x))},${String(Math.round(q.y))} ${String(Math.round(q.width))}×${String(Math.round(q.height))}`;
         w.__shifts.push(
@@ -119,11 +119,14 @@ test("[PD-02] loops sleep: a card off screen and the background in a hidden tab 
   await expect(page.locator("[data-living-background]")).toHaveClass(/m-paused/);
 });
 
-test("[PD-02] a fine-pointer hover replays the glint at once", async ({ page, browserName }) => {
-  test.skip(
-    browserName !== "chromium" && browserName !== "webkit",
-    "desktop pointer projects only",
-  );
+test("[PD-02] a fine-pointer hover replays the glint at once", async ({ page, isMobile }) => {
+  // Phones have no fine pointer, so there is no hover replay to test (pixel7 failed on CI, 21 Nov).
+  test.skip(isMobile, "fine-pointer (desktop) projects only");
+  // The replay is a full-tier effect; CI runners have 4 cores, which is the lite tier (DESIGN §7.2).
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "hardwareConcurrency", { get: () => 8 });
+    Object.defineProperty(navigator, "deviceMemory", { get: () => 8 });
+  });
   await openMolten(page);
   await card(page).scrollIntoViewIfNeeded();
   await card(page).hover();
@@ -151,8 +154,8 @@ test("[PD-02] the Fraunces italic is preloaded only where italic shows (no cost 
     );
     return new Set([...inHeader, ...inHtml]).size;
   };
-  expect(await preloads("/dev/molten")).toBe(2); // upright + italic
-  expect(await preloads("/sign-in")).toBe(1); // upright only
+  expect(await preloads("/dev/molten")).toBe(3); // upright + italic + Manrope (preloaded since 21 Nov)
+  expect(await preloads("/sign-in")).toBe(2); // upright + Manrope, no italic
 });
 
 test("[PD-02] Language section at 320, 390 and 1440: no horizontal scroll (screens for inspection)", async ({
