@@ -11,7 +11,10 @@ export const reducedMotionNow = (): boolean =>
   typeof document !== "undefined" && document.documentElement.classList.contains("rm");
 
 /** Pure: the options `anim()` passes to `Element.animate`. */
-export function animOptions(o: KeyframeAnimationOptions, reduced: boolean): KeyframeAnimationOptions {
+export function animOptions(
+  o: KeyframeAnimationOptions,
+  reduced: boolean,
+): KeyframeAnimationOptions {
   const opts: KeyframeAnimationOptions = { fill: "both", easing: EASE_OUT, ...o };
   if (reduced) {
     const d = typeof o.duration === "number" && o.duration > 0 ? o.duration : RM_MAX_MS;

@@ -65,7 +65,10 @@ export function ripple(el: HTMLElement, e?: PointLike): void {
     ],
     { duration: PRESS.rippleMs },
   );
-  if (a) a.onfinish = () => s.remove();
+  if (a)
+    a.onfinish = () => {
+      s.remove();
+    };
   else s.remove();
 }
 
@@ -98,7 +101,12 @@ export function countUpAt(from: number, to: number, k: number): number {
  * the element holds one text node (React's), its value is written in place so React keeps its node.
  * Under reduced motion it shows `to` at once. Returns a cancel function (which shows `to`).
  */
-export function countUp(el: Element, to: number, ms: number = PRESS.countUpMs, from = 0): () => void {
+export function countUp(
+  el: Element,
+  to: number,
+  ms: number = PRESS.countUpMs,
+  from = 0,
+): () => void {
   const only = el.childNodes.length === 1 ? el.firstChild : null;
   const show = (n: number): void => {
     if (only && only.nodeType === Node.TEXT_NODE) only.nodeValue = formatCount(n);

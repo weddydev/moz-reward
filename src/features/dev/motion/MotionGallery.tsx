@@ -24,8 +24,8 @@ export function MotionGallery(): React.JSX.Element {
 
       <Section title="FX playground">
         <p className="text-small text-ink-2 max-w-prose">
-          The shared particle canvas (sparks, coins, gold leaf) and the press kit. Particles fall over
-          whatever is under them and never catch a tap; with reduced motion nothing is thrown.
+          The shared particle canvas (sparks, coins, gold leaf) and the press kit. Particles fall
+          over whatever is under them and never catch a tap; with reduced motion nothing is thrown.
         </p>
         <FxPlayground />
       </Section>

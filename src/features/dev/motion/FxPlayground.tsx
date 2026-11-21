@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useCountUp, useMagnetic, usePress } from "@/components/motion/press";
 import {
   burst,
@@ -29,9 +29,28 @@ declare global {
 
 const KINDS: { label: string; o: BurstOptions }[] = [
   { label: "Sparks", o: { type: "spark", count: 28, speed: [180, 520] } },
-  { label: "Coins", o: { type: "coin", count: 12, speed: [260, 520], angle: -Math.PI / 2, spread: 1.6 } },
+  {
+    label: "Coins",
+    o: { type: "coin", count: 12, speed: [260, 520], angle: -Math.PI / 2, spread: 1.6 },
+  },
   { label: "Gold leaf", o: { type: "leaf", count: 40, speed: [60, 220], jx: 60 } },
 ];
+
+const tierListeners = new Set<() => void>();
+const subscribeTier = (onChange: () => void): (() => void) => {
+  tierListeners.add(onChange);
+  return () => {
+    tierListeners.delete(onChange);
+  };
+};
+const noSubscription = (): (() => void) => () => undefined;
+const readDeviceTier = (): Tier => deviceTier();
+function chooseTier(t: Tier | null): void {
+  setTierOverride(t);
+  tierListeners.forEach((l) => {
+    l();
+  });
+}
 
 const btn =
   "pressable bg-surface border-line text-small rounded-pill hit-44 inline-flex items-center border px-4 py-2 font-semibold";
@@ -43,8 +62,9 @@ const btn =
  */
 export function FxPlayground(): React.JSX.Element {
   const [stats, setStats] = useState<FxStats | null>(null);
-  const [tier, setTier] = useState<Tier | null>(null);
-  const [device, setDevice] = useState<Tier | null>(null);
+  // Read from <html> after hydration (the server can't know the device), re-read when the switch changes it.
+  const tier = useSyncExternalStore(subscribeTier, currentTier, () => null);
+  const device = useSyncExternalStore(noSubscription, readDeviceTier, () => null);
   const [speed, setSpeed] = useState(1);
   const [seed, setSeed] = useState("");
   const [gold, setGold] = useState(80);
@@ -55,8 +75,6 @@ export function FxPlayground(): React.JSX.Element {
   useCountUp(count, gold);
 
   useEffect(() => {
-    setTier(currentTier());
-    setDevice(deviceTier());
     window.__mozFx = {
       burst,
       stats: fxStats,
@@ -94,7 +112,9 @@ export function FxPlayground(): React.JSX.Element {
           className={btn}
           onClick={() => {
             for (let i = 0; i < 200; i++)
-              burst(40 + ((i * 37) % (window.innerWidth - 80)), 120 + ((i * 53) % 320), { count: 20 });
+              burst(40 + ((i * 37) % (window.innerWidth - 80)), 120 + ((i * 53) % 320), {
+                count: 20,
+              });
           }}
         >
           Stress: 200 bursts
@@ -137,7 +157,7 @@ export function FxPlayground(): React.JSX.Element {
               value={t}
               checked={tier === t}
               onChange={() => {
-                setTier(setTierOverride(t));
+                chooseTier(t);
               }}
             />
             {t}
@@ -147,7 +167,7 @@ export function FxPlayground(): React.JSX.Element {
           type="button"
           className={btn}
           onClick={() => {
-            setTier(setTierOverride(null));
+            chooseTier(null);
           }}
         >
           Follow the device

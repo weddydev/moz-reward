@@ -1,9 +1,9 @@
 "use client";
 
 import { type RefObject, useEffect, useLayoutEffect, useRef } from "react";
+import { haptic } from "@/lib/haptics";
 import { reducedMotionNow } from "@/lib/motion/anim";
 import { countUp, magneticOffset, ripple } from "@/lib/motion/press";
-import { haptic } from "@/lib/haptics";
 
 /**
  * Press kit hooks (PD-03; DESIGN §7.4, §7.5, §10). The element carries `className="m-press"` (molten.css):
@@ -37,7 +37,8 @@ export function usePress(
       if (withHaptic) haptic("press");
     };
     el.addEventListener("pointerdown", down);
-    for (const t of ["pointerup", "pointercancel", "pointerleave"] as const) el.addEventListener(t, up);
+    for (const t of ["pointerup", "pointercancel", "pointerleave"] as const)
+      el.addEventListener(t, up);
     el.addEventListener("click", click);
     return () => {
       el.removeEventListener("pointerdown", down);

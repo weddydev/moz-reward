@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { applyTier } from "@/lib/motion/tier";
 import {
   type AccountState,
   applyMotionPreference,
@@ -8,7 +9,6 @@ import {
   watchOtherTabs,
   watchSystemMotion,
 } from "@/lib/preferences";
-import { applyTier } from "@/lib/motion/tier";
 import { armSound } from "@/lib/sound";
 import { savePreferences } from "./actions";
 

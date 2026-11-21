@@ -3,11 +3,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { animOptions, EASE_OUT, RM_MAX_MS } from "./anim";
 import { countUp, countUpAt, formatCount, magneticOffset, PRESS, ripple } from "./press";
 
-const realAnimate = Element.prototype.animate as typeof Element.prototype.animate | undefined;
+const realAnimate = Object.getOwnPropertyDescriptor(Element.prototype, "animate");
 
 afterEach(() => {
   // jsdom has no Web Animations; the ripple tests put a stub on the prototype.
-  if (realAnimate) Element.prototype.animate = realAnimate;
+  if (realAnimate) Object.defineProperty(Element.prototype, "animate", realAnimate);
   else Reflect.deleteProperty(Element.prototype, "animate");
   document.documentElement.classList.remove("rm");
   document.body.innerHTML = "";

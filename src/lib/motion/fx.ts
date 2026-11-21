@@ -170,9 +170,24 @@ export function alphaOf(p: Particle): number {
 
 /* ---- drawing (the reference's sprites, drawn once) ---- */
 
-type Sprites = { glow: HTMLCanvasElement; coin: HTMLCanvasElement };
+type SpriteImage = ImageBitmap | HTMLCanvasElement;
+type Sprites = { glow: SpriteImage; coin: SpriteImage };
+type Paint2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
-function sprite(s: number, paint: (g: CanvasRenderingContext2D, s: number) => void): HTMLCanvasElement {
+/**
+ * A sprite painted once, kept as an ImageBitmap where the browser has OffscreenCanvas (the same pixels as the
+ * reference's canvas sprite). Drawing a canvas onto a canvas made Chromium snapshot the source on every
+ * `drawImage`: 420 of them a frame held the stress run at 30–45 fps; a bitmap is drawn straight from memory.
+ */
+function sprite(s: number, paint: (g: Paint2D, s: number) => void): SpriteImage {
+  if (typeof OffscreenCanvas === "function") {
+    const oc = new OffscreenCanvas(s, s);
+    const g = oc.getContext("2d");
+    if (g) {
+      paint(g, s);
+      return oc.transferToImageBitmap();
+    }
+  }
   const c = document.createElement("canvas");
   c.width = c.height = s;
   const g = c.getContext("2d");
@@ -221,34 +236,48 @@ function makeSprites(): Sprites {
   return { glow, coin };
 }
 
-function draw(ctx: CanvasRenderingContext2D, parts: readonly Particle[], sp: Sprites): void {
+/**
+ * The reference's drawing, with the same pixels and cheaper calls: each coin and leaf gets its whole
+ * translate·rotate·scale as one `setTransform` (times the DPR) instead of save/translate/rotate/scale/restore,
+ * and the spark stroke style is set once per frame. On a canvas painted by the CPU (no GPU raster), the
+ * per-particle save/restore alone doubled the frame cost at 4× CPU (A/B 21 Nov: 33 → 17 ms for 420 coins).
+ */
+function draw(
+  ctx: CanvasRenderingContext2D,
+  parts: readonly Particle[],
+  sp: Sprites,
+  dpr: number,
+): void {
+  ctx.strokeStyle = "rgba(214,150,30,.9)";
+  ctx.lineWidth = 1.6;
   for (const p of parts) {
     const t = p.life / p.max;
     ctx.globalAlpha = alphaOf(p);
     if (p.type === "spark") {
       const s = p.size * (0.5 + t * 0.6);
-      ctx.strokeStyle = "rgba(214,150,30,.9)";
-      ctx.lineWidth = 1.6;
       ctx.beginPath();
       ctx.moveTo(p.x, p.y);
       ctx.lineTo(p.x - p.vx * 0.035, p.y - p.vy * 0.035);
       ctx.stroke();
       ctx.drawImage(sp.glow, p.x - s / 2, p.y - s / 2, s, s);
     } else if (p.type === "coin") {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot * 0.3);
-      ctx.scale(Math.max(0.12, Math.abs(Math.cos(p.flip))), 1);
+      // translate(x, y) · rotate(rot × .3) · scale(max(.12, |cos flip|), 1)
+      const r = p.rot * 0.3;
+      const k = Math.max(0.12, Math.abs(Math.cos(p.flip)));
+      const c = Math.cos(r) * dpr;
+      const s = Math.sin(r) * dpr;
+      ctx.setTransform(c * k, s * k, -s, c, p.x * dpr, p.y * dpr);
       ctx.drawImage(sp.coin, -p.size / 2, -p.size / 2, p.size, p.size);
-      ctx.restore();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     } else {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot);
-      ctx.scale(1, Math.cos(p.flip));
+      // translate(x, y) · rotate(rot) · scale(1, cos flip)
+      const k = Math.cos(p.flip);
+      const c = Math.cos(p.rot) * dpr;
+      const s = Math.sin(p.rot) * dpr;
+      ctx.setTransform(c, s, -s * k, c * k, p.x * dpr, p.y * dpr);
       ctx.fillStyle = p.col;
       ctx.fillRect(-p.size / 2, -p.size / 3, p.size, p.size * 0.66);
-      ctx.restore();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
   }
   ctx.globalAlpha = 1;
@@ -261,6 +290,7 @@ type Engine = {
   ctx: CanvasRenderingContext2D;
   sprites: Sprites | null;
   sized: boolean;
+  dpr: number;
   w: number;
   h: number;
   parts: Particle[];
@@ -280,6 +310,7 @@ const reduced = (): boolean => htmlHas("rm");
 
 function size(e: Engine): void {
   const dpr = Math.min(FX.dprCap, window.devicePixelRatio || 1);
+  e.dpr = dpr;
   e.w = window.innerWidth;
   e.h = window.innerHeight;
   e.canvas.width = Math.round(e.w * dpr);
@@ -319,7 +350,7 @@ function tick(e: Engine, now: number): void {
   e.last = now;
   e.ctx.clearRect(0, 0, e.w, e.h);
   step(e.parts, dt);
-  if (e.sprites) draw(e.ctx, e.parts, e.sprites);
+  if (e.sprites) draw(e.ctx, e.parts, e.sprites, e.dpr);
   if (e.parts.length) {
     e.raf = requestAnimationFrame((t) => {
       tick(e, t);
@@ -337,6 +368,7 @@ export function mountFx(canvas: HTMLCanvasElement): () => void {
     ctx,
     sprites: null,
     sized: false,
+    dpr: 1,
     w: 0,
     h: 0,
     parts: [],
@@ -381,7 +413,13 @@ export function clearFx(): void {
   if (engine) clear(engine);
 }
 
-export type FxStats = { mounted: boolean; live: number; running: boolean; frames: number; cap: number };
+export type FxStats = {
+  mounted: boolean;
+  live: number;
+  running: boolean;
+  frames: number;
+  cap: number;
+};
 
 export function fxStats(): FxStats {
   const e = engine;

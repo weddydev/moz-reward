@@ -50,7 +50,8 @@ test("[PD-03] one fixed canvas over every page, aria-hidden, and taps pass strai
   expect(await fire(page, x, y, { type: "leaf", count: 120 })).toBeGreaterThan(0);
   expect((await stats(page)).running).toBe(true);
   const hit = await page.evaluate(
-    ([px, py]) => document.elementFromPoint(px, py)?.closest("[data-testid]")?.getAttribute("data-testid"),
+    ([px, py]) =>
+      document.elementFromPoint(px, py)?.closest("[data-testid]")?.getAttribute("data-testid"),
     [x, y] as const,
   );
   expect(hit).toBe("fx-press");
@@ -163,7 +164,9 @@ test("[PD-03] reduced motion: no bursts at all; switched on mid-burst, the canva
   expect((await stats(page)).live).toBe(0);
 });
 
-test("[PD-03] the Me preference alone also turns reduced motion on (one source)", async ({ page }) => {
+test("[PD-03] the Me preference alone also turns reduced motion on (one source)", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     localStorage.setItem("moz:motion", "reduce");
   });
@@ -207,15 +210,20 @@ test("[PD-03] a route change mid-burst: particles finish over the new page, whic
   });
   await page.getByRole("link", { name: "Open a detail page" }).click();
   await expect(page).toHaveURL(/\/dev\/motion\/details$/);
-  const mid = await page.evaluate(() => (window as unknown as { __fxStats: () => Stats }).__fxStats());
+  const mid = await page.evaluate(() =>
+    (window as unknown as { __fxStats: () => Stats }).__fxStats(),
+  );
   expect(mid.mounted).toBe(true);
   expect(mid.live).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Tap me" }).click();
   await expect(page.getByTestId("tap-count")).toHaveText("1 tap");
   await expect
-    .poll(() => page.evaluate(() => (window as unknown as { __fxStats: () => Stats }).__fxStats().live), {
-      timeout: 6_000,
-    })
+    .poll(
+      () => page.evaluate(() => (window as unknown as { __fxStats: () => Stats }).__fxStats().live),
+      {
+        timeout: 6_000,
+      },
+    )
     .toBe(0);
 });
 
@@ -249,7 +257,10 @@ test("[PD-03] press kit: pressed state, a ripple from the press point, celebrate
 test("[PD-03] 200-burst stress at 4× CPU: 60 fps, p95 ≤ 16.8 ms, no long task over 50 ms", async ({
   page,
 }) => {
-  test.skip(test.info().project.name !== "chromium", "CPU throttling is a Chromium DevTools feature");
+  test.skip(
+    test.info().project.name !== "chromium",
+    "CPU throttling is a Chromium DevTools feature",
+  );
   await page.addInitScript(() => {
     const w = window as unknown as { __long: number[] };
     w.__long = [];

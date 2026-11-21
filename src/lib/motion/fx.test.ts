@@ -48,25 +48,28 @@ describe("[PD-03] FX engine: spawn (DESIGN §7.4 FX engine)", () => {
     ["spark", 520, 0.975, [0.45, 0.9]],
     ["coin", 1100, 0.975, [1.1, 1.7]],
     ["leaf", 60, 0.985, [2.2, 3.4]],
-  ])("[PD-03] %s: gravity %d, drag %d, life in range, speed in the default range", (type, g, drag, life) => {
-    const parts: Particle[] = [];
-    spawn(parts, 100, 200, { type, count: 400 }, full(7));
-    expect(parts).toHaveLength(400);
-    for (const p of parts) {
-      expect(p.type).toBe(type);
-      expect(p.g).toBe(g);
-      expect(p.drag).toBe(drag);
-      expect(p.life).toBeGreaterThanOrEqual(life[0]);
-      expect(p.life).toBeLessThanOrEqual(life[1]);
-      expect(p.max).toBe(p.life);
-      expect(speedOf(p)).toBeGreaterThanOrEqual(150 - 1e-9);
-      expect(speedOf(p)).toBeLessThanOrEqual(420 + 1e-9);
-      expect(p.size).toBeGreaterThanOrEqual(FX.size[type][0]);
-      expect(p.size).toBeLessThanOrEqual(FX.size[type][1]);
-      expect(p.x).toBe(100);
-      expect(p.y).toBe(200);
-    }
-  });
+  ])(
+    "[PD-03] %s: gravity %d, drag %d, life in range, speed in the default range",
+    (type, g, drag, life) => {
+      const parts: Particle[] = [];
+      spawn(parts, 100, 200, { type, count: 400 }, full(7));
+      expect(parts).toHaveLength(400);
+      for (const p of parts) {
+        expect(p.type).toBe(type);
+        expect(p.g).toBe(g);
+        expect(p.drag).toBe(drag);
+        expect(p.life).toBeGreaterThanOrEqual(life[0]);
+        expect(p.life).toBeLessThanOrEqual(life[1]);
+        expect(p.max).toBe(p.life);
+        expect(speedOf(p)).toBeGreaterThanOrEqual(150 - 1e-9);
+        expect(speedOf(p)).toBeLessThanOrEqual(420 + 1e-9);
+        expect(p.size).toBeGreaterThanOrEqual(FX.size[type][0]);
+        expect(p.size).toBeLessThanOrEqual(FX.size[type][1]);
+        expect(p.x).toBe(100);
+        expect(p.y).toBe(200);
+      }
+    },
+  );
 
   it("[PD-03] options: speed range, gravity, life, jitter and a narrow spread around the angle", () => {
     const parts: Particle[] = [];
