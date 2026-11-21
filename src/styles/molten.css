@@ -165,10 +165,10 @@ svg.m-seam {
   }
 }
 /* Lite tier: no glide, flat gem (DESIGN §7.2). */
-[data-tier="lite"] .m-seam .sm-shine {
+.lite .m-seam .sm-shine {
   display: none;
 }
-[data-tier="lite"] .m-seam .sm-gem {
+.lite .m-seam .sm-gem {
   filter: none;
 }
 /* Off screen or tab hidden: loops sleep. */
@@ -251,4 +251,52 @@ svg.m-seam {
 :root[data-reduce-motion="true"] .m-seam *,
 :root[data-reduce-motion="true"] .m-sec em {
   animation: none !important;
+}
+
+/* The one shared FX canvas (PD-03; reference `#fx`): over the page, never in the way of a tap. */
+.m-fx {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 90;
+}
+
+/* Press kit (PD-03; reference `.btn` transform, `.btn.down`, `.ripple`): usePress / useMagnetic / ripple(). */
+.m-press {
+  transform: translate(var(--tx, 0px), var(--ty, 0px)) scale(var(--s, 1));
+  transition: transform 0.45s var(--spring);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.m-press.down {
+  --s: 0.93;
+}
+.m-ripple {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    circle,
+    rgba(255, 250, 230, 0.95) 0%,
+    rgba(255, 212, 94, 0.7) 30%,
+    rgba(255, 190, 50, 0) 70%
+  );
+}
+
+/*
+ * Reduced motion, the reference's `.rm` rules (PD-03): keyframes land on their end state, transitions shorten
+ * to .12s. `<html class="rm">` is the one signal (system setting or "Reduce animations"); the attribute rules
+ * in globals.css stay as the no-JavaScript net.
+ */
+.rm *,
+.rm *::before,
+.rm *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0s !important;
+  transition-duration: 0.12s !important;
+  scroll-behavior: auto !important;
 }

@@ -95,7 +95,7 @@ test("[PD-02] lite tier (≤ 4 cores): no light glide, the gem stays", async ({ 
     Object.defineProperty(navigator, "hardwareConcurrency", { get: () => 4 });
   });
   await openMolten(page);
-  await expect(page.locator("html")).toHaveAttribute("data-tier", "lite");
+  await expect(page.locator("html")).toHaveClass(/(^|\s)lite(\s|$)/);
   await expect(seam(page).locator(".sm-shine").first()).toHaveCSS("display", "none");
   await expect(seam(page).locator(".sm-gem")).toBeVisible();
 });

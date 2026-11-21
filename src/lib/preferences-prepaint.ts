@@ -11,7 +11,17 @@ export const STORAGE_KEYS = {
 export const MOTION_ATTRIBUTE = "data-reduce-motion";
 
 /**
+ * The one reduced-motion signal for script-driven motion (PD-03, like the reference's `<html class="rm">`):
+ * on when the user chose "Reduce animations", or follows the system and the system asks for reduced motion.
+ * The FX engine, `anim()` and the press kit read it; the CSS keeps the attribute + media query too, so pages
+ * stay still even without JavaScript.
+ */
+export const RM_CLASS = "rm";
+
+const QUERY = "(prefers-reduced-motion: reduce)";
+
+/**
  * Runs inline in <head> (with the CSP nonce) so the stored choice is on <html> before first paint. Kept tiny
  * and dependency-free; `applyMotionPreference` is the same rule for the hydrated page.
  */
-export const PREPAINT_SCRIPT = `(function(){try{var v=localStorage.getItem(${JSON.stringify(STORAGE_KEYS.motion)});if(v==="reduce"||v==="full")document.documentElement.setAttribute(${JSON.stringify(MOTION_ATTRIBUTE)},v==="reduce"?"true":"false")}catch(e){}})()`;
+export const PREPAINT_SCRIPT = `(function(){var d=document.documentElement,v=null;try{v=localStorage.getItem(${JSON.stringify(STORAGE_KEYS.motion)})}catch(e){}if(v==="reduce"||v==="full")d.setAttribute(${JSON.stringify(MOTION_ATTRIBUTE)},v==="reduce"?"true":"false");try{if(v==="reduce"||(v!=="full"&&matchMedia(${JSON.stringify(QUERY)}).matches))d.classList.add(${JSON.stringify(RM_CLASS)})}catch(e){}})()`;

@@ -1,6 +1,7 @@
 import { SharedElement, TransitionLink } from "@/components/motion";
 import { Section } from "../Section";
 import { DEMO_SHOPS, DEMO_TABS } from "./demo-data";
+import { FxPlayground } from "./FxPlayground";
 import { GatePreview } from "./GatePreview";
 import { IngotDemo } from "./IngotDemo";
 import { MotionPrimitives } from "./MotionPrimitives";
@@ -20,6 +21,14 @@ export function MotionGallery(): React.JSX.Element {
         Page transitions and motion primitives (DESIGN.md §7). Navigation never waits for an
         animation; with reduced motion everything becomes a short fade.
       </p>
+
+      <Section title="FX playground">
+        <p className="text-small text-ink-2 max-w-prose">
+          The shared particle canvas (sparks, coins, gold leaf) and the press kit. Particles fall over
+          whatever is under them and never catch a tap; with reduced motion nothing is thrown.
+        </p>
+        <FxPlayground />
+      </Section>
 
       <Section title="Forward and back">
         <p className="text-small text-ink-2 max-w-prose">

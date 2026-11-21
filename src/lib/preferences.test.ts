@@ -14,12 +14,14 @@ import {
   reconcile,
   resetPreferencesForTest,
   resolveReducedMotion,
+  RM_CLASS,
   setMotionPreference,
   setSoundPreference,
   STORAGE_KEYS,
   useMotionPreference,
   useSoundPreference,
   watchOtherTabs,
+  watchSystemMotion,
 } from "./preferences";
 
 type Mql = { matches: boolean; listeners: Set<() => void> };
@@ -66,6 +68,7 @@ beforeEach(() => {
   vi.unstubAllGlobals();
   localStorage.clear();
   document.documentElement.removeAttribute(MOTION_ATTRIBUTE);
+  document.documentElement.classList.remove(RM_CLASS);
   resetPreferencesForTest();
   mockSystem(false);
 });
@@ -176,6 +179,56 @@ describe("[P0-08] pre-paint script", () => {
 
   it("cannot break out of its <script> element", () => {
     expect(PREPAINT_SCRIPT).not.toMatch(/<\/?script|<!--/i);
+  });
+});
+
+describe("[PD-03] one reduced-motion signal: <html class=rm>", () => {
+  const rm = (): boolean => document.documentElement.classList.contains(RM_CLASS);
+  const run = (): void => {
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    (new Function(PREPAINT_SCRIPT) as () => void)();
+  };
+
+  it("[PD-03] pre-paint and applyMotionPreference agree for every stored value × system setting", () => {
+    for (const system of [false, true]) {
+      for (const stored of ["reduce", "full", "junk", null]) {
+        mockSystem(system);
+        localStorage.clear();
+        if (stored) localStorage.setItem(STORAGE_KEYS.motion, stored);
+        document.documentElement.classList.remove(RM_CLASS);
+        run();
+        const fromScript = rm();
+        document.documentElement.classList.remove(RM_CLASS);
+        applyMotionPreference();
+        expect(rm(), `stored=${String(stored)} system=${String(system)}`).toBe(fromScript);
+        expect(rm()).toBe(isReducedMotion());
+      }
+    }
+  });
+
+  it("[PD-03] the user's choice and a system change mid-page both move the class", async () => {
+    const system = mockSystem(false);
+    const stop = watchSystemMotion();
+    applyMotionPreference();
+    expect(rm()).toBe(false);
+    system.set(true);
+    expect(rm()).toBe(true);
+    await setMotionPreference("full");
+    expect(rm()).toBe(false);
+    await setMotionPreference("reduce");
+    system.set(false);
+    expect(rm()).toBe(true);
+    stop();
+    await setMotionPreference("system");
+    system.set(true); // no longer watched
+    expect(rm()).toBe(false);
+  });
+
+  it("[PD-03] storage blocked: the pre-paint script still follows the system", () => {
+    mockSystem(true);
+    blockStorage();
+    expect(run).not.toThrow();
+    expect(rm()).toBe(true);
   });
 });
 

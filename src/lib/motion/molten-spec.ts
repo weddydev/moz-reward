@@ -1,3 +1,4 @@
+import { FX } from "./fx";
 import { type Locator } from "./molten-reference";
 
 /**
@@ -463,42 +464,97 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "fx-engine",
     element: "FX engine",
     task: "PD-03",
-    status: "pending",
+    status: "required",
     values: [
-      { name: "particle cap, lite", value: "160", ref: js("const MAX = lite", /lite \? (\d+)/g) },
+      {
+        name: "particle cap, lite",
+        value: "160",
+        ref: js("const MAX = lite", /lite \? (\d+)/g),
+        prod: { value: () => FX.cap.lite },
+      },
       {
         name: "particle cap, full",
         value: "420",
         ref: js("const MAX = lite", /lite \? \d+ : (\d+)/g),
+        prod: { value: () => FX.cap.full },
+      },
+      {
+        name: "lite count factor",
+        value: ".5",
+        ref: js("let n = Math.round", /lite \? (\.\d+)/g),
+        prod: { value: () => FX.liteCountFactor },
+      },
+      {
+        name: "default count",
+        value: "20",
+        ref: js("let n = Math.round", /o\.count \|\| (\d+)/g),
+        prod: { value: () => FX.defaultCount },
+      },
+      {
+        name: "default speed (px/s)",
+        value: "150, 420",
+        ref: js("const [s0, s1]", /\[(\d+, \d+)\]/g),
+        prod: { value: () => FX.defaultSpeed.join(",") },
       },
       {
         name: "canvas DPR cap",
         value: "2",
         ref: js("function size()", /Math\.min\((\d+), devicePixelRatio/g),
+        prod: { value: () => FX.dprCap },
       },
-      { name: "spark gravity", value: "520", ref: js("o.gravity ??", /'spark' \? (\d+)/g) },
-      { name: "coin gravity", value: "1100", ref: js("o.gravity ??", /'coin' \? (\d+)/g) },
-      { name: "leaf gravity", value: "60", ref: js("o.gravity ??", /'coin' \? \d+ : (\d+)/g) },
-      { name: "drag", value: ".975", ref: js("drag: type === 'leaf'", /\.985 : (\.\d+)/g) },
+      {
+        name: "frame step cap (s)",
+        value: ".033",
+        ref: js("function tick(now)", /Math\.min\((\.\d+)/g),
+        prod: { value: () => FX.maxDt },
+      },
+      {
+        name: "spark gravity",
+        value: "520",
+        ref: js("o.gravity ??", /'spark' \? (\d+)/g),
+        prod: { value: () => FX.gravity.spark },
+      },
+      {
+        name: "coin gravity",
+        value: "1100",
+        ref: js("o.gravity ??", /'coin' \? (\d+)/g),
+        prod: { value: () => FX.gravity.coin },
+      },
+      {
+        name: "leaf gravity",
+        value: "60",
+        ref: js("o.gravity ??", /'coin' \? \d+ : (\d+)/g),
+        prod: { value: () => FX.gravity.leaf },
+      },
+      {
+        name: "drag",
+        value: ".975",
+        ref: js("drag: type === 'leaf'", /\.985 : (\.\d+)/g),
+        prod: { value: () => FX.drag.spark },
+      },
       {
         name: "leaf drag",
         value: ".985",
         ref: js("drag: type === 'leaf'", /'leaf' \? (\.\d+)/g),
+        prod: { value: () => FX.drag.leaf },
       },
       {
         name: "spark life (s)",
         value: ".45, .9",
         ref: js("const life = rnd(", /\[1\.1, 1\.7\] : \[([.\d]+, [.\d]+)\]/g),
+        prod: { value: () => FX.life.spark.join(",") },
       },
       {
         name: "coin life (s)",
         value: "1.1, 1.7",
         ref: js("const life = rnd(", /'coin' \? \[([.\d]+, [.\d]+)\]/g),
+        prod: { value: () => FX.life.coin.join(",") },
       },
       {
         name: "leaf life (s)",
         value: "2.2, 3.4",
         ref: js("const life = rnd(", /'leaf' \? \[([.\d]+, [.\d]+)\]/g),
+        prod: { value: () => FX.life.leaf.join(",") },
       },
     ],
   },

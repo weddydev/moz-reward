@@ -6,7 +6,9 @@ import {
   applyMotionPreference,
   connectAccount,
   watchOtherTabs,
+  watchSystemMotion,
 } from "@/lib/preferences";
+import { applyTier } from "@/lib/motion/tier";
 import { armSound } from "@/lib/sound";
 import { savePreferences } from "./actions";
 
@@ -27,9 +29,15 @@ const save = async (
 export function ApplyPreferences({ account }: { account: AccountState }): null {
   useEffect(() => {
     applyMotionPreference();
+    applyTier(); // the pre-paint script set it; this keeps it right (and honours a /dev/motion override)
     document.documentElement.dataset.hydrated = "true";
     armSound(); // audio unlocks inside the first tap or key press, never before (DESIGN §9)
-    return watchOtherTabs();
+    const stopTabs = watchOtherTabs();
+    const stopSystem = watchSystemMotion();
+    return () => {
+      stopTabs();
+      stopSystem();
+    };
   }, []);
 
   const reduceMotion = typeof account === "string" ? null : account.reduceMotion;

@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { EDGE, type EdgeGeometry, gildedEdge } from "@/lib/motion/gilded-edge";
-import { deviceTier } from "@/lib/motion/tier";
+import { currentTier } from "@/lib/motion/tier";
 
 /**
  * The gilded edge (DESIGN v2 §6.2; PD-02): rendered as the last child of a card that doesn't clip, it draws the
@@ -12,8 +12,7 @@ import { deviceTier } from "@/lib/motion/tier";
  */
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-const reducedMotion = (): boolean =>
-  getComputedStyle(document.documentElement).getPropertyValue("--motion-on").trim() === "0";
+const reducedMotion = (): boolean => document.documentElement.classList.contains("rm");
 
 export function GildedEdge(): React.JSX.Element {
   const ref = useRef<SVGSVGElement>(null);
@@ -49,7 +48,7 @@ export function GildedEdge(): React.JSX.Element {
     // random) delay, which parks the animation in its before phase until the phase comes round again (up to
     // 8 s dark); here the delay drops to 0 and the cycle restarts (DECISIONS 20 Nov).
     const replay = (): void => {
-      if (reducedMotion() || deviceTier() === "lite") return;
+      if (reducedMotion() || currentTier() === "lite") return;
       for (const el of svg.querySelectorAll(".sm-shine, .sm-glint")) {
         for (const a of el.getAnimations()) {
           a.effect?.updateTiming({ delay: 0 });

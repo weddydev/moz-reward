@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { FxCanvas } from "@/components/motion/FxCanvas";
 import { CookieNotice } from "@/features/consent/CookieNotice";
 import { ApplyPreferences } from "@/features/preferences/ApplyPreferences";
 import { loadAccountPreferences } from "@/features/preferences/load";
@@ -37,7 +38,8 @@ export default async function RootLayout({
   const requestHeaders = await headers();
   const nonce = requestHeaders.get("x-nonce") ?? undefined;
   return (
-    // suppressHydrationWarning: the pre-paint script sets data-reduce-motion on <html> before React hydrates.
+    // suppressHydrationWarning: the pre-paint script sets data-reduce-motion and the rm / lite classes on <html>
+    // before React hydrates.
     <html
       lang="en-GB"
       className={`${fraunces.variable} ${manrope.variable} h-full antialiased`}
@@ -63,6 +65,8 @@ export default async function RootLayout({
           <AccountPreferences />
         </Suspense>
         {children}
+        {/* The shared particle canvas, outside every route transition (DESIGN §7; PD-03). */}
+        <FxCanvas />
         {clientEnv.NEXT_PUBLIC_UMAMI_PATH && clientEnv.NEXT_PUBLIC_UMAMI_WEBSITE_ID ? (
           <CookieNotice
             path={clientEnv.NEXT_PUBLIC_UMAMI_PATH}

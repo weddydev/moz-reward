@@ -917,3 +917,15 @@ Why: Semgrep blocked the watchdog's shell option (gate 21 Nov); no shell also en
 ## 2026-11-21 — Docker tidy at every sub-phase close (human)
 Decision: `pnpm docker:tidy --apply` at `/subphase-complete`: unused anonymous volumes, dangling images, unreferenced `moz-*` images, build cache older than 7 days; `--images` (unused third-party images) approved on this laptop. Named volumes and anything the repo or a container uses are never touched. On 21 Nov the human also had the unrelated `tuitionconnect` project's containers, images, network and database volume removed. `.artifacts/screens/` stays (human: too small to matter).
 Why: Docker held ~11 GB of images, ~19 GB of build cache and ~2.5 GB of orphaned volumes; none of what is removed is used by a build or test, so nothing gets slower.
+
+## 2026-11-21 — Tier and reduced motion as `<html>` classes, like the reference (PD-03)
+Decision: the effect tier is `<html class="lite">` (was `data-tier`, PD-02) and script-driven motion reads one reduced-motion signal, `<html class="rm">`, set before first paint by the head script and kept right by `applyMotionPreference` (user choice) and `watchSystemMotion` (system setting changing mid-page). The `data-reduce-motion` attribute and the media-query rules in globals.css stay as the no-JavaScript net; the reference's `.rm` rules are added in molten.css. `/dev/motion` can override the tier per tab (sessionStorage).
+Why: the PD-03 brief and the reference use classes; one signal means the FX engine, `anim()` and the press kit can't disagree with the CSS.
+
+## 2026-11-21 — FX engine: three deliberate differences from the reference (PD-03)
+Decision: (1) the canvas backing store is allocated on the first burst, not at load (a page that never bursts keeps a 0 × 0 canvas instead of ~5 MB at DPR 2); (2) `count: 0` means no particles (the reference's `o.count || 20` would throw 20; no reference call passes 0); (3) the tier test treats a reported 0 as unknown (`|| 8`), as the reference does (PD-02 used `??`). Physics, caps, sprites and draw order are verbatim.
+Why: no visual difference in anything the reference shows; (1) saves memory on every page now that the canvas lives in the root layout.
+
+## 2026-11-21 — "Reduce animations" stays on /dev/ui until the Me screen (PD-03)
+Decision: the preference already exists (P0-08: device storage, profile sync, `PreferenceToggles`); PD-03 makes it drive `<html class="rm">`. The toggle appears in Me with the Me screen itself (P5-01 lists it); no interim toggle on the placeholder page.
+Why: the brief says "add it if it doesn't exist yet": it exists; building part of Me now would be invented scope.

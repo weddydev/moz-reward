@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { MOTION_ATTRIBUTE, STORAGE_KEYS } from "./preferences-prepaint";
+import { MOTION_ATTRIBUTE, RM_CLASS, STORAGE_KEYS } from "./preferences-prepaint";
 
 /**
  * Per-device display preferences (DESIGN §9, §13): reduced motion and sounds.
@@ -32,7 +32,7 @@ export type PreferenceSaver = (
  */
 export type SyncState = "synced" | "pending" | null;
 
-export { MOTION_ATTRIBUTE, PREPAINT_SCRIPT, STORAGE_KEYS } from "./preferences-prepaint";
+export { MOTION_ATTRIBUTE, PREPAINT_SCRIPT, RM_CLASS, STORAGE_KEYS } from "./preferences-prepaint";
 
 const QUERY = "(prefers-reduced-motion: reduce)";
 
@@ -85,6 +85,22 @@ export function applyMotionPreference(pref: MotionPreference = readMotionPrefere
   const root = document.documentElement;
   if (pref === "system") root.removeAttribute(MOTION_ATTRIBUTE);
   else root.setAttribute(MOTION_ATTRIBUTE, pref === "reduce" ? "true" : "false");
+  root.classList.toggle(RM_CLASS, resolveReducedMotion(pref, window.matchMedia(QUERY).matches));
+}
+
+/**
+ * Follows the system setting while the page is open (it can change mid-burst): re-applies `<html class="rm">`
+ * and tells the hooks. Returns the cleanup. Mounted once by `ApplyPreferences`.
+ */
+export function watchSystemMotion(): () => void {
+  const mql = window.matchMedia(QUERY);
+  const onChange = (): void => {
+    applyMotionPreference();
+  };
+  mql.addEventListener("change", onChange);
+  return () => {
+    mql.removeEventListener("change", onChange);
+  };
 }
 
 /** Pure decision, exported for tests. */
