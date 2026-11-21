@@ -81,7 +81,7 @@ Rules (v2): no area cap on gold (it is a material; the v1 "≤ 10%" rule is reti
 ## 4. Typography
 
 - **Display / headings:** Fraunces (variable) with the `opsz`, `wght`, `SOFT` and `WONK` axes plus italic (v2: the reference animates weight and softness and uses italic for brand marks and emphasis). Self-host via `next/font`, subset Latin.
-- **Italic:** its own font module, loaded and preloaded only on routes that show italic, `font-display: optional` (no late swap, CLS 0; DECISIONS 20 Nov). Upright Fraunces and Manrope keep `swap`.
+- **Italic:** its own font module, loaded and preloaded only on routes that show italic, `font-display: optional` (no late swap, CLS 0; DECISIONS 20 Nov). Upright Fraunces keeps `swap` (preloaded); Manrope is preloaded with `display: optional` (human, 21 Nov 2026). Metric-matched fallbacks also cover Linux and Android, which have no Arial / Times New Roman (`src/styles/font-fallbacks.css`).
 - **UI / body:** Manrope variable 400–800 (v2: buttons use 750, badges 800). Self-host via `next/font`.
 - Numbers: tabular figures (`font-variant-numeric: tabular-nums`) for points, prices, counters.
 - Scale (mobile / desktop): Display 34/48, H1 28/36, H2 22/28, H3 18/20, Body 16/16, Small 14/14, Caption 12/12. Line-height 1.2 headings, 1.5 body.
@@ -303,7 +303,7 @@ Targets for customer routes on a mid-range Android over 4G (Lighthouse mobile, t
 | Signature-moment chunks (each, gzip) | ≤ 40 KB (v2), loaded on demand |
 | Game chunk (gzip) | ≤ 40 KB |
 | Images | AVIF/WebP via `next/image`, explicit sizes, cover ≤ 120 KB |
-| Fonts | 2 families, subset, `font-display: swap`, preload only the heading weight used above the fold |
+| Fonts | 2 families, subset; preload the upright Fraunces (above-the-fold headings, `swap`) and Manrope (body, `optional`; human, 21 Nov 2026); the Fraunces italic only on routes that show it (`optional`) |
 | Animation frame time | 60 fps on mid-range Android; no long tasks > 50ms during animations |
 
 v2 (human, 20 Nov 2026): budgets may grow slightly when it clearly buys the approved Molten look; each overage inside the band gets a one-line DECISIONS entry. The frame budget never moves: 60 fps on mid-range Android, no long task > 50 ms during an animation, INP ≤ 200 ms, CLS ≤ 0.05.

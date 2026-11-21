@@ -5,6 +5,7 @@ Newest first. 2–4 lines each: date, decision, why, consequence. Includes accep
 Template:
 
 ```
+
 ## YYYY-MM-DD — <short title>
 Decision: …
 Why: …
@@ -929,3 +930,11 @@ Why: no visual difference in anything the reference shows; (1) saves memory on e
 ## 2026-11-21 — "Reduce animations" stays on /dev/ui until the Me screen (PD-03)
 Decision: the preference already exists (P0-08: device storage, profile sync, `PreferenceToggles`); PD-03 makes it drive `<html class="rm">`. The toggle appears in Me with the Me screen itself (P5-01 lists it); no interim toggle on the placeholder page.
 Why: the brief says "add it if it doesn't exist yet": it exists; building part of Me now would be invented scope.
+
+## 2026-11-21 — Manrope preloaded with `display: optional` (human; supersedes the P0-08 "Manrope not preloaded")
+Decision: Manrope's Latin file is preloaded and uses `font-display: optional`, like the Fraunces italic; upright Fraunces keeps `swap` + preload. Extra metric-matched fallback faces (`src/styles/font-fallbacks.css`): Manrope → Liberation Sans (Arial's metrics) and Roboto; Fraunces → Liberation Serif (Times' metrics) and Noto Serif; values by next/font's formula from Next's capsize metrics, re-checked by a unit test. DESIGN §4 and §12 updated.
+Why: next/font's fallbacks are `local(Arial)` / `local(Times New Roman)`, which Linux and Android (our main device) don't have, so late-swapped Manrope re-wrapped text (Linux CI: a card lost a line, CLS 0.004; PD-02 requires CLS 0). Cost ≈ 40 KB more font on first load; a very slow first visit shows the matched fallback for that page only. Code: commit `c072a49` on `wip/PD-03` (cherry-pick to main; NOT VERIFIED on Linux yet).
+
+## 2026-11-21 — `pnpm e2e:linux` for the CLAUDE.md "Linux check"
+Decision: browsers run in `mcr.microsoft.com/playwright:v<installed>-noble` via `playwright run-server`; the test runner and `next start` stay on the developer machine (`connectOptions` from `PW_WS_ENDPOINT`); a TCP forwarder in the container keeps the app on http://localhost:3100. Code with `c072a49`.
+Why: there was no committed helper (FOLLOWUPS P1-03), so Linux-only failures (4-core lite tier, missing Arial) surfaced only in CI; it reproduced CI's PD-02 reds locally on the first try.
