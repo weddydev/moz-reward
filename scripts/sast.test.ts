@@ -17,7 +17,9 @@ describe("[P0-18] sast over a tar stream", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "sast-test-"));
     try {
       mkdirSync(path.join(dir, "src"));
-      const files = ["--exclude=*", "-T", "src/a.ts", "src/b c.ts"];
+      // `--exclude=src`, not `--exclude=*`: `*` can't be in a Windows file name. Read as an option it drops
+      // every src/ entry and itself, so the check below fails just as it did for `*`.
+      const files = ["--exclude=src", "-T", "src/a.ts", "src/b c.ts"];
       for (const f of files) writeFileSync(path.join(dir, f), "export {};\n");
       const archive = packFiles(files, dir);
       expect(archiveEntries(archive, dir).sort()).toEqual([...files].sort());
