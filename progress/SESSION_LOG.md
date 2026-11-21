@@ -783,3 +783,6 @@ Gate run 1 FAIL: desktop1440 lite-tier spec 50 live (expected 160): 30 separate 
 M1: `countUp` cancel keeps and returns the shown value; `useCountUp` continues from it (5 new tests failed before, 128/0 after). M2: required spec row `press-kit` (15 values incl. CSS `.m-press.down`) + 11 fx-engine values (spark trail/width now FX constants); lock adds press-kit; mutated prod values fail their rows.
 Pre-commit secret scan failed in a linked worktree ("not a git repository"): Docker fallback now mounts the common git dir with GIT_DIR (scripts/lib/gitleaks-docker.ts, 4 tests); planted token still blocked.
 CI 44907279740 (`43a95fc`) red: pixel7 + desktop1440 lite-tier spec at "Follow the device" (expected not lite): CI's 4-core runners are lite devices, the spec assumed full. Reproduced by faking 4 cores (click path itself works). Spec pins 8 cores; new 4-core spec (pre-paint lite, override, follow device, key cleared); 40/0 on Linux 5 projects ×4 (`58c1a46`).
+
+## 2026-11-21 ~13:25 UTC — PD — checkpoint by talha.syed (Mac)
+Work on `wip/PD-03` HEAD `43a95fc` (PD-03 done + process-audit gate changes); next: CI check, `pnpm gate:task PD-03`, fast-forward main. Details in that branch's PROGRESS.
