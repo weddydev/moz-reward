@@ -755,3 +755,10 @@ Fonts: upright Latin 66 → 118 KB preloaded; italic 146 KB only on routes that 
 ## 2026-11-20 16:14 UTC — PD — handoff by Syedbadeshah76 (Windows)
 Done today: Linux red fixed (`aa45bcc`), PD-01 (`ac885b4`), PD-02 (`d77392b`), all on main; PD-02 gate PASS, pushed with the stamp. Main CI for PD-01 green; PD-02 run started at handoff.
 Left off: PD-03 Motion core next (handoff note has the FX engine pointers and the tier class change). H-38 gains `wip/e2e-timing`, `wip/PD-01`.
+
+## 2026-11-21 — PD — gate speed, Docker tidy, PD-02 Linux reds, PD-03 half-done by Syedbadeshah76 (Windows)
+Evidence: main `gate:task PD-02` PASS ~10.5 min (unit 1734/0, int 1445/0/12, sast 38 s, e2e 16/0, parity 6/0); before: a finished integration run never exited and held the gate ~55 min; Semgrep took 870–1,349 s per gate through the Docker mount (33 s on CI), now ~40–90 s via tar stream (planted `shell: true` still fails it). Script tests 511/0.
+backup-pitr flake root cause: `archive_timeout=60` WAL switch between reading the LSN and `backup-push` → tampered partition written to a wrong folder; base name now read from the stop sentinel (9/9 alone, 0 failures in the full run).
+Main CI 44890845013 red: PD-02 molten specs on Linux (hover replay off at the 4-core lite tier + phones have no fine pointer; CLS 0.004 from late Manrope re-wrap without Arial). Fix `c072a49` on wip/PD-03 (Manrope preload + optional per human, matched fallbacks, spec fixes) — NOT VERIFIED on Linux (run interrupted).
+PD-03 stress (Chromium, CI-equivalent 4×): 200 bursts, peak 420, 45 fps, p95 33 ms, 3 long tasks (max 73 ms). Unthrottled 60 fps flat; engine JS ≤ 4 ms/frame; trace: main-thread "Commit" 1,195 ms / 1.5 s with coins vs 422 ms with leaves (CPU canvas raster); A/B: save/restore per particle 33 → 17 ms median with one setTransform; SwiftShader GPU canvas flags far worse (100–600 ms). Sprites now ImageBitmap (sparks 33 → 17 ms median), setTransform drawing; coins still ~50 ms at 2.5×.
+Docker: ~15 GB freed (tuitionconnect removed with the human's OK, 41 orphan volumes, 7 unused images, build cache 19 → 11.5 GB).

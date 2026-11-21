@@ -917,3 +917,11 @@ Why: Semgrep blocked the watchdog's shell option (gate 21 Nov); no shell also en
 ## 2026-11-21 — Docker tidy at every sub-phase close (human)
 Decision: `pnpm docker:tidy --apply` at `/subphase-complete`: unused anonymous volumes, dangling images, unreferenced `moz-*` images, build cache older than 7 days; `--images` (unused third-party images) approved on this laptop. Named volumes and anything the repo or a container uses are never touched. On 21 Nov the human also had the unrelated `tuitionconnect` project's containers, images, network and database volume removed. `.artifacts/screens/` stays (human: too small to matter).
 Why: Docker held ~11 GB of images, ~19 GB of build cache and ~2.5 GB of orphaned volumes; none of what is removed is used by a build or test, so nothing gets slower.
+
+## 2026-11-21 — Manrope preloaded with `display: optional` (human; supersedes the P0-08 "Manrope not preloaded")
+Decision: Manrope's Latin file is preloaded and uses `font-display: optional`, like the Fraunces italic; upright Fraunces keeps `swap` + preload. Extra metric-matched fallback faces (`src/styles/font-fallbacks.css`): Manrope → Liberation Sans (Arial's metrics) and Roboto; Fraunces → Liberation Serif (Times' metrics) and Noto Serif; values by next/font's formula from Next's capsize metrics, re-checked by a unit test. DESIGN §4 and §12 updated.
+Why: next/font's fallbacks are `local(Arial)` / `local(Times New Roman)`, which Linux and Android (our main device) don't have, so late-swapped Manrope re-wrapped text (Linux CI: a card lost a line, CLS 0.004; PD-02 requires CLS 0). Cost ≈ 40 KB more font on first load; a very slow first visit shows the matched fallback for that page only. Code: commit `c072a49` on `wip/PD-03` (cherry-pick to main; NOT VERIFIED on Linux yet).
+
+## 2026-11-21 — `pnpm e2e:linux` for the CLAUDE.md "Linux check"
+Decision: browsers run in `mcr.microsoft.com/playwright:v<installed>-noble` via `playwright run-server`; the test runner and `next start` stay on the developer machine (`connectOptions` from `PW_WS_ENDPOINT`); a TCP forwarder in the container keeps the app on http://localhost:3100. Code with `c072a49`.
+Why: there was no committed helper (FOLLOWUPS P1-03), so Linux-only failures (4-core lite tier, missing Arial) surfaced only in CI; it reproduced CI's PD-02 reds locally on the first try.
