@@ -60,7 +60,7 @@ describe("[P0-08] tokens carry the DESIGN §3 / §7 values", () => {
     ["warning", "#b7791f"],
     ["danger", "#b3432f"],
     ["focus", "var(--ink)"],
-    ["focus-ring", "var(--gold-500)"],
+    ["focus-ring", "rgba(210, 160, 51, 0.55)"],
     ["r-sm", "8px"],
     ["r-md", "16px"],
     ["r-lg", "26px"],

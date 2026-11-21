@@ -30,7 +30,7 @@
   --danger: #b3432f;
   /* Focus ring: ink ring with a 2px gold outer ring (DESIGN §3). */
   --focus: var(--ink);
-  --focus-ring: var(--gold-500);
+  --focus-ring: rgba(210, 160, 51, 0.55);
   /* Derived colours (one definition each, so no component mixes its own). */
   --on-danger: var(--surface);
   --success-tint: color-mix(in srgb, var(--success) 6%, var(--surface));

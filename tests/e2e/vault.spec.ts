@@ -315,11 +315,13 @@ test("[P1-08] progress 0: an empty mould, no wave and nothing to pour", async ({
   );
 });
 
-test("[P1-08] the pour holds 60 fps under 4× CPU throttling @perf", async ({ page, signInAs }) => {
-  test.skip(
-    test.info().project.name !== "chromium",
-    "CPU throttling is a Chromium DevTools feature",
-  );
+test("[P1-08] the pour holds 60 fps under 4× CPU throttling @perf", async ({
+  page,
+  signInAs,
+  browserName,
+}) => {
+  // By engine, not project name: CI's @perf step runs pixel7 + desktop1440 (PD-A code review M1).
+  test.skip(browserName !== "chromium", "CPU throttling is a Chromium DevTools feature");
   const me = await signInAs("customer");
   const { shopId } = await seedVault(page.request, me.userId, { progressGold: 720 });
   // The ingot's "first on screen" observer is held until the page has settled, so the pour starts on cue. Loading

@@ -2,8 +2,9 @@
  * The gate's step watchdog (21 Nov 2026): a hung step fails fast instead of blocking the gate. Real child
  * processes, short limits (a few seconds), so the timeout and tree-kill paths are shown working on this OS.
  */
+import { spawn } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { runWatched, stepTimeoutMs, STEP_LIMITS, TIMED_OUT } from "./lib/gate";
+import { runWatched, stepTimeoutMs, STEP_LIMITS, TIMED_OUT, WATCHDOG } from "./lib/gate";
 
 const node = process.execPath;
 const SECONDS = (s: number): number => s / 60; // minutes, for timeoutMin
@@ -60,6 +61,57 @@ describe("[P0-14] gate step watchdog", () => {
     expect(r).toMatchObject({ ok: true, timedOut: false });
     expect((Date.now() - started) / 1000).toBeLessThan(25);
   }, 60_000);
+
+  // PD-A code review M2: Ctrl+C on a gate used to kill only the watchdog, leaving `next start` on :3100 for the
+  // next gate to trip over. POSIX only: Windows has no catchable signal from another process (process.kill
+  // there is TerminateProcess); Ctrl+C reaches every process in the console, and the same handler runs.
+  it.skipIf(process.platform === "win32")(
+    "[P0-14] SIGINT/SIGTERM to the watchdog kills the step's whole tree and exits 130/143",
+    async () => {
+      const script = [
+        "const { spawn } = require('node:child_process');",
+        "const g = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });",
+        "console.log('GRANDCHILD ' + g.pid);",
+        "setInterval(() => {}, 1000);",
+      ].join(" ");
+      for (const [signal, code] of [
+        ["SIGINT", 130],
+        ["SIGTERM", 143],
+      ] as const) {
+        const wd = spawn(node, [WATCHDOG, "60000", node, "-e", script], {
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        const pid = await new Promise<number>((resolve, reject) => {
+          let out = "";
+          wd.stdout.on("data", (d: Buffer) => {
+            out += d.toString();
+            const m = /GRANDCHILD (\d+)/.exec(out);
+            if (m) resolve(Number(m[1]));
+          });
+          wd.on("exit", () => {
+            reject(new Error(`watchdog exited before the step started: ${out}`));
+          });
+        });
+        const exited = new Promise<number | null>((resolve) => wd.on("exit", resolve));
+        wd.kill(signal);
+        expect(await exited).toBe(code);
+        await expect
+          .poll(
+            () => {
+              try {
+                process.kill(pid, 0);
+                return "alive";
+              } catch {
+                return "gone";
+              }
+            },
+            { timeout: 5_000 },
+          )
+          .toBe("gone");
+      }
+    },
+    40_000,
+  );
 
   it("[P0-14] limits: minutes → ms, scaled by GATE_TIMEOUT_SCALE; nonsense counts as 1", () => {
     expect(stepTimeoutMs(20, {})).toBe(1_200_000);

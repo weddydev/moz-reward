@@ -328,24 +328,39 @@ test.describe("[P0-08] AC4: focus ring", () => {
     const n = parseInt(toHex6(hex).slice(1), 16);
     return `rgb(${String((n >> 16) & 255)}, ${String((n >> 8) & 255)}, ${String(n & 255)})`;
   };
-  /** --focus and --focus-ring point at other tokens (ink, gold-500): follow the reference in tokens.css. */
+  /** --focus points at another token (ink): follow the reference in tokens.css. */
   const tokenHex = (name: string): string => {
     const value = declared.get(name) ?? "";
     const ref = /^var\(--([\w-]+)\)$/.exec(value);
     return ref?.[1] ? tokenHex(ref[1]) : value;
   };
   const INK = rgb(tokenHex("focus"));
-  const GOLD = rgb(tokenHex("focus-ring"));
-  /** Exactly the two rings: ink 2px inside, gold out to 4px (colour first or last, as the browser writes it). */
-  const twoRings = (shadow: string): boolean => {
-    const parts = shadow.split(/,(?![^(]*\))/).map((p) => p.trim());
-    const ring = (part: string | undefined, colour: string, spread: string): boolean =>
-      Boolean(part?.includes(colour)) &&
-      part?.replace(colour, "").trim() === `0px 0px 0px ${spread}`;
-    return parts.length === 2 && ring(parts[0], INK, "2px") && ring(parts[1], GOLD, "4px");
+  // The Molten reference's gold halo (rgba(210,160,51,.55)), as browsers write it.
+  const GOLD = "rgba(210, 160, 51, 0.55)";
+  /**
+   * The Molten reference ring (PD-A design review M2): a 2px ink outline 3px out, over one 5px gold halo, and no
+   * other shadow (colour first or last, as the browser writes it).
+   */
+  const ring = (s: {
+    outlineStyle: string;
+    outlineWidth: string;
+    outlineColor: string;
+    outlineOffset: string;
+    boxShadow: string;
+  }): boolean => {
+    const parts = s.boxShadow.split(/,(?![^(]*\))/).map((p) => p.trim());
+    return (
+      s.outlineStyle === "solid" &&
+      s.outlineWidth === "2px" &&
+      s.outlineColor === INK &&
+      s.outlineOffset === "3px" &&
+      parts.length === 1 &&
+      Boolean(parts[0]?.includes(GOLD)) &&
+      parts[0]?.replace(GOLD, "").trim() === "0px 0px 0px 5px"
+    );
   };
 
-  const RINGS = `${INK} 2px + ${GOLD} 4px`;
+  const RINGS = `${INK} 2px outline +3px, ${GOLD} 5px halo`;
 
   type Shape = { radius: string; box: { x: number; y: number; width: number; height: number } };
   /** Radius and box in document coordinates (focusing may scroll the page; it must not move the element). */
@@ -383,7 +398,7 @@ test.describe("[P0-08] AC4: focus ring", () => {
     expect(await target.evaluate((el) => el.matches(":focus-visible"))).toBe(true);
   }
 
-  test("[P0-08] AC4: ink ring and 2px gold outer ring on a gold button, ink button, input and chip", async ({
+  test("[P0-08] AC4: the Molten focus ring (ink outline over a gold halo) on a gold button, ink button, input and chip", async ({
     page,
   }, testInfo) => {
     await openGallery(page);
@@ -398,10 +413,19 @@ test.describe("[P0-08] AC4: focus ring", () => {
       await expect
         .poll(
           async () => {
-            const shadow = await target.evaluate((el) => getComputedStyle(el).boxShadow);
-            return twoRings(shadow) ? RINGS : shadow;
+            const s = await target.evaluate((el) => {
+              const cs = getComputedStyle(el);
+              return {
+                outlineStyle: cs.outlineStyle,
+                outlineWidth: cs.outlineWidth,
+                outlineColor: cs.outlineColor,
+                outlineOffset: cs.outlineOffset,
+                boxShadow: cs.boxShadow,
+              };
+            });
+            return ring(s) ? RINGS : JSON.stringify(s);
           },
-          { message: `${name}: box-shadow is the two rings only (not the component's own shadow)` },
+          { message: `${name}: the reference ring only (not the component's own shadow)` },
         )
         .toBe(RINGS);
       const after = await shapeOf(target);
@@ -430,7 +454,7 @@ test.describe("[P0-08] AC4: focus ring", () => {
       });
       expect(outline.style, `${name}: outline style`).toBe("solid");
       expect(outline.width, `${name}: outline width`).toBe("2px");
-      // Forced colours replace the transparent author colour with a system colour.
+      // Forced colours draw the outline in a system colour (box-shadows are removed in that mode).
       expect(outline.colour, `${name}: outline colour`).not.toMatch(
         /rgba\(0, 0, 0, 0\)|transparent/,
       );

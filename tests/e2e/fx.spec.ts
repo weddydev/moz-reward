@@ -342,11 +342,10 @@ test("[PD-03] press kit: pressed state, a ripple from the press point, celebrate
  */
 test("[PD-03] 200-burst stress at 4× CPU: 60 fps, p95 ≤ 16.8 ms, no long task over 50 ms @perf", async ({
   page,
+  browserName,
 }) => {
-  test.skip(
-    test.info().project.name !== "chromium",
-    "CPU throttling is a Chromium DevTools feature",
-  );
+  // By engine, not project name: CI's @perf step runs pixel7 + desktop1440 (PD-A code review M1).
+  test.skip(browserName !== "chromium", "CPU throttling is a Chromium DevTools feature");
   await page.addInitScript(() => {
     const w = window as unknown as { __long: number[] };
     w.__long = [];

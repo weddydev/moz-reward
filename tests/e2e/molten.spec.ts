@@ -188,7 +188,13 @@ test("[PD-02] the Fraunces italic is preloaded only where italic shows (no cost 
 test("[PD-02] Language section at 320, 390 and 1440: no horizontal scroll (screens for inspection)", async ({
   page,
   shoot,
+  browserName,
+  isMobile,
 }) => {
+  // Three full-page shots of a tall page: alone on Linux, pixel7 (DPR 2.6) took 28 s and iphone14 38 s. And
+  // Playwright's WebKit rasterises on the CPU (Linux and Windows): this page runs at 0–11 fps there after a load
+  // or resize (21 Nov 2026; Chromium 60). Speed is the @perf specs' job (real Safari: H-13), not this one's.
+  test.slow(browserName === "webkit" || isMobile, "full-page phone shots; CPU-rendered WebKit");
   await openMolten(page);
   for (const width of [320, 390, 1440]) {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
@@ -196,7 +202,11 @@ test("[PD-02] Language section at 320, 390 and 1440: no horizontal scroll (scree
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow, `at ${String(width)}`).toBeLessThanOrEqual(0);
-    await page.locator('[data-parity="language"]').scrollIntoViewIfNeeded();
+    // A DOM scroll, not scrollIntoViewIfNeeded: Playwright resolves locators frame by frame, and CPU-rendered
+    // WebKit draws this page at 0–6 fps after a load or resize (21 Nov 2026), so the locator never resolved.
+    await page.evaluate(() => {
+      document.querySelector('[data-parity="language"]')?.scrollIntoView({ block: "start" });
+    });
     await shoot(`molten-language-${String(width)}`);
   }
 });

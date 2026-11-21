@@ -206,16 +206,15 @@
 }
 
 /*
- * Focus ring (DESIGN §3, §13): an ink ring with a 2px gold outer ring. Unlayered on purpose, so it wins over
- * any component or utility shadow; it follows the element's own radius. The transparent outline is what
- * forced-colours mode (Windows High Contrast) draws, because that mode removes box-shadows.
+ * Focus ring (DESIGN §3, §13; the Molten reference's `:focus-visible`, PD-A design review M2): a 2px ink
+ * outline 3px out, over a 5px gold halo. Unlayered on purpose, so it wins over any component or utility
+ * shadow; both follow the element's own radius. Forced-colours mode (Windows High Contrast) removes the halo
+ * and draws the outline in a system colour.
  */
 :focus-visible {
-  outline: 2px solid transparent;
-  outline-offset: 2px;
-  box-shadow:
-    0 0 0 2px var(--focus),
-    0 0 0 4px var(--focus-ring);
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px var(--focus-ring);
 }
 
 /*

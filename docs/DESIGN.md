@@ -46,7 +46,7 @@ Implement as CSS variables in `src/styles/tokens.css` and expose via Tailwind th
 | `--success` | `#2F7D5B` | Success states |
 | `--warning` | `#B7791F` | Warnings |
 | `--danger` | `#B3432F` | Errors, destructive |
-| `--focus` | `#1C1A17` with 2px `--gold-500` outer ring | Focus ring |
+| `--focus` | `--ink`: 2px outline, offset 3px, over a 5px `--focus-ring` halo `rgba(210,160,51,.55)` (Molten reference) | Focus ring |
 
 Rules (v2): no area cap on gold (it is a material; the v1 "≤ 10%" rule is retired, human 20 Nov 2026). Text on gold uses ink. Gold text uses `--gold-deep` (or the metal-text gradient on display sizes) on light surfaces. Never gold text on gold. Ember is for alerts and urgency only. Check contrast (WCAG AA 4.5:1 body, 3:1 large text/UI).
 

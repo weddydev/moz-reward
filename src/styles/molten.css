@@ -102,6 +102,10 @@
   .m-dark:hover {
     box-shadow: var(--lift-dark), var(--lift-hover);
   }
+  /* A dark card that lifts rises like a placed one (reference `.pcard:hover`; PD-A design review M4). */
+  .m-dark[data-lift]:hover {
+    translate: 0 -4px;
+  }
 }
 
 /* ---------- gilded edge ---------- */

@@ -9,6 +9,7 @@
 // - On timeout: a `[gate] TIMED OUT` line on stderr, the tree is killed (taskkill /T on Windows, the process
 //   group elsewhere), exit 124.
 // - When the step exits but a stray grandchild keeps its output pipe open, the watchdog still exits after 10 s.
+// - SIGINT/SIGTERM/SIGHUP to the watchdog: the tree is killed, exit 130/143/129.
 // - `GATE_WATCHDOG_SHELL=1`: run through a shell (pnpm.cmd on Windows); the caller has checked the arguments.
 // Plain JavaScript so it starts without tsx.
 import { spawn, spawnSync } from "node:child_process";
@@ -62,6 +63,22 @@ const timer = setTimeout(() => {
   killTree();
   finish(124);
 }, timeoutMs);
+
+// Ctrl+C / kill on the gate: take the step's tree down too (it runs in its own process group, so the signal
+// never reached it and `next start` kept :3100 for the next gate; PD-A code review M2). 128 + signal number.
+for (const [signal, code] of [
+  ["SIGINT", 130],
+  ["SIGTERM", 143],
+  ["SIGHUP", 129],
+]) {
+  process.on(signal, () => {
+    process.stderr.write(`\n[gate] ${signal}: killing the step's process tree\n`);
+    clearTimeout(timer);
+    killTree();
+    done = true;
+    process.exit(code);
+  });
+}
 
 child.on("error", (err) => {
   process.stderr.write(`\n[gate] could not start ${cmd}: ${err.message}\n`);

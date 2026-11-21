@@ -214,6 +214,48 @@ function expectOneEnter(enter: Seen[], offset: string, depth = 0): void {
 const cards = (page: Page) => page.locator('[data-demo="cards"] a');
 
 /**
+ * Runs the page's `window.__scan` the moment a route animation can exist, until it returns true: right after
+ * any `Element.animate` call (page enters), when a view transition's pseudo animations are ready, and on every
+ * frame as a fallback. Frames alone were not enough: Linux WebKit (CPU compositor, CI image) runs about one
+ * frame a second for 1–2 s after a load or navigation (measured 21 Nov 2026: 1 rAF/s on /dev/motion vs 58 on
+ * host WebKit, 62 once settled; JIT fine), so a per-frame hook found the enter only after it had run.
+ */
+async function catchRouteAnimations(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as { __scan?: (() => boolean) | undefined; __catching?: boolean };
+    if (w.__catching) return;
+    w.__catching = true;
+    const run = (): void => {
+      if (w.__scan?.()) w.__scan = undefined;
+    };
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- re-applied with the element as `this`
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (this: Element, ...args: Parameters<Element["animate"]>) {
+      const animation = animate.apply(this, args);
+      run();
+      return animation;
+    };
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- re-applied with the document as `this`
+    const start = document.startViewTransition as typeof document.startViewTransition | undefined;
+    if (typeof start === "function") {
+      document.startViewTransition = function (
+        this: Document,
+        ...args: Parameters<typeof document.startViewTransition>
+      ) {
+        const transition = start.apply(this, args);
+        transition.ready.then(run, () => undefined);
+        return transition;
+      } as typeof document.startViewTransition;
+    }
+    const frame = (): void => {
+      run();
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  });
+}
+
+/**
  * Slides are for phones and tablets; from 1024px up the content cross-fades in place (DESIGN §7 "Desktop").
  * The slide tests therefore run at a phone size on every project.
  */
@@ -341,10 +383,11 @@ test.describe("[P0-10] route transitions", () => {
     await phoneSize(page);
     await openGallery(page);
     // Hold the enter at its first frame so the switch lands mid-slide whatever the machine's speed.
+    await catchRouteAnimations(page);
     await page.evaluate(() => {
-      const w = window as unknown as { __enter: Animation | null };
+      const w = window as unknown as { __enter: Animation | null; __scan?: () => boolean };
       w.__enter = null;
-      const tick = (): void => {
+      w.__scan = () => {
         const found = document
           .getAnimations()
           .find((a) =>
@@ -352,14 +395,11 @@ test.describe("[P0-10] route transitions", () => {
               "data-route-content",
             ),
           );
-        if (found) {
-          found.pause();
-          w.__enter = found;
-          return;
-        }
-        requestAnimationFrame(tick);
+        if (!found) return false;
+        found.pause();
+        w.__enter = found;
+        return true;
       };
-      requestAnimationFrame(tick);
     });
     await page.getByRole("link", { name: "Open a detail page" }).click();
     await expect(page).toHaveURL(/\/dev\/motion\/details$/);
@@ -394,10 +434,11 @@ test.describe("[P0-10] route transitions", () => {
     await page.goto("/dev/motion/details");
     await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
     // Hold the first enter (the back slide) so the second navigation certainly interrupts it.
+    await catchRouteAnimations(page);
     await page.evaluate(() => {
-      const w = window as unknown as { __first: Animation | null };
+      const w = window as unknown as { __first: Animation | null; __scan?: () => boolean };
       w.__first = null;
-      const tick = (): void => {
+      w.__scan = () => {
         const found = document
           .getAnimations()
           .find((a) =>
@@ -405,14 +446,11 @@ test.describe("[P0-10] route transitions", () => {
               "data-route-content",
             ),
           );
-        if (found) {
-          found.pause();
-          w.__first = found;
-          return;
-        }
-        requestAnimationFrame(tick);
+        if (!found) return false;
+        found.pause();
+        w.__first = found;
+        return true;
       };
-      requestAnimationFrame(tick);
     });
     await page.getByRole("link", { name: "← Motion gallery" }).click();
     await expect(page).toHaveURL(/\/dev\/motion$/);
@@ -801,13 +839,19 @@ test.describe("[P0-10] frame screenshots mid-transition", () => {
   type Held = { what: string; state: string; at: number; half: number; opacity: number };
 
   /** Pauses each route animation (VT pseudos + page enters) at half its duration until released. */
-  const hold = (page: Page): Promise<void> =>
-    page.evaluate(() => {
-      const w = window as unknown as { __held: Set<Animation>; __holding: boolean };
+  const hold = async (page: Page): Promise<void> => {
+    await catchRouteAnimations(page);
+    await page.evaluate(() => {
+      const w = window as unknown as {
+        __held: Set<Animation>;
+        __holding: boolean;
+        __scan?: () => boolean;
+      };
       w.__held = new Set();
       w.__holding = true;
-      const tick = (): void => {
-        if (!w.__holding) return;
+      // Keeps scanning (a morph adds group, old, new and the enter) until released.
+      w.__scan = () => {
+        if (!w.__holding) return true;
         for (const a of document.getAnimations()) {
           const effect = a.effect as KeyframeEffect | null;
           const ours =
@@ -819,10 +863,10 @@ test.describe("[P0-10] frame screenshots mid-transition", () => {
           a.currentTime = total / 2;
           w.__held.add(a);
         }
-        requestAnimationFrame(tick);
+        return false;
       };
-      requestAnimationFrame(tick);
     });
+  };
   /** What is held right now: proof that the picture is a mid-transition frame, not the page at rest. */
   const heldNow = (page: Page): Promise<Held[]> =>
     page.evaluate(() => {
@@ -847,13 +891,16 @@ test.describe("[P0-10] frame screenshots mid-transition", () => {
       for (const a of w.__held) a.play();
     });
 
-  /** Runs one scene up to the held frame and checks the hold. */
-  async function toHeldFrame(page: Page, scene: Scene): Promise<void> {
+  /**
+   * Runs one scene up to the held frame and checks the hold. `navTimeout`: how long the URL may take to change
+   * (the speed itself is AC2's test, not this one's).
+   */
+  async function toHeldFrame(page: Page, scene: Scene, navTimeout?: number): Promise<void> {
     await page.goto(scene.from);
     await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
     await hold(page);
     await scene.go(page);
-    await expect(page).toHaveURL(scene.to);
+    await expect(page).toHaveURL(scene.to, navTimeout ? { timeout: navTimeout } : {});
     await page.waitForFunction(
       () => (window as unknown as { __held: Set<Animation> }).__held.size > 0,
     );
@@ -988,15 +1035,17 @@ test.describe("[P0-10] frame screenshots mid-transition", () => {
         recordVideo: { dir: testInfo.outputPath("video"), size: viewport },
       });
       const filmed = await context.newPage();
-      await toHeldFrame(filmed, morph);
+      // A fresh context that records video: on Linux WebKit (CPU compositor) its first morph took 1.1–2.4 s
+      // alone and over 5 s beside other workers (21 Nov 2026).
+      await toHeldFrame(filmed, morph, 15_000);
       await filmed.waitForTimeout(600); // a few video frames of the held picture
       const video = filmed.video();
       await context.close();
       if (!video) throw new Error("no video was recorded");
-      writeFileSync(
-        file(morph),
-        await lastVideoFrame(playwright.chromium, await video.path(), 0.2),
-      );
+      // saveAs, not path(): path() is unavailable when the browser runs remotely (`pnpm e2e:linux`).
+      const saved = testInfo.outputPath("video", "morph.webm");
+      await video.saveAs(saved);
+      writeFileSync(file(morph), await lastVideoFrame(playwright.chromium, saved, 0.2));
     });
   }
 });
