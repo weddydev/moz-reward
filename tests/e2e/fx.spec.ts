@@ -18,6 +18,22 @@ type Hook = {
   clear: () => void;
 };
 
+const TIER_KEY = "moz:tier";
+
+/** Reports `cores` cores and 8 GB to every page script, before the pre-paint tier script runs. */
+async function pinDevice(page: Page, cores: number): Promise<void> {
+  await page.addInitScript((n) => {
+    Object.defineProperty(Navigator.prototype, "hardwareConcurrency", { get: () => n });
+    Object.defineProperty(Navigator.prototype, "deviceMemory", {
+      get: () => 8,
+      configurable: true,
+    });
+  }, cores);
+}
+
+const hydrated = (page: Page): Promise<unknown> =>
+  page.waitForFunction(() => document.documentElement.dataset.hydrated === "true");
+
 async function openPlayground(page: Page): Promise<void> {
   await page.goto("/dev/motion");
   await page.waitForFunction(() => "__mozFx" in window);
@@ -213,9 +229,12 @@ test("[PD-03] the Me preference alone also turns reduced motion on (one source)"
 test("[PD-03] lite tier: half the particles and a 160 cap; the playground switch flips <html class=lite>", async ({
   page,
 }) => {
+  // A full-tier device whatever runs the test: CI's 4-core runners are lite (CI 44907279740 failed the
+  // "Follow the device" step there). The lite-device case is the next test.
+  await pinDevice(page, 8);
   await openPlayground(page);
   // `__mozFx` comes from the root-layout canvas, which can be ready before the playground hydrates; a click
-  // before that is lost. CI's 4-core runners start in lite, so retry until the class really flips (CI 44905055902).
+  // before that is lost, so retry until the class really flips.
   await expect(async () => {
     await page.getByRole("radio", { name: "full" }).check();
     await expect(page.locator("html")).not.toHaveClass(/(^|\s)lite(\s|$)/, { timeout: 1_000 });
@@ -243,8 +262,30 @@ test("[PD-03] lite tier: half the particles and a 160 cap; the playground switch
   // The override survives a reload in this tab; "Follow the device" drops it.
   await page.reload();
   await expect(page.locator("html")).toHaveClass(/(^|\s)lite(\s|$)/);
+  await hydrated(page);
   await page.getByRole("button", { name: "Follow the device" }).click();
   await expect(page.locator("html")).not.toHaveClass(/(^|\s)lite(\s|$)/);
+  expect(await page.evaluate((k) => sessionStorage.getItem(k), TIER_KEY)).toBeNull();
+});
+
+test("[PD-03] a lite device (4 cores) starts lite before paint; a full override wins, and following the device brings lite back", async ({
+  page,
+}) => {
+  await pinDevice(page, 4);
+  await page.goto("/dev/motion");
+  // Set by the pre-paint script, so it is there before any client code runs.
+  await expect(page.locator("html")).toHaveClass(/(^|\s)lite(\s|$)/);
+  await hydrated(page);
+  await page.waitForFunction(() => "__mozFx" in window);
+  await expect(page.getByRole("radio", { name: "lite" })).toBeChecked();
+  expect(await stats(page)).toMatchObject({ cap: 160 });
+  await page.getByRole("radio", { name: "full" }).check();
+  await expect(page.locator("html")).not.toHaveClass(/(^|\s)lite(\s|$)/);
+  expect(await stats(page)).toMatchObject({ cap: 420 });
+  await page.getByRole("button", { name: "Follow the device" }).click();
+  await expect(page.locator("html")).toHaveClass(/(^|\s)lite(\s|$)/);
+  await expect(page.getByRole("radio", { name: "lite" })).toBeChecked();
+  expect(await page.evaluate((k) => sessionStorage.getItem(k), TIER_KEY)).toBeNull();
 });
 
 test("[PD-03] a route change mid-burst: particles finish over the new page, which works at once", async ({
