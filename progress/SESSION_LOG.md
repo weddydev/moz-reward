@@ -786,3 +786,8 @@ CI 44907279740 (`43a95fc`) red: pixel7 + desktop1440 lite-tier spec at "Follow t
 
 ## 2026-11-21 ~13:25 UTC — PD — checkpoint by talha.syed (Mac)
 Work on `wip/PD-03` HEAD `43a95fc` (PD-03 done + process-audit gate changes); next: CI check, `pnpm gate:task PD-03`, fast-forward main. Details in that branch's PROGRESS.
+
+## 2026-11-21 — PD-A reviews + handoff by talha.syed (Mac)
+Reviews of `2dd6039..4ecb0de`: security PASS (MEDIUM: file named `--exclude=*` emptied GNU tar → Semgrep passed; NUL list + `--null` + entry-count check; LOW gitleaks `:ro`); design PASS after HIGH (`.rm *` lost to the 150 ms net; `html:root.rm`, stagger fade exempt, DECISIONS); code APPROVE WITH FIXES (M1 @perf project filter, M2 watchdog signals open; M3 → C-75 PD-04). Review fixes `675cdad`.
+Main push of `b7d1c3f` refused by the pre-push gate: Linux 5-project task specs 248/5/12 (motion.spec :482, :514, :959×2; molten.spec :161); motion.spec :338 fails 4/4 on Linux WebKit with or without this branch's CSS. Nightly 44729934917 (20 Nov, main) red on the same Linux-WebKit cluster. Main stays `d055dd6`.
+Wip CI 44909391859 (`58c1a46`) green; `ci:usage` 135% estimate (public repo, unbilled). Merged main's checkpoint (`d055dd6`) into wip/PD-03 (`b7d1c3f`).
