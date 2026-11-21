@@ -494,42 +494,47 @@ head -n 1 "$t/etc/staging/caddy-tls/origin.crt"`,
   },
 );
 
-describe("[P0-15] C1b review: staging Caddy starts only behind the firewall, and refuses clients without the origin-pull certificate", () => {
-  it.each([
-    ["staging", "false", 1],
-    ["staging", "true", 0],
-    ["production", "false", 0],
-  ])(
-    "[P0-15] require_origin_firewall %s with a check that runs %s → exit %d",
-    (env, bin, status) => {
-      const result = run('require_origin_firewall "$1" "$2"', [env, bin]);
-      expect(result.status).toBe(status);
-      if (status) expect(result.stderr).toMatch(/the origin firewall is not in place/);
-    },
-  );
+// Every case starts Git Bash (two in one case): ~1 s alone, past Vitest's 5 s default under the gate's parallel
+// load on Windows (gate 21 Nov), so the block gets the same per-spawn allowance as the other bash blocks here.
+describe(
+  "[P0-15] C1b review: staging Caddy starts only behind the firewall, and refuses clients without the origin-pull certificate",
+  { timeout: 30_000 },
+  () => {
+    it.each([
+      ["staging", "false", 1],
+      ["staging", "true", 0],
+      ["production", "false", 0],
+    ])(
+      "[P0-15] require_origin_firewall %s with a check that runs %s → exit %d",
+      (env, bin, status) => {
+        const result = run('require_origin_firewall "$1" "$2"', [env, bin]);
+        expect(result.status).toBe(status);
+        if (status) expect(result.stderr).toMatch(/the origin firewall is not in place/);
+      },
+    );
 
-  it.each([
-    ["35", "000", true],
-    ["56", "000", true],
-    ["56", "", true],
-    ["0", "401", false],
-    ["22", "421", false],
-    ["7", "000", false],
-    ["28", "000", false],
-    ["60", "000", false],
-    ["56", "200", false],
-  ])("[P0-15] mtls_probe_ok curl exit %s, HTTP %j → %s", (code, status, ok) => {
-    expect(run('mtls_probe_ok "$1" "$2"', [code, status]).status === 0).toBe(ok);
-  });
+    it.each([
+      ["35", "000", true],
+      ["56", "000", true],
+      ["56", "", true],
+      ["0", "401", false],
+      ["22", "421", false],
+      ["7", "000", false],
+      ["28", "000", false],
+      ["60", "000", false],
+      ["56", "200", false],
+    ])("[P0-15] mtls_probe_ok curl exit %s, HTTP %j → %s", (code, status, ok) => {
+      expect(run('mtls_probe_ok "$1" "$2"', [code, status]).status === 0).toBe(ok);
+    });
 
-  /**
-   * Staging deploy 43735134613 (15 Nov): Caddy has no healthcheck, so `up --wait` returned before it listened and
-   * the probe got curl exit 7. The probe waits while nothing listens (exit 7, up to MTLS_WAIT_SECONDS); any other
-   * answer is final. curl prints the code it is given in turn ($CODES), ip and sleep are faked.
-   */
-  const probe = (codes: string, wait = "5") =>
-    run(
-      String.raw`t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
+    /**
+     * Staging deploy 43735134613 (15 Nov): Caddy has no healthcheck, so `up --wait` returned before it listened and
+     * the probe got curl exit 7. The probe waits while nothing listens (exit 7, up to MTLS_WAIT_SECONDS); any other
+     * answer is final. curl prints the code it is given in turn ($CODES), ip and sleep are faked.
+     */
+    const probe = (codes: string, wait = "5") =>
+      run(
+        String.raw`t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
 etc_dir() { echo "$t"; }
 mkdir -p "$t/env"; printf "APP_HOST='staging.example.com'\n" >"$t/env/caddy.env"
 ip() { echo "1.1.1.1 via 10.0.0.1 dev eth0 src 203.0.113.9 uid 0"; }
@@ -541,31 +546,32 @@ curl() { local n; n=$(($(<"$t/n") + 1)); echo "$n" >"$t/n"; printf 000; return "
 MTLS_WAIT_SECONDS=$2
 check_origin_mtls staging
 echo "tries=$(<"$t/n")"`,
-      [codes, wait],
-    );
+        [codes, wait],
+      );
 
-  it("[P0-15] check_origin_mtls waits while Caddy is not listening yet (curl exit 7), then checks the refusal", () => {
-    const result = probe("7,7,56");
-    expect(result.status).toBe(0);
-    expect(result.stdout).toBe("tries=3\n");
-    expect(result.stderr).toMatch(
-      /origin mTLS checked: refused without Cloudflare's client certificate \(curl exit 56\)/,
-    );
-  });
+    it("[P0-15] check_origin_mtls waits while Caddy is not listening yet (curl exit 7), then checks the refusal", () => {
+      const result = probe("7,7,56");
+      expect(result.status).toBe(0);
+      expect(result.stdout).toBe("tries=3\n");
+      expect(result.stderr).toMatch(
+        /origin mTLS checked: refused without Cloudflare's client certificate \(curl exit 56\)/,
+      );
+    });
 
-  it("[P0-15] check_origin_mtls fails at once on any answer but a TLS refusal, and when Caddy never listens", () => {
-    const answered = probe("0,56");
-    expect(answered.status).toBe(1);
-    expect(answered.stderr).toMatch(
-      /Caddy answered a client without Cloudflare's certificate \(curl exit 0/,
-    );
-    const never = probe("7,7,7,7,7,7,7", "3");
-    expect(never.status).toBe(1);
-    expect(never.stderr).toMatch(
-      /Caddy did not accept connections on 203\.0\.113\.9:443 within 3 s/,
-    );
-  });
-});
+    it("[P0-15] check_origin_mtls fails at once on any answer but a TLS refusal, and when Caddy never listens", () => {
+      const answered = probe("0,56");
+      expect(answered.status).toBe(1);
+      expect(answered.stderr).toMatch(
+        /Caddy answered a client without Cloudflare's certificate \(curl exit 0/,
+      );
+      const never = probe("7,7,7,7,7,7,7", "3");
+      expect(never.status).toBe(1);
+      expect(never.stderr).toMatch(
+        /Caddy did not accept connections on 203\.0\.113\.9:443 within 3 s/,
+      );
+    });
+  },
+);
 
 describe("[P0-15] weekly staging demo reset (C-38)", () => {
   const systemd = (name: string): string =>
