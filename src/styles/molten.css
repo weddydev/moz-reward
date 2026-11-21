@@ -296,10 +296,11 @@ svg.m-seam {
  * in globals.css stay as the no-JavaScript net.
  */
 /* `html:root.rm` (0,2,1) outranks the globals.css net (0,2,0), which would otherwise win the animation
-   duration and play every loop once over 150 ms (PD-A design review). The one exception is a deliberate
-   reduced-motion fade (the P0-10 stagger's `moz-fade`, ≤ 150 ms, DESIGN §7.2): it replaces movement, so it
-   keeps the net's duration instead of vanishing in .001ms. */
-html:root.rm *:not(.stagger-item),
+   duration and play every loop once over 150 ms (PD-A design review). The exceptions are the deliberate
+   reduced-motion fades (≤ 150 ms, DESIGN §7.2): the P0-10 stagger's `moz-fade` and the P1-03 gilded gate's
+   `gate-fade`. They replace movement, so they keep their duration instead of vanishing in .001ms (the gate
+   would otherwise end at once and skip its fade: gilded-gate.spec "reduced motion", CI 44915121101). */
+html:root.rm *:not(.stagger-item, .gilded-gate),
 html:root.rm *::before,
 html:root.rm *::after {
   animation-duration: 0.001ms !important;
