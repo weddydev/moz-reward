@@ -7,18 +7,16 @@ Baton: held by talha.syed since 2026-11-21 11:03 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed (Mac), 21 Nov 2026 ~13:20 UTC. Branch `wip/PD-03`** (see SESSION_LOG for HEAD). Main is at `83bb4e5` (PD-02 Linux fix, CI green). PD-03 is ticked on `wip/PD-03` but **not yet on main**.
-- **Process audit changes (human approved 21 Nov; CLAUDE.md "Process audit rules", TESTING §4, DECISIONS):** gate:task E2E now runs in the Linux container (`startLinuxBrowsers` in `scripts/e2e-linux.ts`): task specs on all 5 projects, `@perf` specs alone on 1 worker (PERF=1), changed specs (`--only-changed=origin/main`) on CI's pixel7 + desktop1440; wip pushes run `pnpm check` + `pnpm sast`; `@perf` tag on the 3 CPU-throttled specs (fx stress, vault 60 fps, gilded-gate long task), excluded from normal runs, own steps in CI, nightly and gate:phase.
-- **Do first (in order):** 1) `git switch wip/PD-03 && git merge --ff-only origin/wip/PD-03`, check HEAD. 2) Check CI for that push (`gh run list --branch wip/PD-03 --limit 1`); it carries the CI fix for the pixel7 lite-tier spec (hydration race: a click before the playground hydrated was lost; 4-core CI starts in lite) and the new CI `@perf` step. 3) `pnpm gate:task PD-03`: **NOT VERIFIED yet with the final gate code** (last run: task specs 46/0 and perf 1/0 on Linux PASS; "changed specs" 231 tests on 5 projects had 8 WebKit/phone timeouts from overload, now limited to CI's 2 projects; its "working tree unchanged" FAILED because docs/PHASES.md was overwritten mid-run, see next line). 4) Green gate + green CI → `git switch main && git merge --ff-only wip/PD-03 && git push` (hook runs the gate; same tree → stamp skip).
-- **Unexplained:** at 18:24:27 IST, during the gate's integration step, `docs/PHASES.md` was replaced by its exact content at commit `349c008` (17 Nov). No project code writes PHASES.md or runs git in tests; human was in VS Code then (Git/Timeline action suspected, not confirmed). Restored from HEAD. If it recurs, find the writer before anything else (FOLLOWUPS).
-- **Next after that:** PD-A MEDIUM batch: **M1** `useCountUp` jumps when interrupted (`src/components/motion/press.ts:87-94` + `src/lib/motion/press.ts:128-131`: cleanup snaps to the old target; keep the last shown value and start from it); **M2** spec table: bind the press kit (scale .93, ripple 720 ms ×2.4, celebrate 28/6 + speeds [180,520]/[260,520] spread 1.6, magnetic ±8/±6 ×.1/.25, countUp 700 ms, anim RM 150 ms) and the missing `fx-engine` values (size ranges, spin [-8,8], flip [6,14], leaf sway 3/40, fade .35, leaf colours, trail .035, lineWidth 1.6). Then PD-A `/subphase-complete`.
-- **Not yet tested:** final gate code end to end (step 3); CI's new `@perf` step; Windows laptop with the Linux-container gate (Docker Desktop must be running; first container start downloads Playwright ~1 min). **P1-A still not ticked:** waits for **H-48 🔴**.
+- **talha.syed (Mac), 21 Nov 2026 ~19:00 IST. Branch `wip/PD-03`** (PD-03 + process audit + lite-spec fix `1871619` + PD-A MEDIUM batch). Main is at `83bb4e5` (PD-02 Linux fix, CI green). Main Deploy fails on the missing staging `SENTRY_DSN` (H-48), as expected.
+- **Done this session:** `gate:task PD-03` with the final gate code PASS (Linux e2e 46/0, perf 1/0, changed specs 95/0); first run caught a lite-tier spec race (30 `page.evaluate` round trips outlived .45 s sparks under load), fixed. MEDIUM batch M1 (countUp interrupt) + M2 (press-kit spec row + 11 fx-engine values, test-first, mutations caught). Pre-commit secret scan now works in a linked worktree (it failed with "not a git repository").
+- **Next, in order:** 1) wip CI for `43a95fc` (44907279740) green, then push `wip/PD-03`; 2) `git switch main && git merge --ff-only wip/PD-03 && git push` (hook: same tree → stamp skip); 3) PD-A `/subphase-complete` (staging step blocked by H-48, like P1-A).
+- **Watch:** the 21 Nov unexplained `docs/PHASES.md` overwrite did not recur in two gate runs today (FOLLOWUPS).
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov; `docs/phases/PD.md`). Then P1 resumes with the P1-B close. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
-- **Current sub-phase:** **PD-A** Foundation: ~~PD-00~~ → ~~PD-01~~ → ~~PD-02~~ (Linux CI fix on main 21 Nov) → ~~PD-03~~ → MEDIUM batch (M1, M2) → `/subphase-complete`; then PD-B (controls), PD-C (structure + signature moments, needs H-49). **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done except the staging step, which waits for H-48.)
+- **Current sub-phase:** **PD-A** Foundation: ~~PD-00~~ → ~~PD-01~~ → ~~PD-02~~ (Linux CI fix on main 21 Nov) → ~~PD-03~~ → ~~MEDIUM batch (M1, M2)~~ → `/subphase-complete`; then PD-B (controls), PD-C (structure + signature moments, needs H-49). **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done except the staging step, which waits for H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-21, talha.syed (PD-03 done on wip; process audit changes; gate re-run + merge to main next)
+- **Last updated:** 2026-11-21, talha.syed (PD-03 gate PASS with final gate code; MEDIUM batch done on `wip/PD-03`; merge to main next)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -27,7 +25,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-00..PD-02 done; PD-02's Linux CI red fix (`c072a49` + Semgrep fix `527fbb8`) verified with `pnpm e2e:linux` and squashed onto main 21 Nov (talha.syed). PD-03 done 21 Nov (talha.syed). 21 Nov: gate ~10.5 min (watchdog limits, Semgrep tar stream), `pnpm e2e:linux` built, Docker tidied (~15 GB).
 
 ## Next (top 3)
-1. **PD-A MEDIUM batch** (M1 countUp interrupt, M2 spec-table rows; details in the handoff note), one commit + `gate:task`.
+1. **Merge `wip/PD-03` to main** once wip CI is green (handoff note steps 1–2).
 2. **PD-A `/subphase-complete`** (incl. `pnpm docker:tidy --apply`), then PD-B (PD-04 buttons, icon button, toast).
 3. Human: **H-48** (staging Sentry DSN) → then close P1-A; any time H-38, H-45, H-46, H-50 (optional Defender exclusion).
 
@@ -79,7 +77,8 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (21 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- PD-02 fix on main: `gate:task PD-02` PASS (Mac, unit 1759/0, int 1456/0/1, e2e 16/0, parity 6/0); main CI 44901375933 green; `pnpm e2e:linux` molten desktop1440 + pixel7 ×3: 45/0/3 skipped.
+- `gate:task PD-03` (Mac, final gate code) PASS: unit 1794/0, int 1456/0/1, Linux e2e 46/0, perf 1/0, changed specs 95/0. Lite-tier spec fix: `pnpm e2e:linux` 5 projects ×5 25/0.
+- MEDIUM batch: motion units 128/0 (5 new tests fail on the old code); spec-table mutations of prod values fail their rows; secret scan in a worktree: clean tree passes, planted token blocked (exit 1).
 - PD-03 stress: Mac Chromium 59.6–60 fps / p95 16.7 / 0 long; Linux 59.6–60 / 16.7–16.8 / 0 long (peak 420, 200 bursts).
 - PD-03: full 5-project E2E 1188 passed / 6 failed → all 6 fixed; fx + motion-primitives 5 projects 87/0; Linux Chromium + WebKit 36/0; motion units 122/0.
 - Screens `.artifacts/screens/PD-03` (320/390/1440, idle + mid-burst) inspected; design review PASS with fixes (HIGH fixed, 2 MEDIUM batched, 5 LOW in FOLLOWUPS).
