@@ -798,3 +798,9 @@ Wip CI 44915121101 (`4bf7fad`) red: gilded-gate.spec `:275` reduced motion, rece
 `pnpm check` on Windows failed: sast fixture `--exclude=*` ENOENT (Windows file name) → `--exclude=src` (`67e827d`); with the newline list restored the test still fails.
 `pnpmInvocation` fell back to cmd.exe for pnpm 12's `pnpm.exe` (`e2e:linux -g "a|b"` → "'reduced-motion' is not recognized") → direct spawn (`1375f2b`, test first).
 Wip HEAD `1375f2b`; main push gate (5 Linux specs) untouched, next.
+
+## 2026-11-21 ~15:30–16:45 UTC — PD — PD-A MEDIUMs + Linux WebKit root cause, checkpoint by Syedbadeshah76 (Windows)
+Wip CI 44918269127 (`1375f2b`) green. MEDIUM batch `d8656bf` (code M1 @perf browserName, M2 watchdog signals: old FAIL/new PASS in a Linux node container; design M2 reference focus ring, AC4 E2E failed first; M4 dark lift, CSS unit test failed first). Semgrep blocked the new CSS test's dynamic RegExp → string search (`73f46c8`).
+Linux WebKit root cause: CPU-rendered WebKit ~1 rAF/s for 1–2 s after load/navigation (/dev/motion; host 58), /dev/molten 0–6 fps; JIT fine; not CSS-specific. Fixed `:338`, `:959`, molten Language (creation-time animation hooks, `saveAs`, DOM scroll, `test.slow`); `:482`/`:514` pass alone (load). `pnpm e2e:linux` 14/0 + 5/0.
+Gate `73f46c8`: unit 1788/0/22, int 1445/0/12, build, sast PASS; Linux tagged E2E 403/6/61, 6 new WebKit-only failures (fx :78, molten :65, motion :492/:671, gilded-gate :435): alone Linux 17/8 (webkit + iphone14), host WebKit 10/0. Main not pushed; human decision asked on Linux WebKit handling.
+Wip HEAD: this commit (after `73f46c8`).
