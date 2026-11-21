@@ -329,6 +329,7 @@ test.describe("[P0-10] motion gallery", () => {
         ),
       );
     expect(titles).toEqual([
+      "FX playground", // PD-03
       "Forward and back",
       "Card to page",
       "Tab order",

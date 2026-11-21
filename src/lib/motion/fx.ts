@@ -242,7 +242,7 @@ function makeSprites(): Sprites {
  * and the spark stroke style is set once per frame. On a canvas painted by the CPU (no GPU raster), the
  * per-particle save/restore alone doubled the frame cost at 4× CPU (A/B 21 Nov: 33 → 17 ms for 420 coins).
  */
-function draw(
+export function draw(
   ctx: CanvasRenderingContext2D,
   parts: readonly Particle[],
   sp: Sprites,
@@ -250,7 +250,11 @@ function draw(
 ): void {
   ctx.strokeStyle = "rgba(214,150,30,.9)";
   ctx.lineWidth = 1.6;
-  for (const p of parts) {
+  // Backwards, like the reference's single step-and-draw loop: the oldest particle paints last, on top
+  // (celebrate's spark glows over its coins).
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i];
+    if (!p) continue;
     const t = p.life / p.max;
     ctx.globalAlpha = alphaOf(p);
     if (p.type === "spark") {

@@ -906,6 +906,7 @@ Why: whole-repo `pnpm fix` took several minutes on the Windows laptop for one-fi
 ## 2026-11-21 — PD-03 stress trace: p95 allowance up to 19.3 ms (human)
 Decision: the 200-burst stress spec at 4× CPU keeps "60 fps" (≥ 58 fps measured) and "no long task > 50 ms" unchanged; its p95 frame time may reach 19.3 ms (the brief's 16.8 ms + 15%, DESIGN §12 judgment band) if the measured value is above 16.8 ms, with the measured number recorded here and in SESSION_LOG.
 Why: the human accepted it on 21 Nov ("we can compromise a little if it's too tight"); 16.8 ms is stricter than the vault's existing 60 fps spec (p95 ≤ 20 ms). The frame-budget rule for every other animation is unchanged.
+Measured (talha.syed, 21 Nov): the allowance is **not used**. Mac Chromium at the CI-equivalent rate (5.9–6.3×): 59.6–60 fps, p95 16.7 ms, 0 long tasks (3/3); Linux Playwright container (3.2–3.4×): 59.6–60 fps, p95 16.8 ms, 0 long tasks (3/3). The 45 fps / p95 33 ms failure was the Windows laptop only (its CPU calibration is known to under-rate it, FOLLOWUPS P1-03 20 Nov), so the spec keeps p95 ≤ 16.8 ms and no Worker/OffscreenCanvas redesign is needed. CI (exactly 4× on its runner) confirms on the PD-03 push.
 
 ## 2026-11-21 — Semgrep gets the files as a tar stream, not a bind mount
 Decision: `pnpm sast` packs the files CI would scan (`git ls-files --cached --others --exclude-standard`, as they are in the working tree) into one tar on stdin; the pinned Semgrep image unpacks it to /src and runs the same rules and flags. No `-v` mount.

@@ -13,7 +13,6 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { createConnection } from "node:net";
 import { pnpmInvocation } from "./lib/gate";
 import { isDirectRun } from "../src/lib/is-direct-run";
 import { E2E_PORT } from "../tests/e2e/support/server-env";
@@ -56,17 +55,19 @@ export function containerArgs(version: string, appPort: number = E2E_PORT): stri
   ];
 }
 
-const portOpen = (port: number): Promise<boolean> =>
-  new Promise((resolve) => {
-    const s = createConnection({ port, host: "127.0.0.1" });
-    s.once("connect", () => {
-      s.destroy();
-      resolve(true);
-    });
-    s.once("error", () => {
-      resolve(false);
-    });
-  });
+/**
+ * Pure: has `playwright run-server` started listening (from the container's log)? Docker's port proxy accepts
+ * TCP on the host as soon as the container starts, long before `npx` has installed and started the server, so
+ * an open port proves nothing (a connect then fails with "socket hang up"; seen 21 Nov after a local run).
+ */
+export function serverListening(logs: string): boolean {
+  return /^Listening on ws:\/\//m.test(logs);
+}
+
+function containerLogs(): string {
+  const r = spawnSync("docker", ["logs", NAME], { encoding: "utf8" });
+  return `${r.stdout}${r.stderr}`;
+}
 
 function stopContainer(): void {
   spawnSync("docker", ["rm", "-f", NAME], { stdio: "ignore" });
@@ -92,10 +93,8 @@ async function main(): Promise<void> {
     // First run downloads the Playwright package inside the container (~1 min); later runs are quick.
     const deadline = Date.now() + 180_000;
     let ready = false;
-    while (Date.now() < deadline && !(ready = await portOpen(WS_PORT)))
-      await new Promise((r) => setTimeout(r, 1000));
-    // The port opens as soon as Docker maps it; give run-server a moment to listen behind it.
-    await new Promise((r) => setTimeout(r, 3000));
+    while (Date.now() < deadline && !(ready = serverListening(containerLogs())))
+      await new Promise((r) => setTimeout(r, 500));
     if (!ready) {
       console.error(
         "[e2e:linux] the Playwright server in the container did not start (docker logs moz-pw-linux)",

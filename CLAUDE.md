@@ -95,7 +95,7 @@ Never report done without evidence from this session (command + result, screensh
 - **Semgrep runs over a tar stream, not a bind mount (21 Nov 2026):** the same files CI scans; it was 20+ min on Windows through the mount, ~1.5 min now. Don't switch `pnpm sast` back to `-v`.
 - **Work beside a gate, not on its tree:** while a gate runs on a checkout, write the next task in a separate git worktree (`git worktree add ../moz-<task> -b wip/<task>`); run nothing CPU-heavy (typecheck, lint, builds, test suites) during a gate's E2E, parity or perf steps, since throttled timing specs then flake.
 - **Security design check first:** for a security-relevant task, `security-reviewer` checks the plan (data flows, limits, defaults, failure modes) before building; the full review of the final diff stays, and so does a re-review after any HIGH.
-- **Linux check for motion and visual specs (14 Nov):** a change to a motion, overlay or `@visual` spec (or the CSS/components they cover) runs those specs in `mcr.microsoft.com/playwright:v<installed version>-noble` against the production build before pushing; Linux-only flakes otherwise surface only in CI.
+- **Linux check for motion and visual specs (14 Nov):** a change to a motion, overlay or `@visual` spec (or the CSS/components they cover) runs those specs in `mcr.microsoft.com/playwright:v<installed version>-noble` against the production build before pushing (`pnpm e2e:linux <specs> --project chromium --project webkit`); Linux-only flakes otherwise surface only in CI.
 - **Full 5-project E2E** at sub-phase close and in nightly CI, as TESTING §4 says — **plus immediately** for any change that affects every page (root layout, global CSS, `tests/e2e/support` fixtures, proxy/headers). Per task otherwise: `gate:task` only.
 - **Screenshots:** customer screens at 320, 390 (iPhone) and 1440, all inspected; admin and developer pages at 320 and 1440.
 - **QA agent stays on Opus, high effort** (`.claude/agents/qa-engineer.md`), never a cheaper model.
@@ -138,6 +138,7 @@ pnpm test:unit         # vitest unit project
 pnpm test:int          # integration + authz (per-worker DBs; needs services:up)
 pnpm e2e               # Playwright against a PRODUCTION build (APP_ENV=test) — the evidence run
 pnpm e2e:dev           # Playwright against next dev — fast inner loop only, never evidence
+pnpm e2e:linux         # same production-build E2E, browsers in the Linux Playwright container (CLAUDE.md "Linux check")
 pnpm e2e:visual        # only the @visual snapshot tests (per-OS baselines; --update-snapshots accepts a new look); also part of gate:phase
 pnpm test:lighthouse   # Lighthouse CI (tests/perf, mobile throttled, DESIGN §12 budgets) on the production build; also part of gate:phase
 pnpm test:titles       # warn on tests without [Pn-nn]/[Jn]; --strict exits 1

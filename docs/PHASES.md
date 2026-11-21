@@ -69,7 +69,7 @@ Details: [`docs/phases/PD.md`](phases/PD.md) · Spec: [`design/reference/molten/
 - [x] PD-00 · Reference, rules, docs (20 Nov)
 - [x] PD-01 · Parity harness
 - [x] PD-02 · Tokens, fonts, surfaces, living background, gilded edge
-- [ ] PD-03 · Motion core: FX engine, tiers, reduced motion, press kit
+- [x] PD-03 · Motion core: FX engine, tiers, reduced motion, press kit
 - [ ] PD-A closed with `/subphase-complete`
 
 **PD-B · Controls**

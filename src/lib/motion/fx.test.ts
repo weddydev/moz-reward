@@ -4,6 +4,7 @@ import {
   burst,
   capFor,
   createRng,
+  draw,
   FX,
   fxStats,
   type Particle,
@@ -200,5 +201,29 @@ describe("[PD-03] FX engine: burst without a canvas", () => {
   it("[PD-03] burst before the canvas is mounted (or on the server) is a no-op", () => {
     expect(burst(10, 10, { count: 20 })).toBe(0);
     expect(fxStats()).toMatchObject({ mounted: false, live: 0, running: false });
+  });
+});
+
+describe("[PD-03] paint order (reference: one backwards loop, so the oldest particle paints last, on top)", () => {
+  it("[PD-03] celebrate's sparks (pushed first) paint over its coins", () => {
+    const parts: Particle[] = [];
+    const rng = createRng(7);
+    spawn(parts, 100, 100, { type: "spark", count: 2 }, { lite: false, rng });
+    spawn(parts, 100, 100, { type: "coin", count: 2 }, { lite: false, rng });
+    const painted: string[] = [];
+    const ctx = {
+      setTransform: () => undefined,
+      beginPath: () => undefined,
+      moveTo: () => undefined,
+      lineTo: () => undefined,
+      stroke: () => undefined,
+      fillRect: () => undefined,
+      drawImage: (img: { id: string }) => painted.push(img.id),
+    } as unknown as CanvasRenderingContext2D;
+    const sprites = { glow: { id: "glow" }, coin: { id: "coin" } } as unknown as Parameters<
+      typeof draw
+    >[2];
+    draw(ctx, parts, sprites, 1);
+    expect(painted).toEqual(["coin", "coin", "glow", "glow"]);
   });
 });

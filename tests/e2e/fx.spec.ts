@@ -28,9 +28,33 @@ const fire = (page: Page, x: number, y: number, o: Record<string, unknown> = {})
     [x, y, o] as const,
   );
 
-const asleep = async (page: Page, timeout = 6_000): Promise<void> => {
-  await expect.poll(async () => (await stats(page)).running, { timeout }).toBe(false);
-};
+/**
+ * A burst that works ends within its longest lifetime (leaf 3.4 s) × 60 frames, +25%: the engine caps each
+ * frame's dt at 33 ms, so slower frames need fewer of them, never more (at a 60 Hz refresh, as every project here).
+ */
+const SLEEP_FRAMES = Math.ceil(3.4 * 60 * 1.25);
+
+/**
+ * Waits for the engine to go idle, bounded by frames, not wall time: a loop that never sleeps fails once it has
+ * drawn SLEEP_FRAMES, while a slow runner may simply take longer. Linux WebKit (software rendering) stalls up to
+ * ~2.6 s on a fresh browser's first canvas draw and drops to ~36 fps alone, lower with parallel workers (measured
+ * 21 Nov: a leaf burst took 4–6 s alone and over 15 s in the full run). The wall timeout is only a backstop.
+ */
+async function asleep(page: Page, read: () => Promise<Stats> = () => stats(page)): Promise<void> {
+  test.setTimeout(Math.max(test.info().timeout, 75_000));
+  const f0 = (await read()).frames;
+  await expect
+    .poll(
+      async () => {
+        const s = await read();
+        if (s.frames - f0 > SLEEP_FRAMES)
+          return `still running after ${String(SLEEP_FRAMES)} frames (${String(s.live)} live)`;
+        return s.running ? "running" : "asleep";
+      },
+      { timeout: 60_000 },
+    )
+    .toBe("asleep");
+}
 
 test("[PD-03] one fixed canvas over every page, aria-hidden, and taps pass straight through it", async ({
   page,
@@ -112,10 +136,18 @@ test("[PD-03] canvas backing store is the viewport × DPR, capped at 2, and foll
   // Orientation change mid-burst: re-sized, still running.
   const vp = page.viewportSize() ?? { width: 390, height: 844 };
   await page.setViewportSize({ width: vp.height, height: vp.width });
-  await expect.poll(async () => (await size()).iw).toBe(vp.height);
+  // innerWidth changes at once; the resize event (and so the re-size) lands at the next rendering step, which
+  // is still before the next frame is drawn. Poll the backing store itself, not innerWidth.
+  await expect
+    .poll(async () => {
+      const n = await size();
+      return (
+        n.iw === vp.height && n.w === Math.round(n.iw * n.dpr) && n.h === Math.round(n.ih * n.dpr)
+      );
+    })
+    .toBe(true);
   s = await size();
-  expect(s.w).toBe(Math.round(s.iw * s.dpr));
-  expect(s.h).toBe(Math.round(s.ih * s.dpr));
+  expect(s.w).toBe(Math.round(vp.height * s.dpr));
   expect((await stats(page)).running).toBe(true);
 });
 
@@ -217,14 +249,10 @@ test("[PD-03] a route change mid-burst: particles finish over the new page, whic
   expect(mid.live).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Tap me" }).click();
   await expect(page.getByTestId("tap-count")).toHaveText("1 tap");
-  await expect
-    .poll(
-      () => page.evaluate(() => (window as unknown as { __fxStats: () => Stats }).__fxStats().live),
-      {
-        timeout: 6_000,
-      },
-    )
-    .toBe(0);
+  const read = (): Promise<Stats> =>
+    page.evaluate(() => (window as unknown as { __fxStats: () => Stats }).__fxStats());
+  await asleep(page, read);
+  expect((await read()).live).toBe(0);
 });
 
 test("[PD-03] press kit: pressed state, a ripple from the press point, celebrate throws 28 sparks + 6 coins", async ({
@@ -298,7 +326,10 @@ test("[PD-03] 200-burst stress at 4× CPU: 60 fps, p95 ≤ 16.8 ms, no long task
   const { times } = run;
   const gaps = times.slice(1).map((t, i) => t - (times[i] ?? t));
   const sorted = [...gaps].sort((a, b) => a - b);
-  const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? 0;
+  // performance.now() (and so rAF time) is coarsened to 0.1 ms without cross-origin isolation, and a 60 Hz
+  // frame sits right at the 16.8 ms bound: compare at the clock's own resolution, not its float noise
+  // (16.800000000000182 failed once under the full parallel run).
+  const p95 = Math.round((sorted[Math.floor(sorted.length * 0.95)] ?? 0) * 10) / 10;
   const fps = (1000 * gaps.length) / gaps.reduce((s, g) => s + g, 0);
   const longest = Math.max(0, ...run.long);
   test.info().annotations.push({
@@ -314,4 +345,25 @@ test("[PD-03] 200-burst stress at 4× CPU: 60 fps, p95 ≤ 16.8 ms, no long task
   expect(fps).toBeGreaterThanOrEqual(58);
   expect(p95).toBeLessThanOrEqual(16.8);
   expect(longest).toBeLessThanOrEqual(50);
+});
+
+test("[PD-03] /dev/motion at 320, 390 and 1440: no horizontal scroll (screens for inspection, idle + mid-burst)", async ({
+  page,
+  shoot,
+}) => {
+  test.skip(test.info().project.name !== "chromium", "inspection screens: one browser is enough");
+  await openPlayground(page);
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow, `at ${String(width)}`).toBeLessThanOrEqual(0);
+    await asleep(page);
+    await shoot(`motion-playground-${String(width)}`);
+    await fire(page, width / 2, 320, { count: 28 });
+    await fire(page, width / 2, 320, { type: "coin", count: 6 });
+    await page.waitForTimeout(180);
+    await shoot(`motion-burst-${String(width)}`);
+  }
 });
