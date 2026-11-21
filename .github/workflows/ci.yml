@@ -97,6 +97,8 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - name: E2E on the production build (pixel7 + desktop1440; flaky = failure)
         run: pnpm e2e --project pixel7 --project desktop1440 --fail-on-flaky-tests
+      - name: Perf-budget specs alone (@perf, one worker; process audit 21 Nov)
+        run: PERF=1 pnpm e2e --project pixel7 --project desktop1440 --grep @perf --workers 1 --fail-on-flaky-tests
       - name: Molten parity, Chromium (PD-01; WebKit in the twice-weekly run)
         run: pnpm test:parity --project parity-chromium --fail-on-flaky-tests
       - name: artefacts on failure (small, 7 days)

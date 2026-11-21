@@ -14,6 +14,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { E2E_DIST_DIR, ensureProductionBuild, PLAYWRIGHT_CLI } from "./e2e";
+import { startLinuxBrowsers } from "./e2e-linux";
 import {
   commandStep,
   exec,
@@ -70,6 +71,64 @@ export const grepFor = (ids: string[]): string =>
 export function unpushedCommitMessages(): string {
   const r = spawnSync("git", ["log", "--format=%B", "@{upstream}..HEAD"], { encoding: "utf8" });
   return r.status === 0 ? r.stdout : "";
+}
+
+/**
+ * The gate's E2E runs in the Linux Playwright container (`pnpm e2e:linux`), on every project, so a local pass
+ * means what CI's pass means. Process audit 21 Nov: 11 of 18 red CI runs in a week were Linux-only E2E failures
+ * that a host-OS Chromium + WebKit gate could not see.
+ */
+export const GATE_E2E_PROJECTS = [
+  "chromium",
+  "webkit",
+  "pixel7",
+  "iphone14",
+  "desktop1440",
+] as const;
+
+const projectArgs = (): string[] => GATE_E2E_PROJECTS.flatMap((p) => ["--project", p]);
+
+export const taskE2eArgs = (ids: string[]): string[] => [
+  ...projectArgs(),
+  "--grep",
+  grepFor(ids),
+  "--pass-with-no-tests",
+];
+
+/**
+ * Specs whose own files or test-side imports (fixtures, helpers) changed since main. Playwright can't see app
+ * code a spec only reaches through the server, so a changed page still relies on the task specs and the
+ * every-page rule (full 5-project run).
+ */
+export const CI_E2E_PROJECTS = ["pixel7", "desktop1440"] as const; // .github/workflows/ci.yml, every push
+
+export const affectedE2eArgs = (): string[] => [
+  // CI's projects only: all five over every changed spec overloads a laptop's container (21 Nov: 231 tests,
+  // WebKit timeouts), and these specs are not the task's own.
+  ...CI_E2E_PROJECTS.flatMap((p) => ["--project", p]),
+  "--only-changed=origin/main",
+  "--pass-with-no-tests",
+];
+
+/** The task's perf-budget specs alone, one worker (playwright.config: @perf runs only with PERF=1). */
+export const perfE2eArgs = (ids: string[]): string[] => [
+  ...projectArgs(),
+  "--grep",
+  ids.length > 0 ? `^(?=.*${grepFor(ids)})(?=.*@perf)` : "@perf",
+  "--workers",
+  "1",
+  "--pass-with-no-tests",
+];
+
+/** Runs an E2E step with the browsers in the Linux container; a container that won't start fails the step. */
+function linuxE2eStep(name: string, args: string[], env: Record<string, string> = {}): StepResult {
+  const lx = startLinuxBrowsers();
+  if ("error" in lx) return { name, status: "fail", seconds: 0, note: lx.error };
+  try {
+    return e2eStep(name, args, { ...env, PW_WS_ENDPOINT: lx.endpoint });
+  } finally {
+    lx.stop();
+  }
 }
 
 /** `timeoutMin`: the step's limit (STEP_LIMITS); the task's own specs take minutes, the 5-project run longer. */
@@ -164,16 +223,18 @@ function main(): void {
   if (ids.length > 0) {
     steps.push({
       name: `e2e ${ids.join(",")}`,
+      run: () => linuxE2eStep(`e2e ${ids.join(",")} (Linux)`, taskE2eArgs(ids)),
+    });
+    steps.push({
+      name: `e2e perf ${ids.join(",")} (Linux, 1 worker)`,
       run: () =>
-        e2eStep(`e2e ${ids.join(",")}`, [
-          "--project",
-          "chromium",
-          "--project",
-          "webkit",
-          "--grep",
-          grepFor(ids),
-          "--pass-with-no-tests",
-        ]),
+        linuxE2eStep(`e2e perf ${ids.join(",")} (Linux, 1 worker)`, perfE2eArgs(ids), {
+          PERF: "1",
+        }),
+    });
+    steps.push({
+      name: "e2e changed specs (Linux)",
+      run: () => linuxE2eStep("e2e changed specs (Linux)", affectedE2eArgs()),
     });
     // Molten parity (PD-01): a PD task also runs its parity specs ([PD-nn] titles), both browsers.
     const pd = ids.filter((id) => id.startsWith("PD-"));

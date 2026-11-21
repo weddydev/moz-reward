@@ -315,7 +315,7 @@ test("[P1-08] progress 0: an empty mould, no wave and nothing to pour", async ({
   );
 });
 
-test("[P1-08] the pour holds 60 fps under 4× CPU throttling", async ({ page, signInAs }) => {
+test("[P1-08] the pour holds 60 fps under 4× CPU throttling @perf", async ({ page, signInAs }) => {
   test.skip(
     test.info().project.name !== "chromium",
     "CPU throttling is a Chromium DevTools feature",

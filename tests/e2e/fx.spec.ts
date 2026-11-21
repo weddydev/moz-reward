@@ -7,6 +7,10 @@ import { expect, test } from "./support/test";
  * press kit, driven through the /dev/motion playground (`window.__mozFx`). Physics parity is unit-tested
  * (fx.test.ts) and asserted against the reference by the spec table (molten-spec.test.ts, row fx-engine).
  */
+// The frame-bounded waits below (asleep) may outlast the default 30 s when five projects share a starved Linux
+// runner; the bound that matters is frames, so the test timeout is a generous backstop (process audit, 21 Nov).
+test.describe.configure({ timeout: 90_000 });
+
 type Stats = { mounted: boolean; live: number; running: boolean; frames: number; cap: number };
 type Hook = {
   burst: (x: number, y: number, o?: Record<string, unknown>) => number;
@@ -41,7 +45,6 @@ const SLEEP_FRAMES = Math.ceil(3.4 * 60 * 1.25);
  * 21 Nov: a leaf burst took 4–6 s alone and over 15 s in the full run). The wall timeout is only a backstop.
  */
 async function asleep(page: Page, read: () => Promise<Stats> = () => stats(page)): Promise<void> {
-  test.setTimeout(Math.max(test.info().timeout, 75_000));
   const f0 = (await read()).frames;
   await expect
     .poll(
@@ -51,7 +54,7 @@ async function asleep(page: Page, read: () => Promise<Stats> = () => stats(page)
           return `still running after ${String(SLEEP_FRAMES)} frames (${String(s.live)} live)`;
         return s.running ? "running" : "asleep";
       },
-      { timeout: 60_000 },
+      { timeout: 75_000 },
     )
     .toBe("asleep");
 }
@@ -211,14 +214,20 @@ test("[PD-03] lite tier: half the particles and a 160 cap; the playground switch
   page,
 }) => {
   await openPlayground(page);
-  await page.getByRole("radio", { name: "full" }).check();
-  await expect(page.locator("html")).not.toHaveClass(/(^|\s)lite(\s|$)/);
+  // `__mozFx` comes from the root-layout canvas, which can be ready before the playground hydrates; a click
+  // before that is lost. CI's 4-core runners start in lite, so retry until the class really flips (CI 44905055902).
+  await expect(async () => {
+    await page.getByRole("radio", { name: "full" }).check();
+    await expect(page.locator("html")).not.toHaveClass(/(^|\s)lite(\s|$)/, { timeout: 1_000 });
+  }).toPass();
   expect(await fire(page, 100, 100, { count: 20 })).toBe(20);
   await page.evaluate(() => {
     (window as unknown as { __mozFx: Hook }).__mozFx.clear();
   });
-  await page.getByRole("radio", { name: "lite" }).check();
-  await expect(page.locator("html")).toHaveClass(/(^|\s)lite(\s|$)/);
+  await expect(async () => {
+    await page.getByRole("radio", { name: "lite" }).check();
+    await expect(page.locator("html")).toHaveClass(/(^|\s)lite(\s|$)/, { timeout: 1_000 });
+  }).toPass();
   expect(await fire(page, 100, 100, { count: 20 })).toBe(10);
   for (let i = 0; i < 30; i++) await fire(page, 100, 100, { count: 28 });
   expect((await stats(page)).live).toBe(160);
@@ -282,7 +291,7 @@ test("[PD-03] press kit: pressed state, a ripple from the press point, celebrate
  * DESIGN §12 frame budget at 4× CPU (the CI runner as the reference device): 200 bursts fed two per frame keep
  * the engine at its cap; every frame until it sleeps is timed, and long tasks are recorded throughout.
  */
-test("[PD-03] 200-burst stress at 4× CPU: 60 fps, p95 ≤ 16.8 ms, no long task over 50 ms", async ({
+test("[PD-03] 200-burst stress at 4× CPU: 60 fps, p95 ≤ 16.8 ms, no long task over 50 ms @perf", async ({
   page,
 }) => {
   test.skip(
@@ -298,7 +307,10 @@ test("[PD-03] 200-burst stress at 4× CPU: 60 fps, p95 ≤ 16.8 ms, no long task
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await openPlayground(page);
-  await page.getByRole("radio", { name: "full" }).check();
+  await expect(async () => {
+    await page.getByRole("radio", { name: "full" }).check();
+    await expect(page.locator("html")).not.toHaveClass(/(^|\s)lite(\s|$)/, { timeout: 1_000 });
+  }).toPass();
   await page.waitForLoadState("networkidle");
   await page.evaluate(() => {
     (window as unknown as { __long: number[] }).__long = [];

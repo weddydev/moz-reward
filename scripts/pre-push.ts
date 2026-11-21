@@ -57,6 +57,12 @@ export function needsGate(changedFiles: string[]): boolean {
 }
 
 /**
+ * What a `wip/*` checkpoint push runs: the fast checks plus Semgrep (~20–40 s since the tar stream), so a SAST
+ * finding fails here instead of in CI (process audit 21 Nov: 3 of 18 red runs in a week were Semgrep on wip).
+ */
+export const WIP_STEPS: ReadonlyArray<readonly string[]> = [["check"], ["sast"]];
+
+/**
  * Gate level for a push: "check" when every branch it updates is a `wip/*` checkpoint branch (CI runs the full set on
  * the push; the task-closing push to main or `t/*` runs gate:task), else "task". Deletions don't count.
  */
@@ -127,14 +133,17 @@ function main(): void {
   }
   if (gateFor(lines) === "check") {
     console.warn(
-      "[pre-push] wip/* checkpoint push: running pnpm check (CI runs the full set on this push) …",
+      "[pre-push] wip/* checkpoint push: running pnpm check + pnpm sast (CI runs the full set on this push) …",
     );
-    // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
-    const c = spawnSync("pnpm", ["check"], {
-      stdio: "inherit",
-      shell: process.platform === "win32",
-    });
-    process.exit(c.status ?? 1);
+    for (const args of WIP_STEPS) {
+      // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
+      const c = spawnSync("pnpm", [...args], {
+        stdio: "inherit",
+        shell: process.platform === "win32",
+      });
+      if (c.status !== 0) process.exit(c.status ?? 1);
+    }
+    process.exit(0);
   }
   // The same task IDs the gate would pick when spawned below (unpushed commits, else the next unticked task).
   const { ids } = resolveTaskIds(

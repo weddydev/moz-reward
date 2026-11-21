@@ -64,10 +64,10 @@ This section is the **single source** for gates. CLAUDE.md, commands and agents 
 1. `pnpm check` (typecheck + lint incl. coverage/migration/css checks + `format:check` + unit).
 2. `pnpm test:int`.
 3. `pnpm build` (+ `check:bundle`) and `pnpm sast` (Semgrep, the same command CI runs; Docker).
-4. E2E for specs tagged with the task ID, against the production build, on Chromium + WebKit.
+4. E2E for specs tagged with the task ID, against the production build, **with the browsers in the Linux Playwright container** (`startLinuxBrowsers`, the same as `pnpm e2e:linux`) on all five projects, so a local pass means what CI's pass means (process audit 21 Nov: 11 of 18 red CI runs in a week were Linux-only E2E failures a host-OS gate couldn't see). Plus the specs whose own files or test-side imports changed since main, on CI's projects (pixel7 + desktop1440) (`--only-changed=origin/main`; app code a spec reaches only through the server is not traced, so the every-page rule still applies). Then the task's `@perf` specs alone, one worker (PERF=1), so parallel load never decides a frame budget.
 5. Every acceptance criterion has evidence; tests named with the task ID exist and pass; new/changed UI screenshotted **and inspected** (§8).
 6. `security-reviewer` on the task diff when the task is on the security-relevant list in CLAUDE.md §4 (background; no BLOCK/HIGH open). Other tasks are reviewed at the sub-phase close.
-No full regression, no exploratory QA agent, no all-project runs at task level.
+No full regression, no exploratory QA agent at task level (the task's own specs run on all five projects; the full 5-project run stays for every-page changes).
 
 **Step time limits (both gates, 21 Nov 2026):** every step runs under a watchdog with a limit of about 3× a normal run (`STEP_LIMITS` in `scripts/lib/gate.ts`: default 20 min, integration 25, build 25, task E2E 45, coverage 30, mutation 90, 5-project E2E 120). Past it the whole process tree is killed and the step fails as **TIMED OUT** (a hung process: fix the cause, never just raise the limit; Vitest steps add the hanging-process report to the step log). `GATE_TIMEOUT_SCALE` scales every limit for one run. CI jobs keep their own `timeout-minutes`.
 

@@ -118,6 +118,15 @@ function steps(checkScript: string): PhaseStep[] {
       run: () => e2eStep("e2e (5 projects)", [], {}, STEP_LIMITS.e2eFull),
     },
     {
+      name: "e2e perf (5 projects, 1 worker)",
+      from: 0,
+      missing: always,
+      run: () =>
+        e2eStep("e2e perf (5 projects, 1 worker)", ["--grep", "@perf", "--workers", "1"], {
+          PERF: "1",
+        }),
+    },
+    {
       name: "mutation (rules modules)",
       from: 0,
       missing: always,

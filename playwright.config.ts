@@ -25,7 +25,16 @@ export default defineConfig({
   fullyParallel: true,
   // Visual snapshots (@visual) compare against per-OS baselines, so they run only when asked for
   // (VISUAL=1: `pnpm gate:phase`, or `pnpm e2e:visual`), never in an ordinary run or in CI.
-  ...(process.env.VISUAL ? {} : { grepInvert: /@visual/ }),
+  // Perf-budget specs (@perf: CPU-throttled fps / long-task budgets) run only on their own, one worker
+  // (PERF=1 … --grep @perf --workers 1: gate:task, gate:phase, CI, nightly), so parallel load can't decide
+  // them (process audit 21 Nov: 55.6 fps under a 5-project run, 60 fps alone).
+  ...(() => {
+    const skip = [
+      ...(process.env.VISUAL ? [] : ["@visual"]),
+      ...(process.env.PERF ? [] : ["@perf"]),
+    ];
+    return skip.length ? { grepInvert: new RegExp(skip.join("|")) } : {};
+  })(),
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",

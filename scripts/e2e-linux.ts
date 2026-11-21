@@ -73,37 +73,49 @@ function stopContainer(): void {
   spawnSync("docker", ["rm", "-f", NAME], { stdio: "ignore" });
 }
 
-async function main(): Promise<void> {
+const pause = (ms: number): void => {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+};
+
+export type LinuxBrowsers = { endpoint: string; version: string; stop: () => void };
+
+/**
+ * Starts the Linux Playwright server (synchronous, so `gate:task` can use it too) and waits for its own
+ * "Listening on" line. Returns the WebSocket endpoint for `PW_WS_ENDPOINT`, or an error to report.
+ */
+export function startLinuxBrowsers(): LinuxBrowsers | { error: string } {
   const version = playwrightVersion();
   stopContainer();
   const start = spawnSync("docker", containerArgs(version), { encoding: "utf8" });
-  if (start.status !== 0) {
-    console.error(`[e2e:linux] could not start the container: ${start.stderr}`);
+  if (start.status !== 0)
+    return {
+      error: `could not start the Linux browser container (is Docker running?): ${start.stderr.trim()}`,
+    };
+  // First run downloads the Playwright package inside the container (~1 min); later runs are quick.
+  const deadline = Date.now() + 180_000;
+  while (Date.now() < deadline) {
+    if (serverListening(containerLogs()))
+      return { endpoint: `ws://127.0.0.1:${String(WS_PORT)}/`, version, stop: stopContainer };
+    pause(500);
+  }
+  stopContainer();
+  return { error: `the Playwright server in the container did not start (docker logs ${NAME})` };
+}
+
+function main(): void {
+  const lx = startLinuxBrowsers();
+  if ("error" in lx) {
+    console.error(`[e2e:linux] ${lx.error}`);
     process.exitCode = 1;
     return;
   }
-  const cleanup = (): void => {
-    stopContainer();
-  };
   process.once("SIGINT", () => {
-    cleanup();
+    lx.stop();
     process.exit(130);
   });
   try {
-    // First run downloads the Playwright package inside the container (~1 min); later runs are quick.
-    const deadline = Date.now() + 180_000;
-    let ready = false;
-    while (Date.now() < deadline && !(ready = serverListening(containerLogs())))
-      await new Promise((r) => setTimeout(r, 500));
-    if (!ready) {
-      console.error(
-        "[e2e:linux] the Playwright server in the container did not start (docker logs moz-pw-linux)",
-      );
-      process.exitCode = 1;
-      return;
-    }
     console.warn(
-      `[e2e:linux] browsers: Linux container (Playwright ${version}); app: this machine :${String(E2E_PORT)}`,
+      `[e2e:linux] browsers: Linux container (Playwright ${lx.version}); app: this machine :${String(E2E_PORT)}`,
     );
     const inv = pnpmInvocation(["e2e", ...process.argv.slice(2)]);
     // pnpm through cmd.exe only when pnpm's entry is unknown; the arguments are the developer's own.
@@ -111,12 +123,12 @@ async function main(): Promise<void> {
     const r = spawnSync(inv.cmd, inv.args, {
       stdio: "inherit",
       shell: inv.shell,
-      env: { ...process.env, PW_WS_ENDPOINT: `ws://127.0.0.1:${String(WS_PORT)}/` },
+      env: { ...process.env, PW_WS_ENDPOINT: lx.endpoint },
     });
     process.exitCode = r.status ?? 1;
   } finally {
-    cleanup();
+    lx.stop();
   }
 }
 
-if (isDirectRun(import.meta.url)) void main();
+if (isDirectRun(import.meta.url)) main();

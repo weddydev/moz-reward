@@ -4,6 +4,7 @@ import {
   changedFiles,
   DOCS_ONLY_GLOBS,
   gateFor,
+  WIP_STEPS,
   needsGate,
   parsePushLines,
   refusal,
@@ -131,5 +132,11 @@ describe("[P0-14] lefthook runs the guard on every push", () => {
     expect(readFileSync(".lefthook/pre-push/guard-and-gate.sh", "utf8")).toMatch(
       /exec pnpm exec tsx scripts\/pre-push\.ts/,
     );
+  });
+});
+
+describe("[P0-14] wip pushes run the cheap checks CI would otherwise catch first (process audit, 21 Nov)", () => {
+  it("[P0-14] pnpm check, then Semgrep (3 of 18 red CI runs 14–21 Nov were Semgrep findings on wip pushes)", () => {
+    expect(WIP_STEPS).toEqual([["check"], ["sast"]]);
   });
 });
