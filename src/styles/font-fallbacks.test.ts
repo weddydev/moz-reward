@@ -28,12 +28,20 @@ function overrides(main: Metrics, fallback: Metrics): Record<string, string> {
   };
 }
 
+/** Every @font-face block's descriptors, parsed with fixed patterns (no RegExp built from input). */
+const FACES = [...css.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((block) =>
+  Object.fromEntries(
+    [...(block[1] ?? "").matchAll(/([a-z-]+):\s*([^;]+);/g)].map((m) => [
+      m[1] ?? "",
+      (m[2] ?? "").trim(),
+    ]),
+  ),
+);
+
 function face(family: string): Record<string, string> {
-  const block =
-    new RegExp(`@font-face \\{\\s*font-family: "${family}";([^}]*)\\}`).exec(css)?.[1] ?? "";
-  return Object.fromEntries(
-    [...block.matchAll(/([a-z-]+):\s*([^;]+);/g)].map((m) => [m[1] ?? "", (m[2] ?? "").trim()]),
-  );
+  const { "font-family": name, ...rest } =
+    FACES.find((f) => f["font-family"] === `"${family}"`) ?? {};
+  return name === undefined ? {} : rest;
 }
 
 describe("[PD-02] Manrope fallbacks where Arial doesn't exist (no swap shift on Android or Linux)", () => {
