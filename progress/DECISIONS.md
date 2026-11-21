@@ -889,3 +889,19 @@ Why: DESIGN §6.2 says hovering plays it at once; the reference's code doesn't d
 ## 2026-11-20 — Parity capture normalisation (PD-02)
 Decision: captures put each part on whole pixels (a `position: relative` nudge of its fractional page offset, then whole-pixel scrolling), hide the reference's sticky top bar and toasts, store a cookie choice so the app's cookie notice stays away, and serve fonts with `font-display: block`. The reference's dark swatches also carry its dock class `.dk`, which lays them out; /dev/molten mirrors that (the demo is the spec).
 Why: without these, a 0.5 px offset outlined every glyph (3–21% "different"), and page chrome or font timing decided the result instead of the design.
+
+## 2026-11-21 — Gate steps run under a watchdog with time limits (human)
+Decision: every `gate:task` / `gate:phase` step (and the E2E production build) runs through `scripts/lib/watchdog.mjs` with a limit of about 3× a normal run (`STEP_LIMITS`); past it the whole process tree is killed (taskkill /T on Windows) and the step fails as TIMED OUT. Vitest steps add `--reporter=hanging-process`. A TIMED OUT step is a hung process to fix at the root; a limit grows only when a suite grew (DECISIONS line). Rule in CLAUDE.md "Gate speed rules" and TESTING §4.
+Why: on 21 Nov the integration run wrote its report (1 failure) and its process never exited; `spawnSync` waited ~55 min with nothing on screen. `spawnSync`'s own `timeout` can't fix it on Windows (it kills cmd.exe, the child keeps the pipe). Same checks, nothing skipped.
+
+## 2026-11-21 — backup-pitr names the base backup from its sentinel
+Decision: the integration test reads the base backup's name from its `_backup_stop_sentinel.json` in the bucket instead of `pg_current_wal_lsn()` taken before `backup-push`.
+Why: with `archive_timeout=60`, a WAL switch can land between the two on a busy machine; the "flipped byte in a base partition" case then wrote into a folder the verifier (rightly) never reads, so the restore passed and the test failed (gate 21 Nov, full run; 9/9 alone). The check itself is unchanged.
+
+## 2026-11-21 — `pnpm fix:changed` replaces whole-repo `pnpm fix` before checks (human)
+Decision: before typecheck/gate, run ESLint --fix + Prettier on changed and untracked files only (`scripts/fix-changed.ts`; same exclusions as the pre-commit hook); full `pnpm fix` only after a lint/format config change.
+Why: whole-repo `pnpm fix` took several minutes on the Windows laptop for one-file changes (24 s changed-only). `pnpm check`, `gate:task` and CI still lint and format-check every file.
+
+## 2026-11-21 — PD-03 stress trace: p95 allowance up to 19.3 ms (human)
+Decision: the 200-burst stress spec at 4× CPU keeps "60 fps" (≥ 58 fps measured) and "no long task > 50 ms" unchanged; its p95 frame time may reach 19.3 ms (the brief's 16.8 ms + 15%, DESIGN §12 judgment band) if the measured value is above 16.8 ms, with the measured number recorded here and in SESSION_LOG.
+Why: the human accepted it on 21 Nov ("we can compromise a little if it's too tight"); 16.8 ms is stricter than the vault's existing 60 fps spec (p95 ≤ 20 ms). The frame-budget rule for every other animation is unchanged.

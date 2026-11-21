@@ -20,7 +20,9 @@ import {
   GATE_DIR,
   parsePlaywrightReport,
   runSteps,
+  STEP_LIMITS,
   summarise,
+  timeoutNote,
   treeState,
   treeStep,
   vitestStep,
@@ -70,27 +72,32 @@ export function unpushedCommitMessages(): string {
   return r.status === 0 ? r.stdout : "";
 }
 
+/** `timeoutMin`: the step's limit (STEP_LIMITS); the task's own specs take minutes, the 5-project run longer. */
 export function e2eStep(
   name: string,
   args: string[],
   env: Record<string, string> = {},
+  timeoutMin: number = STEP_LIMITS.e2eTask,
 ): StepResult {
   const report = path.join(GATE_DIR, `${name.replace(/\W+/g, "-")}.json`);
   rmSync(report, { force: true });
   const r = exec(name, process.execPath, [PLAYWRIGHT_CLI, "test", ...args, "--reporter=json"], {
     env: { ...process.env, ...env, E2E_MODE: "prod", PLAYWRIGHT_JSON_OUTPUT_NAME: report },
+    timeoutMin,
   });
   const counts = parsePlaywrightReport(report);
   const ok = r.ok && counts !== null && counts.failed === 0 && counts.flaky === 0;
-  const note = !counts
-    ? "no Playwright report (server failed to start?)"
-    : counts.flaky > 0
-      ? `${counts.flaky} flaky (counts as a failure, TESTING §7)`
-      : counts.failed > 0
-        ? `${counts.failed} failed`
-        : counts.passed === 0
-          ? "no specs carry this tag (none needed for this task?)"
-          : undefined;
+  const note = r.timedOut
+    ? timeoutNote(r)
+    : !counts
+      ? "no Playwright report (server failed to start?)"
+      : counts.flaky > 0
+        ? `${counts.flaky} flaky (counts as a failure, TESTING §7)`
+        : counts.failed > 0
+          ? `${counts.failed} failed`
+          : counts.passed === 0
+            ? "no specs carry this tag (none needed for this task?)"
+            : undefined;
   return {
     name,
     status: ok ? "pass" : "fail",
@@ -125,7 +132,10 @@ function main(): void {
     }),
   );
   steps.push(
-    { name: "test-int", run: () => vitestStep("test-int", ["--project", "integration"]) },
+    {
+      name: "test-int",
+      run: () => vitestStep("test-int", ["--project", "integration"], STEP_LIMITS.integration),
+    },
     {
       name: "production build",
       run: () => {

@@ -46,8 +46,13 @@ let FPR = "";
 let beforeBase = new Date(0);
 let target = new Date(0);
 let startSegment = "";
-/** The base backup's start segment (its name is base_<this>). */
-let baseSegment = "";
+/**
+ * The base backup's name (`base_<start segment>`), read from its stop sentinel in the bucket. Not guessed from
+ * `pg_current_wal_lsn()` before `backup-push`: with `archive_timeout=60` a WAL switch can land in between on a
+ * slow or busy machine, and a tampered partition in a wrongly named folder is (rightly) never read, so the
+ * flipped-byte case passed restore and failed the test (gate 21 Nov, full integration run).
+ */
+let baseName = "";
 
 function sh(cmd: string, args: string[], input?: string | Buffer): SpawnSyncReturns<Buffer> {
   return spawnSync(cmd, args, { input, maxBuffer: 256 * 1024 * 1024 });
@@ -216,7 +221,6 @@ beforeAll(async () => {
 
   beforeBase = new Date(Date.now() - 1000);
   await archiveNow();
-  baseSegment = psql("SELECT pg_walfile_name(pg_current_wal_lsn())");
   const base = sh("docker", [
     "exec",
     "-u",
@@ -226,6 +230,14 @@ beforeAll(async () => {
     "backup-push",
   ]);
   if (base.status !== 0) throw new Error(`backup-push: ${base.stderr.toString().slice(-600)}`);
+  const sentinels = mc(`mc ls --recursive local/${BUCKET}/staging/wal/basebackups_005/`)
+    .toString()
+    .split("\n")
+    .map((l) => /(base_[0-9A-F]{24})_backup_stop_sentinel\.json\s*$/.exec(l.trim())?.[1])
+    .filter((n): n is string => n !== undefined);
+  if (sentinels.length !== 1)
+    throw new Error(`expected one base backup, found ${String(sentinels.length)}`);
+  baseName = sentinels[0] ?? "";
   startSegment = psql("SELECT pg_walfile_name(pg_current_wal_lsn())");
 
   psql("CREATE TABLE pitr_probe (v text NOT NULL)");
@@ -307,7 +319,7 @@ describe("[P0-15] backup:verify --wal: point-in-time restore from the WAL archiv
 
   it.each([
     ["a WAL object with a flipped byte", () => `staging/wal/wal_005/${startSegment.slice(0, 8)}00000000000000F1.zst`, tampered],
-    ["a base backup partition with a flipped byte", () => `staging/wal/basebackups_005/base_${baseSegment}/tar_partitions/part_002.tar.zst`, tampered],
+    ["a base backup partition with a flipped byte", () => `staging/wal/basebackups_005/${baseName}/tar_partitions/part_002.tar.zst`, tampered],
   ])("[P0-15] fails on %s (the plaintext gpg already wrote is never used)", async (_what, keyOf, body) => {
     const key = keyOf();
     await admin.send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body() }));

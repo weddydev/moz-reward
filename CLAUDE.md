@@ -86,7 +86,12 @@ Never report done without evidence from this session (command + result, screensh
 - Tasks stay as defined in the phase files (not split); a session works through them as before.
 - **No duplicate gate:** `gate:task` stamps the exact tree it passed (`scripts/lib/gate-stamp.ts`); the pre-push hook skips re-running it only for byte-identical code with the same task IDs (≤ 12 h old). Any change re-runs it; CI runs on every push.
 - **Quiet hooks:** lefthook prints failures only.
-- **`pnpm fix` before checks:** run it (ESLint autofix + Prettier) before `typecheck`/`gate:task`, so import-order and format nits don't cost a round trip.
+- **`pnpm fix:changed` before checks (human, 21 Nov 2026; was `pnpm fix`):** ESLint autofix + Prettier on the changed and untracked files only (`--base origin/main` for a whole wip branch), before `typecheck`/`gate:task`, so import-order and format nits don't cost a round trip. The full `pnpm fix` only after an ESLint/Prettier config change. Nothing is checked less: `pnpm check`, `gate:task` and CI still lint and format-check the whole repo.
+
+**Gate speed rules (human's standing rule, 21 Nov 2026). Same steps, same checks; only waiting is removed.**
+- **Every gate step has a time limit** (`STEP_LIMITS` in `scripts/lib/gate.ts`, about 3× a normal run; `watchdog.mjs` kills the whole process tree). A step that hits it fails as **TIMED OUT**, which means a hung process, not a slow machine: read the step log (Vitest steps carry the hanging-process report), fix the cause at the root, then re-run. Never raise a limit just to get past a hang; a limit grows only when a suite really grew, with a DECISIONS line. `GATE_TIMEOUT_SCALE=2` is for a one-off run on a loaded machine, never a default.
+- **Don't wait blind on a background gate:** while it runs, glance at `.artifacts/gate/` step timestamps when you check in; a step whose log hasn't moved for longer than its limit means something is wrong, so look then, not an hour later.
+- **Work beside a gate, not on its tree:** while a gate runs on a checkout, write the next task in a separate git worktree (`git worktree add ../moz-<task> -b wip/<task>`); run nothing CPU-heavy (typecheck, lint, builds, test suites) during a gate's E2E, parity or perf steps, since throttled timing specs then flake.
 - **Security design check first:** for a security-relevant task, `security-reviewer` checks the plan (data flows, limits, defaults, failure modes) before building; the full review of the final diff stays, and so does a re-review after any HIGH.
 - **Linux check for motion and visual specs (14 Nov):** a change to a motion, overlay or `@visual` spec (or the CSS/components they cover) runs those specs in `mcr.microsoft.com/playwright:v<installed version>-noble` against the production build before pushing; Linux-only flakes otherwise surface only in CI.
 - **Full 5-project E2E** at sub-phase close and in nightly CI, as TESTING §4 says — **plus immediately** for any change that affects every page (root layout, global CSS, `tests/e2e/support` fixtures, proxy/headers). Per task otherwise: `gate:task` only.
@@ -143,7 +148,8 @@ pnpm db:migrate | db:generate | db:seed | db:reset   # drizzle migrations / gene
 pnpm db:seed --reset   # delete and re-create the demo shops and accounts (staging: weekly and before a demo)
 pnpm demo:credentials  # print this environment's demo sign-in details (derived, never stored); --codes = current TOTP codes
 pnpm format | format:check
-pnpm fix               # eslint --fix + prettier --write (run before typecheck / gate:task)
+pnpm fix:changed       # eslint --fix + prettier --write on changed files only (run before typecheck / gate:task)
+pnpm fix               # the same on the whole repo (after an ESLint/Prettier config change)
 pnpm services:up | services:down   # Docker: Postgres+PostGIS, Redis, Mailpit, MinIO
 pnpm setup:env         # create .env.local with generated local secrets (never overwrites)
 pnpm check:bundle      # after build: fail if server-only env names appear in .next/static

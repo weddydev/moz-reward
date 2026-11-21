@@ -14,13 +14,13 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { runWatched, STEP_LIMITS } from "./lib/gate";
 import { isDirectRun } from "../src/lib/is-direct-run";
 import { e2eServerEnv } from "../tests/e2e/support/server-env";
 
 export const E2E_DIST_DIR = ".next-e2e";
 const STAMP = path.join(E2E_DIST_DIR, "e2e-build-stamp");
 const LOG = path.join(".artifacts", "e2e", "build.log");
-const text = (v: unknown): string => (typeof v === "string" ? v : "");
 const require = createRequire(import.meta.url);
 /** CLIs run with `node` directly (no shell), so arguments like `--grep "a b"` survive on Windows too. */
 export const NEXT_CLI = require.resolve("next/dist/bin/next");
@@ -90,16 +90,15 @@ export function ensureProductionBuild(opts: { force?: boolean } = {}): {
   // NODE_ENV is dropped so `next build` sets production itself (a stray NODE_ENV=test would leak into it).
   const buildEnv: NodeJS.ProcessEnv = { ...process.env, ...env, NEXT_TELEMETRY_DISABLED: "1" };
   Reflect.deleteProperty(buildEnv, "NODE_ENV");
-  const r = spawnSync(process.execPath, [NEXT_CLI, "build"], {
+  // Under the gate watchdog: a hung build fails after STEP_LIMITS.build minutes instead of blocking.
+  const r = runWatched(process.execPath, [NEXT_CLI, "build"], {
     env: buildEnv,
-    encoding: "utf8",
-    maxBuffer: 64 * 1024 * 1024,
+    timeoutMin: STEP_LIMITS.build,
   });
   const seconds = Math.round((Date.now() - started) / 1000);
-  // stdout/stderr are null when the process could not be spawned, whatever the types say.
-  const output = `${text(r.stdout)}\n${text(r.stderr)}${r.error ? `\n${r.error.message}` : ""}`;
+  const output = r.output;
   writeFileSync(LOG, output);
-  if (r.status !== 0) {
+  if (!r.ok) {
     const tail = output.trim().split("\n").slice(-30).join("\n");
     console.error(`[e2e] next build FAILED after ${seconds}s (full log: ${LOG})\n${tail}`);
     return { ok: false, reused: false, seconds };

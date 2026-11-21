@@ -2,10 +2,14 @@
  * Shared runner for `pnpm gate:task` / `pnpm gate:phase` (P0-14, TESTING §4). Each step's full output goes to
  * `.artifacts/gate/<step>.log`; the console gets one line per step and, on failure, the log's last lines.
  * Steps run in order and stop at the first failure (a later suite on a broken base only adds noise).
+ * Every step runs under a watchdog (`watchdog.mjs`) with a time limit, so a hung step fails in minutes with
+ * "TIMED OUT" instead of blocking the gate (21 Nov 2026: a finished-but-never-exiting integration run held
+ * the gate for ~55 min). Limits are generous multiples of a normal run; `GATE_TIMEOUT_SCALE=2` doubles them.
  */
 import { spawnSync, type SpawnSyncOptions } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 export type Counts = { passed: number; failed: number; skipped: number; flaky: number };
 
@@ -47,42 +51,106 @@ export function childEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return copy;
 }
 
+export const WATCHDOG = fileURLToPath(new URL("./watchdog.mjs", import.meta.url));
+/**
+ * Step time limits in minutes: about 3× a normal run on the slower developer laptop (Windows, 21 Nov 2026:
+ * check parts ≤ 3, unit 3, integration 6, build ~5, task E2E ~15), so only a hung step ever reaches one.
+ * Raise a limit (with a DECISIONS line) if a suite grows; `GATE_TIMEOUT_SCALE` scales all of them for a run.
+ */
+export const STEP_LIMITS = {
+  default: 20,
+  integration: 25,
+  build: 25,
+  e2eTask: 45,
+  coverage: 30,
+  mutation: 90,
+  e2eFull: 120,
+} as const;
+export const DEFAULT_STEP_TIMEOUT_MIN = STEP_LIMITS.default;
+export const TIMED_OUT = "[gate] TIMED OUT";
+
+/** Minutes → ms, times `GATE_TIMEOUT_SCALE` (a positive number; anything else counts as 1). */
+export function stepTimeoutMs(
+  minutes: number = DEFAULT_STEP_TIMEOUT_MIN,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): number {
+  const scale = Number(env.GATE_TIMEOUT_SCALE ?? "1");
+  return Math.round(minutes * (Number.isFinite(scale) && scale > 0 ? scale : 1) * 60_000);
+}
+
+export type ExecOptions = SpawnSyncOptions & { timeoutMin?: number };
+export type ExecResult = { ok: boolean; output: string; seconds: number; timedOut: boolean };
+
+/**
+ * Runs one command under the watchdog: the step's own exit code, or a failure marked `timedOut` once it runs
+ * past its limit (the whole process tree is killed). Output is collected exactly as before.
+ */
+export function runWatched(cmd: string, args: string[], opts: ExecOptions = {}): ExecResult {
+  const { timeoutMin, ...spawnOpts } = opts;
+  const useShell = cmd === "pnpm" && shell;
+  if (useShell) assertShellSafe(args);
+  const started = Date.now();
+  const env = childEnv(spawnOpts.env ?? process.env);
+  // Shell only for pnpm.cmd on Windows (inside the watchdog), with arguments checked by assertShellSafe above.
+  if (useShell) env.GATE_WATCHDOG_SHELL = "1";
+  else Reflect.deleteProperty(env, "GATE_WATCHDOG_SHELL");
+  const r = spawnSync(
+    process.execPath,
+    [WATCHDOG, String(stepTimeoutMs(timeoutMin)), cmd, ...args],
+    {
+      encoding: "utf8",
+      maxBuffer: 256 * 1024 * 1024,
+      ...spawnOpts,
+      env,
+    },
+  );
+  // stdout/stderr are null when the process could not be spawned, whatever the types say.
+  const output = `${text(r.stdout)}\n${text(r.stderr)}${r.error ? `\n${r.error.message}` : ""}`;
+  return {
+    ok: r.status === 0,
+    output,
+    seconds: Math.round((Date.now() - started) / 1000),
+    timedOut: r.status === 124 && output.includes(TIMED_OUT),
+  };
+}
+
 export function exec(
   name: string,
   cmd: string,
   args: string[],
-  opts: SpawnSyncOptions = {},
-): { ok: boolean; output: string; seconds: number } {
+  opts: ExecOptions = {},
+): ExecResult {
   mkdirSync(GATE_DIR, { recursive: true });
-  const useShell = cmd === "pnpm" && shell;
-  if (useShell) assertShellSafe(args);
-  const started = Date.now();
-  // Shell only for pnpm.cmd on Windows, with arguments checked by assertShellSafe above.
-  // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
-  const r = spawnSync(cmd, args, {
-    encoding: "utf8",
-    maxBuffer: 256 * 1024 * 1024,
-    shell: useShell,
-    ...opts,
-    env: childEnv(opts.env ?? process.env),
-  });
-  // stdout/stderr are null when the process could not be spawned, whatever the types say.
-  const output = `${text(r.stdout)}\n${text(r.stderr)}${r.error ? `\n${r.error.message}` : ""}`;
-  writeFileSync(logPath(name), output);
-  return { ok: r.status === 0, output, seconds: Math.round((Date.now() - started) / 1000) };
+  const r = runWatched(cmd, args, opts);
+  writeFileSync(logPath(name), r.output);
+  return r;
 }
+
+/** The note a timed-out step reports. */
+export const timeoutNote = (r: ExecResult, extra = ""): string =>
+  `TIMED OUT after ${String(Math.round(r.seconds / 60))} min (hung process killed${extra}; see the step log)`;
 
 export const tail = (text: string, lines = 25): string =>
   text.trim().split("\n").slice(-lines).join("\n");
 
 /** A plain command step (pass/fail on exit code). */
-export function commandStep(name: string, cmd: string, args: string[], note?: string): StepResult {
-  const r = exec(name, cmd, args);
+export function commandStep(
+  name: string,
+  cmd: string,
+  args: string[],
+  note?: string,
+  timeoutMin?: number,
+): StepResult {
+  const r = exec(name, cmd, args, timeoutMin === undefined ? {} : { timeoutMin });
   return {
     name,
     status: r.ok ? "pass" : "fail",
     seconds: r.seconds,
-    ...(r.ok ? (note ? { note } : {}) : { note: firstError(r.output) }),
+    ...(r.ok
+      ? note
+        ? { note }
+        : {}
+      : { note: r.timedOut ? timeoutNote(r) : firstError(r.output) }),
   };
 }
 
@@ -96,26 +164,40 @@ export function firstError(output: string): string {
 }
 
 /** Vitest run with a JSON report → counts. */
-export function vitestStep(name: string, args: string[]): StepResult {
+export function vitestStep(name: string, args: string[], timeoutMin?: number): StepResult {
   const report = path.join(GATE_DIR, `${name}.json`);
   rmSync(report, { force: true });
-  const r = exec(name, "pnpm", [
-    "exec",
-    "vitest",
-    "run",
-    ...args,
-    "--reporter=dot",
-    "--reporter=json",
-    `--outputFile.json=${report}`,
-  ]);
+  const r = exec(
+    name,
+    "pnpm",
+    [
+      "exec",
+      "vitest",
+      "run",
+      ...args,
+      "--reporter=dot",
+      "--reporter=json",
+      // Names what keeps the process alive if it doesn't exit after the run (shown in the step log).
+      "--reporter=hanging-process",
+      `--outputFile.json=${report}`,
+    ],
+    timeoutMin === undefined ? {} : { timeoutMin },
+  );
   const counts = parseVitestReport(report);
   const ok = r.ok && counts !== null && counts.failed === 0;
+  const failedNote = counts ? `${String(counts.failed)} failed` : firstError(r.output);
   return {
     name,
     status: ok ? "pass" : "fail",
     seconds: r.seconds,
     ...(counts ? { counts } : {}),
-    ...(ok ? {} : { note: counts ? `${counts.failed} failed` : firstError(r.output) }),
+    ...(ok
+      ? {}
+      : {
+          note: r.timedOut
+            ? timeoutNote(r, counts ? `; the report had ${failedNote}` : "")
+            : failedNote,
+        }),
   };
 }
 

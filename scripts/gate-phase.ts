@@ -16,6 +16,7 @@ import {
   commandStep,
   exec,
   firstError,
+  STEP_LIMITS,
   summarise,
   treeState,
   treeStep,
@@ -73,13 +74,20 @@ function steps(checkScript: string): PhaseStep[] {
       name: "test-int",
       from: 0,
       missing: always,
-      run: () => vitestStep("test-int", ["--project", "integration"]),
+      run: () => vitestStep("test-int", ["--project", "integration"], STEP_LIMITS.integration),
     },
     {
       name: "coverage thresholds",
       from: 0,
       missing: always,
-      run: () => commandStep("coverage thresholds", "pnpm", ["test:coverage"]),
+      run: () =>
+        commandStep(
+          "coverage thresholds",
+          "pnpm",
+          ["test:coverage"],
+          undefined,
+          STEP_LIMITS.coverage,
+        ),
     },
     {
       name: "test:titles --strict",
@@ -107,13 +115,20 @@ function steps(checkScript: string): PhaseStep[] {
       name: "e2e (5 projects)",
       from: 0,
       missing: always,
-      run: () => e2eStep("e2e (5 projects)", []),
+      run: () => e2eStep("e2e (5 projects)", [], {}, STEP_LIMITS.e2eFull),
     },
     {
       name: "mutation (rules modules)",
       from: 0,
       missing: always,
-      run: () => commandStep("mutation (rules modules)", "pnpm", ["test:mutation"]),
+      run: () =>
+        commandStep(
+          "mutation (rules modules)",
+          "pnpm",
+          ["test:mutation"],
+          undefined,
+          STEP_LIMITS.mutation,
+        ),
     },
     {
       name: "live providers (require all)",

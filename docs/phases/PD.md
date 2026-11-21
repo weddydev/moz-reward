@@ -71,7 +71,7 @@
 - Reduced motion from one source: `prefers-reduced-motion` + the "Reduce animations" preference in Me (DESIGN §7.2; add it if it doesn't exist yet) → `<html class="rm">`, FX no-op, `anim()` capped at 150 ms, the reference `.rm` rules.
 - Press kit: `usePress` (scale .93 spring), `useMagnetic` (fine pointer only), `ripple(el, event)`, `celebrate(el, event, coins)`, `useCountUp`; sound/haptics where DESIGN §9/§10 say (sounds stay off by default).
 - `/dev/motion`: FX playground (tier switch, slow-mo, seed).
-**Acceptance criteria:** FX parameter parity (counts per tier, speed ranges, gravity, drag, lifetimes, cap, DPR) via the spec table; 200-burst stress at 4× CPU throttle: 60 fps, p95 ≤ 16.8 ms, no long task > 50 ms (trace in SESSION_LOG); clicks pass through the canvas (E2E); zero rAF callbacks once idle.
+**Acceptance criteria:** FX parameter parity (counts per tier, speed ranges, gravity, drag, lifetimes, cap, DPR) via the spec table; 200-burst stress at 4× CPU throttle: 60 fps (≥ 58 measured), p95 ≤ 16.8 ms (up to 19.3 ms accepted by the human, 21 Nov, with the measured value in DECISIONS), no long task > 50 ms (trace in SESSION_LOG); clicks pass through the canvas (E2E); zero rAF callbacks once idle.
 **Edge cases:** tab hidden mid-burst (stops, resumes cleanly); resize/orientation change (no blur); route change mid-burst (particles finish over the new page, never block it); reduced motion switched on mid-burst (canvas clears).
 **Tests:** unit `step()`, tier, seeded RNG; E2E pointer-through, reduced motion, idle; perf trace spec.
 **Verify:** trace numbers; `/dev/motion` screenshot.
