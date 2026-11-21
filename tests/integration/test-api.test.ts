@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { TEST_API_HEADER, testApiToken } from "@/lib/test-api-token";
 import { stubDeployedEnv } from "../support/deployed-env";
 
@@ -35,6 +35,13 @@ const get = (
   });
 
 describe("[P0-17] test-only seeding API", () => {
+  // The route's first import transforms its whole module graph (auth, db, providers): ~6 s alone, and past the first
+  // case's 15 s limit when the gate's parallel integration run is slow (gate 21 Nov, 1444/1). Paid once here, with
+  // its own limit, so each case's limit covers only its behaviour; resetModules re-evaluates from the warm cache.
+  beforeAll(async () => {
+    await import("@/app/api/test/[action]/route");
+  }, 60_000);
+
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.resetModules();
