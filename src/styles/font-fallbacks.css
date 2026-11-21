@@ -1,0 +1,45 @@
+/*
+ * Metric-matched fallbacks for Manrope and Fraunces where Arial / Times New Roman don't exist (PD-02 CLS fix, 21 Nov 2026).
+ *
+ * next/font's "Manrope Fallback" is `local(Arial)` with size/ascent/descent overrides, so on Windows, macOS and
+ * iOS the fallback text takes Manrope's space and the swap moves nothing. Android (our main device) and Linux
+ * have no Arial: that face fails and plain sans-serif shows, so text re-wraps when Manrope arrives (Linux CI:
+ * a card lost a line, CLS 0.004). These faces come next in the stack (globals.css `--font-sans`):
+ * - Liberation Sans (Linux) has Arial's metrics, so it takes next/font's Arial overrides;
+ * - Roboto (Android) gets its own, by next/font's formula from Next's capsize metrics.
+ * Fraunces the same way: next/font's face is `local(Times New Roman)`; Liberation Serif (Linux) has Times' metrics
+ * and Noto Serif (Android) gets its own (Linux CI: a heading line box 1 px taller until Fraunces arrived).
+ * `font-fallbacks.test.ts` recomputes every value from those metrics, so they can't drift.
+ */
+@font-face {
+  font-family: "Manrope Fallback Liberation";
+  src: local("Liberation Sans"), local("LiberationSans");
+  ascent-override: 103.31%;
+  descent-override: 29.07%;
+  line-gap-override: 0%;
+  size-adjust: 103.19%;
+}
+@font-face {
+  font-family: "Manrope Fallback Roboto";
+  src: local("Roboto"), local("Roboto-Regular");
+  ascent-override: 103.08%;
+  descent-override: 29.01%;
+  line-gap-override: 0%;
+  size-adjust: 103.41%;
+}
+@font-face {
+  font-family: "Fraunces Fallback Liberation";
+  src: local("Liberation Serif"), local("LiberationSerif"), local("Tinos");
+  ascent-override: 84.71%;
+  descent-override: 22.09%;
+  line-gap-override: 0%;
+  size-adjust: 115.45%;
+}
+@font-face {
+  font-family: "Fraunces Fallback Noto";
+  src: local("Noto Serif"), local("NotoSerif-Regular");
+  ascent-override: 100.3%;
+  descent-override: 26.15%;
+  line-gap-override: 0%;
+  size-adjust: 97.51%;
+}

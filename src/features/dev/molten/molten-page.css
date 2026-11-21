@@ -59,6 +59,8 @@ body:has(.m-page) {
   margin: 0;
   font:
     600 20px/1.2 var(--font-fraunces),
+    "Fraunces Fallback Liberation",
+    "Fraunces Fallback Noto",
     Georgia,
     serif;
   letter-spacing: -0.01em;
@@ -137,6 +139,8 @@ body:has(.m-page) {
 .m-type-play {
   font:
     400 clamp(64px, 11vw, 128px) / 0.9 var(--font-fraunces),
+    "Fraunces Fallback Liberation",
+    "Fraunces Fallback Noto",
     Georgia,
     serif;
   letter-spacing: -0.04em;

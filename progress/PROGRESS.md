@@ -16,19 +16,19 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **First on the other laptop:** `git pull`, `pnpm install` (no lockfile change), no migrations, no env vars. New scripts: `pnpm fix:changed`, `pnpm docker:tidy`, `pnpm e2e:linux` (on wip/PD-03 until cherry-picked). Remote `wip/e2e-timing`, `wip/PD-01` are merged content (H-38).
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov; `docs/phases/PD.md`). Then P1 resumes with the P1-B close. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
-- **Current sub-phase:** **PD-A** Foundation: ~~PD-00~~ → ~~PD-01~~ → ~~PD-02~~ (Linux CI fix on `wip/PD-03` `c072a49`) → PD-03 (in progress, `wip/PD-03`) → `/subphase-complete`; then PD-B (controls), PD-C (structure + signature moments, needs H-49). **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done except the staging step, which waits for H-48.)
+- **Current sub-phase:** **PD-A** Foundation: ~~PD-00~~ → ~~PD-01~~ → ~~PD-02~~ (Linux CI fix on main 21 Nov) → PD-03 (in progress, `wip/PD-03`) → `/subphase-complete`; then PD-B (controls), PD-C (structure + signature moments, needs H-49). **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done except the staging step, which waits for H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-21, Syedbadeshah76 (handoff: gate speed + Docker tidy on main; main CI red, fix on wip/PD-03; PD-03 half-done)
+- **Last updated:** 2026-11-21, talha.syed (PD-02 Linux fix verified and moved to main; PD-03 next)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `8353e00`; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys roll back until H-48.
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-00..PD-02 done; PD-02's Linux CI red fixed on `wip/PD-03` (`c072a49`, not yet on main). PD-03 half-done on `wip/PD-03` (stress spec open). 21 Nov: gate ~10.5 min (watchdog limits, Semgrep tar stream), `pnpm e2e:linux` built, Docker tidied (~15 GB).
+- **PD (Molten design):** PD-00..PD-02 done; PD-02's Linux CI red fix (`c072a49` + Semgrep fix `527fbb8`) verified with `pnpm e2e:linux` and squashed onto main 21 Nov (talha.syed). PD-03 half-done on `wip/PD-03` (stress spec open). 21 Nov: gate ~10.5 min (watchdog limits, Semgrep tar stream), `pnpm e2e:linux` built, Docker tidied (~15 GB).
 
 ## Next (top 3)
-1. **Main CI red first:** verify `c072a49` with `pnpm e2e:linux tests/e2e/molten.spec.ts --project desktop1440 --project pixel7 --repeat-each 3`, cherry-pick it to main, `pnpm gate:task PD-02`, push, CI green.
+1. **Main CI:** confirm the run for the PD-02 Linux fix on main is green (red → fix first).
 2. **PD-03:** rebase `wip/PD-03` on main; fix the 200-burst stress spec (canvas painted on the CPU main thread at 4×: try drawing in a same-origin Worker via `transferControlToOffscreen`; ask the human if the AC should measure main-thread time); then WebKit, full 5-project E2E, `pnpm e2e:linux`, screenshots, design review, tick, PD-A `/subphase-complete` (now incl. `pnpm docker:tidy --apply`).
 3. Human: **H-48** (staging Sentry DSN) → then close P1-A; any time H-38, H-45, H-46, H-50 (optional Defender exclusion).
 

@@ -32,6 +32,11 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "on-first-retry",
+    // `pnpm e2e:linux`: the browsers run in the Linux Playwright image (scripts/e2e-linux.ts), the runner and the
+    // production server stay on this machine.
+    ...(process.env.PW_WS_ENDPOINT
+      ? { connectOptions: { wsEndpoint: process.env.PW_WS_ENDPOINT } }
+      : {}),
     ...(process.env.STAGING_BASIC_AUTH_USER
       ? {
           httpCredentials: {
