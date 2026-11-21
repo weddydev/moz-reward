@@ -17,7 +17,10 @@ import { type CDPSession, type Page, type TestInfo } from "@playwright/test";
  * Benchmark score of the CI runner's Chromium (ubuntu-latest, Playwright 1.65), from the `[cpu]` line of the
  * Linux 5-project run. Re-measure if GitHub changes the runner hardware or the benchmark below changes.
  */
-export const CI_CPU_SCORE = 28_000; // run 44723422284: 25,650–30,820 over 8 throttled tests, median ≈ 28,000
+// CI's score where the throttled specs run now: alone, one worker (`@perf` step, process audit 21 Nov). Run
+// 44925792127: 62,987–77,533 over 10 throttled tests, median ≈ 72,000. The old 28,000 (run 44723422284) was measured
+// with the full suite on 2 workers beside it, so a laptop then ran these specs ~2.5× harder than CI (DECISIONS 21 Nov).
+export const CI_CPU_SCORE = 70_000;
 
 /** Iterations per second of a mixed string/array workload (higher = faster CPU); median of 5 runs. */
 async function benchmark(page: Page): Promise<number> {
