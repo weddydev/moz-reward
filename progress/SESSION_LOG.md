@@ -766,3 +766,6 @@ Docker: ~15 GB freed (tuitionconnect removed with the human's OK, 41 orphan volu
 ## 2026-11-21 — PD-02 Linux CI fix to main by talha.syed (Mac)
 Done: wip/PD-03 CI 44894313285 red on Semgrep `detect-non-literal-regexp` in `font-fallbacks.test.ts` (RegExp from `family`): now parses every `@font-face` block with fixed patterns (`527fbb8`); `c072a49` + `527fbb8` squashed onto main; FOLLOWUPS P1-03 "no committed Linux helper" closed (`pnpm e2e:linux`).
 Evidence: `pnpm e2e:linux tests/e2e/molten.spec.ts --project desktop1440 --project pixel7 --repeat-each 3` → 45 passed, 3 skipped (hover, mobile by design), 0 failed (Manrope preload + optional now VERIFIED on Linux); font-fallbacks unit 4/0; `pnpm sast` clean (989 files); `pnpm check` 1785/0.
+
+## 2026-11-21 ~13:25 UTC — PD — checkpoint by talha.syed (Mac)
+Work on `wip/PD-03` HEAD `43a95fc` (PD-03 done + process-audit gate changes); next: CI check, `pnpm gate:task PD-03`, fast-forward main. Details in that branch's PROGRESS.
