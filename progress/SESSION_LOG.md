@@ -791,3 +791,10 @@ Work on `wip/PD-03` HEAD `43a95fc` (PD-03 done + process-audit gate changes); ne
 Reviews of `2dd6039..4ecb0de`: security PASS (MEDIUM: file named `--exclude=*` emptied GNU tar → Semgrep passed; NUL list + `--null` + entry-count check; LOW gitleaks `:ro`); design PASS after HIGH (`.rm *` lost to the 150 ms net; `html:root.rm`, stagger fade exempt, DECISIONS); code APPROVE WITH FIXES (M1 @perf project filter, M2 watchdog signals open; M3 → C-75 PD-04). Review fixes `675cdad`.
 Main push of `b7d1c3f` refused by the pre-push gate: Linux 5-project task specs 248/5/12 (motion.spec :482, :514, :959×2; molten.spec :161); motion.spec :338 fails 4/4 on Linux WebKit with or without this branch's CSS. Nightly 44729934917 (20 Nov, main) red on the same Linux-WebKit cluster. Main stays `d055dd6`.
 Wip CI 44909391859 (`58c1a46`) green; `ci:usage` 135% estimate (public repo, unbilled). Merged main's checkpoint (`d055dd6`) into wip/PD-03 (`b7d1c3f`).
+
+## 2026-11-21 ~14:50–15:12 UTC — PD — human tasks + checkpoint by Syedbadeshah76 (Windows)
+Human tasks recorded (`0c3958e`): H-48 (real staging DSN 13:49 UTC), H-34, H-42 old key (key check run 43697242708 OK after), H-44, H-50, H-30 Windows.
+Wip CI 44915121101 (`4bf7fad`) red: gilded-gate.spec `:275` reduced motion, received "done" not "play" (pixel7 + desktop1440, both retries): `675cdad`'s `.rm` .001ms rule ended `gate-fade` → `.gilded-gate` exempted (`2def940`); host 6/0, Linux 5 projects 15/0.
+`pnpm check` on Windows failed: sast fixture `--exclude=*` ENOENT (Windows file name) → `--exclude=src` (`67e827d`); with the newline list restored the test still fails.
+`pnpmInvocation` fell back to cmd.exe for pnpm 12's `pnpm.exe` (`e2e:linux -g "a|b"` → "'reduced-motion' is not recognized") → direct spawn (`1375f2b`, test first).
+Wip HEAD `1375f2b`; main push gate (5 Linux specs) untouched, next.
