@@ -74,22 +74,22 @@ export function unpushedCommitMessages(): string {
 }
 
 /**
- * The gate's E2E runs in the Linux Playwright container (`pnpm e2e:linux`), on every project, so a local pass
- * means what CI's pass means. Process audit 21 Nov: 11 of 18 red CI runs in a week were Linux-only E2E failures
- * that a host-OS Chromium + WebKit gate could not see.
+ * The gate's Chromium E2E runs in the Linux Playwright container (`pnpm e2e:linux`), so a local pass means what
+ * CI's pass means. Process audit 21 Nov: 11 of 18 red CI runs in a week were Linux-only E2E failures that a
+ * host-OS gate could not see; all of them were Chromium (push CI runs only pixel7 + desktop1440).
+ * WebKit runs on the host's WebKit instead (DECISIONS 21 Nov): Linux WebKit inside the laptop's Docker VM
+ * renders ~1 frame/s for 1–2 s after a load, so timing specs fail there deterministically, while the same
+ * specs pass on the host's WebKit and on CI's Linux WebKit (twice-weekly run).
  */
-export const GATE_E2E_PROJECTS = [
-  "chromium",
-  "webkit",
-  "pixel7",
-  "iphone14",
-  "desktop1440",
-] as const;
+export const GATE_LINUX_PROJECTS = ["chromium", "pixel7", "desktop1440"] as const;
+export const GATE_HOST_PROJECTS = ["webkit", "iphone14"] as const;
+export const GATE_E2E_PROJECTS = [...GATE_LINUX_PROJECTS, ...GATE_HOST_PROJECTS] as const;
 
-const projectArgs = (): string[] => GATE_E2E_PROJECTS.flatMap((p) => ["--project", p]);
+type Projects = readonly string[];
+const projectArgs = (projects: Projects): string[] => projects.flatMap((p) => ["--project", p]);
 
-export const taskE2eArgs = (ids: string[]): string[] => [
-  ...projectArgs(),
+export const taskE2eArgs = (ids: string[], projects: Projects): string[] => [
+  ...projectArgs(projects),
   "--grep",
   grepFor(ids),
   "--pass-with-no-tests",
@@ -111,8 +111,8 @@ export const affectedE2eArgs = (): string[] => [
 ];
 
 /** The task's perf-budget specs alone, one worker (playwright.config: @perf runs only with PERF=1). */
-export const perfE2eArgs = (ids: string[]): string[] => [
-  ...projectArgs(),
+export const perfE2eArgs = (ids: string[], projects: Projects): string[] => [
+  ...projectArgs(projects),
   "--grep",
   ids.length > 0 ? `^(?=.*${grepFor(ids)})(?=.*@perf)` : "@perf",
   "--workers",
@@ -221,17 +221,38 @@ function main(): void {
     { name: "lint:sh", run: () => commandStep("lint:sh", "pnpm", ["lint:sh"]) },
   );
   if (ids.length > 0) {
-    steps.push({
-      name: `e2e ${ids.join(",")}`,
-      run: () => linuxE2eStep(`e2e ${ids.join(",")} (Linux)`, taskE2eArgs(ids)),
-    });
-    steps.push({
-      name: `e2e perf ${ids.join(",")} (Linux, 1 worker)`,
-      run: () =>
-        linuxE2eStep(`e2e perf ${ids.join(",")} (Linux, 1 worker)`, perfE2eArgs(ids), {
-          PERF: "1",
-        }),
-    });
+    const task = ids.join(",");
+    steps.push(
+      {
+        name: `e2e ${task} (Linux Chromium)`,
+        run: () =>
+          linuxE2eStep(`e2e ${task} (Linux Chromium)`, taskE2eArgs(ids, GATE_LINUX_PROJECTS)),
+      },
+      {
+        name: `e2e ${task} (host WebKit)`,
+        run: () => e2eStep(`e2e ${task} (host WebKit)`, taskE2eArgs(ids, GATE_HOST_PROJECTS)),
+      },
+      {
+        name: `e2e perf ${task} (Linux Chromium, 1 worker)`,
+        run: () =>
+          linuxE2eStep(
+            `e2e perf ${task} (Linux Chromium, 1 worker)`,
+            perfE2eArgs(ids, GATE_LINUX_PROJECTS),
+            { PERF: "1" },
+          ),
+      },
+      {
+        name: `e2e perf ${task} (host WebKit, 1 worker)`,
+        run: () =>
+          e2eStep(
+            `e2e perf ${task} (host WebKit, 1 worker)`,
+            perfE2eArgs(ids, GATE_HOST_PROJECTS),
+            {
+              PERF: "1",
+            },
+          ),
+      },
+    );
     steps.push({
       name: "e2e changed specs (Linux)",
       run: () => linuxE2eStep("e2e changed specs (Linux)", affectedE2eArgs()),
