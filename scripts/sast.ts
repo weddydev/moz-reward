@@ -57,6 +57,47 @@ export function scanList(lsFiles: string, exists: (f: string) => boolean): strin
   return [...new Set(lsFiles.split("\0").filter(Boolean))].filter((f) => exists(f)).sort();
 }
 
+/**
+ * Packs `files` (relative to `cwd`) into a tar in memory. The list is NUL-separated and read with `--null`, so
+ * a committed file named like an option (`--exclude=*`, `-T`) is packed as a file: with a newline list GNU tar
+ * took it as an option and could pack nothing while Semgrep still passed (PD-A security review). The archive
+ * must then hold exactly the listed files, or the scan fails rather than run on less.
+ */
+export function packFiles(files: readonly string[], cwd: string = process.cwd()): Buffer {
+  const dir = mkdtempSync(path.join(tmpdir(), "sast-"));
+  try {
+    const list = path.join(dir, "files.txt");
+    writeFileSync(list, files.map((f) => `${f}\0`).join(""));
+    const tar = spawnSync("tar", ["--null", "-cf", "-", "-T", list], {
+      cwd,
+      maxBuffer: 1024 * 1024 * 1024,
+    });
+    if (tar.error || tar.status !== 0) {
+      // stdout/stderr are null when tar could not be started, whatever the types say.
+      const why = tar.error ? tar.error.message : String(tar.stderr).trim();
+      throw new Error(`sast: could not pack the files (${why})`);
+    }
+    const packed = archiveEntries(tar.stdout, cwd);
+    if (packed.length !== files.length) {
+      throw new Error(
+        `sast: could not pack the files (archive holds ${String(packed.length)}, list has ${String(files.length)})`,
+      );
+    }
+    return tar.stdout;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** The file entries in a tar archive (directories left out). */
+export function archiveEntries(archive: Buffer, cwd: string = process.cwd()): string[] {
+  const t = spawnSync("tar", ["-tf", "-"], { cwd, input: archive, maxBuffer: 256 * 1024 * 1024 });
+  if (t.error || t.status !== 0) throw new Error("sast: could not read the packed archive back");
+  return String(t.stdout)
+    .split("\n")
+    .filter((e) => e !== "" && !e.endsWith("/"));
+}
+
 function main(): void {
   const ls = spawnSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
     encoding: "utf8",
@@ -67,33 +108,26 @@ function main(): void {
     process.exit(1);
   }
   const files = scanList(ls.stdout, (f) => existsSync(f) && statSync(f).isFile());
-  const dir = mkdtempSync(path.join(tmpdir(), "sast-"));
-  const list = path.join(dir, "files.txt");
-  writeFileSync(list, files.join("\n") + "\n");
+  let archive: Buffer;
   try {
-    const tar = spawnSync("tar", ["-cf", "-", "-T", list], { maxBuffer: 1024 * 1024 * 1024 });
-    if (tar.error || tar.status !== 0) {
-      // stdout/stderr are null when tar could not be started, whatever the types say.
-      const why = tar.error ? tar.error.message : String(tar.stderr).trim();
-      console.error(`sast: could not pack the files (${why})`);
-      process.exitCode = 1;
-      return;
-    }
-    const run = spawnSync("docker", semgrepArgs(), {
-      input: tar.stdout,
-      stdio: ["pipe", "inherit", "inherit"],
-      maxBuffer: 64 * 1024 * 1024,
-    });
-    if (run.error) {
-      console.error(`sast: could not run Docker (${run.error.message}). Start Docker Desktop.`);
-      process.exitCode = 1;
-      return;
-    }
-    console.warn(`[sast] ${String(files.length)} files scanned`);
-    process.exitCode = run.status ?? 1;
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
+    archive = packFiles(files);
+  } catch (e) {
+    console.error(e instanceof Error ? e.message : String(e));
+    process.exitCode = 1;
+    return;
   }
+  const run = spawnSync("docker", semgrepArgs(), {
+    input: archive,
+    stdio: ["pipe", "inherit", "inherit"],
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (run.error) {
+    console.error(`sast: could not run Docker (${run.error.message}). Start Docker Desktop.`);
+    process.exitCode = 1;
+    return;
+  }
+  console.warn(`[sast] ${String(files.length)} files packed and scanned`);
+  process.exitCode = run.status ?? 1;
 }
 
 if (isDirectRun(import.meta.url)) main();

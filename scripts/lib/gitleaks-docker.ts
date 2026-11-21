@@ -18,7 +18,12 @@ export function gitleaksDockerArgs(
   if (linked && (inner === "" || inner.startsWith("..") || path.isAbsolute(inner))) {
     throw new Error(`git dir ${at.gitDir} is not inside the common dir ${at.commonDir}`);
   }
-  const mounts = ["-v", `${at.repo}:/repo`, ...(linked ? ["-v", `${at.commonDir}:/gitdir`] : [])];
+  // Read-only: the scan only reads the index and objects (PD-A security review LOW).
+  const mounts = [
+    "-v",
+    `${at.repo}:/repo:ro`,
+    ...(linked ? ["-v", `${at.commonDir}:/gitdir:ro`] : []),
+  ];
   const env = linked ? ["-e", `GIT_DIR=/gitdir/${inner}`, "-e", "GIT_WORK_TREE=/repo"] : [];
   // The mounted repo is owned by another user inside the container; trust it (and its git dir) for git.
   const trust = linked

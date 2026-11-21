@@ -90,6 +90,33 @@ test("[PD-02] reduced motion: the gilded edge and the glows hold still", async (
   expect(running).toBe(0);
 });
 
+test("[PD-03] reduced motion: every keyframe animation lands at once (the reference's .rm .001ms wins over the 150 ms net)", async ({
+  page,
+}) => {
+  // PD-A design review HIGH: the attribute net in globals.css (specificity 0,2,0) outranked `.rm *` (0,1,0), so
+  // loops still played once over 150 ms (the spec page's conic spun 360°) instead of landing on their end state.
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openMolten(page);
+  await expect(page.locator("html")).toHaveClass(/(^|\s)rm(\s|$)/);
+  const slow = await page.evaluate(() => {
+    const out: string[] = [];
+    const ms = (d: string): number =>
+      Math.max(...d.split(",").map((x) => parseFloat(x) * (x.trim().endsWith("ms") ? 1 : 1000)));
+    for (const el of document.querySelectorAll("body *")) {
+      for (const pseudo of [null, "::before", "::after"]) {
+        const cs = getComputedStyle(el, pseudo);
+        if (cs.animationName === "none") continue;
+        if (ms(cs.animationDuration) > 1)
+          out.push(
+            `${el.tagName.toLowerCase()}.${el.getAttribute("class") ?? ""}${pseudo ?? ""} ${cs.animationName} ${cs.animationDuration}`,
+          );
+      }
+    }
+    return out;
+  });
+  expect(slow).toEqual([]);
+});
+
 test("[PD-02] lite tier (≤ 4 cores): no light glide, the gem stays", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "hardwareConcurrency", { get: () => 4 });

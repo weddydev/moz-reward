@@ -11,7 +11,7 @@ describe("[P0-01] gitleaks pre-commit scan in Docker", () => {
       commonDir: "/work/moz-reward/.git",
     });
     expect(args.filter((a) => a === "-v")).toHaveLength(1);
-    expect(args).toContain("/work/moz-reward:/repo");
+    expect(args).toContain("/work/moz-reward:/repo:ro");
     expect(args).not.toContain("-e");
     expect(args.at(-1)).toMatch(
       /gitleaks git --pre-commit --staged --redact --no-banner -v \/repo$/,
@@ -24,8 +24,8 @@ describe("[P0-01] gitleaks pre-commit scan in Docker", () => {
       gitDir: "/work/moz-reward/.git/worktrees/moz-PD-04",
       commonDir: "/work/moz-reward/.git",
     });
-    expect(args).toContain("/work/moz-PD-04:/repo");
-    expect(args).toContain("/work/moz-reward/.git:/gitdir");
+    expect(args).toContain("/work/moz-PD-04:/repo:ro");
+    expect(args).toContain("/work/moz-reward/.git:/gitdir:ro");
     expect(args).toContain("GIT_DIR=/gitdir/worktrees/moz-PD-04");
     expect(args).toContain("GIT_WORK_TREE=/repo");
     expect(args.at(-1)).toContain("safe.directory /gitdir");
@@ -38,7 +38,7 @@ describe("[P0-01] gitleaks pre-commit scan in Docker", () => {
       commonDir: "C:\\work\\moz-reward\\.git",
     });
     expect(args).toContain("GIT_DIR=/gitdir/worktrees/moz-PD-04");
-    expect(args).toContain("C:\\work\\moz-reward\\.git:/gitdir");
+    expect(args).toContain("C:\\work\\moz-reward\\.git:/gitdir:ro");
   });
 
   it("[P0-01] a git dir outside the common dir is refused, never mounted", () => {

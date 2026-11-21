@@ -295,9 +295,13 @@ svg.m-seam {
  * to .12s. `<html class="rm">` is the one signal (system setting or "Reduce animations"); the attribute rules
  * in globals.css stay as the no-JavaScript net.
  */
-.rm *,
-.rm *::before,
-.rm *::after {
+/* `html:root.rm` (0,2,1) outranks the globals.css net (0,2,0), which would otherwise win the animation
+   duration and play every loop once over 150 ms (PD-A design review). The one exception is a deliberate
+   reduced-motion fade (the P0-10 stagger's `moz-fade`, ≤ 150 ms, DESIGN §7.2): it replaces movement, so it
+   keeps the net's duration instead of vanishing in .001ms. */
+html:root.rm *:not(.stagger-item),
+html:root.rm *::before,
+html:root.rm *::after {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   animation-delay: 0s !important;

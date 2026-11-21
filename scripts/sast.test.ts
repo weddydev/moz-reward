@@ -1,11 +1,39 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { pnpmInvocation } from "./lib/gate";
-import { scanList, SEMGREP_IMAGE, semgrepArgs } from "./sast";
+import { archiveEntries, packFiles, scanList, SEMGREP_IMAGE, semgrepArgs } from "./sast";
 
 describe("[P0-18] sast over a tar stream", () => {
   it("[P0-18] scans tracked + new files as they exist, once each, sorted; deleted files are left out", () => {
     const ls = ["src/b.ts", "src/a.ts", "gone.ts", "src/a.ts", "new.ts", ""].join("\0");
     expect(scanList(ls, (f) => f !== "gone.ts")).toEqual(["new.ts", "src/a.ts", "src/b.ts"]);
+  });
+
+  it("[P0-18] a committed file named like a tar option is packed as a file, never read as an option", () => {
+    // PD-A security review MEDIUM: with a newline list, GNU tar took `--exclude=*` as an option and packed
+    // nothing, so Semgrep scanned an empty tree and passed.
+    const dir = mkdtempSync(path.join(tmpdir(), "sast-test-"));
+    try {
+      mkdirSync(path.join(dir, "src"));
+      const files = ["--exclude=*", "-T", "src/a.ts", "src/b c.ts"];
+      for (const f of files) writeFileSync(path.join(dir, f), "export {};\n");
+      const archive = packFiles(files, dir);
+      expect(archiveEntries(archive, dir).sort()).toEqual([...files].sort());
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("[P0-18] packing fails loudly when the archive does not hold every listed file", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "sast-test-"));
+    try {
+      writeFileSync(path.join(dir, "a.ts"), "export {};\n");
+      expect(() => packFiles(["a.ts", "missing.ts"], dir)).toThrow(/could not pack/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("[P0-18] the pinned image reads the files from stdin into /src and keeps the same rules", () => {
