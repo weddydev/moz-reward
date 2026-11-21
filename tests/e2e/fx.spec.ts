@@ -229,9 +229,17 @@ test("[PD-03] lite tier: half the particles and a 160 cap; the playground switch
     await expect(page.locator("html")).toHaveClass(/(^|\s)lite(\s|$)/, { timeout: 1_000 });
   }).toPass();
   expect(await fire(page, 100, 100, { count: 20 })).toBe(10);
-  for (let i = 0; i < 30; i++) await fire(page, 100, 100, { count: 28 });
-  expect((await stats(page)).live).toBe(160);
-  expect((await stats(page)).cap).toBe(160);
+  // All 30 bursts and the read in one task: no frame runs in between, so no spark (life .45–.9 s) can
+  // expire first. Separate round trips took longer than that on a loaded runner (gate 21 Nov: 50 live).
+  const filled = await page.evaluate(() => {
+    const fx = (window as unknown as { __mozFx: Hook }).__mozFx;
+    let added = 0;
+    for (let i = 0; i < 30; i++) added += fx.burst(100, 100, { count: 28 });
+    return { added, ...fx.stats() };
+  });
+  expect(filled.added).toBe(150); // 10 already live; the cap refuses the other 270
+  expect(filled.live).toBe(160);
+  expect(filled.cap).toBe(160);
   // The override survives a reload in this tab; "Follow the device" drops it.
   await page.reload();
   await expect(page.locator("html")).toHaveClass(/(^|\s)lite(\s|$)/);
