@@ -959,3 +959,7 @@ Why: Linux WebKit in the laptop's Docker VM renders ~1 frame/s for 1–2 s after
 ## 2026-11-21 — `CI_CPU_SCORE` re-measured where the throttled specs run now: 70,000
 Decision: `tests/e2e/support/cpu-throttle.ts` `CI_CPU_SCORE` 28,000 → 70,000 (CI run 44925792127, `@perf` step alone on one worker: 62,987–77,533, median ≈ 72,000). CI still throttles exactly 4×; bounds unchanged (fx stress ≥ 58 fps, p95 ≤ 16.8 ms, no long task over 50 ms).
 Why: 28,000 was measured with the full suite beside the specs; since `@perf` runs alone, CI's 4× is a ~17,700 device, while the laptop's Docker VM (score ~20,700) ran at 2.96×, a ~7,000 device, and failed the fx stress (57.4 / 41.6 fps) that CI passes on the same code (58.5 / 60.0). The revisit rule of the 15 Nov throttle entry applied.
+
+## 2026-11-21 — CPU throttle calibrated on CI too (replaces "CI uses exactly the nominal rate", 20 Nov)
+Decision: `throttleRate(nominal, score)` = nominal × score / `CI_CPU_SCORE` (70,000), clamped to [1, 20], on every machine including CI. A runner scoring 70,000 still gets exactly 4×; bounds unchanged.
+Why: GitHub's ubuntu runners score ~46,000 to ~77,000. On the same commit `d43774c`, the fx 200-burst stress passed on a ~46,000 runner (58.4 fps, main CI 44930544722) and failed 3/3 on another (53–55 fps, wip CI 44930544649): a fixed 4× made the verdict depend on which runner the job got, not on the code.
