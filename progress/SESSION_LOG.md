@@ -835,3 +835,15 @@ Commits: a6236e1 (wip/PD-05)
 Tests: parity Chromium PD-05 24/24 (Windows host); molten-choices unit 22/0; pnpm check PASS (unit 1857/0).
 Left off: wip/PD-05 a6236e1 → PD-05 E2E spec, WebKit + Linux parity, review, gate:task, close (handoff order). Continue in the VS Code WSL window.
 Notes: Windows `pnpm check` on wip first failed on css-hex (reference hexes) → 4 tokens added (pour-edge, coin-face, coin-face-on, liquid-blob).
+
+## 2026-11-22 (~15:55 UTC) — PD — PD-05 code complete; handoff by Syedbadeshah76 (WSL laptop)
+Done: CI 45011219404 red causes fixed (checkbox overhang hid the input: join ×10, gallery 81×42; ui-states/tokens AC5 follow the Molten press); `molten-choices.spec.ts`; WebKit goo decision; design review (0 BLOCK/HIGH, 2 MEDIUM fixed test-first, LOWs fixed or in FOLLOWUPS); H-51 (a) verified (WSL key logs into the VPS).
+Commits: 535b4f9, 96658da, 1177632, a625eba (wip/PD-05; main merged in at 3fe211d)
+Tests: unit 1883/0; int 1456/0/1; parity Chromium 22/22 (container), WebKit seal 10/10 alone; molten-choices 21/0 + 2/0; CI 45030522704 green; CI a625eba + full 5-project run in progress at handoff.
+Left off: wip/PD-05 a625eba → CI, gate:task alone, close, main (handoff note). Notes: 16 GB of WebKit crash dumps filled C: (deleted by the human); a push during the gate starved its E2E.
+
+## 2026-11-22 (~16:15 UTC) — PD — PD-05 still code complete; handoff by Syedbadeshah76 (WSL laptop)
+Done: full 5-project run on `1177632` (1264/0, 1 flaky: axe read a toast mid-exit on loyalty-settings Pixel 7) → E2E guard's closing scan excludes `.m-toast` (`9ec3855`); the a625eba gate was stopped (superseded).
+Commits: 9ec3855 (wip/PD-05)
+Tests: hook check + sast PASS on 9ec3855; CI 45042534742 + full run 45042543781 running at handoff.
+Left off: wip/PD-05 9ec3855 → CI, gate:task alone, close (DECISIONS + FOLLOWUPS lines in the handoff note), main.
