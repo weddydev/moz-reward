@@ -8,7 +8,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { level, minutesFromBilling, minutesFromJobs } from "./ci-usage";
 import { buildFingerprint } from "./e2e";
-import { phaseNumber, requireAll, runPhaseSteps, type PhaseStep } from "./gate-phase";
+import { cpuSkips, phaseNumber, requireAll, runPhaseSteps, type PhaseStep } from "./gate-phase";
 import { checkParts, grepFor, nextUntickedTask, resolveTaskIds } from "./gate-task";
 import {
   assertShellSafe,
@@ -20,6 +20,7 @@ import {
   treeStep,
   type StepResult,
 } from "./lib/gate";
+import { NO_VERDICT } from "../tests/e2e/support/cpu-throttle";
 
 const tmp = (name: string, body: string): string => {
   const file = path.join(mkdtempSync(path.join(tmpdir(), "gate-")), name);
@@ -213,5 +214,31 @@ describe("[P0-14] gate child environment", () => {
     } as unknown as NodeJS.ProcessEnv);
     expect(env.NODE_ENV).toBeUndefined();
     expect(env.APP_ENV).toBe("test");
+  });
+});
+
+describe("[P0-14] gate:phase never passes without a frame-rate verdict (PD-A close review M2)", () => {
+  const report = (descriptions: string[]) => ({
+    suites: [
+      {
+        specs: [
+          {
+            title: "fx",
+            tests: descriptions.map((d) => ({
+              annotations: [{ type: "skip", description: d }],
+              results: [{ status: "skipped", annotations: [] }],
+            })),
+          },
+        ],
+        suites: [],
+      },
+    ],
+  });
+
+  it("[P0-14] counts throttled specs the host skipped as too slow, not other skips", () => {
+    expect(cpuSkips(report([`host CPU score 8780 …: ${NO_VERDICT}, CI measures it`]))).toBe(1);
+    expect(cpuSkips(report(["CPU throttling is a Chromium DevTools feature"]))).toBe(0);
+    expect(cpuSkips(report([]))).toBe(0);
+    expect(cpuSkips(null)).toBe(0);
   });
 });

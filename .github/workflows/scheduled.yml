@@ -34,7 +34,6 @@ env:
   NEXT_TELEMETRY_DISABLED: "1"
   E2E_CRON: "17 3 * * 2,5"
   ZAP_CRON: "41 4 * * 1"
-  PERF_CRON: "29 2 * * *"
 
 jobs:
   budget:

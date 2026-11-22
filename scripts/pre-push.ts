@@ -121,7 +121,13 @@ export function ciVerdict(
       ok: false,
       why: `CI for ${short} is still running (run ${String(going.databaseId)}): push main once it is green, and carry on with other work meanwhile`,
     };
-  if (own.some((r) => r.status === "completed" && r.conclusion === "failure"))
+  // Anything but success, cancelled (superseded by a newer push) or skipped is red: timed_out, startup_failure…
+  if (
+    own.some(
+      (r) =>
+        r.status === "completed" && !["success", "cancelled", "skipped"].includes(r.conclusion),
+    )
+  )
     return { ok: false, why: `CI for ${short} is red: fix it on the wip branch first` };
   const ancestor = runs.find(
     (r) =>

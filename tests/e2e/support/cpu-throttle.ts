@@ -54,6 +54,9 @@ export function throttleRate(nominal: number, score: number): number {
  * fast unthrottled (rate ≥ 1). A slower host (the Windows laptop under load: 8,780 = 0.5×) would measure itself,
  * not the code, so it gives no verdict there; CI always does (DECISIONS 22 Nov).
  */
+/** In every "too slow to emulate" skip reason; gate:phase fails on it (scripts/gate-phase.ts `cpuSkips`). */
+export const NO_VERDICT = "no verdict here";
+
 export function canEmulate(nominal: number, score: number): boolean {
   return (nominal * score) / CI_CPU_SCORE >= 1;
 }
@@ -73,7 +76,7 @@ export async function throttleCpu(
   const score = await benchmark(probe);
   await probe.close();
   if (!canEmulate(nominal, score)) {
-    const why = `host CPU score ${score.toFixed(0)} is below the reference device (${String(CI_CPU_SCORE / nominal)} for ${String(nominal)}× of CI ${String(CI_CPU_SCORE)}): no verdict here, CI measures it`;
+    const why = `host CPU score ${score.toFixed(0)} is below the reference device (${String(CI_CPU_SCORE / nominal)} for ${String(nominal)}× of CI ${String(CI_CPU_SCORE)}): ${NO_VERDICT}, CI measures it`;
     console.warn(`[cpu] ${why}`);
     if (process.env.CI) throw new Error(why);
     testInfo.skip(true, why);

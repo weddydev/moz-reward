@@ -168,6 +168,18 @@ describe("[P0-14] main only takes a commit CI has already passed (process change
     expect(cancelled.ok).toBe(false);
   });
 
+  it("[P0-14] any other finished conclusion of its own run (timed out, startup failure…) is red, never covered by an ancestor (PD-A close review M1)", () => {
+    for (const c of ["timed_out", "startup_failure", "action_required", "neutral", "stale"]) {
+      const v = ciVerdict(
+        C,
+        [run(C, "completed", c), run(B, "completed", "success")],
+        deps([`${B}>${C}`]),
+      );
+      expect(v.ok, c).toBe(false);
+      expect(v.ok ? "" : v.why).toMatch(/red/);
+    }
+  });
+
   it("[P0-14] refuses while CI for the commit is still running, and says to carry on meanwhile", () => {
     const v = ciVerdict(C, [run(C, "in_progress", "")], deps());
     expect(v).toMatchObject({ ok: false });

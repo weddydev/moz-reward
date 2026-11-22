@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { ciWebkitRuns, taskIdsIn, webkitBase } from "./ci-webkit";
+import {
+  ciWebkitRuns,
+  EVERY_PAGE_GLOBS,
+  touchesEveryPage,
+  taskIdsIn,
+  webkitBase,
+} from "./ci-webkit";
 
 const ZERO = "0".repeat(40);
 const projectsIn = (args: string[]): string[] =>
@@ -44,5 +50,25 @@ describe("[P0-14] CI runs the task's and the changed specs on WebKit for every p
     const runs = ciWebkitRuns([], "abc123");
     expect(runs).toHaveLength(1);
     expect(runs[0]).toContain("--only-changed=abc123");
+  });
+
+  it("[P0-14] a change that affects every page (root layout, global CSS, proxy, E2E fixtures) runs every spec on WebKit (PD-A close review HIGH)", () => {
+    for (const f of [
+      "src/app/layout.tsx",
+      "src/app/globals.css",
+      "src/styles/molten.css",
+      "src/proxy.ts",
+      "next.config.ts",
+      "tests/e2e/support/test.ts",
+      "playwright.config.ts",
+    ])
+      expect(touchesEveryPage([f]), f).toBe(true);
+    expect(touchesEveryPage(["src/components/ui/button.tsx", "docs/TESTING.md"])).toBe(false);
+    expect(EVERY_PAGE_GLOBS.length).toBeGreaterThan(0);
+    const runs = ciWebkitRuns(["PD-03"], "abc123", true);
+    expect(runs).toHaveLength(1);
+    expect(projectsIn(runs[0] ?? [])).toEqual(["webkit", "iphone14"]);
+    expect(runs[0]).not.toContain("--grep");
+    expect(runs[0]?.some((a) => a.startsWith("--only-changed"))).toBe(false);
   });
 });

@@ -8,7 +8,7 @@
  * Env: STAGING_URL (+ STAGING_BASIC_AUTH_USER/PASSWORD) for the staging steps.
  */
 import "./load-env";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { E2E_DIST_DIR, ensureProductionBuild } from "./e2e";
 import { checkParts, e2eStep, nextUntickedTask } from "./gate-task";
@@ -16,6 +16,7 @@ import {
   commandStep,
   exec,
   firstError,
+  GATE_DIR,
   STEP_LIMITS,
   summarise,
   treeState,
@@ -24,6 +25,7 @@ import {
   type StepResult,
 } from "./lib/gate";
 import { isDirectRun } from "../src/lib/is-direct-run";
+import { NO_VERDICT } from "../tests/e2e/support/cpu-throttle";
 
 export type PhaseStep = {
   name: string;
@@ -123,11 +125,22 @@ function steps(checkScript: string): PhaseStep[] {
       name: "e2e perf (5 projects, 1 worker)",
       from: 0,
       missing: always,
-      run: () =>
-        e2eStep("e2e perf (5 projects, 1 worker)", ["--grep", "@perf|@fps", "--workers", "1"], {
+      run: () => {
+        const name = "e2e perf (5 projects, 1 worker)";
+        const r = e2eStep(name, ["--grep", "@perf|@fps", "--workers", "1"], {
           PERF: "1",
           FPS: "1",
-        }),
+        });
+        const file = path.join(GATE_DIR, `${name.replace(/\W+/g, "-")}.json`);
+        const skips = existsSync(file) ? cpuSkips(JSON.parse(readFileSync(file, "utf8"))) : 0;
+        return skips > 0
+          ? {
+              ...r,
+              status: "fail",
+              note: `${String(skips)} throttled spec(s) skipped: this host can't emulate the reference device; run gate:phase on a faster host (the Mac)`,
+            }
+          : r;
+      },
     },
     {
       name: "mutation (rules modules)",
@@ -190,6 +203,39 @@ export function requireAll(r: StepResult): StepResult {
 
 function unreachable(): StepResult {
   throw new Error("a step reported as missing was run");
+}
+
+type ReportNode = {
+  suites?: ReportNode[];
+  specs?: Array<{
+    tests?: Array<{
+      annotations?: Array<{ type: string; description?: string }>;
+      results?: Array<{ annotations?: Array<{ type: string; description?: string }> }>;
+    }>;
+  }>;
+};
+
+/**
+ * Throttled specs this host skipped because it can't emulate the reference device (tests/e2e/support/cpu-throttle.ts).
+ * gate:phase fails on any: the phase gate must carry a frame-rate verdict (PD-A close review M2), so a too-slow host
+ * hands the phase gate to one that can (the Mac).
+ */
+export function cpuSkips(report: unknown): number {
+  let n = 0;
+  const walk = (node: ReportNode): void => {
+    for (const child of node.suites ?? []) walk(child);
+    for (const spec of node.specs ?? [])
+      for (const t of spec.tests ?? []) {
+        const notes = [
+          ...(t.annotations ?? []),
+          ...(t.results ?? []).flatMap((r) => r.annotations ?? []),
+        ];
+        if (notes.some((a) => a.type === "skip" && (a.description ?? "").includes(NO_VERDICT)))
+          n += 1;
+      }
+  };
+  if (report && typeof report === "object") walk(report);
+  return n;
 }
 
 function main(): void {
