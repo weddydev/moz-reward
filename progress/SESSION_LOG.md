@@ -819,4 +819,5 @@ code-review done 7afcd9c (range d43774c..7afcd9c: APPROVE WITH FIXES; HIGH every
 
 ## 2026-11-22 (~08:45 UTC) — PD — handoff by talha.syed (Mac)
 PD-04 built and reviewed on `wip/PD-04` (`2fbeb3e`): parity 26/26 both engines, unit 1852/0, design review PASS WITH FIXES (7 MEDIUM + 4 LOW fixed). Not on main yet: gate + CI on `2fbeb3e` were running at handoff (every-page WebKit run). Main `e8e9eae`. Baton freed.
+Handoff updated (~08:55 UTC, human): next session starts PD-05 from `wip/PD-04` (`2fbeb3e`); nobody else works on PD-04 or pushes it to main; talha.syed closes PD-04 next Mac session.
 

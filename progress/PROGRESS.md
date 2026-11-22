@@ -3,20 +3,21 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: free — last held by talha.syed, 2026-11-22 ~08:45 UTC
+Baton: free — last held by talha.syed, 2026-11-22 ~08:55 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handoff by talha.syed (Mac), 22 Nov 2026 ~08:45 UTC; baton free.** **Main = `e8e9eae`** (process change `7afcd9c` + PD-A closed). **PD-04 built, NOT yet on main:** `wip/PD-04` pushed HEAD **`2fbeb3e`** (= main + `d2df675` CI job limit 60 min + `0e16412` PD-04 + `2fbeb3e` design-review MEDIUM batch). PD-04 is ticked in PHASES **on the wip branch only** (and its PROGRESS/SESSION_LOG/DECISIONS there carry the details).
-- **Continue here (in order):** 1) `git switch wip/PD-04 && git merge --ff-only origin/wip/PD-04`; check HEAD = `2fbeb3e`. 2) Read CI for `2fbeb3e` (`gh run list --branch wip/PD-04 --limit 1`; every-page change, so its WebKit step runs every spec, ~35 min). 3) If red: fix on wip first. Known load-only timeouts locally (ui-states/overlays/tokens/ui-gallery pass alone, `--workers 1`). 4) `pnpm gate:task PD-04` (a run was going at handoff; result unknown), then `git push origin wip/PD-04:main` (the hook needs CI green for that exact commit). 5) Then PD-05 (remove the Buttons tile's `ownHeight` in parity-parts when its Coin switch row-mate lands).
-- **Tested (on `0e16412`/`2fbeb3e`):** parity both engines 26/26 (PD-04 18/18 after the batch); unit 1852/0; PD-04 E2E Linux Chromium 32/0, host WebKit 9/0; affected specs pass alone. Gate on `0e16412`: all PASS except changed specs (settle helpers waited on the Tile's scroll-driven rise + orbit loop; fixed in `2fbeb3e`).
-- **Not yet tested:** gate + CI on `2fbeb3e` (running at handoff); WebKit inspection screens of the fix batch (spec now shoots them on CI's/Mac WebKit).
+- **Handoff by talha.syed (Mac), 22 Nov 2026 ~08:55 UTC; baton free.** **Main = `e8e9eae`** (process change + PD-A closed). **PD-04 is built and reviewed but NOT on main:** `wip/PD-04` pushed HEAD **`2fbeb3e`** (PD-04 + design-review batch; parity 26/26 both engines, unit 1852/0). Its CI + gate were running at handoff.
+- **Human's instruction (22 Nov): the next session starts PD-05 directly. Do NOT work on PD-04 and do NOT push it to main** — talha.syed closes PD-04 (CI check, gate, push main) in his next Mac session.
+- **Continue here (PD-05):** 1) `git fetch origin --prune && git switch -c wip/PD-05 origin/wip/PD-04` and check the base is `2fbeb3e` (PD-05 builds on PD-04's controls, the Buttons tile and `/dev/molten`'s Lab section). 2) Read the PD-05 section of `docs/phases/PD.md` (coin switch, liquid choice, segmented control, seal checkbox). 3) When the Coin switch tile lands next to the Buttons tile, remove the Buttons tile's `ownHeight` in `src/features/dev/molten/parity-parts.ts` (DECISIONS 22 Nov). 4) Push only to `wip/PD-05`; never to main until PD-04 is on main. If PD-04 gets fix commits on `wip/PD-04` meanwhile, merge `origin/wip/PD-04` into `wip/PD-05`.
+- **PD-04 close (talha, next Mac session):** `git switch wip/PD-04`; CI for `2fbeb3e` green (`gh run list --branch wip/PD-04 --limit 1`; every-page change, so WebKit runs every spec, ~35 min); `pnpm gate:task PD-04`; `git push origin wip/PD-04:main`. Known: some /dev/ui specs time out only under parallel load in the local Linux container (pass alone).
+- **Not yet tested:** CI + gate on `2fbeb3e`.
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov; `docs/phases/PD.md`). Then P1 resumes with the P1-B close. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
 - **Current sub-phase:** **PD-B** Controls: PD-04 → PD-05 → PD-06 → close; then PD-C (structure + signature moments, needs H-49). **PD-A closed 22 Nov.** **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done; staging step done 22 Nov with H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-22 (~08:45 UTC), talha.syed (handoff: PD-04 on `wip/PD-04` `2fbeb3e`, gate + CI pending; main `e8e9eae`)
+- **Last updated:** 2026-11-22 (~08:55 UTC), talha.syed (handoff: next session starts PD-05 from `wip/PD-04` `2fbeb3e`; PD-04 to main later by talha)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -25,7 +26,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A (PD-00..PD-03) closed 22 Nov (talha.syed). Next PD-B.
 
 ## Next (top 3)
-1. PD-04 to main: CI + gate on `wip/PD-04` `2fbeb3e`, then push main (handoff steps 1–4).
+1. PD-05 on `wip/PD-05` branched from `wip/PD-04` (`2fbeb3e`); PD-04 to main is talha's, next Mac session.
 2. Check the first nightly `perf` job (scheduled.yml, 02:29 UTC) and red CI first, as always.
 3. PD-05, PD-06, PD-B close. Human any time: H-51 (WSL2 on the Windows laptop, before its next session), H-48b, H-38, H-45, H-46.
 
