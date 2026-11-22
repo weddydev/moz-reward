@@ -10,7 +10,9 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Handoff by talha.syed (Mac), 22 Nov 2026 ~09:15 UTC; baton free.** **PD-04 closed and on main** (this commit; `wip/PD-04` = main). Pushed with a **one-time hook bypass** at the human's instruction before CI finished (DECISIONS 22 Nov "PD-04 pushed before CI").
 - **Continue here (in order):** 1) **Check CI for main's HEAD first** (`gh run list --branch main --limit 2`; every-page change, WebKit runs every spec, ~35 min) and the staging deploy. **Red → fix it before anything else** (likely areas: specs that wait for animations to settle on pages with Molten buttons; local load timeouts passed rerun on 2 workers). 2) Then **PD-05** on `wip/PD-05` from main (coin switch, liquid choice, segmented control, seal checkbox); when the Coin switch tile lands next to the Buttons tile, remove the Buttons tile's `ownHeight` in `src/features/dev/molten/parity-parts.ts`.
 - **Tested before the push (`2fbeb3e`):** parity both engines (PD-04 18/18 after the review batch; 26/26 full), unit 1852/0, PD-04 E2E Linux Chromium 32/0 + host WebKit 9/0, gate all PASS except changed specs 94/10 (load: the 10 pass on 2 workers, 18/0).
-- **Not yet tested:** CI on main's HEAD (full pixel7/desktop1440 + WebKit every spec) and its staging deploy.
+- **CI at handoff:** main `f153279` run 45006025356 **in progress** (wip `2fbeb3e` run 45005263448 in progress too); last completed main CI 44994545759 (`74fba5b`) green.
+- **Not yet tested:** CI on main's HEAD (full pixel7/desktop1440 + WebKit every spec) and its staging deploy. First run of the nightly `perf` job (02:29 UTC).
+- **Before work:** nothing new (no env vars, migrations or seeds). Windows laptop: H-51 (WSL2) first.
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov; `docs/phases/PD.md`). Then P1 resumes with the P1-B close. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
 - **Current sub-phase:** **PD-B** Controls: ~~PD-04~~ → PD-05 → PD-06 → close; then PD-C (structure + signature moments, needs H-49). **PD-A closed 22 Nov.** **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done; staging step done 22 Nov with H-48.)
@@ -22,7 +24,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 ## Now
 - **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-A (PD-00..PD-03) closed 22 Nov (talha.syed). Next PD-B.
+- **PD (Molten design):** PD-A closed 22 Nov; **PD-04 on main 22 Nov** (`f153279`, CI pending). Next PD-05, PD-06, PD-B close.
 
 ## Next (top 3)
 1. Main CI after the PD-04 push green (fix first if red), then PD-05.
@@ -77,10 +79,10 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (22 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- Main CI 44994545759 (`74fba5b`) green; Deploy 44995595155 green; full 5-project run 44994587598 green.
-- Gate `7afcd9c` (Mac) PASS: unit 1831/0, int 1456/0, Linux Chromium E2E 128/0, perf 5/0/1, changed 66/0.
-- Staging: DSN URL-shaped (len 95) in web-1/web-2/worker; Sentry probe `bdc54839…` HTTP 200.
-- PD-A close: code review APPROVE WITH FIXES (fixed), QA no majors (72 screens; inspected focus + /dev/molten).
+- PD-04 (`2fbeb3e`): parity 26/26 Chromium + WebKit; unit 1852/0; PD-04 E2E Linux Chromium 32/0, host WebKit 9/0.
+- Gate `2fbeb3e`: all PASS except changed specs 94/10 (load timeouts; the 10 pass on 2 workers, 18/0).
+- PD-04 design review: PASS WITH FIXES (7 MEDIUM + 4 LOW fixed in `2fbeb3e`).
+- Main CI 44994545759 (`74fba5b`) green; Deploy 44995595155 green; full 5-project 44994587598 green. Main `f153279` CI in progress.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 
