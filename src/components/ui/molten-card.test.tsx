@@ -154,13 +154,22 @@ describe("[PD-06] member card logic", () => {
   });
 
   it("[PD-06] the sway keyframes are the reference's, verbatim", () => {
-    const keyframes = (css: string, name: string): string =>
-      (new RegExp(`@keyframes ${name}\\s*\\{((?:[^{}]*\\{[^{}]*\\})*)\\s*\\}`).exec(css)?.[1] ?? "")
-        .replace(/\s+/g, "")
-        .replace(/;\}/g, "}");
-    const ref = keyframes(readFileSync("design/reference/molten/index.html", "utf8"), "sway");
+    // Literal patterns (Semgrep detect-non-literal-regexp): the keyframes body, two levels of braces deep.
+    const body = (m: RegExpExecArray | null): string =>
+      (m?.[1] ?? "").replace(/\s+/g, "").replace(/;\}/g, "}");
+    const ref = body(
+      /@keyframes sway\s*\{((?:[^{}]*\{[^{}]*\})*)\s*\}/.exec(
+        readFileSync("design/reference/molten/index.html", "utf8"),
+      ),
+    );
     expect(ref).not.toBe("");
-    expect(keyframes(readFileSync("src/styles/molten.css", "utf8"), "m-sway")).toBe(ref);
+    expect(
+      body(
+        /@keyframes m-sway\s*\{((?:[^{}]*\{[^{}]*\})*)\s*\}/.exec(
+          readFileSync("src/styles/molten.css", "utf8"),
+        ),
+      ),
+    ).toBe(ref);
   });
 });
 
@@ -195,6 +204,8 @@ describe("[PD-06] MemberCard", () => {
   let frames: FrameRequestCallback[] = [];
   beforeEach(() => {
     frames = [];
+    // jsdom has no canvas: the placeholder draws nothing (and says nothing) here.
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
       frames.push(cb);
       return frames.length;
