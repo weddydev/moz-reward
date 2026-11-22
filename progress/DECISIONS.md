@@ -993,3 +993,11 @@ Why: 28,000 was measured with the full suite beside the specs; since `@perf` run
 ## 2026-11-21 — CPU throttle calibrated on CI too (replaces "CI uses exactly the nominal rate", 20 Nov)
 Decision: `throttleRate(nominal, score)` = nominal × score / `CI_CPU_SCORE` (70,000), clamped to [1, 20], on every machine including CI. A runner scoring 70,000 still gets exactly 4×; bounds unchanged.
 Why: GitHub's ubuntu runners score ~46,000 to ~77,000. On the same commit `d43774c`, the fx 200-burst stress passed on a ~46,000 runner (58.4 fps, main CI 44930544722) and failed 3/3 on another (53–55 fps, wip CI 44930544649): a fixed 4× made the verdict depend on which runner the job got, not on the code.
+
+## 2026-11-22 — E2E guard's closing axe scan excludes toasts (PD-05)
+Decision: the E2E guard's closing axe scan excludes `.m-toast` (`9ec3855`).
+Why: a toast's timed 260 ms exit could start mid-scan and make the scan see a half-faded toast (full CI 45037229830's only problem: loyalty-settings Pixel 7 flaky). Fully shown toasts stay covered by `overlays.spec` "[P0-09] toast open: axe clean".
+
+## 2026-11-22 — PD-05 closed on per-step gate evidence; Mac container navigation stall quarantined (C-76, T-6)
+Decision: PD-05 is ticked although no single `gate:task PD-05` run passed end to end. Every step passed on `9ec3855`: run 1 and 2 check/int/build/sast PASS; run 2 PD-05 E2E 24/0; the changed-specs failures (14, all `page.goto` stalls) pass rerun (170/0 + overlays 50/0); parity PD-05 44/0 both engines; CI 45042534742 + full 5-project 45042543781 green.
+Why: both runs failed only on the known local stall (FOLLOWUPS [P0-14 infra]): every navigation that starts in the Linux container in one 3–5 s window hangs 30–60 s, every 1.5–2.5 min (17:37:19; 17:45:52, 17:47:30, 17:50:10, 17:51:49 UTC), never on CI. Ruled out: Docker VM memory (≥ 4.3 GB free, no swap growth), a slow Next server (host polls fast), blocked output pipes (`spawnSync` drains). 1 h infra time-box spent (CLAUDE.md §4); root cause carried to the PD-B close (C-76); the relaxation is T-6.

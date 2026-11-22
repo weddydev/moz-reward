@@ -7,30 +7,29 @@ Baton: held by talha.syed since 2026-11-22 17:32 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handed over by Syedbadeshah76, 22 Nov 2026 ~16:15 UTC (WSL laptop); baton free.** **PD-05 code complete on `wip/PD-05`, HEAD `9ec3855`** (pushed). Not ticked, not on main: CI, the gate and the close are left. Main `f153279` CI is still **red** (PD-04); its fixes are on `wip/PD-05` (green there: CI 45030522704 on `3fe211d`), so landing PD-05 turns main green.
-- **Finished:** CI 45011219404's 16 failures fixed (seal checkbox rows 44 px with the input over the row; ui-states/tokens AC5 follow the Molten press); `tests/e2e/molten-choices.spec.ts` (60 s limit like the other `/dev/ui` specs: the guard's axe scan of the gallery is long); WebKit goo decision; design review 0 BLOCK/HIGH, both MEDIUMs fixed test-first, LOWs fixed or in FOLLOWUPS; **last commit `9ec3855`**: the E2E guard's closing axe scan excludes `.m-toast` (a toast's timed 260 ms exit could start mid-scan: full CI 45037229830's only problem, loyalty-settings Pixel 7 flaky; fully shown toasts keep `overlays.spec` "[P0-09] toast open: axe clean"). H-51 (a) verified.
-- **Continue here (in order):** 1) `git switch wip/PD-05 && git merge --ff-only origin/wip/PD-05`, check HEAD `9ec3855`. 2) CI 45042534742 (`9ec3855`) and the full 5-project run 45042543781 (`9ec3855`, needed: root layout + `tests/e2e/support` changed): green, or fix. 3) `pnpm gate:task PD-05` with **nothing else running** and no push during it (it never ran end to end on the final code: earlier runs hit load, the 30 s `/dev/ui` limit and an unrelated alerts wall-clock flake). 4) Close: DECISIONS line "E2E guard's closing axe scan excludes toasts" (why: timed exit mid-scan, CI 45037229830; toast contrast stays covered by overlays.spec), FOLLOWUPS line "`alerts.test.ts` 1×/6×/12× windows bound wall-clock sleeps (700 ms in a 1,200 ms window); failed once in a busy gate, 14/0 alone: use an injected clock (P0-13 owner / P1-18)", tick PD-05 in PHASES, PROGRESS/SESSION_LOG; commit, push wip, and once its CI is green push the same commit to main. 5) PD-06.
-- **Tested:** unit 1883/0; integration 1456/0/1; gate steps typecheck, lint, format, titles, build, check:bundle, sast PASS; parity PD-05 Chromium 22/22 (Linux container), WebKit seal tiles 10/10 alone; `molten-choices` Linux Chromium 21/0 + retarget 2/0; join/ui-states/tokens 101/0; full 5-project CI on `1177632`: 1264 passed, 0 failed, 1 flaky (the toast/axe race fixed in `9ec3855`); CI 45030522704 green.
-- **Not yet tested:** `gate:task PD-05` end to end; CI and the full run on `9ec3855` (running at handoff); laptop WebKit E2E of `molten-choices` (CI's WebKit step is the evidence); real iPhone goo cost (H-13).
-- **This laptop (WSL):** local WebKit only with `--workers 1` (parallel crashes wrote 16 GB of dumps to C:); never push or run suites while a gate runs; `git pull --rebase origin main` while on a wip branch rebases it: update main with `git fetch` instead.
+- **Checkpoint by talha.syed, 22 Nov 2026 ~18:20 UTC (Mac); baton held.** **PD-05 closed** (ticked; close commit on `wip/PD-05`, then the same commit on main once its CI is green: main CI turns green with it). Code `9ec3855` by Syedbadeshah76; CI 45042534742 + full 5-project 45042543781 green on it.
+- **Gate:** no single `gate:task PD-05` run passed: both failed only on the Mac Linux-container `page.goto` stall (navigations starting in one 3–5 s window hang 30–60 s, every 1.5–2.5 min; never on CI). Every step passed on `9ec3855` separately (SESSION_LOG 18:15). 1 h infra time-box spent: not VM memory, not the Next server, not output pipes. Quarantined: **C-76 → PD-B close**, **T-6** (per-step close allowed only for this stall), DECISIONS 22 Nov. Next step for it: log forwarder connects/latency in `scripts/e2e-linux.ts` (FOLLOWUPS [P0-14 infra]) and read the log on the next stall.
+- **Continue here:** 1) If main still lacks the PD-05 close commit: check CI on `wip/PD-05` HEAD, then `git push origin wip/PD-05:main` (hook checks CI). 2) **PD-06** (Tabs, text field, star rating, slider, member card; `docs/phases/PD.md` §PD-06) on a new `wip/PD-06` from main. Read DESIGN §6.3, §7.4, reference `.seg* .panel .field .beam .stars .slider .mcard*`, COMPLIANCE §1; FOLLOWUPS lines tagged PD-06 (LiquidChoice/Checkbox motion from the value-change effect; `--chk-box`; `useCountUp` live text). 3) PD-B close.
+- **Not yet tested:** CI on the close commit (progress-only, CI path filter may skip it; the hook accepts the green ancestor `9ec3855`); laptop WebKit E2E of `molten-choices` (CI's WebKit step is the evidence); real iPhone goo cost (H-13).
+- **Windows laptop (WSL):** local WebKit only with `--workers 1`; never push or run suites while a gate runs; on a wip branch update main with `git fetch`, not `git pull --rebase origin main`.
 - **Before work:** nothing new (no env vars, migrations or seeds).
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov; `docs/phases/PD.md`). Then P1 resumes with the P1-B close. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
-- **Current sub-phase:** **PD-B** Controls: ~~PD-04~~ → PD-05 → PD-06 → close; then PD-C (structure + signature moments, needs H-49). **PD-A closed 22 Nov.** **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done; staging step done 22 Nov with H-48.)
+- **Current sub-phase:** **PD-B** Controls: ~~PD-04~~ → ~~PD-05~~ → PD-06 → close; then PD-C (structure + signature moments, needs H-49). **PD-A closed 22 Nov.** **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done; staging step done 22 Nov with H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-22 (~16:15 UTC), Syedbadeshah76 (handoff: PD-05 code complete on `wip/PD-05` `9ec3855`; CI, gate and close left)
+- **Last updated:** 2026-11-22 (~18:20 UTC), talha.syed (PD-05 closed on per-step gate evidence; container stall quarantined C-76/T-6)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-A closed 22 Nov; PD-04 on main 22 Nov (`f153279`, **main CI red**: fixes ride on `wip/PD-05`). **PD-05 code complete** (`wip/PD-05` `9ec3855`): gate, CI and close left. Next PD-06, PD-B close.
+- **PD (Molten design):** PD-A closed 22 Nov; PD-04 on main 22 Nov; **PD-05 closed 22 Nov** (code `9ec3855`; carries the main CI fixes). Next PD-06, PD-B close (incl. C-76).
 
 ## Next (top 3)
-1. Close PD-05 (handoff note steps 1–4: CI, gate:task alone, close, main); it turns main CI green.
+1. PD-06 on `wip/PD-06` (after the PD-05 close commit is on main).
 2. Check the first nightly `perf` job (scheduled.yml, 02:29 UTC) and red CI first, as always.
-3. PD-06, PD-B close. Human any time: H-51 (b) optional dev keys, H-48b, H-38, H-45, H-46.
+3. PD-B close (C-76 container stall root cause first). Human any time: H-51 (b) optional dev keys, H-48b, H-38, H-45, H-46.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
@@ -67,6 +66,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-72 | P1-09 | P3-11 | Referral bonuses are never re-earned after leaving and rejoining | integration |
 | C-73 | P1-09 | P1-13 | A rejoin after the 30-day window gets no frozen progress back even if the forfeit job hasn't run yet (forfeit at rejoin, or the join refuses to restore) | integration |
 | C-74 | P1-09 | P3-05 | Shop page offers carousel (screen 4 slot; hidden until offers exist) | E2E 390 + 1440 |
+| C-76 | PD-05 gate (T-6) | PD-B close | Mac Linux-container E2E `page.goto` stall (30–60 s windows every 1.5–2.5 min; FOLLOWUPS [P0-14 infra]) found and fixed, T-6 closed; PD-06 and the PD-B close pass `gate:task` in one run | gate:task summary + SESSION_LOG |
 | C-17 | Stryker | P1-18 (human 17 Nov) | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 | C-48 | P0-15 E (human 17 Nov) | P1-18 | P0-15 leftovers: health.backup shows no alert on staging with `BACKUPS_ENABLED=true` (health snapshot); UptimeRobot staging monitors (H-45) + alert on both phones when staging is stopped (AC8); ZAP baseline (weekly) + k6 smoke (twice weekly) wired against staging, zero failed requests during a deploy under k6 (AC2) and rollback under load (AC3); B2 overwrite leaves the locked version (D design HIGH 1); two workers run each scheduled job once (AC6) if not already proven | staging snapshots + workflow runs + SESSION_LOG |
 | C-49 | P0 close (human 17 Nov) | P1-18 + P1 `/phase-complete` | P0's heavy gate and definition of done: `gate:phase` covers P0 + P1; code/security/design reviews of P0-E commits not yet reviewed (at the P1-A close); P0 DoD bullets checked; client demo covers P0 + P1 together (`docs/DEMO_GUIDE.md` + Demo 2). (P0 close lines in PHASES ticked 17 Nov by the human's decision.) | gate:phase summary + SESSION_LOG + DEMO_NOTES |
@@ -80,10 +80,9 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (22 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- PD-05 `1177632`/`9ec3855`: gate steps check/int/build/sast PASS (unit 1883/0, int 1456/0/1); gate E2E step not yet green end to end (load, then the `/dev/ui` limit fixed in `a625eba`).
-- PD-05 parity: Chromium 22/22 (Linux container); WebKit seal tiles 10/10 alone, 41/44 in parallel (laptop load).
-- PD-05 E2E `molten-choices` Linux Chromium 21/0 + retarget 2/0; join/ui-states/tokens 101/0.
-- CI 45030522704 (`3fe211d`) green; full 5-project 45037229830 (`1177632`): 1264/0, 1 flaky (toast/axe race, fixed in `9ec3855`). Main `f153279` red until PD-05 lands.
+- PD-05 `9ec3855`: CI 45042534742 + full 5-project 45042543781 green.
+- Gate run 2 (Mac): check/int/build/sast PASS (unit 1883/0, int 1456/0/1); PD-05 E2E Linux Chromium 24/0; changed specs 477/14 (all container goto stalls) → reruns 170/0 + overlays 50/0.
+- Parity PD-05 44/0 Chromium + WebKit (host). `molten-choices` alone desktop1440 8/0, 3 projects 24/0.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 
