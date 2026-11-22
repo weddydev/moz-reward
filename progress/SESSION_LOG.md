@@ -828,3 +828,10 @@ Handoff updated (~08:55 UTC, human): next session starts PD-05 from `wip/PD-04` 
 ## 2026-11-22 (~09:15 UTC) — PD — PD-04 closed to main by talha.syed (Mac), one-time hook bypass (human)
 Human chose to push PD-04 to main before CI for `2fbeb3e` finished (limit running out): `git push --no-verify` once (DECISIONS 22 Nov). Evidence at push: gate `2fbeb3e` all PASS except changed specs 94/10 (10 load timeouts/1 press assertion; all 18 pass rerun on 2 workers); parity PD-04 18/18; unit 1852/0. CI on the pushed main commit NOT VERIFIED at handoff.
 
+
+## 2026-11-22 10:30 — PD — PD-05 checkpoint (Windows host), main CI red diagnosed, laptop moved to WSL2 (H-51)
+Done: PD-05 controls + tiles + parity parts/rows (half-done, see handoff); main CI 45006025356 red cause found (gate timeline counted infinite idle loops; toast settle waited on the 3.6 s progress bar) and fixed on the wip branch; H-51 Claude part (gh, node 24, ~/moz-reward, .wslconfig 11 GB/8 CPU, Docker integration, Playwright, env, services, migrations).
+Commits: a6236e1 (wip/PD-05)
+Tests: parity Chromium PD-05 24/24 (Windows host); molten-choices unit 22/0; pnpm check PASS (unit 1857/0).
+Left off: wip/PD-05 a6236e1 → PD-05 E2E spec, WebKit + Linux parity, review, gate:task, close (handoff order). Continue in the VS Code WSL window.
+Notes: Windows `pnpm check` on wip first failed on css-hex (reference hexes) → 4 tokens added (pour-edge, coin-face, coin-face-on, liquid-blob).

@@ -14,6 +14,11 @@ Consequence / revisit when: …
 
 
 
+## 2026-11-22 — PD-05 secondary text, parity clip, liquid choice API; Windows laptop setup in WSL2 (H-51)
+Decision: (1) "PD-05 secondary text": the switch description and the liquid option's second line use ink-2, not the reference's ink-3 (ink-3 is below AA at 13 / 11.5 px; it is for placeholders only, P0-09); the `liquid-choice` part gets a 1.5% all-browser tolerance (measured 1.14% at 390, Chromium), and `tolerance.browser` may now be `all`. (2) The parity capture rounds the clip's width and height to whole CSS px: the reference's lab grid holds tiles later tasks build, so Chromium gives its 1/64 px track remainders to other columns (594.984 vs 595) and the clip differed by a device pixel. (3) `LiquidChoice` (new primitive) backs `SegmentedControl` (same API) and `RadioGroup variant="cards"`; the default `list` RadioGroup keeps native radios for long descriptions; a hidden input carries the value under `name`. The goo filter is `#m-goo` in the root layout (`GooFilter`). (4) Windows laptop (H-51): repo in `~/moz-reward` on Ubuntu 24.04, `.wslconfig` 11 GB / 8 CPUs / 8 GB swap, `appendWindowsPath=false`, Ubuntu is WSL's default distro, Docker Desktop integration on for it, git over HTTPS with `gh` as credential helper (the token has no `admin:public_key`, so no GitHub SSH key).
+Why: accessibility rules win where the reference falls short (PD-04 precedent); a 1/64 px layout artefact is not a visual difference; one liquid implementation for every single-choice control.
+Consequence / revisit when: PD-06 builds the remaining lab tiles (the track remainders then match, the rounding stays harmless); the liquid tolerance stays while the reference keeps ink-3.
+
 ## 2026-11-22 — PD-04 pushed to main before CI finished (one-time hook bypass, human)
 Decision: the human chose to push PD-04 (`wip/PD-04` `2fbeb3e` + main's handoff commits) to main with `git push --no-verify` while its CI was still in unit tests, as their usage limit was ending. One time only; the CI-green rule stands.
 Why: close PD-04 before the session ended. Evidence then: gate all PASS but 10 changed specs that timed out under load and passed on 2 workers; parity and unit green.
