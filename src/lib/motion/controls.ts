@@ -163,3 +163,79 @@ export const STARS = {
   /** What each rating says (0 = none yet). */
   words: ["Tap a star", "Poor", "Fair", "Good", "Great", "Outstanding"] as const,
 } as const;
+
+/**
+ * Molten slider (PD-06; reference `.slider`, `.sl-*`, `.bubble`, `.ticks` + "slider"). The fill, thumb and the
+ * bubble's spring back are CSS; the tilt and the notch sparks follow each input.
+ */
+export const SLIDER = {
+  /** The bubble leans at most this far either way. */
+  tiltMaxDeg: 28,
+  /**
+   * Lean per unit of speed: the reference's `-vel * 60`, with `vel` in gold per ms on its 0–720 range. Here the
+   * speed is in fractions of the range per ms, so any range leans the same for the same thumb speed.
+   */
+  tiltPerSpeed: 60 * 720,
+  /** Gaps between inputs shorter than this count as this (reference `Math.max(16, …)`). */
+  minDtMs: 16,
+  /** No input for this long and the bubble springs back upright (reference `setTimeout(…, 90)`). */
+  settleMs: 90,
+  /** The spring back (`.m-bubble` transition). */
+  springMs: 500,
+  /** Sparks when the thumb crosses a notch. */
+  sparks: 12,
+  sparkSpeed: [100, 260] as const,
+  /** The coin thumb's diameter (px): it travels the track's width less this. */
+  thumbPx: 36,
+} as const;
+
+/**
+ * Pure: the value a native range input shows for `v` (HTML's value sanitisation): clamped to [min, max], on the
+ * nearest step counted from `min` (a tie rounds up), never past the last step at or below `max`; not a number →
+ * the middle of the range. `step` ≤ 0 means no stepping; `max` below `min` holds `min`.
+ */
+export function sliderValue(v: number, min: number, max: number, step: number): number {
+  if (max < min) return min;
+  const raw = Number.isFinite(v) ? v : min + (max - min) / 2;
+  const clamped = Math.min(max, Math.max(min, raw));
+  if (!(step > 0)) return clamped;
+  // Steps as integers from min, so 0.1 steps don't drift (0.30000000000000004).
+  const last = Math.floor((max - min) / step + 1e-9);
+  const n = Math.min(last, Math.floor((clamped - min) / step + 0.5 + 1e-9));
+  const decimals = Math.max(decimalsOf(step), decimalsOf(min));
+  return Number((min + n * step).toFixed(decimals));
+}
+
+const decimalsOf = (n: number): number => {
+  const s = String(n);
+  const dot = s.indexOf(".");
+  return dot < 0 ? 0 : s.length - dot - 1;
+};
+
+/** Pure: where `v` sits along [min, max], 0–1 (0 for an empty range). */
+export function sliderFraction(v: number, min: number, max: number): number {
+  if (!(max > min)) return 0;
+  return Math.min(1, Math.max(0, (v - min) / (max - min)));
+}
+
+/**
+ * Pure: the bubble's lean in degrees for a move of `dFraction` of the range in `dtMs` (reference: `clamp(-28, 28,
+ * -vel * 60)`): it leans back against the movement, harder the faster, never past ±28°.
+ */
+export function sliderTilt(dFraction: number, dtMs: number): number {
+  const speed = dFraction / Math.max(SLIDER.minDtMs, dtMs);
+  const tilt = Math.min(
+    SLIDER.tiltMaxDeg,
+    Math.max(-SLIDER.tiltMaxDeg, -speed * SLIDER.tiltPerSpeed),
+  );
+  return tilt === 0 ? 0 : tilt;
+}
+
+/**
+ * Pure: the notches a move from `prev` to `next` crosses going up (reference: `lastV < m && v >= m`), in value
+ * order, each once. Moving down, staying put or resting on a notch crosses none; a notch at the range's start
+ * can never be crossed.
+ */
+export function crossedNotches(prev: number, next: number, notches: readonly number[]): number[] {
+  return notches.filter((m) => prev < m && next >= m).sort((a, b) => a - b);
+}

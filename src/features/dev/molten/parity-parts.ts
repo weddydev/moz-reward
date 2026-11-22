@@ -169,8 +169,6 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     anchor: '<article class="tile w4"',
     task: "PD-06",
     status: "required",
-    // Until PD-06 builds its row-mates (Rate your visit, Molten slider), which set the row's height.
-    ownHeight: true,
   },
   { name: "tabs", title: "Tabs", anchor: 'id="seg"', task: "PD-06", status: "required" },
   {
@@ -179,11 +177,16 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     anchor: '<article class="tile w4"',
     task: "PD-06",
     status: "required",
-    // Until PD-06 builds its row-mate (Molten slider), which can set the row's height.
-    ownHeight: true,
   },
   { name: "stars", title: "Star rating", anchor: 'id="stars"', task: "PD-06", status: "required" },
-  { name: "slider", title: "Slider", anchor: 'id="slider"', task: "PD-06", status: "pending" },
+  {
+    name: "slider-tile",
+    title: "Molten slider tile",
+    anchor: '<article class="tile w4"',
+    task: "PD-06",
+    status: "required",
+  },
+  { name: "slider", title: "Slider", anchor: 'id="slider"', task: "PD-06", status: "required" },
   {
     name: "text-field-tile",
     title: "Input tile",

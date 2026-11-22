@@ -368,6 +368,173 @@ test("[PD-06] targets ≥ 44 px: every tab, the text field, each star and both r
   }
 });
 
+const sliderTile = (page: Page): Locator => page.locator('[data-parity="slider-tile"]');
+const spend = (page: Page): Locator =>
+  sliderTile(page).getByRole("slider", { name: "Gold to spend" });
+/** Every notch the thumb has crossed so far, in order (the gallery's record of `onNotch`). */
+const notchLog = async (page: Page): Promise<string> =>
+  (await sliderTile(page).getAttribute("data-notches")) ?? "";
+
+/** The tile at rest: its scroll-driven rise scales everything inside it until it is in view. */
+async function sliderAtRest(page: Page): Promise<void> {
+  await sliderTile(page).scrollIntoViewIfNeeded();
+  await expect
+    .poll(
+      () =>
+        sliderTile(page).evaluate(
+          (t) => new DOMMatrixReadOnly(getComputedStyle(t).transform).isIdentity,
+        ),
+      { timeout: 5_000 },
+    )
+    .toBe(true);
+}
+
+/** The bubble's lean in degrees, as drawn (its computed transform's rotation). */
+const lean = (page: Page): Promise<number> =>
+  sliderTile(page)
+    .locator(".m-bubble")
+    .evaluate((b) => {
+      const m = new DOMMatrixReadOnly(getComputedStyle(b).transform);
+      return (Math.atan2(m.b, m.a) * 180) / Math.PI;
+    });
+
+test("[PD-06] slider keyboard: arrows step 10, Home/End and Page keys jump; each notch sparks once per crossing", async ({
+  page,
+}) => {
+  await open(page);
+  const input = spend(page);
+  await expect(input).toHaveValue("240");
+  await expect(input).toHaveAttribute("aria-valuetext", "240 of 720 gold");
+  await input.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(input).toHaveValue("230");
+  // Up across Pastry one step at a time: one spark at 240, none for the steps past it.
+  for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowRight");
+  await expect(input).toHaveValue("260");
+  await expect.poll(() => notchLog(page)).toBe("240");
+  // Back below the notch and over it again: it sparks again (a new crossing).
+  for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowRight");
+  await expect(input).toHaveValue("240");
+  await expect.poll(() => notchLog(page)).toBe("240 240");
+  await page.keyboard.press("Home");
+  await expect(input).toHaveValue("0");
+  // End crosses three notches in one jump: each sparks once, in order.
+  await page.keyboard.press("End");
+  await expect(input).toHaveValue("720");
+  await expect.poll(() => notchLog(page)).toBe("240 240 240 480 720");
+  await expect(sliderTile(page).locator(".m-bubble")).toHaveText("720");
+  await expect(sliderTile(page).locator(".m-sl-out")).toHaveText("Spend 720 of 720 gold");
+  await expect(input).toHaveAttribute("aria-valuetext", "720 of 720 gold");
+  await expect(sliderTile(page).locator(".m-ticks .hit")).toHaveText([
+    "Pastry",
+    "Coffee",
+    "All 720",
+  ]);
+  // Page keys move further than one step, stay on the step, and spark nothing going down.
+  await page.keyboard.press("PageDown");
+  const down = Number(await input.inputValue());
+  expect(down).toBeLessThan(710);
+  expect(down % 10).toBe(0);
+  await page.keyboard.press("PageUp");
+  await expect(input).toHaveValue("720");
+  await expect.poll(() => notchLog(page)).toBe("240 240 240 480 720 720");
+});
+
+test("[PD-06] slider drag: the coin follows the pointer, the fill grows, the bubble leans and springs back upright", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, "a mouse drag; touch drags are the browser's own range input");
+  await open(page);
+  await sliderAtRest(page);
+  const box = await spend(page).boundingBox();
+  if (!box) throw new Error("no slider box");
+  const coinX = (v: number): number => box.x + 18 + (v / 720) * (box.width - 36);
+  const y = box.y + 32;
+  await page.mouse.move(coinX(240), y);
+  await page.mouse.down();
+  for (let i = 1; i <= 6; i++) await page.mouse.move(coinX(240 + i * 40), y);
+  // Mid-drag the bubble leans back against the movement.
+  await expect.poll(() => lean(page), { timeout: 2_000 }).toBeLessThan(-1);
+  await page.mouse.move(box.x + box.width + 20, y);
+  await page.mouse.up();
+  await expect(spend(page)).toHaveValue("720");
+  await expect.poll(() => notchLog(page)).toBe("480 720");
+  // The coin sits at the end of the track and the fill is full.
+  const coin = await sliderTile(page).locator(".m-sl-thumb").boundingBox();
+  expect(Math.abs((coin?.x ?? 0) + 18 - coinX(720))).toBeLessThanOrEqual(1);
+  const fill = await sliderTile(page)
+    .locator(".m-sl-fill")
+    .evaluate((f) => new DOMMatrixReadOnly(getComputedStyle(f).transform).a);
+  expect(fill).toBeCloseTo(1, 3);
+  // Upright again once input stops (90 ms, then the .5 s spring).
+  await expect.poll(() => lean(page).then(Math.abs), { timeout: 3_000 }).toBeLessThan(0.5);
+  // A press anywhere on the track jumps there.
+  await page.mouse.click(coinX(0), y);
+  await expect(spend(page)).toHaveValue("0");
+});
+
+test("[PD-06] slider rapid input never queues: 40 quick steps end on the last value, each notch once", async ({
+  page,
+}) => {
+  await open(page);
+  const input = spend(page);
+  await input.focus();
+  await page.keyboard.press("Home");
+  for (let i = 0; i < 40; i++) await page.keyboard.press("ArrowRight", { delay: 0 });
+  await expect(input).toHaveValue("400");
+  await expect(sliderTile(page).locator(".m-bubble")).toHaveText("400");
+  await expect.poll(() => notchLog(page)).toBe("240");
+  await expect.poll(() => lean(page).then(Math.abs), { timeout: 3_000 }).toBeLessThan(0.5);
+});
+
+test("[PD-06] slider under reduced motion: the value moves, the bubble never leans", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await open(page);
+  await expect(page.locator("html")).toHaveClass(/(^|\s)rm(\s|$)/);
+  const input = spend(page);
+  await input.focus();
+  await page.keyboard.press("End");
+  await expect(input).toHaveValue("720");
+  await expect(sliderTile(page).locator(".m-bubble")).toHaveText("720");
+  expect(
+    await sliderTile(page)
+      .locator(".m-bubble")
+      .evaluate((b) => b.style.getPropertyValue("--tilt")),
+  ).toBe("");
+  expect(Math.abs(await lean(page))).toBeLessThan(0.01);
+  // The glint runs once to its end and stops (no endless loop).
+  await expect
+    .poll(() =>
+      sliderTile(page)
+        .locator(".m-sl-fill")
+        .evaluate(
+          (f) => f.getAnimations({ subtree: true }).filter((a) => a.playState === "running").length,
+        ),
+    )
+    .toBe(0);
+});
+
+test("[PD-06] slider target ≥ 44 px, keyboard focus ring on the coin", async ({ page }) => {
+  await open(page);
+  await sliderAtRest(page);
+  const b = await spend(page).boundingBox();
+  expect(b?.height ?? 0).toBeGreaterThanOrEqual(44);
+  expect(b?.width ?? 0).toBeGreaterThanOrEqual(44);
+  await page.keyboard.press("Tab");
+  await spend(page).focus();
+  const ring = await sliderTile(page)
+    .locator(".m-sl-thumb")
+    .evaluate((t) => {
+      const cs = getComputedStyle(t);
+      return `${cs.outlineStyle} ${cs.outlineWidth} ${cs.outlineOffset}`;
+    });
+  expect(ring).toBe("solid 2px 3px");
+});
+
 test("[PD-06] /dev/molten PD-06 tiles at 320, 390 and 1440: no horizontal scroll (screens for inspection)", async ({
   page,
   shoot,
@@ -383,7 +550,7 @@ test("[PD-06] /dev/molten PD-06 tiles at 320, 390 and 1440: no horizontal scroll
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow, `/dev/molten at ${String(width)}`).toBeLessThanOrEqual(0);
-    for (const tile of ["tabs-tile", "text-field-tile", "stars-tile"]) {
+    for (const tile of ["tabs-tile", "text-field-tile", "stars-tile", "slider-tile"]) {
       await page.locator(`[data-parity="${tile}"]`).scrollIntoViewIfNeeded();
       await shoot(`molten-${tile}-${String(width)}`, { fullPage: false });
     }

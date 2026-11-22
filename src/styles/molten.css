@@ -1431,3 +1431,161 @@ html:root.rm .m-tile {
     transform: none;
   }
 }
+
+/* ---------- slider (PD-06; reference `.slider`, `.sl-*`, `.bubble`, `.ticks`) ---------- */
+.m-slider-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+.m-slider {
+  position: relative;
+  width: 100%;
+  height: 64px;
+  margin-top: 22px;
+  container-type: inline-size;
+}
+.m-sl-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 26px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--ivory);
+  box-shadow:
+    inset 0 2px 4px rgba(90, 60, 10, 0.18),
+    inset 0 0 0 1px rgba(178, 128, 28, 0.25);
+  overflow: hidden;
+}
+.m-sl-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--metal);
+  transform-origin: left;
+  transform: scaleX(var(--p, 0));
+}
+.m-sl-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  width: 30%;
+  animation: m-glint 2.4s var(--ease-io) infinite;
+}
+@keyframes m-glint {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(420%);
+  }
+}
+/* The coin travels the track less its own width (the reference sets translateX(p × (width − 36)) from script):
+   the slider is a size container, so CSS places it from `--p` with no measuring, at any width. */
+.m-sl-thumb {
+  position: absolute;
+  top: 14px;
+  left: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: var(--slider-coin);
+  box-shadow:
+    0 4px 12px rgba(124, 85, 16, 0.5),
+    inset 0 0 0 2px rgba(255, 246, 214, 0.7);
+  transform: translateX(calc(var(--p, 0) * (100cqw - 36px)));
+}
+@supports not (width: 1cqw) {
+  .m-sl-thumb {
+    left: calc(var(--p, 0) * (100% - 36px));
+    transform: none;
+  }
+}
+.m-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: 44px;
+  min-width: 56px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: var(--obsidian);
+  color: var(--gold-light);
+  font:
+    800 14px/1 var(--font-manrope),
+    system-ui,
+    sans-serif;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  /* Its box is the 36 px coin: a longer value ("1,200 gold") would otherwise wrap. */
+  white-space: nowrap;
+  transform: translateX(-50%) rotate(var(--tilt, 0deg));
+  transform-origin: 50% 140%;
+  transition: transform 0.5s var(--spring);
+}
+.m-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: inherit;
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+/* The native range input lies invisible over the whole slider (64 px tall: the touch target); its own thumb is
+   the coin's size, so a press or drag lands on the value under the coin, and iOS (which drags only from the
+   thumb) picks the coin up. */
+.m-slider input {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  margin: 0;
+  cursor: grab;
+  appearance: none;
+  background: transparent;
+}
+.m-slider input:disabled {
+  cursor: default;
+}
+.m-slider input::-webkit-slider-runnable-track {
+  height: 64px;
+}
+.m-slider input::-webkit-slider-thumb {
+  appearance: none;
+  width: 36px;
+  height: 64px;
+}
+.m-slider input::-moz-range-track {
+  height: 64px;
+}
+.m-slider input::-moz-range-thumb {
+  width: 36px;
+  height: 64px;
+  border: 0;
+}
+.m-slider input:focus-visible ~ .m-sl-thumb {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+/* The reference's ink-3 is below AA for 12 px text (DECISIONS 22 Nov "PD-05 secondary text"): ink-2. */
+.m-ticks {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-2);
+  margin-top: -6px;
+}
+.m-ticks span.hit {
+  color: var(--gold-deep);
+}

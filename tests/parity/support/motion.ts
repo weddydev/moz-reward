@@ -31,6 +31,12 @@ export type Trigger = {
    */
   focus?: true;
   /**
+   * Values set on the target (an input) one after another, each with the native setter and an `input` event,
+   * before `events`: a drag's steps at one instant (the slider: a step, then a jump, so the bubble leans to its
+   * ±28° cap on both pages whatever time has passed since load).
+   */
+  values?: readonly string[];
+  /**
    * Page-clock time to run after the events, for a part whose motion starts on timers (the stars ignite 70 ms
    * apart); then the harness waits for `until` (a selector) and pauses every animation again.
    */
@@ -69,6 +75,8 @@ export const TRIGGERS: Record<string, Trigger> = {
   },
   // A tap in the middle of the field: the beam runs out from the centre, the label floats.
   "text-field": { target: "input", events: ["pointerdown"], focus: true },
+  // A drag from 240 to 480: the bubble leans back to −28° (and the Coffee notch sparks; sparks are FX).
+  slider: { target: "input", values: ["250", "480"], events: [] },
 };
 
 /** Fires a part's trigger and pauses every time-based animation at once (see `Trigger`). */
@@ -91,6 +99,13 @@ export async function fire(page: Page, part: string): Promise<void> {
         clientX: r.x + r.width / 2,
         clientY: r.y + r.height / 2,
       };
+      if (t.values) {
+        // The prototype's setter: React tracks values set on the element itself and would ignore them.
+        for (const v of t.values) {
+          Reflect.set(HTMLInputElement.prototype, "value", v, el);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      }
       for (const type of t.events) {
         el.dispatchEvent(
           type.startsWith("pointer")

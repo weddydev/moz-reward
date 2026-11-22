@@ -189,7 +189,7 @@ The v1 tokens (`--dur-fast` 120, `--dur-base` 220, `--dur-slow` 380, `--dur-hero
 | Seal checkbox | check | box `480ms` (.72 → 1.2 → 1); flood `.38s` clip-path; tick `.3s` after `.14s`; ring `.6s`; 10 sparks at `120ms` | |
 | Tabs | select | pill `.6s` spring, trail `.95s` spring; panel `380ms` slide 32 px by direction; count-up `650ms` cubic-out | obsidian track, metal pill |
 | Stars | rate | each star `480ms` pop, `70ms` stagger, 7 sparks each; label `300ms`; the two equal choices `.5s` spring, second `+.06s` | same two choices for every rating (COMPLIANCE §1) |
-| Slider | drag | value bubble tilts with velocity (±28° max), springs back `.5s` after 90 ms idle; sparks at reward notches | fill `scaleX`; glint `2.4s` loop |
+| Slider | drag | value bubble tilts with velocity (±28° max), springs back `.5s` after 90 ms idle; 12 sparks at each reward notch crossed going up | fill `scaleX`; glint `2.4s` loop |
 | Text field | focus / error / success | beam `.55s` ease-out from the tap point; label `.35s` spring; shake `420ms`; tick `.4s` | |
 | Member card | pointer / tap | tilt ±11° x / ±13° y, `.12s` linear while tracking, `.7s` spring back; flip `.7s` spring; idle sway `7s` alternate (touch only) | holo and glare follow the pointer |
 | Toast | show | in `520ms` spring; coin `800ms` 720° spin; progress `3600ms` linear; out `260ms` | obsidian |

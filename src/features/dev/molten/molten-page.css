@@ -367,3 +367,16 @@ body:has(.m-page) {
   align-items: flex-start;
   gap: 12px;
 }
+/* The Molten slider tile's column (reference: inline style on its .demo) and `.sl-out`. */
+.m-demo.m-demo-slider {
+  gap: 6px;
+}
+.m-sl-out {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.m-sl-out b {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}

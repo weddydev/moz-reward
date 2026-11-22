@@ -197,6 +197,8 @@
   --star-hover: #f7ebc7;
   --coin-face: radial-gradient(circle at 35% 30%, #fff, #f1e6cc 60%, #d8c49a);
   --coin-face-on: radial-gradient(circle at 35% 30%, #fff, #fff6d6 50%, #f1d58a);
+  /* Molten slider coin thumb (PD-06; reference `.sl-thumb`). */
+  --slider-coin: radial-gradient(circle at 35% 30%, #fff, #ffe08a 40%, #c8922c);
   --liquid-blob: linear-gradient(115deg, #c8922c, #ffe08a 40%, #e0ae3e 60%, #b9862a);
   --molten-danger-flow: linear-gradient(
     115deg,

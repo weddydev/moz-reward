@@ -1,5 +1,5 @@
 import { RM_MAX_MS } from "./anim";
-import { BUTTON, FIELD, HEART, LIQUID, SEAL, STARS, SWITCH, TABS, TOAST } from "./controls";
+import { BUTTON, FIELD, HEART, LIQUID, SEAL, SLIDER, STARS, SWITCH, TABS, TOAST } from "./controls";
 import { FX } from "./fx";
 import { type Locator } from "./molten-reference";
 import { PRESS } from "./press";
@@ -429,22 +429,49 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "slider",
     element: "Slider",
     task: "PD-06",
-    status: "pending",
+    status: "required",
     values: [
       {
         name: "bubble tilt limit (deg)",
         value: "28",
         ref: js("--tilt', clamp(", /clamp\(-(\d+),/g),
+        prod: { value: () => SLIDER.tiltMaxDeg },
+      },
+      {
+        name: "bubble tilt per speed (deg per gold/ms, 0–720 range)",
+        value: "60",
+        ref: js("--tilt', clamp(", /-vel \* (\d+)\)/g),
+        prod: { value: () => SLIDER.tiltPerSpeed / 720 },
+      },
+      {
+        name: "shortest input gap (ms)",
+        value: "16",
+        ref: js("vel = (v - lastV)", /Math\.max\((\d+),/g),
+        prod: { value: () => SLIDER.minDtMs },
+      },
+      {
+        name: "upright after idle (ms)",
+        value: "90",
+        ref: js("--tilt', clamp(", /'0deg'\), (\d+)\)/g),
+        prod: { value: () => SLIDER.settleMs },
       },
       {
         name: "bubble spring back",
         value: ".5s var(--spring)",
         ref: css(".bubble", "transition", "transform"),
+        prod: { file: MOLTEN_CSS, css: ".m-bubble", prop: "transition", part: "transform" },
+      },
+      {
+        name: "notch sparks",
+        value: "12",
+        ref: js("[240, 480, 720].forEach", /count: (\d+)/g),
+        prod: { value: () => SLIDER.sparks },
       },
       {
         name: "glint loop",
         value: "2.4s var(--ease-io) infinite",
         ref: css(".sl-fill::after", "animation", "glint"),
+        prod: { file: MOLTEN_CSS, css: ".m-sl-fill::after", prop: "animation", part: "m-glint" },
       },
     ],
   },

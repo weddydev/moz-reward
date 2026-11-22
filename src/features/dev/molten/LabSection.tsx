@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { IconButton } from "@/components/ui/IconButton";
 import { LiquidChoice } from "@/components/ui/LiquidChoice";
+import { Slider } from "@/components/ui/Slider";
 import { StarRating } from "@/components/ui/StarRating";
 import { Switch } from "@/components/ui/Switch";
 import { Tabs } from "@/components/ui/Tabs";
@@ -44,6 +45,8 @@ export function LabSection(): React.JSX.Element {
   const [tab, setTab] = useState<(typeof TAB_ITEMS)[number]["value"]>("wallet");
   const panel = TAB_PANELS[tab];
   const [rating, setRating] = useState(0);
+  const [spend, setSpend] = useState(240);
+  const [notchLog, setNotchLog] = useState<number[]>([]);
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | undefined>(undefined);
   const [tries, setTries] = useState(0);
@@ -212,6 +215,37 @@ export function LabSection(): React.JSX.Element {
           </p>
         </Tile>
 
+        {/* `data-notches`: every notch the thumb crossed, in order (for the E2E; never shown). */}
+        <Tile data-parity="slider-tile" data-notches={notchLog.join(" ")}>
+          <div className="m-t-head">
+            <h3>Molten slider</h3>
+            <span className="m-chip">drag</span>
+          </div>
+          <div className="m-demo m-demo-col m-demo-slider">
+            <Slider
+              parity="slider"
+              label="Gold to spend"
+              min={0}
+              max={SPEND_MAX}
+              step={10}
+              value={spend}
+              onChange={setSpend}
+              notches={SPEND_NOTCHES}
+              valueText={(v) => `${gold(v)} of ${gold(SPEND_MAX)} gold`}
+              onNotch={(n) => {
+                setNotchLog((log) => [...log, n]);
+              }}
+            />
+            <p className="m-sl-out">
+              Spend <b>{gold(spend)}</b> of {gold(SPEND_MAX)} gold
+            </p>
+          </div>
+          <p className="m-how">
+            The value bubble <b>leans with your speed</b> and swings back. Crossing a reward notch{" "}
+            <b>sparks</b>.
+          </p>
+        </Tile>
+
         <Tile data-parity="text-field-tile" className="m-w5">
           <div className="m-t-head">
             <h3>Input</h3>
@@ -282,6 +316,15 @@ export function LabSection(): React.JSX.Element {
     </section>
   );
 }
+
+const SPEND_MAX = 720;
+const SPEND_NOTCHES = [
+  { value: 0, label: "0" },
+  { value: 240, label: "Pastry" },
+  { value: 480, label: "Coffee" },
+  { value: 720, label: "All 720" },
+] as const;
+const gold = (n: number): string => n.toLocaleString("en-GB");
 
 const REWARDS = [
   { value: "coffee", label: "Coffee", detail: "600 gold" },

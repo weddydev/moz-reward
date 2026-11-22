@@ -174,6 +174,7 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
       { name: "molten-danger-flow", use: "Destructive button's flowing fill (PD-04)" },
       { name: "coin-face", use: "Coin switch knob, M face (PD-05)" },
       { name: "coin-face-on", use: "Coin switch knob, tick face (PD-05)" },
+      { name: "slider-coin", use: "Molten slider coin thumb (PD-06)" },
       { name: "liquid-blob", use: "Liquid choice selection (PD-05)" },
       { name: "metal-svg-0", use: "Metal gradient stop 0 for SVG fills (heart toggle)" },
       { name: "metal-svg-1", use: "Metal gradient stop .35 for SVG fills" },
