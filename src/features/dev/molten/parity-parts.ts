@@ -20,7 +20,7 @@ export type ParityPart = {
   isolate?: true;
   /**
    * Compared at its own content height on both pages (`align-self: start`): for a grid tile whose row-mate is
-   * built by a later task (the Buttons tile's Coin switch neighbour until PD-05), which stretches the row.
+   * built by a later task, which stretches the row (the Buttons tile until PD-05 built its Coin switch neighbour).
    */
   ownHeight?: true;
   /**
@@ -32,12 +32,13 @@ export type ParityPart = {
    * A documented per-browser allowance above the harness limit (DECISIONS line required): for a difference that
    * comes from the reference itself, not from the app (PD phase rule "Port, don't reinvent").
    */
-  tolerance?: { browser: "chromium" | "webkit"; max: number; why: string };
+  tolerance?: { browser: "chromium" | "webkit" | "all"; max: number; why: string };
 };
 
 /** The diff limit for `part` in `browser`: the harness limit, or the part's documented tolerance. */
 export function parityLimit(part: ParityPart, browser: string, harness: number): number {
-  return part.tolerance?.browser === browser ? Math.max(harness, part.tolerance.max) : harness;
+  const t = part.tolerance;
+  return t && (t.browser === "all" || t.browser === browser) ? Math.max(harness, t.max) : harness;
 }
 
 export const PARITY_PARTS: readonly ParityPart[] = [
@@ -96,7 +97,6 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     anchor: '<article class="tile w7"',
     task: "PD-04",
     status: "required",
-    ownHeight: true,
   },
   {
     name: "toast",
@@ -106,26 +106,62 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     status: "required",
     alone: true,
   },
+  // Tiles that share an opening tag are found in this order: each hook added to the copy changes its tag, so the
+  // next part with the same anchor finds the next tile (the Liquid choice tile, then the Gold seal tile; the
+  // first box, then the second).
+  {
+    name: "coin-switch-tile",
+    title: "Coin switch tile",
+    anchor: '<article class="tile w5"',
+    task: "PD-05",
+    status: "required",
+  },
   {
     name: "coin-switch",
     title: "Coin switch",
     anchor: 'aria-labelledby="lt1"',
     task: "PD-05",
-    status: "pending",
+    status: "required",
+  },
+  {
+    name: "liquid-choice-tile",
+    title: "Liquid choice tile",
+    anchor: '<article class="tile w6"',
+    task: "PD-05",
+    status: "required",
   },
   {
     name: "liquid-choice",
     title: "Liquid choice",
     anchor: 'id="rewardPick"',
     task: "PD-05",
-    status: "pending",
+    status: "required",
+    tolerance: {
+      browser: "all",
+      max: 0.015,
+      why: "the options' second line is ink-2, not the reference's ink-3, which is below AA contrast at 11.5 px (DECISIONS 22 Nov \"PD-05 secondary text\"); measured 1.14% at 390 in Chromium",
+    },
+  },
+  {
+    name: "seal-checkbox-tile",
+    title: "Gold seal checkbox tile",
+    anchor: '<article class="tile w6"',
+    task: "PD-05",
+    status: "required",
   },
   {
     name: "seal-checkbox",
-    title: "Seal checkbox",
+    title: "Seal checkbox (unticking)",
     anchor: '<span class="box"',
     task: "PD-05",
-    status: "pending",
+    status: "required",
+  },
+  {
+    name: "seal-checkbox-on",
+    title: "Seal checkbox (ticking)",
+    anchor: '<span class="box"',
+    task: "PD-05",
+    status: "required",
   },
   { name: "tabs", title: "Tabs", anchor: 'id="seg"', task: "PD-06", status: "pending" },
   { name: "stars", title: "Star rating", anchor: 'id="stars"', task: "PD-06", status: "pending" },

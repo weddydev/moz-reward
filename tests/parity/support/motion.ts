@@ -22,6 +22,8 @@ export type Trigger = {
   events: readonly string[];
   /** A part that appears later (React renders the toast after the click): wait for it, then pause again. */
   waitFor?: string;
+  /** Named beats captured besides 0/25/50/75/100% (the liquid pour's stretch at 42% and overshoot at 76%). */
+  beats?: readonly number[];
 };
 
 /** Triggers by part name. Each PD task adds the triggers of the parts it builds. Hover-driven rows (orbit and
@@ -29,6 +31,15 @@ export type Trigger = {
 export const TRIGGERS: Record<string, Trigger> = {
   "heart-toggle": { events: ["click"] },
   "coin-switch": { events: ["click"] },
+  // The second option (Cake): the gold pours one slot right.
+  "liquid-choice": {
+    target: '[role="radio"]:nth-of-type(2)',
+    events: ["click"],
+    beats: [0.42, 0.76],
+  },
+  // A click on the box goes to its <label>, which toggles the checkbox (the first unticks, the second ticks).
+  "seal-checkbox": { events: ["click"] },
+  "seal-checkbox-on": { events: ["click"] },
   "molten-button": { events: ["pointerdown", "pointerup", "click"] },
   toast: {
     from: '[data-parity="molten-button"]',

@@ -172,7 +172,10 @@ export async function capture(page: Page, part: string): Promise<Buffer> {
       el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
       window.scrollTo(Math.round(window.scrollX), Math.round(window.scrollY));
       const r = el.getBoundingClientRect();
-      return { x: r.x, y: r.y, width: r.width, height: r.height };
+      // Whole CSS pixels for the size too: the reference's lab grid holds tiles later tasks build, so Chromium
+      // gives its 1/64 px track remainders to other columns and a tile measures 594.984 on one page and 595 on
+      // the other (PD-05). Unrounded, the clip then differs by a device pixel and the diff reads as 100%.
+      return { x: r.x, y: r.y, width: Math.round(r.width), height: Math.round(r.height) };
     },
     { name: part, isolate, ownHeight, alone },
   );

@@ -4,6 +4,7 @@ import { useId } from "react";
 import { cx } from "@/lib/cx";
 import { useHydrated } from "@/lib/use-hydrated";
 import { joinIds } from "./field";
+import { LiquidChoice } from "./LiquidChoice";
 
 export type RadioOption<T extends string> = { value: T; label: string; description?: string };
 
@@ -24,8 +25,15 @@ export function RadioGroup<T extends string>({
   error,
   disabled = false,
   className,
+  variant = "list",
   "aria-describedby": extraDescribedBy,
 }: {
+  /**
+   * `list` (default): native radios in rows, for options with long descriptions. `cards` (PD-05): the options
+   * side by side as a liquid choice (`LiquidChoice`; each description becomes the option's small second line),
+   * for 2–5 short options; a hidden input carries the value under `name`.
+   */
+  variant?: "list" | "cards";
   label: string;
   name: string;
   options: ReadonlyArray<RadioOption<T>>;
@@ -41,14 +49,49 @@ export function RadioGroup<T extends string>({
   const id = useId();
   const hydrated = useHydrated();
   const controlled = value !== undefined;
+  const describedBy = joinIds(
+    error ? `${id}-error` : hint ? `${id}-hint` : undefined,
+    extraDescribedBy,
+  );
+  const message = error ? (
+    <p id={`${id}-error`} className="text-small text-danger">
+      {error}
+    </p>
+  ) : hint ? (
+    <p id={`${id}-hint`} className="text-small text-ink-2">
+      {hint}
+    </p>
+  ) : null;
+  if (variant === "cards")
+    return (
+      <div className={cx("flex min-w-0 flex-col gap-2", disabled && "opacity-55", className)}>
+        <span id={`${id}-label`} className="text-small text-ink font-semibold">
+          {label}
+        </span>
+        <LiquidChoice
+          label={label}
+          labelledBy={`${id}-label`}
+          describedBy={describedBy}
+          invalid={Boolean(error)}
+          disabled={disabled}
+          name={name}
+          options={options.map((o) => ({
+            value: o.value,
+            label: o.label,
+            ...(o.description ? { detail: o.description } : {}),
+          }))}
+          {...(value !== undefined ? { value } : {})}
+          {...(defaultValue !== undefined ? { defaultValue } : {})}
+          {...(onChange ? { onChange } : {})}
+        />
+        {message}
+      </div>
+    );
   return (
     <fieldset
       role="radiogroup"
       aria-invalid={error ? true : undefined}
-      aria-describedby={joinIds(
-        error ? `${id}-error` : hint ? `${id}-hint` : undefined,
-        extraDescribedBy,
-      )}
+      aria-describedby={describedBy}
       disabled={disabled || (controlled && !hydrated)}
       className={cx("m-0 flex min-w-0 flex-col border-0 p-0", disabled && "opacity-55", className)}
     >
@@ -99,15 +142,7 @@ export function RadioGroup<T extends string>({
           </label>
         );
       })}
-      {error ? (
-        <p id={`${id}-error`} className="text-small text-danger">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${id}-hint`} className="text-small text-ink-2">
-          {hint}
-        </p>
-      ) : null}
+      {message}
     </fieldset>
   );
 }

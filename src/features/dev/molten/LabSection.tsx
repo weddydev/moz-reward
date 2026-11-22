@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { MoltenHeart } from "@/components/icons/molten-heart";
 import { Button } from "@/components/ui/Button";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { IconButton } from "@/components/ui/IconButton";
+import { LiquidChoice } from "@/components/ui/LiquidChoice";
+import { Switch } from "@/components/ui/Switch";
 import { Tile } from "@/components/ui/Tile";
 import { toast } from "@/components/ui/Toast";
 
@@ -29,6 +32,9 @@ export function GhostArrow(): React.JSX.Element {
  */
 export function LabSection(): React.JSX.Element {
   const [saved, setSaved] = useState(false);
+  const [alerts, setAlerts] = useState(true);
+  const [happyHour, setHappyHour] = useState(false);
+  const [reward, setReward] = useState<(typeof REWARDS)[number]["value"]>("coffee");
   return (
     <section aria-labelledby="m-lab" className="m-lab-section">
       <div className="m-sec-head">
@@ -83,7 +89,81 @@ export function LabSection(): React.JSX.Element {
             the border. <b>Save:</b> a heart that fills with gold and bursts.
           </p>
         </Tile>
+
+        <Tile data-parity="coin-switch-tile" className="m-w5">
+          <div className="m-t-head">
+            <h3>Coin switch</h3>
+            <span className="m-chip">700 ms spring</span>
+          </div>
+          <div className="m-demo m-demo-rows">
+            <Switch
+              parity="coin-switch"
+              label="Points approved alerts"
+              description="When a shop approves your visit"
+              checked={alerts}
+              onCheckedChange={setAlerts}
+            />
+            <Switch
+              label="Happy hour near me"
+              description="Within 1 mile of Camden"
+              checked={happyHour}
+              onCheckedChange={setHappyHour}
+            />
+          </div>
+          <p className="m-how">
+            The knob is a coin. It <b>rolls</b> across, <b>flips</b> to a tick, liquid gold{" "}
+            <b>pours</b> in behind it and it lands with a spark and a pulse. Off drains it back.
+          </p>
+        </Tile>
+
+        <Tile data-parity="liquid-choice-tile" className="m-w6">
+          <div className="m-t-head">
+            <h3>Liquid choice</h3>
+            <span className="m-chip">radio · 640 ms</span>
+          </div>
+          <div className="m-demo">
+            <LiquidChoice
+              parity="liquid-choice"
+              label="Choose your reward"
+              options={REWARDS}
+              value={reward}
+              onChange={setReward}
+            />
+          </div>
+          <p className="m-how">
+            The selection is a drop of liquid gold. It <b>stretches</b>, splits off droplets and{" "}
+            <b>pours</b> into the new choice, then wobbles to rest. Arrow keys work.
+          </p>
+        </Tile>
+
+        <Tile data-parity="seal-checkbox-tile" className="m-w6">
+          <div className="m-t-head">
+            <h3>Gold seal checkbox</h3>
+            <span className="m-chip">480 ms</span>
+          </div>
+          <div className="m-demo">
+            <div className="m-chks">
+              <Checkbox
+                parity="seal-checkbox"
+                label="Email me new offers from my shops"
+                defaultChecked
+              />
+              <Checkbox parity="seal-checkbox-on" label="Remind me when a reward is close" />
+              <Checkbox label="Monthly recap of my gold" />
+            </div>
+          </div>
+          <p className="m-how">
+            Pressed like a wax seal: the box <b>squashes and pops</b>, gold{" "}
+            <b>floods from the centre</b>, the tick draws itself, a ring and sparks fly off.
+          </p>
+        </Tile>
       </div>
     </section>
   );
 }
+
+const REWARDS = [
+  { value: "coffee", label: "Coffee", detail: "600 gold" },
+  { value: "cake", label: "Cake", detail: "800 gold" },
+  { value: "both", label: "Both", detail: "1,000 gold" },
+] as const;

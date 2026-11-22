@@ -613,7 +613,7 @@ svg.seam{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:no
       <p class="how"><b>Primary:</b> molten gold flows inside, the button leans toward your cursor, light follows the pointer, a ripple spreads from your fingertip, sparks and coins burst, the label rolls to the result and a toast confirms. <b>Secondary:</b> a beam of light orbits the border. <b>Save:</b> a heart that fills with gold and bursts.</p>
     </article>
 
-    <article class="tile w5">
+    <article data-parity="coin-switch-tile" class="tile w5">
       <div class="t-head"><h3>Coin switch</h3><span class="chip">700 ms spring</span></div>
       <div class="demo" style="flex-direction:column;align-items:stretch;gap:0">
         <div class="trow"><div><b id="lt1">Points approved alerts</b><span class="s">When a shop approves your visit</span></div>
@@ -624,7 +624,7 @@ svg.seam{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:no
       <p class="how">The knob is a coin. It <b>rolls</b> across, <b>flips</b> to a tick, liquid gold <b>pours</b> in behind it and it lands with a spark and a pulse. Off drains it back.</p>
     </article>
 
-    <article class="tile w6">
+    <article data-parity="liquid-choice-tile" class="tile w6">
       <div class="t-head"><h3>Liquid choice</h3><span class="chip">radio · 640 ms</span></div>
       <div class="demo">
         <div data-parity="liquid-choice" class="liquid" role="radiogroup" aria-label="Choose your reward" id="rewardPick">
@@ -637,12 +637,12 @@ svg.seam{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:no
       <p class="how">The selection is a drop of liquid gold. It <b>stretches</b>, splits off droplets and <b>pours</b> into the new choice, then wobbles to rest. Arrow keys work.</p>
     </article>
 
-    <article class="tile w6">
+    <article data-parity="seal-checkbox-tile" class="tile w6">
       <div class="t-head"><h3>Gold seal checkbox</h3><span class="chip">480 ms</span></div>
       <div class="demo">
         <div class="chks">
           <label class="chk"><input type="checkbox" id="ck1" checked><span data-parity="seal-checkbox" class="box"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span>Email me new offers from my shops</label>
-          <label class="chk"><input type="checkbox" id="ck2"><span class="box"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span>Remind me when a reward is close</label>
+          <label class="chk"><input type="checkbox" id="ck2"><span data-parity="seal-checkbox-on" class="box"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span>Remind me when a reward is close</label>
           <label class="chk"><input type="checkbox" id="ck3"><span class="box"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span>Monthly recap of my gold</label>
         </div>
       </div>

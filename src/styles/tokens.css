@@ -190,6 +190,11 @@
   --metal-svg-2: #fff6d6;
   --metal-svg-3: #e0ae3e;
   --metal-svg-4: #8e6417;
+  /* Coin switch and liquid choice (PD-05; reference `.tgl-fill::after`, `.face`, `.blob`). */
+  --pour-edge: #e8b84a;
+  --coin-face: radial-gradient(circle at 35% 30%, #fff, #f1e6cc 60%, #d8c49a);
+  --coin-face-on: radial-gradient(circle at 35% 30%, #fff, #fff6d6 50%, #f1d58a);
+  --liquid-blob: linear-gradient(115deg, #c8922c, #ffe08a 40%, #e0ae3e 60%, #b9862a);
   --molten-danger-flow: linear-gradient(
     115deg,
     #8f2f1f 0%,

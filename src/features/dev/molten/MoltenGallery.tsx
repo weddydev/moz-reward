@@ -11,11 +11,26 @@ import "./molten-page.css";
  * parity harness (`tests/parity/`). Each part carries `data-parity="<name>"`, like its counterpart in the
  * reference copy. Until its PD task builds it, a part is a labelled placeholder (`data-parity-status="pending"`)
  * that no parity spec compares. Built so far: the living background and the Language section (PD-02); the
- * Buttons tile, heart toggle, the vault's orbit and ghost buttons and the toast (PD-04).
+ * Buttons tile, heart toggle, the vault's orbit and ghost buttons and the toast (PD-04); the Coin switch, Liquid
+ * choice and Gold seal checkbox tiles (PD-05).
  */
 const SECTIONS: readonly { parts: readonly string[]; Section: () => React.JSX.Element }[] = [
   { parts: ["language"], Section: LanguageSection },
-  { parts: ["tile", "molten-button", "heart-toggle"], Section: LabSection },
+  {
+    parts: [
+      "tile",
+      "molten-button",
+      "heart-toggle",
+      "coin-switch-tile",
+      "coin-switch",
+      "liquid-choice-tile",
+      "liquid-choice",
+      "seal-checkbox-tile",
+      "seal-checkbox",
+      "seal-checkbox-on",
+    ],
+    Section: LabSection,
+  },
   { parts: ["orbit-button", "ghost-button"], Section: VaultButtons },
 ];
 

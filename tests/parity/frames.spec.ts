@@ -12,6 +12,10 @@ import { PARITY_PARTS, parityLimit } from "../../src/features/dev/molten/parity-
  */
 const FRACTIONS = [0, 0.25, 0.5, 0.75, 1] as const;
 const MAX_DIFF = 0.02;
+
+/** The fractions captured for `part`: the standard five plus its named beats, in order. */
+const fractionsOf = (part: string): number[] =>
+  [...new Set([...FRACTIONS, ...(TRIGGERS[part]?.beats ?? [])])].sort((x, y) => x - y);
 const VP = { width: 390, height: 844 };
 
 async function frames(page: Page, part: string): Promise<Buffer[]> {
@@ -20,7 +24,7 @@ async function frames(page: Page, part: string): Promise<Buffer[]> {
   if (!TRIGGERS[part]?.waitFor) await capture(page, part);
   await fire(page, part);
   const out: Buffer[] = [];
-  for (const f of FRACTIONS) {
+  for (const f of fractionsOf(part)) {
     await seekFraction(page, f);
     out.push(await capture(page, part));
   }
@@ -78,8 +82,9 @@ test.describe("[PD-01] frame parity", () => {
       const b = await frames(other, part);
       for (const [i, shot] of a.entries()) {
         const d = diffRatio(shot, b[i] ?? Buffer.alloc(0));
-        if (d.ratio > 0) await attachPair(`${part}-${String(FRACTIONS[i])}`, shot, b[i]);
-        expect(d.ratio, `${part} at ${String(FRACTIONS[i])}: ${d.why ?? ""}`).toBe(0);
+        const at = String(fractionsOf(part)[i]);
+        if (d.ratio > 0) await attachPair(`${part}-${at}`, shot, b[i]);
+        expect(d.ratio, `${part} at ${at}: ${d.why ?? ""}`).toBe(0);
       }
     }
   });
@@ -92,13 +97,14 @@ test.describe("[PD-01] frame parity", () => {
       const max = parityLimit(part, page.context().browser()?.browserType().name() ?? "", MAX_DIFF);
       const a = await frames(ref, part.name);
       const b = await frames(page, part.name);
-      a.forEach((shot, i) => {
+      const at = fractionsOf(part.name);
+      for (const [i, shot] of a.entries()) {
         const d = diffRatio(shot, b[i] ?? Buffer.alloc(0));
-        expect(
-          d.ratio,
-          `${part.name} at ${String(FRACTIONS[i])}: ${d.why ?? ""}`,
-        ).toBeLessThanOrEqual(max);
-      });
+        if (d.ratio > max) await attachPair(`${part.name}-${String(at[i])}`, shot, b[i]);
+        expect(d.ratio, `${part.name} at ${String(at[i])}: ${d.why ?? ""}`).toBeLessThanOrEqual(
+          max,
+        );
+      }
     });
   }
 });

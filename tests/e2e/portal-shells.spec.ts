@@ -7,13 +7,15 @@ import type { Locator, Page } from "@playwright/test";
  */
 const isPhone = (page: Page): boolean => (page.viewportSize()?.width ?? 1280) < 768;
 
-/** The element's box once its animations have finished (no fixed sleeps). */
+/**
+ * The element's box once the animations that move it have finished (no fixed sleeps). Its own animations only:
+ * a Molten toast's children run the 3.6 s progress bar and the coin spin (PD-04), which never move the toast,
+ * and the bar runs until the toast leaves, so waiting on the subtree outlived the toast (CI 45006025356).
+ */
 async function settledBox(locator: Locator) {
   await expect
     .poll(() =>
-      locator.evaluate(
-        (el) => el.getAnimations({ subtree: true }).filter((a) => a.playState === "running").length,
-      ),
+      locator.evaluate((el) => el.getAnimations().filter((a) => a.playState === "running").length),
     )
     .toBe(0);
   return locator.boundingBox();

@@ -751,3 +751,349 @@ html:root.rm *::after {
 html:root.rm .m-tile {
   animation: none !important;
 }
+
+/* ---------- coin switch (PD-05; reference `.trow`, `.tgl`, `.tgl-fill`, `.tgl-coin`, `.coin-in`, `.face`) ---------- */
+/* The row: label and description left, the switch right. The switch button's ::after covers the row, so a tap
+   anywhere on it toggles (the row is the target, at least 44 px tall). */
+.m-trow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 0;
+}
+.m-trow + .m-trow {
+  border-top: 1px solid var(--line);
+}
+.m-trow-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.m-trow-label {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+}
+/* The reference's ink-3 is below AA for 13 px text (DECISIONS 22 Nov "PD-05 secondary text"): ink-2. */
+.m-trow-s {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.m-tgl-btn {
+  display: block;
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.m-tgl-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.m-tgl-btn:disabled {
+  cursor: not-allowed;
+}
+.m-tgl {
+  --w: 70px;
+  --h: 40px;
+  position: relative;
+  display: block;
+  width: var(--w);
+  height: var(--h);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--ivory);
+  box-shadow:
+    inset 0 2px 6px rgba(90, 60, 10, 0.2),
+    inset 0 0 0 1px rgba(178, 128, 28, 0.35);
+}
+.m-tgl-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--metal);
+  background-size: 180% 100%;
+  transform: translateX(-120%);
+  transition: transform 0.6s var(--ease-out);
+}
+/* The bulging leading edge of the pour. */
+.m-tgl-fill::after {
+  content: "";
+  position: absolute;
+  right: -10px;
+  top: -6px;
+  bottom: -6px;
+  width: 22px;
+  border-radius: 50%;
+  background: var(--pour-edge);
+}
+.m-tgl-btn[aria-checked="true"] .m-tgl-fill {
+  transform: translateX(0);
+}
+.m-tgl-coin {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 30px;
+  height: 30px;
+  transition: transform 0.7s var(--spring);
+  perspective: 200px;
+}
+.m-tgl-btn[aria-checked="true"] .m-tgl-coin {
+  transform: translateX(30px) rotate(360deg);
+}
+.m-coin-in {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.5s var(--ease-out) 0.18s;
+}
+.m-tgl-btn[aria-checked="true"] .m-coin-in {
+  transform: rotateY(180deg);
+}
+.m-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  font:
+    800 14px/1 var(--font-manrope),
+    system-ui,
+    sans-serif;
+}
+.m-face.m-f1 {
+  background: var(--coin-face);
+  color: var(--gold-deep);
+  box-shadow:
+    0 2px 6px rgba(90, 60, 10, 0.35),
+    inset 0 0 0 1.5px rgba(178, 128, 28, 0.35);
+}
+.m-face.m-f2 {
+  background: var(--coin-face-on);
+  color: var(--gold-deep);
+  transform: rotateY(180deg);
+  box-shadow:
+    0 2px 8px rgba(90, 60, 10, 0.45),
+    inset 0 0 0 1.5px rgba(124, 85, 16, 0.5);
+}
+.m-face svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------- liquid choice (PD-05; reference `.liquid`, `.goo`, `.blob`, `.drop`, `.opt`); the dock shares the goo ---------- */
+.m-liquid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--ivory);
+  box-shadow:
+    inset 0 2px 6px rgba(90, 60, 10, 0.16),
+    inset 0 0 0 1px rgba(178, 128, 28, 0.25);
+  width: 100%;
+}
+.m-goo {
+  position: absolute;
+  inset: 0;
+  filter: url(#m-goo);
+  pointer-events: none;
+}
+.m-blob {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 0;
+  border-radius: 999px;
+  background: var(--liquid-blob);
+}
+.m-drop {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 26px;
+  height: 26px;
+  margin-top: -13px;
+  border-radius: 50%;
+  background: var(--gild-satin);
+}
+/* Lite tier (DESIGN §7.2): no goo filter, no droplets; the blob still pours. */
+.lite .m-goo {
+  filter: none;
+}
+.lite .m-drop {
+  display: none;
+}
+.m-opt {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  padding: 12px 6px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: inherit;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.4s var(--spring);
+}
+.m-opt:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.m-opt:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.m-opt b {
+  max-width: 100%;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+  text-align: center;
+  transition: color 0.3s;
+}
+/* The reference's ink-3 is below AA for 11.5 px text (DECISIONS 22 Nov "PD-05 secondary text"): ink-2. */
+.m-opt small {
+  font-size: 11.5px;
+  color: var(--ink-2);
+  font-weight: 600;
+  transition: color 0.3s;
+}
+.m-opt[aria-checked="true"] small {
+  color: var(--gold-deep);
+}
+
+/* ---------- seal checkbox (PD-05; reference `.chk`, `.box`, `ring`) ---------- */
+.m-chk {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  -webkit-tap-highlight-color: transparent;
+}
+/* A 28 px row with a 44 px target: the label's hit area reaches 8 px above and below. */
+.m-chk::after {
+  content: "";
+  position: absolute;
+  inset: -8px 0;
+}
+.m-chk:has(.m-chk-input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.m-chk-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+}
+.m-chk-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow-wrap: break-word;
+}
+.m-chk-text small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.m-box {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px rgba(178, 128, 28, 0.55);
+  display: grid;
+  place-items: center;
+  transition: box-shadow 0.2s;
+}
+/* Gold floods from the centre. */
+.m-box::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--metal);
+  clip-path: circle(0% at 50% 50%);
+  transition: clip-path 0.38s var(--ease-out);
+}
+.m-box svg {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  stroke: var(--ink);
+  stroke-width: 3;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 22;
+  stroke-dashoffset: 22;
+  transition: stroke-dashoffset 0.3s var(--ease-out);
+}
+.m-chk-input:checked + .m-box::before {
+  clip-path: circle(75% at 50% 50%);
+}
+.m-chk-input:checked + .m-box svg {
+  stroke-dashoffset: 0;
+  transition-delay: 0.14s;
+}
+.m-chk-input:focus-visible + .m-box {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+.m-chk-input[aria-invalid="true"] + .m-box {
+  box-shadow: inset 0 0 0 2px var(--danger);
+}
+.m-box::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 12px;
+  border: 2px solid var(--gold-bright);
+  opacity: 0;
+  pointer-events: none;
+}
+.m-box.burst::after {
+  animation: m-ring 0.6s var(--ease-out);
+}
+@keyframes m-ring {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+/* Nothing chosen yet: no gold. */
+.m-liquid[data-empty] .m-goo {
+  visibility: hidden;
+}

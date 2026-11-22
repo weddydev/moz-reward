@@ -12,6 +12,7 @@ export { ErrorState } from "./ErrorState";
 export { Icon } from "./Icon";
 export { IconButton, type IconButtonVariant } from "./IconButton";
 export { KpiCard } from "./KpiCard";
+export { LiquidChoice, type LiquidOption } from "./LiquidChoice";
 export { MilestoneTrack, type Milestone } from "./MilestoneTrack";
 export { Modal } from "./Modal";
 export type { OverlayProps } from "./Overlay";

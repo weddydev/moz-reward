@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef } from "react";
-import { cx } from "@/lib/cx";
-import { useHydrated } from "@/lib/use-hydrated";
+import { LiquidChoice } from "./LiquidChoice";
 
-/** Radio-style segmented control with arrow-key support. The thumb slides (220ms) via transform. */
+/**
+ * Segmented control (PD-05; DESIGN §6.3, §7.4): a short single choice drawn as a liquid choice: the selection
+ * is a drop of liquid gold that pours to the new segment; arrow keys move and select, with a roving tabindex.
+ * Controlled. Same API as before PD-05.
+ */
 export function SegmentedControl<T extends string>({
   label,
   options,
@@ -12,74 +14,9 @@ export function SegmentedControl<T extends string>({
   onChange,
 }: {
   label: string;
-  options: ReadonlyArray<{ value: T; label: string }>;
+  options: ReadonlyArray<{ value: T; label: string; detail?: string; disabled?: boolean }>;
   value: T;
   onChange: (value: T) => void;
 }): React.JSX.Element {
-  const refs = useRef<Array<HTMLButtonElement | null>>([]);
-  const hydrated = useHydrated();
-  const index = Math.max(
-    0,
-    options.findIndex((o) => o.value === value),
-  );
-
-  function onKeyDown(e: React.KeyboardEvent) {
-    const delta =
-      e.key === "ArrowRight" || e.key === "ArrowDown"
-        ? 1
-        : e.key === "ArrowLeft" || e.key === "ArrowUp"
-          ? -1
-          : 0;
-    if (!delta) return;
-    e.preventDefault();
-    const next = (index + delta + options.length) % options.length;
-    const target = options[next];
-    if (!target) return;
-    onChange(target.value);
-    refs.current[next]?.focus();
-  }
-
-  return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      onKeyDown={onKeyDown}
-      className="rounded-pill bg-surface-2 relative grid p-1"
-      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
-    >
-      <span
-        aria-hidden="true"
-        data-part="thumb"
-        className="rounded-pill bg-surface shadow-1 duration-base absolute top-1 bottom-1 left-1 transition-transform ease-out"
-        style={{
-          width: `calc((100% - 8px) / ${options.length})`,
-          transform: `translateX(${index * 100}%)`,
-        }}
-      />
-      {options.map((o, i) => (
-        <button
-          key={o.value}
-          ref={(el) => {
-            refs.current[i] = el;
-          }}
-          type="button"
-          role="radio"
-          aria-checked={o.value === value}
-          tabIndex={o.value === value ? 0 : -1}
-          // Disabled until hydrated so an early press is never lost (C-20).
-          disabled={!hydrated}
-          onClick={() => {
-            onChange(o.value);
-          }}
-          className={cx(
-            "hit-44 rounded-pill text-small duration-fast z-10 h-10 min-w-0 px-3 font-semibold transition-colors",
-            o.value === value ? "text-ink" : "text-ink-2",
-          )}
-        >
-          {/* Truncation sits on the label: overflow on the button would clip its hit-44 area. */}
-          <span className="block truncate">{o.label}</span>
-        </button>
-      ))}
-    </div>
-  );
+  return <LiquidChoice label={label} options={options} value={value} onChange={onChange} />;
 }

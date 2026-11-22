@@ -117,9 +117,15 @@ test("[P1-03] the timeline lasts 1.4s and the morph lands exactly on the cover",
   await watchGate(page, true);
   await page.goto(`/s/${shopCode}?src=nfc`);
   await expect(page.getByTestId("gilded-gate")).toHaveAttribute("data-morph", ""); // the inline morph joined in step
+  // The timeline is every finite animation (the gate, the page's rise, the morph clone). Idle loops on the page
+  // underneath (PD-04: the molten button's flowing fill; the gilded edge, the living background) never end, so
+  // their Infinity is not part of it (CI 45006025356).
   const end = await page.evaluate(() =>
     Math.max(
-      ...document.getAnimations().map((a) => Number(a.effect?.getComputedTiming().endTime ?? 0)),
+      ...document
+        .getAnimations()
+        .map((a) => Number(a.effect?.getComputedTiming().endTime ?? 0))
+        .filter(Number.isFinite),
     ),
   );
   expect(end).toBe(1400);

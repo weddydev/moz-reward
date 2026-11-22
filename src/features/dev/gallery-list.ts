@@ -19,6 +19,7 @@ export const GALLERY_PRIMITIVES = [
   "Icon",
   "IconButton",
   "KpiCard",
+  "LiquidChoice",
   "MilestoneTrack",
   "Modal",
   "ProgressBar",

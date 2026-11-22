@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { FxCanvas } from "@/components/motion/FxCanvas";
+import { GooFilter } from "@/components/motion/GooFilter";
 import { CookieNotice } from "@/features/consent/CookieNotice";
 import { ApplyPreferences } from "@/features/preferences/ApplyPreferences";
 import { loadAccountPreferences } from "@/features/preferences/load";
@@ -67,6 +68,8 @@ export default async function RootLayout({
         {children}
         {/* The shared particle canvas, outside every route transition (DESIGN §7; PD-03). */}
         <FxCanvas />
+        {/* The liquid indicators' goo filter, defined once (PD-05). */}
+        <GooFilter />
         {clientEnv.NEXT_PUBLIC_UMAMI_PATH && clientEnv.NEXT_PUBLIC_UMAMI_WEBSITE_ID ? (
           <CookieNotice
             path={clientEnv.NEXT_PUBLIC_UMAMI_PATH}

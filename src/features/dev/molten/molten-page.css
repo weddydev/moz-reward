@@ -221,14 +221,23 @@ body:has(.m-page) {
 .m-lab > .m-tile.m-w7 {
   grid-column: span 7;
 }
+.m-lab > .m-tile.m-w6 {
+  grid-column: span 6;
+}
+.m-lab > .m-tile.m-w5 {
+  grid-column: span 5;
+}
 @media (max-width: 1020px) {
   .m-lab > .m-tile,
+  .m-lab > .m-tile.m-w5,
   .m-lab > .m-tile.m-w7 {
     grid-column: span 6;
   }
 }
 @media (max-width: 680px) {
   .m-lab > .m-tile,
+  .m-lab > .m-tile.m-w5,
+  .m-lab > .m-tile.m-w6,
   .m-lab > .m-tile.m-w7 {
     grid-column: 1/-1;
   }
@@ -277,6 +286,18 @@ body:has(.m-page) {
   justify-content: flex-start;
   gap: 14px;
   min-height: 64px;
+}
+/* The Coin switch tile's rows (reference: inline style on its .demo). */
+.m-demo.m-demo-rows {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+/* Reference `.chks`. */
+.m-chks {
+  display: grid;
+  gap: 12px;
+  width: 100%;
 }
 .m-how {
   margin: 0;

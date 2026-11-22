@@ -1,5 +1,5 @@
 import { RM_MAX_MS } from "./anim";
-import { BUTTON, HEART, TOAST } from "./controls";
+import { BUTTON, HEART, LIQUID, SEAL, SWITCH, TOAST } from "./controls";
 import { FX } from "./fx";
 import { type Locator } from "./molten-reference";
 import { PRESS } from "./press";
@@ -33,6 +33,8 @@ export type SpecRow = {
   /** Rows whose values live in DESIGN §7.3 / §8 are filled by their task; until then they hold none. */
   values: readonly SpecValue[];
 };
+
+const MOLTEN_CSS = "src/styles/molten.css";
 
 const css = (selector: string, prop: string, part?: string): Locator =>
   part === undefined ? { css: selector, prop } : { css: selector, prop, part };
@@ -200,68 +202,131 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "coin-switch",
     element: "Coin switch",
     task: "PD-05",
-    status: "pending",
+    status: "required",
     values: [
       {
         name: "coin",
         value: ".7s var(--spring)",
         ref: css(".tgl-coin", "transition", "transform"),
+        prod: { file: MOLTEN_CSS, css: ".m-tgl-coin", prop: "transition", part: "transform" },
       },
       {
         name: "face flip",
         value: ".5s var(--ease-out) .18s",
         ref: css(".coin-in", "transition", "transform"),
+        prod: { file: MOLTEN_CSS, css: ".m-coin-in", prop: "transition", part: "transform" },
       },
       {
         name: "fill",
         value: ".6s var(--ease-out)",
         ref: css(".tgl-fill", "transition", "transform"),
+        prod: { file: MOLTEN_CSS, css: ".m-tgl-fill", prop: "transition", part: "transform" },
       },
-      { name: "spark and pulse at", value: "420", ref: js("coin toggles", /RM \? 0 : (\d+)/g) },
-      { name: "sparks", value: "16", ref: js("coin toggles", /count: (\d+)/g) },
+      {
+        name: "spark and pulse at",
+        value: "420",
+        ref: js("coin toggles", /RM \? 0 : (\d+)/g),
+        prod: { value: () => SWITCH.landMs },
+      },
+      {
+        name: "sparks",
+        value: "16",
+        ref: js("coin toggles", /count: (\d+)/g),
+        prod: { value: () => SWITCH.sparks },
+      },
     ],
   },
   {
     id: "liquid-choice",
     element: "Liquid choice",
     task: "PD-05",
-    status: "pending",
+    status: "required",
     values: [
-      { name: "blob", value: "660", ref: js("function select(", /duration: (\d+)/g, 0) },
+      {
+        name: "blob",
+        value: "660",
+        ref: js("function select(", /duration: (\d+)/g, 0),
+        prod: { value: () => LIQUID.blobMs },
+      },
       {
         name: "blob stretch offset",
         value: ".42",
         ref: js("function select(", /offset: ([.\d]+)/g, 0),
+        prod: { value: () => LIQUID.stretchAt },
       },
-      { name: "droplets", value: "760", ref: js("function select(", /duration: (\d+)/g, 1) },
-      { name: "first droplet delay", value: "90", ref: js("function select(", /delay: (\d+)/g, 0) },
-      { name: "sparks at", value: "520", ref: js("liquid(rp", /\}\), (\d+)\)/g) },
-      { name: "goo blur", value: "7", ref: page('<filter id="goo"', /stdDeviation="(\d+)"/g) },
+      {
+        name: "blob overshoot offset",
+        value: ".76",
+        ref: js("function select(", /offset: ([.\d]+)/g, 1),
+        prod: { value: () => LIQUID.overshootAt },
+      },
+      {
+        name: "droplets",
+        value: "760",
+        ref: js("function select(", /duration: (\d+)/g, 1),
+        prod: { value: () => LIQUID.dropsMs },
+      },
+      {
+        name: "first droplet delay",
+        value: "90",
+        ref: js("function select(", /delay: (\d+)/g, 0),
+        prod: { value: () => LIQUID.dropDelayMs },
+      },
+      {
+        name: "sparks at",
+        value: "520",
+        ref: js("liquid(rp", /\}\), (\d+)\)/g),
+        prod: { value: () => LIQUID.sparkAtMs },
+      },
+      {
+        name: "goo blur",
+        value: "7",
+        ref: page('<filter id="goo"', /stdDeviation="(\d+)"/g),
+        prod: { value: () => LIQUID.gooBlur },
+      },
     ],
   },
   {
     id: "seal-checkbox",
     element: "Seal checkbox",
     task: "PD-05",
-    status: "pending",
+    status: "required",
     values: [
-      { name: "box", value: "480", ref: js("transform: 'scale(.72)'", /duration: (\d+)/g) },
+      {
+        name: "box",
+        value: "480",
+        ref: js("transform: 'scale(.72)'", /duration: (\d+)/g),
+        prod: { value: () => SEAL.boxMs },
+      },
       {
         name: "flood",
         value: ".38s var(--ease-out)",
         ref: css(".box::before", "transition", "clip-path"),
+        prod: { file: MOLTEN_CSS, css: ".m-box::before", prop: "transition", part: "clip-path" },
       },
       {
         name: "tick",
         value: ".3s var(--ease-out)",
         ref: css(".box svg", "transition", "stroke-dashoffset"),
+        prod: {
+          file: MOLTEN_CSS,
+          css: ".m-box svg",
+          prop: "transition",
+          part: "stroke-dashoffset",
+        },
       },
       {
         name: "ring",
         value: ".6s var(--ease-out)",
         ref: css(".box.burst::after", "animation", "ring"),
+        prod: { file: MOLTEN_CSS, css: ".m-box.burst::after", prop: "animation", part: "m-ring" },
       },
-      { name: "sparks at", value: "120", ref: js("speed: [90, 240]", /\}\), (\d+)\)/g) },
+      {
+        name: "sparks at",
+        value: "120",
+        ref: js("speed: [90, 240]", /\}\), (\d+)\)/g),
+        prod: { value: () => SEAL.sparkAtMs },
+      },
     ],
   },
   {

@@ -13,6 +13,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { KpiCard } from "@/components/ui/KpiCard";
+import { LiquidChoice } from "@/components/ui/LiquidChoice";
 import { MilestoneTrack } from "@/components/ui/MilestoneTrack";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { RadioGroup } from "@/components/ui/Radio";
@@ -105,6 +106,7 @@ export function UiGallery(): React.JSX.Element {
   const hydrated = useHydrated();
   const [chips, setChips] = useState<string[]>(["Great coffee"]);
   const [range, setRange] = useState<"7" | "30" | "90">("30");
+  const [reward, setReward] = useState<"coffee" | "cake" | "both">("coffee");
   const [tab, setTab] = useState<"pending" | "approved" | "expired">("pending");
   const [manyTab, setManyTab] = useState<ManyTab>("all");
   const [reminders, setReminders] = useState(true);
@@ -550,6 +552,48 @@ export function UiGallery(): React.JSX.Element {
               ),
             )}
           </ChipGroup>
+        </Demo>
+        <Demo
+          name="LiquidChoice"
+          note="The selection pours like liquid gold. Arrow keys move and skip the disabled option; 2 and 5 options."
+        >
+          <div className="flex max-w-xl flex-col gap-4">
+            <LiquidChoice
+              label="Choose your reward"
+              value={reward}
+              onChange={setReward}
+              options={[
+                { value: "coffee", label: "Coffee", detail: "600 gold" },
+                { value: "cake", label: "Cake", detail: "800 gold" },
+                { value: "both", label: "Both", detail: "1,000 gold", disabled: true },
+              ]}
+            />
+            <LiquidChoice
+              label="Visit type"
+              defaultValue="in"
+              options={[
+                { value: "in", label: "In shop" },
+                { value: "away", label: "Takeaway" },
+              ]}
+            />
+            <LiquidChoice
+              label="Rating"
+              defaultValue="3"
+              sparks={false}
+              options={["1", "2", "3", "4", "5"].map((v) => ({ value: v, label: v }))}
+            />
+            <RadioGroup
+              variant="cards"
+              label="Plan (cards)"
+              name="plan-cards"
+              defaultValue="monthly"
+              hint="Billed in GBP."
+              options={[
+                { value: "monthly", label: "Monthly", description: "£9" },
+                { value: "yearly", label: "Yearly", description: "£90" },
+              ]}
+            />
+          </div>
         </Demo>
         <Demo name="SegmentedControl">
           <div className="max-w-xs">

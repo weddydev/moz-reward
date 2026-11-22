@@ -1,13 +1,22 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { cx } from "@/lib/cx";
+import { anim, reducedMotionNow } from "@/lib/motion/anim";
+import { SWITCH } from "@/lib/motion/controls";
+import { burst } from "@/lib/motion/fx";
 import { useHydrated } from "@/lib/use-hydrated";
 
+const RING = "inset 0 2px 6px rgba(90,60,10,.2),inset 0 0 0 1px rgba(178,128,28,.35)";
+
 /**
- * Toggle: 120ms gold fill sweep (DESIGN §7). Controlled. The whole row is the target: the button's
- * `::after` covers the row (so a tap anywhere on it, label included, toggles), and the label is linked for
- * assistive tech. Disabled until hydrated so an early press is never lost (C-20).
+ * Coin switch (PD-05; DESIGN §6.3, §7.4; reference `.trow` + `.tgl`). Controlled, `role="switch"`. The knob is
+ * a coin: turning on, it rolls across (.7 s spring, 30 px + 360°), flips from M to a tick (.5 s after .18 s)
+ * while liquid gold pours in behind it (.6 s), and lands with 16 sparks and a gold pulse at 420 ms; turning off
+ * drains it back. All of it is CSS transitions, so rapid toggling retargets instead of queueing; a landing still
+ * pending when it turns off again is cancelled. Reduced motion: the state changes with no roll, pour or sparks.
+ * The whole row is the target (the button's `::after` covers it) and the label names the switch. Disabled until
+ * hydrated so an early press is never lost (C-20). `parity` marks the visual switch for the parity harness.
  */
 export function Switch({
   checked,
@@ -15,28 +24,55 @@ export function Switch({
   label,
   description,
   disabled,
+  parity,
 }: {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   label: string;
   description?: string;
   disabled?: boolean;
+  parity?: string;
 }): React.JSX.Element {
   const id = useId();
   const hydrated = useHydrated();
+  const track = useRef<HTMLSpanElement>(null);
+  const landing = useRef<number | null>(null);
+
+  const cancelLanding = (): void => {
+    if (landing.current !== null) window.clearTimeout(landing.current);
+    landing.current = null;
+  };
+  useEffect(() => cancelLanding, []);
+
+  const land = (): void => {
+    landing.current = null;
+    const el = track.current;
+    const coin = el?.querySelector(".m-tgl-coin");
+    if (!el || !coin) return;
+    const r = coin.getBoundingClientRect();
+    burst(r.left + r.width / 2, r.top + r.height / 2, {
+      type: "spark",
+      count: SWITCH.sparks,
+      speed: SWITCH.sparkSpeed,
+    });
+    anim(
+      el,
+      [
+        { boxShadow: `${RING},0 0 0 0 rgba(255,201,60,.7)` },
+        { boxShadow: `${RING},0 0 0 14px rgba(255,201,60,0)` },
+      ],
+      { duration: SWITCH.pulseMs, fill: "none" },
+    );
+  };
+
   return (
-    <div
-      className={cx(
-        "relative flex min-h-11 items-center justify-between gap-4",
-        disabled && "opacity-55",
-      )}
-    >
-      <div className="flex min-w-0 flex-col [overflow-wrap:anywhere]">
-        <label htmlFor={id} className="text-body font-semibold">
+    <div className={cx("m-trow", disabled && "opacity-55")}>
+      <div className="m-trow-text">
+        <label htmlFor={id} className="m-trow-label">
           {label}
         </label>
         {description ? (
-          <span id={`${id}-d`} className="text-small text-ink-2">
+          <span id={`${id}-d`} className="m-trow-s">
             {description}
           </span>
         ) : null}
@@ -49,28 +85,32 @@ export function Switch({
         aria-describedby={description ? `${id}-d` : undefined}
         disabled={disabled || !hydrated}
         onClick={() => {
-          onCheckedChange(!checked);
+          const next = !checked;
+          onCheckedChange(next);
+          cancelLanding();
+          // Reduced motion: no sparks or pulse (DESIGN §7.2).
+          if (next && !reducedMotionNow()) landing.current = window.setTimeout(land, SWITCH.landMs);
         }}
-        className={cx(
-          "rounded-pill shrink-0 select-none after:absolute after:inset-0 after:content-['']",
-          disabled && "cursor-not-allowed",
-        )}
+        className="m-tgl-btn"
       >
         <span
+          ref={track}
           aria-hidden="true"
           data-part="track"
-          data-press
-          className="rounded-pill border-ink-3 bg-surface-2 relative block h-7 w-12 overflow-hidden border"
+          data-parity={parity}
+          className="m-tgl"
         >
-          <span
-            className="bg-gold-gradient duration-fast absolute inset-0 origin-left transition-transform ease-out"
-            style={{ transform: checked ? "scaleX(1)" : "scaleX(0)" }}
-          />
-          <span
-            data-part="thumb"
-            className="rounded-pill bg-surface shadow-1 duration-fast absolute top-0.5 left-0.5 size-[22px] transition-transform ease-out"
-            style={{ transform: checked ? "translateX(20px)" : "translateX(0)" }}
-          />
+          <span className="m-tgl-fill" />
+          <span className="m-tgl-coin" data-part="thumb">
+            <span className="m-coin-in">
+              <span className="m-face m-f1">M</span>
+              <span className="m-face m-f2">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 12.5l4.2 4.2L19 7" />
+                </svg>
+              </span>
+            </span>
+          </span>
         </span>
       </button>
     </div>
