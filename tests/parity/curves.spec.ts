@@ -23,7 +23,9 @@ const UNIT = 0.03;
 const VP = { width: 390, height: 844 };
 
 async function curve(page: Page, part: string): Promise<Sample[][]> {
-  await capture(page, part); // scrolls it into view the same way on both pages
+  // Scrolls it into view the same way on both pages; a part that appears only when triggered (the toast) is
+  // fixed on screen and has nothing to scroll to yet.
+  if (!TRIGGERS[part]?.waitFor) await capture(page, part);
   const el = page.locator(`[data-parity="${part}"]`).first();
   await fire(page, part);
   const longest = await seekMs(page, part, 0);

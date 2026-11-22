@@ -117,7 +117,7 @@ export function MembershipControls({
             ) : null}
             <Button
               variant="destructive"
-              size={56}
+              size={54}
               block
               loading={leaving}
               onClick={() => void leave()}
@@ -125,7 +125,7 @@ export function MembershipControls({
             >
               Leave shop
             </Button>
-            <Button variant="secondary" size={56} block onClick={close} disabled={leaving}>
+            <Button variant="orbit" size={54} block onClick={close} disabled={leaving}>
               Stay a member
             </Button>
           </div>

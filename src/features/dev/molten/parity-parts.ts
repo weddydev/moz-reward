@@ -12,7 +12,33 @@ export type ParityPart = {
   anchor: string;
   task: `PD-${string}`;
   status: "pending" | "required";
+  /**
+   * Compared on a plain white backdrop (its parent's background set to white on both pages): for a part whose
+   * surroundings are built by a later task (the vault's orbit and ghost buttons until PD-10), so only the part
+   * itself is judged, never the stand-in around it.
+   */
+  isolate?: true;
+  /**
+   * Compared at its own content height on both pages (`align-self: start`): for a grid tile whose row-mate is
+   * built by a later task (the Buttons tile's Coin switch neighbour until PD-05), which stretches the row.
+   */
+  ownHeight?: true;
+  /**
+   * Compared over a blank white page (everything else hidden): for a fixed overlay whose see-through frames would
+   * otherwise show each page's own content behind it (the toast while it fades in and out).
+   */
+  alone?: true;
+  /**
+   * A documented per-browser allowance above the harness limit (DECISIONS line required): for a difference that
+   * comes from the reference itself, not from the app (PD phase rule "Port, don't reinvent").
+   */
+  tolerance?: { browser: "chromium" | "webkit"; max: number; why: string };
 };
+
+/** The diff limit for `part` in `browser`: the harness limit, or the part's documented tolerance. */
+export function parityLimit(part: ParityPart, browser: string, harness: number): number {
+  return part.tolerance?.browser === browser ? Math.max(harness, part.tolerance.max) : harness;
+}
 
 export const PARITY_PARTS: readonly ParityPart[] = [
   {
@@ -34,28 +60,51 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     title: "Molten button",
     anchor: 'id="collectBtn"',
     task: "PD-04",
-    status: "pending",
+    status: "required",
   },
   {
     name: "orbit-button",
     title: "Orbit button",
     anchor: 'id="fillBtn"',
     task: "PD-04",
-    status: "pending",
+    status: "required",
+    isolate: true,
   },
   {
     name: "ghost-button",
     title: "Ghost button",
     anchor: 'id="resetBtn"',
     task: "PD-04",
-    status: "pending",
+    status: "required",
+    isolate: true,
   },
   {
     name: "heart-toggle",
     title: "Heart toggle",
     anchor: 'id="saveBtn"',
     task: "PD-04",
-    status: "pending",
+    status: "required",
+    tolerance: {
+      browser: "webkit",
+      max: 0.03,
+      why: "the reference's .ico-btn keeps WebKit's default button padding (2px top, 3px bottom), so its heart sits 0.5px higher in WebKit only (DECISIONS 22 Nov)",
+    },
+  },
+  {
+    name: "tile",
+    title: "Buttons tile (placed tile surface, C-75)",
+    anchor: '<article class="tile w7"',
+    task: "PD-04",
+    status: "required",
+    ownHeight: true,
+  },
+  {
+    name: "toast",
+    title: "Toast",
+    anchor: 'id="toasts"',
+    task: "PD-04",
+    status: "required",
+    alone: true,
   },
   {
     name: "coin-switch",

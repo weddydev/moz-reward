@@ -13,7 +13,7 @@ import {
 import { IngotPour } from "@/components/motion/IngotPour";
 import { TransitionLink } from "@/components/motion/TransitionLink";
 import { Badge } from "@/components/ui/Badge";
-import { buttonClasses } from "@/components/ui/Button";
+import { buttonClasses } from "@/components/ui/button-classes";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
@@ -92,7 +92,7 @@ export function MemberShopPage({
                   href={directions}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={buttonClasses({ variant: "secondary" })}
+                  className={buttonClasses({ variant: "orbit" })}
                   data-testid="shop-directions"
                 >
                   <Icon icon={Navigation} size={18} /> Directions
@@ -101,7 +101,7 @@ export function MemberShopPage({
               {tel ? (
                 <a
                   href={tel}
-                  className={buttonClasses({ variant: "secondary" })}
+                  className={buttonClasses({ variant: "orbit" })}
                   data-testid="shop-call"
                 >
                   <Icon icon={Phone} size={18} /> Call
@@ -215,7 +215,7 @@ function VaultCard({
       <TransitionLink
         href={`/vault/${shopId}`}
         direction="forward"
-        className={buttonClasses({ variant: "secondary", block: true })}
+        className={buttonClasses({ variant: "orbit", block: true })}
         data-testid="shop-vault-link"
       >
         Open your Gold Vault <Icon icon={ChevronRight} size={18} />

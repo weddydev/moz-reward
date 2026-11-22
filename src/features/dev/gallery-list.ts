@@ -35,6 +35,7 @@ export const GALLERY_PRIMITIVES = [
   "Tabs",
   "TextArea",
   "TextField",
+  "Tile",
   "Toaster",
 ] as const;
 

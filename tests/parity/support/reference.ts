@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { type APIRequestContext, type Page, test } from "@playwright/test";
+import { PARITY_PARTS } from "../../../src/features/dev/molten/parity-parts";
 
 /**
  * Parity harness plumbing (PD-01). The reference copy (`tests/parity/reference/`, made from the frozen original
@@ -126,31 +127,55 @@ export async function instantScroll(page: Page): Promise<void> {
  * WebKit runs it on requestAnimationFrame, which a paused page clock never fires.
  */
 export async function capture(page: Page, part: string): Promise<Buffer> {
-  const box = await page.evaluate((name) => {
-    const el = document.querySelector(`[data-parity="${name}"]`);
-    if (!el) throw new Error(`no [data-parity="${name}"] on the page`);
-    // The reference page chrome (sticky top bar, toasts) belongs to no part and would overlap one.
-    for (const c of document.querySelectorAll<HTMLElement>("body > .bar, .toasts"))
-      c.style.visibility = "hidden";
-    // Whole pixels on both pages: a part at a fractional page position rasterises its text and edges one device
-    // pixel off, which reads as a mismatch everywhere (20 Nov, Language section). Nudge it onto the pixel grid
-    // (position: relative, so no layer and no layout change) and scroll by whole pixels.
-    if (el instanceof HTMLElement && el.dataset.parityAligned === undefined) {
-      const r0 = el.getBoundingClientRect();
-      const fx = (r0.left + window.scrollX) % 1;
-      const fy = (r0.top + window.scrollY) % 1;
-      if (fx || fy) {
-        if (getComputedStyle(el).position === "static") el.style.position = "relative";
-        el.style.left = `${String(-fx)}px`;
-        el.style.top = `${String(-fy)}px`;
+  const spec = PARITY_PARTS.find((p) => p.name === part);
+  const isolate = spec?.isolate === true;
+  const ownHeight = spec?.ownHeight === true;
+  const alone = spec?.alone === true;
+  const box = await page.evaluate(
+    ({ name, isolate, ownHeight, alone }) => {
+      const el = document.querySelector(`[data-parity="${name}"]`);
+      if (!el) throw new Error(`no [data-parity="${name}"] on the page`);
+      // The reference page chrome (sticky top bar, toasts) belongs to no part and would overlap one.
+      // (Unless the part is the toast stack itself, PD-04.)
+      for (const c of document.querySelectorAll<HTMLElement>("body > .bar, .toasts"))
+        if (!c.contains(el)) c.style.visibility = "hidden";
+      // Whole pixels on both pages: a part at a fractional page position rasterises its text and edges one device
+      // pixel off, which reads as a mismatch everywhere (20 Nov, Language section). Nudge it onto the pixel grid
+      // (position: relative, so no layer and no layout change) and scroll by whole pixels.
+      // An isolated part (parity-parts `isolate`) is judged on white: its parent's background, on both pages.
+      // The white runs 8 px past the parent's edges, so the pixel-grid nudge below can't lift the part's top
+      // row off it (PD-04: a 1 px strip of page showed on the app only, where the part sat at a fractional y).
+      if (isolate && el.parentElement) {
+        el.parentElement.style.background = "#fff";
+        el.parentElement.style.boxShadow = "0 0 0 8px #fff";
       }
-      el.dataset.parityAligned = "";
-    }
-    el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
-    window.scrollTo(Math.round(window.scrollX), Math.round(window.scrollY));
-    const r = el.getBoundingClientRect();
-    return { x: r.x, y: r.y, width: r.width, height: r.height };
-  }, part);
+      // An overlay judged alone (parity-parts `alone`): only the part shows, on white.
+      if (alone && el instanceof HTMLElement) {
+        document.documentElement.style.background = "#fff";
+        document.body.style.background = "#fff";
+        document.body.style.visibility = "hidden";
+        el.style.visibility = "visible";
+      }
+      // A tile judged at its own height (parity-parts `ownHeight`): not stretched by a row-mate built later.
+      if (ownHeight && el instanceof HTMLElement) el.style.alignSelf = "start";
+      if (el instanceof HTMLElement && el.dataset.parityAligned === undefined) {
+        const r0 = el.getBoundingClientRect();
+        const fx = (r0.left + window.scrollX) % 1;
+        const fy = (r0.top + window.scrollY) % 1;
+        if (fx || fy) {
+          if (getComputedStyle(el).position === "static") el.style.position = "relative";
+          el.style.left = `${String(-fx)}px`;
+          el.style.top = `${String(-fy)}px`;
+        }
+        el.dataset.parityAligned = "";
+      }
+      el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+      window.scrollTo(Math.round(window.scrollX), Math.round(window.scrollY));
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    },
+    { name: part, isolate, ownHeight, alone },
+  );
   return page.screenshot({ clip: box, caret: "hide" });
 }
 

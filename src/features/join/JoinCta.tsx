@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { type ComponentProps, useEffect, useState } from "react";
-import { buttonClasses } from "@/components/ui/Button";
+import { buttonClasses } from "@/components/ui/button-classes";
 import { useHydrated } from "@/lib/use-hydrated";
 
 /** The sheet's code (form, overlays, profile fields) is fetched the first time it is wanted (C-64). */
@@ -44,7 +44,7 @@ export function JoinCta({
     <>
       <Link
         href={`/s/${sheet.shopCode}?join=1`}
-        className={buttonClasses({ size: 56, block: true })}
+        className={buttonClasses({ size: 54, block: true })}
         data-testid="landing-collect"
         onPointerEnter={warm}
         onFocus={warm}

@@ -74,7 +74,7 @@ Details: [`docs/phases/PD.md`](phases/PD.md) · Spec: [`design/reference/molten/
 
 **PD-B · Controls**
 
-- [ ] PD-04 · Buttons, icon button, toast
+- [x] PD-04 · Buttons, icon button, toast
 - [ ] PD-05 · Coin switch, liquid choice, segmented control, seal checkbox
 - [ ] PD-06 · Tabs, text field, star rating, slider, member card
 - [ ] PD-B closed with `/subphase-complete`

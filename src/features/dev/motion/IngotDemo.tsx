@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { IngotPour } from "@/components/motion/IngotPour";
-import { buttonClasses } from "@/components/ui/Button";
+import { buttonClasses } from "@/components/ui/button-classes";
 import { Ingot } from "@/components/ui/Ingot";
 import { pourSeenKey } from "@/lib/motion/ingot";
 import { Section } from "../Section";
@@ -49,7 +49,7 @@ export function IngotDemo(): React.JSX.Element {
         </label>
         <button
           type="button"
-          className={buttonClasses({ size: 40 })}
+          className={buttonClasses({ size: 46 })}
           onClick={() => {
             replay(true);
           }}
@@ -59,7 +59,7 @@ export function IngotDemo(): React.JSX.Element {
         </button>
         <button
           type="button"
-          className={buttonClasses({ variant: "secondary", size: 40 })}
+          className={buttonClasses({ variant: "orbit", size: 46 })}
           onClick={() => {
             replay(false);
           }}

@@ -1,6 +1,6 @@
 import { Clock, Gift, MapPin, Navigation, Phone, Store } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
-import { buttonClasses } from "@/components/ui/Button";
+import { buttonClasses } from "@/components/ui/button-classes";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { Ingot } from "@/components/ui/Ingot";
@@ -122,13 +122,13 @@ export function ShopLanding({
                   href={directions}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={buttonClasses({ variant: "secondary", size: 40 })}
+                  className={buttonClasses({ variant: "orbit", size: 46 })}
                 >
                   <Icon icon={Navigation} size={16} /> Directions
                 </a>
               ) : null}
               {tel ? (
-                <a href={tel} className={buttonClasses({ variant: "secondary", size: 40 })}>
+                <a href={tel} className={buttonClasses({ variant: "orbit", size: 46 })}>
                   <Icon icon={Phone} size={16} /> Call
                 </a>
               ) : null}

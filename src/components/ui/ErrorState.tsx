@@ -41,13 +41,7 @@ export function ErrorState({
         <p className="text-small text-ink-2 max-w-sm [overflow-wrap:break-word]">{message}</p>
       </div>
       {onRetry ? (
-        <Button
-          variant="secondary"
-          size={48}
-          loading={retrying}
-          disabled={!hydrated}
-          onClick={onRetry}
-        >
+        <Button variant="orbit" size={54} loading={retrying} disabled={!hydrated} onClick={onRetry}>
           {retryLabel}
         </Button>
       ) : null}

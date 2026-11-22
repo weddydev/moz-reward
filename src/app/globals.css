@@ -395,22 +395,6 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  /* Toast: slide up 12px + fade (transitions, interruptible). */
-  .toast {
-    transition:
-      transform var(--dur-base) var(--ease-out),
-      opacity var(--dur-base) var(--ease-out);
-    @starting-style {
-      transform: translateY(12px);
-      opacity: 0;
-    }
-  }
-  .toast[data-leaving="true"] {
-    transform: translateY(12px);
-    opacity: 0;
-    transition-duration: var(--dur-exit);
-  }
-
   /*
    * Overlays: Modal, SidePanel, BottomSheet (P0-09 AC 3, 11; Overlay.tsx). The <dialog> is a transparent
    * full-viewport layer holding a backdrop and the panel. Enter: @starting-style. Exit: [data-state="closing"],

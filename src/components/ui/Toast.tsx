@@ -1,14 +1,16 @@
 "use client";
 
-import { CircleAlert, CircleCheck, Info, X } from "lucide-react";
-import { useEffect, useRef, useSyncExternalStore } from "react";
-import { cx } from "@/lib/cx";
+import { CircleAlert, X } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { anim, reducedMotionNow } from "@/lib/motion/anim";
+import { springEasing, TOAST } from "@/lib/motion/controls";
 
 /**
  * Toasts: call `toast("Saved")` from anywhere; render <Toaster /> once per shell.
  * At most three are visible; the rest wait in order and appear as slots free (none is dropped).
- * Slide up 12px + fade, auto-dismiss after 4s; timers pause while the tab is hidden or the toast is
- * hovered/focused. Screen readers hear each toast once, when it appears: errors through a `role="alert"`
+ * Molten obsidian toast (PD-04; DESIGN §7.4 Toast): springs in (520 ms), its coin spins 720° (800 ms), a metal
+ * progress bar runs down over 3.6 s, then it falls away (260 ms). Timer and bar pause while the tab is hidden or
+ * the toast is hovered/focused. Screen readers hear each toast once, when it appears: errors through a `role="alert"`
  * region, the rest through a polite `role="status"` one; both are cleared after a second so a later
  * re-render or virtual-cursor pass doesn't read them again. The visible list itself is not live.
  */
@@ -17,8 +19,8 @@ type ToastItem = { id: number; message: string; tone: ToastTone; leaving: boolea
 type Snapshot = { visible: readonly ToastItem[]; polite: string; assertive: string };
 
 const MAX_VISIBLE = 3;
-const DURATION = 4000;
-const EXIT_MS = 160;
+const DURATION = TOAST.showMs;
+const EXIT_MS = TOAST.outMs;
 const ANNOUNCE_MS = 1000;
 
 let queue: ToastItem[] = [];
@@ -116,16 +118,66 @@ const subscribe = (l: () => void) => {
 };
 const getSnapshot = () => snapshot;
 
-const ICON = { info: Info, success: CircleCheck, error: CircleAlert } as const;
-
 function ToastView({ item }: { item: ToastItem }) {
   const ref = useRef<HTMLLIElement>(null);
+
+  // In: 520 ms spring rise; the coin spins 720° over 800 ms (reference `toast()`). A layout effect, so the toast is
+  // never painted before its entrance starts.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Reduced motion (DESIGN §7.2): a fade replaces the rise and the coin holds still.
+    if (reducedMotionNow()) {
+      anim(el, [{ opacity: 0 }, { opacity: 1 }], { duration: TOAST.inMs });
+      return;
+    }
+    anim(
+      el,
+      [
+        { opacity: 0, transform: "translateY(24px) scale(.96)" },
+        { opacity: 1, transform: "none" },
+      ],
+      { duration: TOAST.inMs, easing: springEasing() },
+    );
+    anim(
+      el.querySelector(".tc"),
+      [{ transform: "rotateY(0) scale(.6)" }, { transform: "rotateY(720deg) scale(1)" }],
+      { duration: TOAST.coinMs },
+    );
+  }, []);
+
+  // Out: 260 ms fall and fade, then the store removes it.
+  useEffect(() => {
+    if (!item.leaving) return;
+    anim(
+      ref.current,
+      reducedMotionNow()
+        ? [{ opacity: 1 }, { opacity: 0 }]
+        : [
+            { opacity: 1, transform: "none" },
+            { opacity: 0, transform: "translateY(12px)" },
+          ],
+      { duration: TOAST.outMs },
+    );
+  }, [item.leaving]);
 
   useEffect(() => {
     const el = ref.current;
     let remaining = DURATION;
     let startedAt = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    // The progress bar runs with the timer: paused whenever the timer is (hover, focus, hidden tab).
+    // Not through anim(): under reduced motion it would shorten the bar to 150 ms; the bar stays still instead.
+    const barEl = el?.querySelector(".bar2");
+    const bar =
+      barEl && typeof barEl.animate === "function" && !reducedMotionNow()
+        ? barEl.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(0)" }], {
+            duration: DURATION,
+            easing: "linear",
+            fill: "both",
+          })
+        : null;
+    bar?.pause();
     // Hover and focus pause independently: leaving one must not restart the timer while the other holds
     // (on touch screens every tap ends with pointerleave, while focus may still be inside).
     let hovered = false;
@@ -133,6 +185,7 @@ function ToastView({ item }: { item: ToastItem }) {
     const start = () => {
       if (hovered || focused || document.hidden || timer !== undefined) return;
       startedAt = Date.now();
+      bar?.play();
       timer = setTimeout(() => {
         dismissToast(item.id);
       }, remaining);
@@ -141,6 +194,7 @@ function ToastView({ item }: { item: ToastItem }) {
       if (timer === undefined) return;
       clearTimeout(timer);
       timer = undefined;
+      bar?.pause();
       remaining -= Date.now() - startedAt;
     };
     const onVisibility = () => {
@@ -181,42 +235,32 @@ function ToastView({ item }: { item: ToastItem }) {
     };
   }, [item.id]);
 
-  const Icon = ICON[item.tone];
   return (
-    <li
-      ref={ref}
-      data-leaving={item.leaving}
-      data-tone={item.tone}
-      className="toast bg-ink text-small text-surface shadow-2 pointer-events-auto flex w-full items-center gap-3 rounded-md py-3 pr-2 pl-4"
-    >
-      <Icon
-        aria-hidden="true"
-        size={18}
-        strokeWidth={1.5}
-        className={cx(
-          "shrink-0",
-          item.tone === "success" && "text-gold-300",
-          item.tone === "error" && "text-surface",
-        )}
-      />
+    <li ref={ref} data-leaving={item.leaving} data-tone={item.tone} className="m-toast">
+      <span className="tc grid place-items-center" aria-hidden="true">
+        {item.tone === "error" ? <CircleAlert size={18} strokeWidth={1.8} /> : null}
+      </span>
       <span data-part="message" className="min-w-0 flex-1 [overflow-wrap:anywhere]">
         {item.message}
       </span>
+      {/* Hidden until focused: the toast at rest is the reference's, and a keyboard user can still dismiss it
+          (focus also pauses the timer). Touch and mouse users see it go after 3.6 s, or hover to hold it. */}
       <button
         type="button"
         onClick={() => {
           dismissToast(item.id);
         }}
-        className="pressable grid size-11 shrink-0 place-items-center rounded-sm"
+        className="m-toast-x"
         aria-label="Dismiss"
       >
-        <X aria-hidden="true" size={16} strokeWidth={1.5} />
+        <X aria-hidden="true" size={16} strokeWidth={1.8} />
       </button>
+      <span className="bar2" aria-hidden="true" />
     </li>
   );
 }
 
-export function Toaster(): React.JSX.Element {
+export function Toaster({ parity }: { parity?: string } = {}): React.JSX.Element {
   const { visible, polite, assertive } = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   return (
     <>
@@ -226,11 +270,12 @@ export function Toaster(): React.JSX.Element {
       <div role="alert" aria-live="assertive" aria-atomic="true" className="sr-only">
         {assertive}
       </div>
+      {/* The stack positions itself (molten.css `.m-toasts`); on app shells it sits above the bottom nav. */}
       <section
         aria-label="Notifications"
-        className="pointer-events-none fixed inset-x-0 bottom-(--fixed-bottom) z-50 flex justify-center px-4 lg:bottom-6"
+        className="[--toast-bottom:var(--fixed-bottom)] lg:[--toast-bottom:1.5rem]"
       >
-        <ol className="flex w-full max-w-sm flex-col gap-2">
+        <ol className="m-toasts" data-parity={parity}>
           {visible.map((t) => (
             <ToastView key={t.id} item={t} />
           ))}

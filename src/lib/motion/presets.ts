@@ -56,13 +56,16 @@ export const MOTION_PRESETS = {
     exit: "--dur-exit",
     scan: true,
   },
-  /** `useToast()`: slides up 12px + fade; transitions, so a burst of toasts retargets smoothly. */
+  /**
+   * `toast()` (PD-04, Molten): Web Animations, not CSS, so the AC 6 scan has no rule to read; transform and
+   * opacity only, asserted by the toast unit test and the parity curves. Values: `TOAST` in controls.ts.
+   */
   toast: {
-    selector: ".toast",
-    motion: "translateY(12px) → 0 + fade",
-    enter: "--dur-base",
-    exit: "--dur-exit",
-    scan: true,
+    selector: ".m-toast",
+    motion: "rise 24px + scale .96 → 1 + fade on the spring (520 ms); out: 12px + fade (260 ms)",
+    enter: "520ms",
+    exit: "260ms",
+    scan: false,
   },
   /** `<Popover>`: scales from .95 + fade from the trigger (`transformOriginFor`); interruptible. */
   popover: {

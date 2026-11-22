@@ -243,7 +243,7 @@ async function expectNothingMoves(page: Page): Promise<void> {
   );
 
   await page.getByRole("button", { name: "Success toast" }).click();
-  const toast = page.locator("li.toast").first();
+  const toast = page.locator("li.m-toast").first();
   await expect(toast).toBeVisible();
   expectStill("toast", await motionOf(toast));
 }

@@ -37,7 +37,7 @@ function PresetDemos(): React.JSX.Element {
         {(["modal", "panel", "sheet"] as const).map((kind) => (
           <Button
             key={kind}
-            variant="secondary"
+            variant="orbit"
             disabled={!hydrated}
             data-preset={kind}
             onClick={() => {
@@ -48,7 +48,7 @@ function PresetDemos(): React.JSX.Element {
           </Button>
         ))}
         <Button
-          variant="secondary"
+          variant="orbit"
           disabled={!hydrated}
           data-preset="toast"
           onClick={() => {
@@ -97,7 +97,7 @@ function PopoverDemos(): React.JSX.Element {
   const body = (
     <div className="flex w-56 flex-col gap-2">
       <p className="text-small text-ink-2">It grows from the button that opened it.</p>
-      <Button variant="secondary" size={40}>
+      <Button variant="orbit" size={46}>
         An action inside
       </Button>
     </div>
@@ -203,7 +203,7 @@ function PressHoverDemos(): React.JSX.Element {
       </ul>
       <div className="flex flex-wrap items-center gap-4" data-demo="press">
         <Button>Primary</Button>
-        <Button variant="secondary">Pressable</Button>
+        <Button variant="orbit">Pressable</Button>
         <div className="w-64">
           <Switch checked={on} onCheckedChange={setOn} label="Switch (data-press)" />
         </div>
@@ -233,7 +233,7 @@ function SoundHapticDemos(): React.JSX.Element {
         {(Object.keys(SOUNDS) as SoundName[]).map((name) => (
           <Button
             key={name}
-            variant="secondary"
+            variant="orbit"
             disabled={!hydrated}
             onClick={() => {
               setLast(
@@ -249,7 +249,7 @@ function SoundHapticDemos(): React.JSX.Element {
         {(Object.keys(HAPTICS) as HapticName[]).map((name) => (
           <Button
             key={name}
-            variant="secondary"
+            variant="orbit"
             disabled={!hydrated}
             onClick={() => {
               setLast(

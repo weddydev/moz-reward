@@ -2,7 +2,7 @@
 
 import { Bell, LogIn, ScanLine } from "lucide-react";
 import { TransitionLink } from "@/components/motion";
-import { buttonClasses } from "@/components/ui/Button";
+import { buttonClasses } from "@/components/ui/button-classes";
 import { Icon } from "@/components/ui/Icon";
 import { cx } from "@/lib/cx";
 import { PortalSwitcher } from "./PortalSwitcher";
@@ -41,7 +41,7 @@ export function PortalHeader({ chrome }: { chrome: ShellProps }): React.JSX.Elem
                 <PortalSwitcher portals={chrome.portals} current="customer" compact />
               </>
             ) : (
-              <a href="/sign-in" className={buttonClasses({ variant: "secondary", size: 48 })}>
+              <a href="/sign-in" className={buttonClasses({ variant: "orbit", size: 54 })}>
                 <Icon icon={LogIn} size={18} />
                 Sign in
               </a>
@@ -75,7 +75,7 @@ export function PortalHeader({ chrome }: { chrome: ShellProps }): React.JSX.Elem
         </div>
         {chrome.portal === "shop" ? (
           <div className="hidden lg:block">
-            <TransitionLink href="/dashboard/scan" className={buttonClasses({ size: 48 })}>
+            <TransitionLink href="/dashboard/scan" className={buttonClasses({ size: 54 })}>
               <Icon icon={ScanLine} />
               Scan member QR
             </TransitionLink>

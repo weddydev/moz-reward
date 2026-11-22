@@ -9,7 +9,7 @@ export function TapCounter(): React.JSX.Element {
   return (
     <div className="flex items-center gap-3">
       <Button
-        variant="secondary"
+        variant="orbit"
         onClick={() => {
           setTaps((n) => n + 1);
         }}

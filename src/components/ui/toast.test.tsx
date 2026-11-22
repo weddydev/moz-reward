@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { TOAST } from "@/lib/motion/controls";
 import { Toaster, __resetToasts, dismissToast, toast } from "./Toast";
 
-const LIFE = 4000;
-const EXIT = 200; // a little over the 160ms exit
+const LIFE = TOAST.showMs; // 3.6 s, the reference (PD-04)
+const EXIT = TOAST.outMs + 40; // a little over the 260 ms exit
 
 /** Messages of the toasts on screen, top to bottom. */
 const visible = (): string[] =>
@@ -26,7 +27,7 @@ describe("[P0-09] toast", () => {
     vi.useRealTimers();
   });
 
-  it("shows a toast, announces it politely and removes it after 4s", () => {
+  it("shows a toast, announces it politely and removes it after 3.6 s (PD-04)", () => {
     vi.useFakeTimers();
     render(<Toaster />);
     act(() => {
@@ -244,7 +245,7 @@ describe("[P0-09] toast", () => {
     act(() => {
       dismiss.blur();
     });
-    advance(4000 + EXIT);
+    advance(LIFE + EXIT);
     expect(visible()).toEqual([]);
   });
 
@@ -266,7 +267,7 @@ describe("[P0-09] toast", () => {
     advance(10_000);
     expect(visible()).toEqual(["Saved"]);
     fireEvent.pointerLeave(item);
-    advance(4000 + EXIT);
+    advance(LIFE + EXIT);
     expect(visible()).toEqual([]);
   });
 
@@ -282,5 +283,59 @@ describe("[P0-09] toast", () => {
     }).not.toThrow();
     render(<Toaster />);
     expect(visible()).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("[PD-04] Molten toast", () => {
+  it("[PD-04] obsidian toast with the metal coin and progress bar; Dismiss stays reachable by keyboard", () => {
+    render(<Toaster />);
+    act(() => {
+      toast("80 gold added at Brew & Bloom Café", "success");
+    });
+    const item = screen.getByRole("listitem");
+    expect(item).toHaveClass("m-toast");
+    expect(item.querySelector(".tc")).not.toBeNull();
+    expect(item.querySelector(".bar2")).not.toBeNull();
+    const dismiss = within(item).getByRole("button", { name: "Dismiss" });
+    expect(dismiss).toHaveClass("m-toast-x");
+    dismiss.focus();
+    expect(document.activeElement).toBe(dismiss);
+  });
+
+  it("[PD-04] enters on the reference's spring with WAAPI (520 ms), coin 800 ms; under reduced motion only fades", () => {
+    const calls: Array<{ kf: Keyframe[]; o: KeyframeAnimationOptions }> = [];
+    const proto = Element.prototype as unknown as { animate?: unknown };
+    const had = proto.animate;
+    proto.animate = function (kf: Keyframe[], o: KeyframeAnimationOptions) {
+      calls.push({ kf, o });
+      return { pause() {}, play() {}, cancel() {}, onfinish: null } as unknown as Animation;
+    };
+    try {
+      render(<Toaster />);
+      act(() => {
+        toast("Saved", "success");
+      });
+      const entrance = calls.find((c) => c.o.duration === TOAST.inMs);
+      expect(entrance?.kf[0]).toMatchObject({
+        opacity: 0,
+        transform: "translateY(24px) scale(.96)",
+      });
+      expect(String(entrance?.o.easing)).toMatch(/linear\(|cubic-bezier\(\.34,1\.56,\.64,1\)/);
+      expect(calls.some((c) => c.o.duration === TOAST.coinMs)).toBe(true);
+      __resetToasts();
+      calls.length = 0;
+      document.documentElement.classList.add("rm");
+      act(() => {
+        toast("Saved", "success");
+      });
+      const faded = calls.find(
+        (c) => c.o.duration !== undefined && c.kf.some((k) => "opacity" in k),
+      );
+      expect(faded?.kf.every((k) => !("transform" in k))).toBe(true);
+      expect(calls.some((c) => c.o.duration === TOAST.coinMs)).toBe(false);
+    } finally {
+      document.documentElement.classList.remove("rm");
+      proto.animate = had;
+    }
   });
 });

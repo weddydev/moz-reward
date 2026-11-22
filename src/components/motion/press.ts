@@ -50,10 +50,20 @@ export function usePress(
   }, [ref, withRipple, withHaptic]);
 }
 
-export function useMagnetic(ref: RefObject<HTMLElement | null>): void {
+export function useMagnetic(
+  ref: RefObject<HTMLElement | null>,
+  opts: { enabled?: boolean } = {},
+): void {
+  const enabled = opts.enabled !== false;
   useEffect(() => {
     const el = ref.current;
-    if (!el || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    if (
+      !enabled ||
+      !el ||
+      typeof window.matchMedia !== "function" ||
+      !window.matchMedia("(hover: hover) and (pointer: fine)").matches
+    )
+      return;
     const move = (e: PointerEvent): void => {
       const r = el.getBoundingClientRect();
       const x = e.clientX - r.left;
@@ -76,7 +86,7 @@ export function useMagnetic(ref: RefObject<HTMLElement | null>): void {
       el.removeEventListener("pointerleave", leave);
       leave();
     };
-  }, [ref]);
+  }, [ref, enabled]);
 }
 
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;

@@ -173,14 +173,14 @@ export function JoinSheet({
               </p>
             ) : null}
             {refused ? (
-              <Button size={56} block variant="secondary" onClick={close} data-testid="join-submit">
+              <Button size={54} block variant="orbit" onClick={close} data-testid="join-submit">
                 Close
               </Button>
             ) : (
               <Button
                 type="submit"
                 form="join-form"
-                size={56}
+                size={54}
                 block
                 loading={pending}
                 data-testid="join-submit"

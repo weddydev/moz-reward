@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { diffRatio } from "./support/diff";
+import { fire, TRIGGERS } from "./support/motion";
 import {
   attachPair,
   capture,
@@ -11,7 +12,7 @@ import {
   offline,
   serveReference,
 } from "./support/reference";
-import { PARITY_PARTS } from "../../src/features/dev/molten/parity-parts";
+import { PARITY_PARTS, parityLimit } from "../../src/features/dev/molten/parity-parts";
 
 /**
  * Static parity (PD-01): every `data-parity` part at rest, animations paused, FX canvas hidden; `/dev/molten`
@@ -84,11 +85,21 @@ test.describe("[PD-01] static parity", () => {
         await serveReference(ref);
         await open(ref, REFERENCE_PATH, vp.width, vp.height);
         await open(page, "/dev/molten", vp.width, vp.height);
+        // A part that only exists once something shows it (the toast) is shown first, then stilled at rest.
+        if (TRIGGERS[part.name]?.waitFor) {
+          await fire(ref, part.name);
+          await fire(page, part.name);
+        }
         const a = await shot(ref, part.name);
         const b = await shot(page, part.name);
         const d = diffRatio(a, b);
-        if (d.ratio > MAX_DIFF) await attachPair(`${part.name}-${String(vp.width)}`, a, b);
-        expect(d.ratio, d.why).toBeLessThanOrEqual(MAX_DIFF);
+        const max = parityLimit(
+          part,
+          page.context().browser()?.browserType().name() ?? "",
+          MAX_DIFF,
+        );
+        if (d.ratio > max) await attachPair(`${part.name}-${String(vp.width)}`, a, b);
+        expect(d.ratio, `${d.why ?? ""} ${part.tolerance?.why ?? ""}`).toBeLessThanOrEqual(max);
       });
     }
   }

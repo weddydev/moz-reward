@@ -100,8 +100,8 @@ export function CookieNotice({
         data-consent-actions=""
       >
         <Button
-          variant="secondary"
-          size={40}
+          variant="orbit"
+          size={46}
           onClick={() => {
             decide("granted");
           }}
@@ -109,8 +109,8 @@ export function CookieNotice({
           Allow analytics
         </Button>
         <Button
-          variant="secondary"
-          size={40}
+          variant="orbit"
+          size={46}
           onClick={() => {
             decide("denied");
           }}

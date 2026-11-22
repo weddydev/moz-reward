@@ -1,1 +1,12 @@
-["fx-engine", "gilded-edge", "living-background", "placed-card", "press-kit"]
+[
+  "fx-engine",
+  "ghost-button",
+  "gilded-edge",
+  "heart-toggle",
+  "living-background",
+  "molten-button",
+  "orbit-button",
+  "placed-card",
+  "press-kit",
+  "toast"
+]

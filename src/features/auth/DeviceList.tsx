@@ -124,8 +124,8 @@ export function DeviceList({
             </div>
             {device.current ? null : (
               <Button
-                variant="secondary"
-                size={40}
+                variant="orbit"
+                size={46}
                 loading={pending === device.id}
                 disabled={!hydrated || (pending !== null && pending !== device.id)}
                 onClick={() => void signOutOne(device)}
@@ -152,14 +152,14 @@ export function DeviceList({
             <Button
               id="confirm-everywhere-yes"
               variant="destructive"
-              size={40}
+              size={46}
               loading={pending === "all"}
               aria-describedby="confirm-everywhere"
               onClick={() => void signOutEverywhere()}
             >
               Sign out everywhere
             </Button>
-            <Button variant="ghost" size={40} disabled={pending === "all"} onClick={closeConfirm}>
+            <Button variant="ghost" size={46} disabled={pending === "all"} onClick={closeConfirm}>
               Cancel
             </Button>
           </div>
@@ -167,7 +167,7 @@ export function DeviceList({
       ) : (
         <Button
           id="sign-out-everywhere"
-          variant="secondary"
+          variant="orbit"
           block
           disabled={!hydrated || pending !== null}
           onClick={openConfirm}

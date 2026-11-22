@@ -1,4 +1,5 @@
 import { RM_MAX_MS } from "./anim";
+import { BUTTON, HEART, TOAST } from "./controls";
 import { FX } from "./fx";
 import { type Locator } from "./molten-reference";
 import { PRESS } from "./press";
@@ -48,49 +49,99 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "molten-button",
     element: "Molten button",
     task: "PD-04",
-    status: "pending",
+    status: "required",
     values: [
       {
         name: "press transform",
         value: ".45s var(--spring)",
         ref: css(".btn", "transition", "transform"),
+        prod: {
+          file: "src/styles/molten.css",
+          css: ".m-btn",
+          prop: "transition",
+          part: "transform",
+        },
       },
-      { name: "press scale", value: ".93", ref: css(".btn.down", "--s") },
-      { name: "ripple", value: "720", ref: js("function ripple", /duration: (\d+)/g) },
+      {
+        name: "press scale",
+        value: ".93",
+        ref: css(".btn.down", "--s"),
+        prod: { file: "src/styles/molten.css", css: ".m-btn.down", prop: "--s" },
+      },
+      {
+        name: "ripple",
+        value: "720",
+        ref: js("function ripple", /duration: (\d+)/g),
+        prod: { value: () => PRESS.rippleMs },
+      },
       {
         name: "label roll",
         value: ".5s var(--spring)",
         ref: css(".btn .lbl > span", "transition", "transform"),
+        prod: {
+          file: "src/styles/molten.css",
+          css: ".m-btn .m-lbl > span",
+          prop: "transition",
+          part: "transform",
+        },
       },
-      { name: "label back after", value: "1700", ref: js("function rollLabel", /ms = (\d+)/g) },
+      {
+        name: "label back after",
+        value: "1700",
+        ref: js("function rollLabel", /ms = (\d+)/g),
+        prod: { value: () => BUTTON.labelBackMs },
+      },
       {
         name: "fill flow loop",
         value: "4.5s linear infinite",
         ref: css(".btn-molten::before", "animation", "flow"),
+        prod: {
+          file: "src/styles/molten.css",
+          css: ".m-btn-molten::before",
+          prop: "animation",
+          part: "m-flow",
+        },
       },
       {
         name: "sparks",
         value: "28",
         ref: js("function celebrate", /type: 'spark', count: (\d+)/g),
+        prod: { value: () => PRESS.celebrate.sparks },
       },
-      { name: "coins", value: "6", ref: js("function celebrate", /coins = (\d+)/g) },
+      {
+        name: "coins",
+        value: "6",
+        ref: js("function celebrate", /coins = (\d+)/g),
+        prod: { value: () => PRESS.celebrate.coins },
+      },
     ],
   },
   {
     id: "orbit-button",
     element: "Orbit button",
     task: "PD-04",
-    status: "pending",
+    status: "required",
     values: [
       {
         name: "orbit loop",
         value: "3.4s linear infinite",
         ref: css(".btn-orbit", "animation", "orbit"),
+        prod: {
+          file: "src/styles/molten.css",
+          css: ".m-btn-orbit",
+          prop: "animation",
+          part: "m-orbit",
+        },
       },
       {
         name: "orbit loop on hover",
         value: "1.1s",
         ref: css(".btn-orbit:hover", "animation-duration"),
+        prod: {
+          file: "src/styles/molten.css",
+          css: ".m-btn-orbit:hover",
+          prop: "animation-duration",
+        },
       },
     ],
   },
@@ -98,12 +149,18 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "ghost-button",
     element: "Ghost button",
     task: "PD-04",
-    status: "pending",
+    status: "required",
     values: [
       {
         name: "underline",
         value: ".5s var(--spring)",
         ref: css(".btn-ghost .u::after", "transition", "transform"),
+        prod: {
+          file: "src/styles/molten.css",
+          css: ".m-btn-ghost .u::after",
+          prop: "transition",
+          part: "transform",
+        },
       },
     ],
   },
@@ -111,16 +168,32 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "heart-toggle",
     element: "Heart toggle",
     task: "PD-04",
-    status: "pending",
+    status: "required",
     values: [
-      { name: "pop", value: "620", ref: js("$('#saveBtn')", /duration: (\d+)/g, 0) },
+      {
+        name: "pop",
+        value: "620",
+        ref: js("$('#saveBtn')", /duration: (\d+)/g, 0),
+        prod: { value: () => HEART.popMs },
+      },
       {
         name: "pop overshoot offset",
         value: ".45",
         ref: js("$('#saveBtn')", /offset: ([.\d]+)/g, 0),
+        prod: { value: () => HEART.popOvershoot },
       },
-      { name: "ring", value: "600", ref: js("$('#saveBtn')", /duration: (\d+)/g, 1) },
-      { name: "dots", value: "650", ref: js("$('#saveBtn')", /duration: (\d+)/g, 2) },
+      {
+        name: "ring",
+        value: "600",
+        ref: js("$('#saveBtn')", /duration: (\d+)/g, 1),
+        prod: { value: () => HEART.ringMs },
+      },
+      {
+        name: "dots",
+        value: "650",
+        ref: js("$('#saveBtn')", /duration: (\d+)/g, 2),
+        prod: { value: () => HEART.dotsMs },
+      },
     ],
   },
   {
@@ -297,13 +370,39 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "toast",
     element: "Toast",
     task: "PD-04",
-    status: "pending",
+    status: "required",
     values: [
-      { name: "in", value: "520", ref: js("function toast", /duration: (\d+)/g, 0) },
-      { name: "in easing", value: "SPRING", ref: js("function toast", /easing: (\w+)/g, 0) },
-      { name: "coin spin", value: "800", ref: js("function toast", /duration: (\d+)/g, 1) },
-      { name: "progress", value: "3600", ref: js("function toast", /duration: (\d+)/g, 2) },
-      { name: "out", value: "260", ref: js("function toast", /duration: (\d+)/g, 3) },
+      {
+        name: "in",
+        value: "520",
+        ref: js("function toast", /duration: (\d+)/g, 0),
+        prod: { value: () => TOAST.inMs },
+      },
+      // The toast's entrance passes `springEasing()`, the reference's SPRING (toast.test.tsx asserts it).
+      {
+        name: "in easing",
+        value: "SPRING",
+        ref: js("function toast", /easing: (\w+)/g, 0),
+        prod: { value: () => "SPRING" },
+      },
+      {
+        name: "coin spin",
+        value: "800",
+        ref: js("function toast", /duration: (\d+)/g, 1),
+        prod: { value: () => TOAST.coinMs },
+      },
+      {
+        name: "progress",
+        value: "3600",
+        ref: js("function toast", /duration: (\d+)/g, 2),
+        prod: { value: () => TOAST.showMs },
+      },
+      {
+        name: "out",
+        value: "260",
+        ref: js("function toast", /duration: (\d+)/g, 3),
+        prod: { value: () => TOAST.outMs },
+      },
     ],
   },
   {
@@ -333,6 +432,23 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
           prop: "transition",
           part: "box-shadow",
         },
+      },
+      {
+        name: "tile pointer light",
+        value: ".35s",
+        ref: css(".tile::before", "transition", "opacity"),
+        prod: {
+          file: "src/styles/molten.css",
+          css: ".m-tile::before",
+          prop: "transition",
+          part: "opacity",
+        },
+      },
+      {
+        name: "tile scroll-in rise range",
+        value: "entry 0% entry 30%",
+        ref: css(".tile", "animation-range"),
+        prod: { file: "src/styles/molten.css", css: ".m-tile", prop: "animation-range" },
       },
     ],
   },

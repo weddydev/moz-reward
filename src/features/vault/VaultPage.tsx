@@ -2,7 +2,7 @@ import { ChevronLeft, Coins, Crown, Flame, Gift, Sparkles } from "lucide-react";
 import { IngotPour } from "@/components/motion/IngotPour";
 import { TransitionLink } from "@/components/motion/TransitionLink";
 import { Badge } from "@/components/ui/Badge";
-import { buttonClasses } from "@/components/ui/Button";
+import { buttonClasses } from "@/components/ui/button-classes";
 import { Card, HeroCard } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
@@ -58,7 +58,7 @@ export function VaultPage({
               <TransitionLink
                 href={`/shops/${shop.shopId}`}
                 direction="back"
-                className={buttonClasses({ variant: "secondary" })}
+                className={buttonClasses({ variant: "orbit" })}
               >
                 Back to the shop
               </TransitionLink>

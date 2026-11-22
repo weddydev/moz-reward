@@ -208,3 +208,92 @@ body:has(.m-page) {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ---------- Controls lab (PD-04; reference `#lab`, `.lab`, `.tile.w*`, `.t-head`, `.chip`, `.demo`, `.how`) ---------- */
+.m-lab {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 18px;
+}
+.m-lab > .m-tile {
+  grid-column: span 4;
+}
+.m-lab > .m-tile.m-w7 {
+  grid-column: span 7;
+}
+@media (max-width: 1020px) {
+  .m-lab > .m-tile,
+  .m-lab > .m-tile.m-w7 {
+    grid-column: span 6;
+  }
+}
+@media (max-width: 680px) {
+  .m-lab > .m-tile,
+  .m-lab > .m-tile.m-w7 {
+    grid-column: 1/-1;
+  }
+}
+.m-t-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.m-t-head h3 {
+  margin: 0;
+  font:
+    600 22px/1.15 var(--font-fraunces),
+    Georgia,
+    serif;
+  letter-spacing: -0.015em;
+}
+.m-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font:
+    700 11px/1.2 var(--font-manrope),
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+  background: rgba(251, 231, 166, 0.55);
+  border: 1px solid rgba(210, 160, 51, 0.35);
+  white-space: nowrap;
+}
+.m-t-head .m-chip {
+  font-size: 10px;
+}
+.m-demo {
+  flex: 1 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+  justify-content: flex-start;
+  gap: 14px;
+  min-height: 64px;
+}
+.m-how {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 13.5px;
+  line-height: 1.5;
+  border-top: 1px dashed var(--line);
+  padding-top: 12px;
+}
+.m-how b {
+  color: var(--ink);
+}
+.m-v-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 96px;
+  /* The vault's padding (26 px) and border (1 px): the row wraps where the reference's does. */
+  padding: 0 27px;
+}

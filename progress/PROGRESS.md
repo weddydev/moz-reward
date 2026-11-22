@@ -9,16 +9,16 @@ Baton: held by talha.syed since 2026-11-22 06:25 UTC
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Session by talha.syed (Mac), 22 Nov 2026 06:25–~08:00 UTC; baton held.** **Main = `7afcd9c`** once pushed (see Tested): `74fba5b` (= wip/PD-03 `1354def`, fx-perf CI calibration + int timeout fix; CI 44994545759 green, staging deployed, full 5-project run 44994587598 **green**) + the process change (`32f7e91`, `7afcd9c`). **PD-A closed** (this commit).
 - **Finished (22 Nov):** gate `1354def` on the Mac PASS → main. **Process change (human-approved, DECISIONS 22 Nov):** main takes only a CI-green commit (pre-push `ciVerdict`); gate:task E2E = 3 Chromium projects in Linux, WebKit on CI every push (`pnpm e2e:ci-webkit`, every spec on every-page changes); fps/p95 split into `@fps` (nightly scheduled `perf` job + gate:phase; gate:phase fails if the host can't emulate the reference); Windows laptop → WSL2 (H-51); checkpoint per task, not per lettered step; 1 h time-box for infra problems. PD-A close: code review APPROVE WITH FIXES (HIGH + 2 MEDIUM fixed in `7afcd9c`, 3 LOW → FOLLOWUPS); QA no majors (2 pre-existing minors → FOLLOWUPS); H-48 Claude part done (DSN URL-shaped in web-1/web-2/worker, Sentry probe accepted 200 → H-48b for the human); Docker tidy 49 volumes + 2.75 GB images.
-- **Next, continue here:** first commit on `wip/PD-04`: ci.yml `ci` job `timeout-minutes` 40 → 60 + DECISIONS line (an every-page push now also runs every spec on WebKit, ~19 min more; review of `7afcd9c`). Then **PD-04** (buttons, icon button, toast; C-75 tile parity) on a new branch `wip/PD-04` from main. First push of PD-04 is the first real use of the new main rule: push `wip/PD-04`, carry on, push main only when that CI is green.
+- **Next, continue here:** PD-04 committed on `wip/PD-04` (gate + CI next, then main). Then **PD-05** (coin switch, liquid choice, segmented control, seal checkbox): remove the Buttons tile's `ownHeight` when its Coin switch row-mate lands.
 - **Tested:** gate `7afcd9c` PASS (unit 1831/0, int 1456/0, Linux Chromium E2E 128/0, perf 5/0/1 skip = one container sample scored 15,813 < 17,500 → no local verdict, as designed; changed 66/0). Split perf specs Linux 10/0 with PERF+FPS (fps 60, p95 ≤ 16.8, 0 long tasks). `e2e:ci-webkit` on the Mac: task 84/0, changed 66/0. Earlier gate run: 3 routes-axe desktop1440 load timeouts (42/0 alone; re-run 128/0).
 - **Not yet tested:** first nightly `perf` job (02:29 UTC); H-48b (Sentry dashboard, human); the hook's CI check on a push whose own CI is skipped (docs-only ancestor path) is unit-tested only until the next such push.
 
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov; `docs/phases/PD.md`). Then P1 resumes with the P1-B close. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
-- **Current sub-phase:** **PD-B** Controls: PD-04 → PD-05 → PD-06 → close; then PD-C (structure + signature moments, needs H-49). **PD-A closed 22 Nov.** **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done; staging step done 22 Nov with H-48.)
+- **Current sub-phase:** **PD-B** Controls: ~~PD-04~~ → PD-05 → PD-06 → close; then PD-C (structure + signature moments, needs H-49). **PD-A closed 22 Nov.** **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done; staging step done 22 Nov with H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-22 (~08:00 UTC), talha.syed (PD-A closed; process change on main; next PD-04)
+- **Last updated:** 2026-11-22 (~13:30 local), talha.syed (PD-04 built on `wip/PD-04`; PD-A closed; main `e8e9eae`)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -27,14 +27,13 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A (PD-00..PD-03) closed 22 Nov (talha.syed). Next PD-B.
 
 ## Next (top 3)
-1. PD-04 (buttons, icon button, toast; C-75 tile parity), new branch from main.
+1. PD-04 to main (gate `wip/PD-04`, CI green, push main), then PD-05.
 2. Check the first nightly `perf` job (scheduled.yml, 02:29 UTC) and red CI first, as always.
 3. PD-05, PD-06, PD-B close. Human any time: H-51 (WSL2 on the Windows laptop, before its next session), H-48b, H-38, H-45, H-46.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
 |---|---|---|---|---|
-| C-75 | PD-A code review M3 | PD-04 | Placed-card **tile** surfaces get a static parity part (a bare `.tile` compared, required), plus the reference `.tile` scroll-in rise (`animation-timeline:view()`, `translateY(36px) scale(.975)` over entry 0–30%), the `::before` pointer highlight at `--mx/--my` (320 px, .26, .35s, fine pointer only), `.rm .tile{animation:none}`; spec rows for them | parity static + spec table |
 | C-07 | B-SEC-2 | P2-04 (invites) | No staff TOTP enrolment with the password alone (invite token). P0-16 part done: demo staff/admins are pre-enrolled; the staging seed check must then exempt only accounts with an open invite | integration |
 | C-16 | B-CR-12 | passkey UI task | Passkey re-sign-in over a stale session | E2E |
 | C-25 | B-SEC-9 (P0-19) | P2-04 | Creating a password credential for an existing user (staff invite) revokes that user's existing sessions, like trigger 0006 does on role changes | integration |

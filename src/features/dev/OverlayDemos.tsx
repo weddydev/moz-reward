@@ -30,7 +30,7 @@ export function OverlayDemos(): React.JSX.Element {
   };
   const trigger = (demo: Demo, label: string) => (
     <Button
-      variant="secondary"
+      variant="orbit"
       disabled={!hydrated}
       data-overlay-trigger={demo}
       onClick={() => {
@@ -62,7 +62,7 @@ export function OverlayDemos(): React.JSX.Element {
   );
   const openInner = (
     <Button
-      variant="secondary"
+      variant="orbit"
       onClick={() => {
         setInner(true);
       }}
@@ -144,7 +144,7 @@ export function OverlayDemos(): React.JSX.Element {
         description="Aisha Khan · K7Q-42M · 7 Nov 2026, 14:05"
         footer={
           <>
-            <Button variant="secondary" onClick={close}>
+            <Button variant="orbit" onClick={close}>
               Decline
             </Button>
             <Button onClick={close}>Approve 80 gold</Button>

@@ -1,26 +1,38 @@
 import { LivingBackground } from "@/components/motion/LivingBackground";
+import { Toaster } from "@/components/ui/Toast";
+import { LabSection } from "./LabSection";
 import { LanguageSection } from "./LanguageSection";
 import { PARITY_PARTS } from "./parity-parts";
+import { VaultButtons } from "./VaultButtons";
 import "./molten-page.css";
 
 /**
  * `/dev/molten` (PD-01): the Molten reference rebuilt part by part from production components only, for the
  * parity harness (`tests/parity/`). Each part carries `data-parity="<name>"`, like its counterpart in the
  * reference copy. Until its PD task builds it, a part is a labelled placeholder (`data-parity-status="pending"`)
- * that no parity spec compares. Built so far: the living background and the Language section (PD-02).
+ * that no parity spec compares. Built so far: the living background and the Language section (PD-02); the
+ * Buttons tile, heart toggle, the vault's orbit and ghost buttons and the toast (PD-04).
  */
-const BUILT: Record<string, () => React.JSX.Element> = {
-  language: LanguageSection,
-};
+const SECTIONS: readonly { parts: readonly string[]; Section: () => React.JSX.Element }[] = [
+  { parts: ["language"], Section: LanguageSection },
+  { parts: ["tile", "molten-button", "heart-toggle"], Section: LabSection },
+  { parts: ["orbit-button", "ghost-button"], Section: VaultButtons },
+];
 
 export function MoltenGallery(): React.JSX.Element {
+  const rendered = new Set<string>();
   return (
     <div className="m-page">
       <LivingBackground />
       <main className="m-wrap">
         {PARITY_PARTS.map((part) => {
-          const Built = BUILT[part.name];
-          if (Built) return <Built key={part.name} />;
+          if (part.name === "toast") return null; // the Toaster below
+          const section = SECTIONS.find((s) => s.parts.includes(part.name));
+          if (section) {
+            if (rendered.has(section.parts[0] ?? "")) return null;
+            rendered.add(section.parts[0] ?? "");
+            return <section.Section key={part.name} />;
+          }
           return (
             <section
               key={part.name}
@@ -35,6 +47,7 @@ export function MoltenGallery(): React.JSX.Element {
           );
         })}
       </main>
+      <Toaster parity="toast" />
     </div>
   );
 }

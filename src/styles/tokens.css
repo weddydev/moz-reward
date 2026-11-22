@@ -172,6 +172,32 @@
     1.001 63%,
     1
   );
+  /* Molten controls (PD-04; reference `.btn-molten`, `#metalG`): the molten button's base and flowing fill, the
+     metal stops SVG icons fill with (heart toggle), and the destructive button in the same language. */
+  --molten-base: #e3b143;
+  --molten-flow: linear-gradient(
+    115deg,
+    #b9862a 0%,
+    #ffe08a 8%,
+    #fff6d6 11%,
+    #e0ae3e 17%,
+    #c8922c 24%,
+    #f5cf6b 30%,
+    #b9862a 33.333%
+  );
+  --metal-svg-0: #b9862a;
+  --metal-svg-1: #ffe08a;
+  --metal-svg-2: #fff6d6;
+  --metal-svg-3: #e0ae3e;
+  --metal-svg-4: #8e6417;
+  --molten-danger-flow: linear-gradient(
+    115deg,
+    #8f2f1f 0%,
+    #c8553f 12%,
+    #e07a5f 18%,
+    #b3432f 26%,
+    #8f2f1f 33.333%
+  );
   /* Layout */
   --rail-w: 72px;
   --rail-w-open: 220px;

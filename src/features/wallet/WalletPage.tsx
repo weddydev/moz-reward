@@ -1,7 +1,7 @@
 import { Clock3, Gift, ScanLine } from "lucide-react";
 import { TransitionLink } from "@/components/motion/TransitionLink";
 import { Badge } from "@/components/ui/Badge";
-import { buttonClasses } from "@/components/ui/Button";
+import { buttonClasses } from "@/components/ui/button-classes";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
@@ -58,7 +58,7 @@ export function WalletPage({
                     <TransitionLink
                       href="/scan"
                       direction="forward"
-                      className={buttonClasses({ variant: "primary" })}
+                      className={buttonClasses({ variant: "molten" })}
                     >
                       <Icon icon={ScanLine} />
                       Scan a QR code

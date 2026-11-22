@@ -3,7 +3,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { diffRatio } from "./support/diff";
 import { fire, openForMotion, referenceUrl, seekFraction, TRIGGERS } from "./support/motion";
 import { capture, edgeCycleAt, openStill, REFERENCE_PATH } from "./support/reference";
-import { PARITY_PARTS } from "../../src/features/dev/molten/parity-parts";
+import { PARITY_PARTS, parityLimit } from "../../src/features/dev/molten/parity-parts";
 
 /**
  * Frame parity (PD-01): each moving part is triggered on both pages and captured paused at 0, 25, 50, 75 and
@@ -15,7 +15,9 @@ const MAX_DIFF = 0.02;
 const VP = { width: 390, height: 844 };
 
 async function frames(page: Page, part: string): Promise<Buffer[]> {
-  await capture(page, part); // scrolls it into view the same way on both pages
+  // Scrolls it into view the same way on both pages; a part that appears only when triggered (the toast) is
+  // fixed on screen and has nothing to scroll to yet.
+  if (!TRIGGERS[part]?.waitFor) await capture(page, part);
   await fire(page, part);
   const out: Buffer[] = [];
   for (const f of FRACTIONS) {
@@ -87,6 +89,7 @@ test.describe("[PD-01] frame parity", () => {
       const ref = await context.newPage();
       await openForMotion(ref, referenceUrl, VP.width, VP.height);
       await openForMotion(page, "/dev/molten", VP.width, VP.height);
+      const max = parityLimit(part, page.context().browser()?.browserType().name() ?? "", MAX_DIFF);
       const a = await frames(ref, part.name);
       const b = await frames(page, part.name);
       a.forEach((shot, i) => {
@@ -94,7 +97,7 @@ test.describe("[PD-01] frame parity", () => {
         expect(
           d.ratio,
           `${part.name} at ${String(FRACTIONS[i])}: ${d.why ?? ""}`,
-        ).toBeLessThanOrEqual(MAX_DIFF);
+        ).toBeLessThanOrEqual(max);
       });
     });
   }

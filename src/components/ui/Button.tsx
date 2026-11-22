@@ -1,63 +1,77 @@
-import { cx } from "@/lib/cx";
+"use client";
+
+import {
+  type ButtonHTMLAttributes,
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { useMagnetic, usePress } from "@/components/motion/press";
+import { BUTTON } from "@/lib/motion/controls";
+import { celebrate as burstAt, ripple } from "@/lib/motion/press";
+import { buttonClasses, type ButtonSize, type ButtonVariant } from "./button-classes";
 import { Spinner } from "./Spinner";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
-export type ButtonSize = 40 | 48 | 56;
+/**
+ * Molten buttons (PD-04; DESIGN §6.3, §7.4; reference `.btn`, `.btn-molten`, `.btn-orbit`, `.btn-ghost`):
+ * - `molten` (primary): flowing gold fill, magnetic lean and pointer light on fine pointers, a ripple from the
+ *   press point (the centre for a key press), press scale .93 on the spring.
+ * - `orbit` (secondary): light orbiting the border. `ghost`: gold underline that grows on hover, optional arrow.
+ * - `destructive`: the molten language in danger red (no celebration).
+ * Sizes 54 (default) and 46. `loading` keeps the width (the label stays in layout, hidden) and blocks clicks.
+ * `resultLabel` rolls the label to the result after a successful click (an `onClick` that doesn't throw or
+ * resolve to `false`) and back after 1.7 s; `celebrate` (opt-in) throws 28 sparks and coins from the press
+ * point then. A second click while the result shows restarts the roll without a second celebration.
+ * Hover effects are fine-pointer only; under reduced motion there is no lean, no particles, and the roll
+ * swaps within 150 ms.
+ */
+export { buttonClasses, type ButtonSize, type ButtonVariant } from "./button-classes";
 
-const VARIANT: Record<ButtonVariant, string> = {
-  primary: "btn-gold text-ink",
-  secondary: "pressable bg-surface text-ink border border-line shadow-1",
-  ghost: "pressable bg-transparent text-ink hover:bg-surface-2",
-  destructive: "pressable bg-danger text-on-danger",
-};
-const SIZE: Record<ButtonSize, string> = {
-  // 40px drawn, 44px hit area (DESIGN §13).
-  40: "hit-44 min-h-10 py-1.5 px-4 text-small gap-2 rounded-md",
-  48: "min-h-12 py-2 px-5 text-body gap-2 rounded-md",
-  56: "min-h-14 py-2.5 px-6 text-body gap-2.5 rounded-lg",
-};
-
-/** Class string for links styled as buttons (e.g. `<Link className={buttonClasses()} />`). */
-export function buttonClasses({
-  variant = "primary",
-  size = 48,
-  block = false,
-  className,
-}: {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-  block?: boolean | undefined;
-  className?: string | undefined;
-} = {}): string {
-  return cx(
-    // A long label wraps (centred) and the button grows from its minimum height; it is never cut, so the
-    // visible text always matches the accessible name (P0-09 AC 6).
-    "relative inline-flex max-w-full select-none items-center justify-center text-center font-semibold",
-    "disabled:cursor-not-allowed disabled:opacity-55 aria-disabled:cursor-not-allowed aria-disabled:opacity-55",
-    VARIANT[variant],
-    variant === "primary" && "pressable",
-    SIZE[size],
-    block && "w-full",
-    className,
-  );
-}
-
-type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
+type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
   variant?: ButtonVariant;
   size?: ButtonSize;
   block?: boolean;
   /** Shows a spinner and blocks clicks; keeps the button's width (label stays in layout). */
   loading?: boolean;
   icon?: ReactNode;
+  /** The label the button rolls to after a successful click (DESIGN §7.4 label roll). */
+  resultLabel?: string;
+  /** Sparks (and `coins`, default 6) from the press point after a successful click. Opt-in. */
+  celebrate?: boolean | { coins: number };
+  /** May be async: resolving to `false` (or throwing) means "not a success": no roll, no celebration. */
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => unknown;
 };
 
+const isThenable = (v: unknown): v is PromiseLike<unknown> =>
+  typeof v === "object" && v !== null && typeof (v as { then?: unknown }).then === "function";
+
+/**
+ * Calls `done(ok)` with whether a click handler's result counts as a success: at once for a plain value (so the
+ * roll starts in the same task as the click), after it settles for a promise (rejected = not a success).
+ */
+export function onSettled(result: unknown, done: (ok: boolean) => void): void {
+  if (isThenable(result))
+    result.then(
+      (v) => {
+        done(v !== false);
+      },
+      () => {
+        done(false);
+      },
+    );
+  else done(result !== false);
+}
+
 export function Button({
-  variant = "primary",
-  size = 48,
+  variant = "molten",
+  size = 54,
   block,
   loading = false,
   icon,
+  resultLabel,
+  celebrate,
   className,
   children,
   disabled,
@@ -65,34 +79,95 @@ export function Button({
   onClick,
   ...rest
 }: Props): React.JSX.Element {
+  const ref = useRef<HTMLButtonElement>(null);
+  // The visible roll is a class set in the click's own task (as the reference does); `rolled` only moves the
+  // accessible name to the result label while it shows.
+  const [rolled, setRolled] = useState(false);
+  const backTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const flowing = variant === "molten" || variant === "destructive";
+  usePress(ref, { ripple: flowing });
+  useMagnetic(ref, { enabled: variant === "molten" });
+  useEffect(
+    () => () => {
+      clearTimeout(backTimer.current);
+    },
+    [],
+  );
+
+  const roll = (): void => {
+    const el = ref.current;
+    if (!el || resultLabel === undefined) return;
+    el.classList.add("ok");
+    setRolled(true);
+    clearTimeout(backTimer.current);
+    backTimer.current = setTimeout(() => {
+      el.classList.remove("ok");
+      setRolled(false);
+    }, BUTTON.labelBackMs);
+  };
+
+  const handleClick = (e: MouseEvent<HTMLButtonElement>): void => {
+    if (loading) {
+      e.preventDefault();
+      return;
+    }
+    const el = ref.current;
+    const point = { clientX: e.clientX, clientY: e.clientY };
+    const showing = el?.classList.contains("ok") ?? false;
+    const result = onClick?.(e);
+    if (resultLabel === undefined && !celebrate) return;
+    onSettled(result, (ok) => {
+      if (!ok || !ref.current) return;
+      if (celebrate && !showing && variant !== "destructive")
+        burstAt(ref.current, point, typeof celebrate === "object" ? celebrate.coins : undefined);
+      roll();
+    });
+  };
+
   return (
     <button
       {...rest}
+      ref={ref}
       type={type}
       className={buttonClasses({ variant, size, block, className })}
       disabled={disabled}
       aria-disabled={loading || undefined}
       aria-busy={loading || undefined}
-      // While loading: stay focusable (no `disabled`) but swallow clicks and form submits.
-      onClick={
-        loading
-          ? (e) => {
-              e.preventDefault();
-            }
-          : onClick
-      }
+      onClick={handleClick}
+      onKeyDown={(e) => {
+        rest.onKeyDown?.(e);
+        // A key press ripples from the centre (pointer presses ripple from the finger, in usePress).
+        if (flowing && !e.repeat && (e.key === "Enter" || e.key === " ") && ref.current)
+          ripple(ref.current);
+      }}
     >
-      <span
-        className={cx(
-          "inline-flex min-w-0 items-center gap-[inherit] [overflow-wrap:break-word]",
-          loading && "opacity-0",
-        )}
-      >
-        {icon}
-        {children}
-      </span>
+      {variant === "ghost" ? (
+        <span className="u">
+          {children}
+          {icon}
+        </span>
+      ) : resultLabel !== undefined ? (
+        <span className="m-lbl">
+          <span
+            className="l1 inline-flex items-center justify-center gap-2"
+            aria-hidden={rolled || undefined}
+          >
+            {icon}
+            {children}
+          </span>
+          <span className="l2" aria-hidden={!rolled}>
+            {resultLabel}
+          </span>
+        </span>
+      ) : (
+        // No roll: the label sits in the button as the reference's does (line-height 1, no grid).
+        <span className="m-txt">
+          {icon}
+          {children}
+        </span>
+      )}
       {loading ? (
-        <span className="absolute inset-0 grid place-items-center">
+        <span className="m-busy">
           <Spinner />
         </span>
       ) : null}

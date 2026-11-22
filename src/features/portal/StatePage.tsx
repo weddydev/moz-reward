@@ -1,6 +1,6 @@
 import { Compass, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { buttonClasses } from "@/components/ui/Button";
+import { buttonClasses } from "@/components/ui/button-classes";
 import { Icon } from "@/components/ui/Icon";
 import { PORTAL_ROOT, type Portal, routeByPath } from "./routes";
 

@@ -26,6 +26,7 @@ import { Switch } from "@/components/ui/Switch";
 import { type Column, Table } from "@/components/ui/Table";
 import { Tabs } from "@/components/ui/Tabs";
 import { TextArea, TextField } from "@/components/ui/TextField";
+import { Tile } from "@/components/ui/Tile";
 import { Toaster, toast } from "@/components/ui/Toast";
 import { PreferenceToggles } from "@/features/preferences/PreferenceToggles";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -117,7 +118,7 @@ export function UiGallery(): React.JSX.Element {
   const [toastCount, setToastCount] = useState(0);
 
   const toastButton = (label: string, onClick: () => void) => (
-    <Button variant="secondary" disabled={!hydrated} data-toast-trigger={label} onClick={onClick}>
+    <Button variant="orbit" disabled={!hydrated} data-toast-trigger={label} onClick={onClick}>
       {label}
     </Button>
   );
@@ -153,7 +154,7 @@ export function UiGallery(): React.JSX.Element {
       <Section title="Actions">
         <Demo name="Button">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {(["primary", "secondary", "ghost", "destructive"] as const).map((variant) => (
+            {(["molten", "orbit", "ghost", "destructive"] as const).map((variant) => (
               <div key={variant} className="flex flex-col items-start gap-3">
                 <State label={`${variant} · default`}>
                   <Button variant={variant}>
@@ -174,16 +175,18 @@ export function UiGallery(): React.JSX.Element {
             ))}
           </div>
           <div className="flex flex-wrap items-end gap-3">
-            <State label="size 40 + icon">
-              <Button size={40} icon={<Plus aria-hidden="true" size={16} strokeWidth={1.5} />}>
+            <State label="size 46 + icon">
+              <Button size={46} icon={<Plus aria-hidden="true" size={16} strokeWidth={1.5} />}>
                 Sell
               </Button>
             </State>
-            <State label="size 48">
-              <Button size={48}>Request points</Button>
+            <State label="size 54">
+              <Button size={54}>Request points</Button>
             </State>
-            <State label="size 56">
-              <Button size={56}>Redeem</Button>
+            <State label="long label">
+              <Button size={54}>
+                Request points from Brew &amp; Bloom Café on Camden High Street
+              </Button>
             </State>
             <State label="loading on press">
               <Button
@@ -205,7 +208,7 @@ export function UiGallery(): React.JSX.Element {
               <Button block>Full-width primary</Button>
             </State>
             <State label="long label">
-              <Button block variant="secondary">
+              <Button block variant="orbit">
                 Collect your points and unlock Free coffee &amp; cake at Brew &amp; Bloom
               </Button>
             </State>
@@ -262,6 +265,21 @@ export function UiGallery(): React.JSX.Element {
               <p className="text-h3">Long unbroken word</p>
               <p className="text-small text-ink-2 [overflow-wrap:anywhere]">{LONG_WORD}</p>
             </Card>
+          </div>
+        </Demo>
+        <Demo name="Tile">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Tile>
+              <p className="text-h3">Tile</p>
+              <p className="text-small text-ink-2">
+                Placed card with the gilded edge; lifts and follows a fine pointer with a soft
+                light.
+              </p>
+            </Tile>
+            <Tile>
+              <p className="text-h3">Long unbroken word</p>
+              <p className="text-small text-ink-2 [overflow-wrap:anywhere]">{LONG_WORD}</p>
+            </Tile>
           </div>
         </Demo>
         <Demo name="HeroCard">
@@ -766,8 +784,8 @@ export function UiGallery(): React.JSX.Element {
                 message="Collect gold at Brew & Bloom Café to unlock Free coffee & cake."
                 action={
                   <Button
-                    size={40}
-                    variant="secondary"
+                    size={46}
+                    variant="orbit"
                     icon={<Gift aria-hidden="true" size={16} strokeWidth={1.5} />}
                   >
                     See how it works

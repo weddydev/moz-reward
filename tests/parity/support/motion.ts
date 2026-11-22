@@ -15,7 +15,14 @@ import { instantScroll, REFERENCE_PATH, seedRandom, serveReference } from "./ref
  * :hover transitions then run in real time; and any gap between the event and the pause lets short transitions
  * (0.3 s label colours) finish and vanish from `getAnimations()` on a loaded machine.
  */
-export type Trigger = { target?: string; events: readonly string[] };
+export type Trigger = {
+  target?: string;
+  /** A selector in the whole document, for a part set moving by another element (the toast, by the button). */
+  from?: string;
+  events: readonly string[];
+  /** A part that appears later (React renders the toast after the click): wait for it, then pause again. */
+  waitFor?: string;
+};
 
 /** Triggers by part name. Each PD task adds the triggers of the parts it builds. Hover-driven rows (orbit and
  *  ghost buttons, PD-04) use `pointerover`/`pointerenter`-style events here too. */
@@ -23,6 +30,11 @@ export const TRIGGERS: Record<string, Trigger> = {
   "heart-toggle": { events: ["click"] },
   "coin-switch": { events: ["click"] },
   "molten-button": { events: ["pointerdown", "pointerup", "click"] },
+  toast: {
+    from: '[data-parity="molten-button"]',
+    events: ["pointerdown", "pointerup", "click"],
+    waitFor: '[data-parity="toast"] > *',
+  },
   tabs: { target: '[role="tab"]:nth-of-type(2)', events: ["click"] },
 };
 
@@ -33,7 +45,11 @@ export async function fire(page: Page, part: string): Promise<void> {
   await page.evaluate(
     ({ name, t }) => {
       const root = document.querySelector(`[data-parity="${name}"]`);
-      const el = t.target ? root?.querySelector(t.target) : root;
+      const el = t.from
+        ? document.querySelector(t.from)
+        : t.target
+          ? root?.querySelector(t.target)
+          : root;
       if (!el) throw new Error(`trigger target missing: ${name} ${t.target ?? ""}`);
       const r = el.getBoundingClientRect();
       const at = {
@@ -54,6 +70,18 @@ export async function fire(page: Page, part: string): Promise<void> {
     },
     { name: part, t: trigger },
   );
+  if (trigger.waitFor) {
+    // Polled from the test: under the paused page clock in-page polling never runs.
+    const deadline = Date.now() + 5_000;
+    while (!(await page.evaluate((sel) => document.querySelector(sel) !== null, trigger.waitFor))) {
+      if (Date.now() > deadline) throw new Error(`${part} never appeared (${trigger.waitFor})`);
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    await page.evaluate(() => {
+      void document.documentElement.getBoundingClientRect();
+      for (const a of document.getAnimations()) if (a.timeline === document.timeline) a.pause();
+    });
+  }
 }
 
 export async function openForMotion(
@@ -69,6 +97,14 @@ export async function openForMotion(
   await seedRandom(page);
   await page.setViewportSize({ width, height });
   await page.goto(url);
+  // The app's streamed content sits in a hidden boundary until React reveals it on a timer (PD-04: the first app
+  // part under this clock measured 0 × 0). One second of page time, the same on both pages, lets it in.
+  await page.clock.runFor(1_000);
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("[data-parity]")].some(
+      (e) => e.getBoundingClientRect().width > 0,
+    ),
+  );
   await instantScroll(page);
   await page.evaluate(() => document.fonts.ready);
 }
@@ -131,11 +167,35 @@ export type Sample = { x: number; y: number; scale: number; opacity: number };
 
 /** Translate, scale and opacity of each element under `root` (root first, document order). */
 export async function sampleCurves(part: Locator): Promise<Sample[]> {
-  return part.evaluate((root) =>
-    [root, ...root.querySelectorAll("*")].map((el) => {
-      const cs = getComputedStyle(el);
-      const m = new DOMMatrixReadOnly(cs.transform === "none" ? undefined : cs.transform);
-      return { x: m.e, y: m.f, scale: Math.hypot(m.a, m.b), opacity: Number(cs.opacity) };
-    }),
-  );
+  return part.evaluate((root) => {
+    const ancestorsUpTo = (el: Element, top: Element): Element[] => {
+      const out: Element[] = [];
+      for (let a = el.parentElement; a && a !== top; a = a.parentElement) out.push(a);
+      return out;
+    };
+    return (
+      [root, ...root.querySelectorAll("*")]
+        // SVG paint servers (a gradient in <defs>, and an svg that holds only defs) never render or move: where a
+        // part keeps them is not motion (PD-04: the heart's per-button metal gradient; the reference's is global).
+        .filter(
+          (el) =>
+            !el.closest("defs") &&
+            // Visually hidden content (the 1 px clip pattern, e.g. the toast's Dismiss until it is focused) never
+            // moves on screen. 1.5, not 1: a 1 px box measures a hair over 1 once transforms have run.
+            ![...[el, ...ancestorsUpTo(el, root)]].some((a) => {
+              const r = a.getBoundingClientRect();
+              return r.width <= 1.5 && r.height <= 1.5;
+            }) &&
+            !(
+              el.tagName.toLowerCase() === "svg" &&
+              [...el.children].every((c) => c.tagName.toLowerCase() === "defs")
+            ),
+        )
+        .map((el) => {
+          const cs = getComputedStyle(el);
+          const m = new DOMMatrixReadOnly(cs.transform === "none" ? undefined : cs.transform);
+          return { x: m.e, y: m.f, scale: Math.hypot(m.a, m.b), opacity: Number(cs.opacity) };
+        })
+    );
+  });
 }

@@ -1,7 +1,9 @@
 export { Avatar, initialsOf } from "./Avatar";
 export { Badge, type BadgeTone } from "./Badge";
 export { BottomSheet } from "./BottomSheet";
-export { Button, buttonClasses, type ButtonSize, type ButtonVariant } from "./Button";
+export { Button } from "./Button";
+export { buttonClasses, type ButtonSize, type ButtonVariant } from "./button-classes";
+export { Tile } from "./Tile";
 export { Card, HeroCard } from "./Card";
 export { Checkbox } from "./Checkbox";
 export { Chip, ChipGroup } from "./Chip";

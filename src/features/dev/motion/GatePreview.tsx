@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { buttonClasses } from "@/components/ui/Button";
+import { buttonClasses } from "@/components/ui/button-classes";
 import { gateStorageKey } from "@/lib/motion/gilded-gate";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Section } from "../Section";
@@ -53,7 +53,7 @@ export function GatePreview(): React.JSX.Element {
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          className={buttonClasses({ size: 40 })}
+          className={buttonClasses({ size: 46 })}
           disabled={!shop}
           onClick={() => {
             open("qr");
@@ -63,7 +63,7 @@ export function GatePreview(): React.JSX.Element {
         </button>
         <button
           type="button"
-          className={buttonClasses({ variant: "secondary", size: 40 })}
+          className={buttonClasses({ variant: "orbit", size: 46 })}
           disabled={!shop}
           onClick={() => {
             open("nfc");

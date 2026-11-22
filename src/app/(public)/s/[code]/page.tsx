@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { GildedGate, GildedGateMorph } from "@/components/motion/GildedGate";
-import { buttonClasses } from "@/components/ui/Button";
+import { buttonClasses } from "@/components/ui/button-classes";
 import { MARKETING_CONSENT_VERSION, marketingConsentParts } from "@/features/join/consent";
 import { JoinCta } from "@/features/join/JoinCta";
 import { LandingFooter, ShopLanding } from "@/features/landing/ShopLanding";
@@ -120,7 +120,7 @@ export default async function ShopLandingPage({
   const shopPage = `/shops/${data.shop.id}`;
   // Back from sign-in (`returnTo=/s/{code}?join=1`) as an existing member: straight to the shop page.
   if (visitor.kind === "member" && query.join === "1") redirect(shopPage);
-  const ctaClass = buttonClasses({ size: 56, block: true });
+  const ctaClass = buttonClasses({ size: 54, block: true });
   const collect =
     visitor.kind === "signed-out" ? (
       <Link
