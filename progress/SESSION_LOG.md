@@ -852,3 +852,4 @@ Left off: wip/PD-05 9ec3855 → CI, gate:task alone, close (DECISIONS + FOLLOWUP
 PD-05 coin switch, liquid choice, segmented control, seal checkbox (code by Syedbadeshah76, `wip/PD-05` `9ec3855`). CI 45042534742 + full 5-project 45042543781 on `9ec3855` green.
 Gate run 1: all PASS except PD-05 E2E 20/4 (4 desktop1440 `page.goto` 60 s stalls; spec alone 8/0, 3 projects 24/0). Run 2: PD-05 E2E 24/0; changed specs 477/14 (all goto stalls in 4 windows); reruns 170/0(+2 overlays timing, then overlays 50/0); parity PD-05 44/0 Chromium + WebKit; unit 1883/0, int 1456/0/1.
 Stall diagnosis (1 h time-box): not VM memory, not the Next server, not output pipes; quarantined C-76/T-6 → PD-B close. DECISIONS: toast axe exclusion; per-step close. FOLLOWUPS: alerts.test.ts injected clock.
+Main push: hook gate (ids PD-06) changed specs 488/3 (2 container stalls, overlays:334 flick under load) → human chose a one-time `--no-verify` (DECISIONS 22 Nov); flick flake → FOLLOWUPS.
