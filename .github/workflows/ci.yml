@@ -49,7 +49,7 @@ jobs:
   ci:
     name: check, integration, build, E2E (production build)
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60 # an every-page push also runs every spec on WebKit (~19 min more; DECISIONS 22 Nov)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
