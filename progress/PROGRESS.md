@@ -7,29 +7,29 @@ Baton: held by talha.syed since 2026-11-22 06:25 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handoff by Syedbadeshah76 (Windows), 21 Nov 2026 18:30 UTC; baton free.** **Main = `d43774c`** (PD-03 + PD-A review fixes + gate split landed; main CI 44930544722 green; staging deployed `d43774c`, Deploy 44931894973 green). **`wip/PD-03` pushed HEAD `1354def`** = main + 3 fix commits not yet on main (`899890f`, `1354def`, plus FOLLOWUPS/DECISIONS lines in them).
-- **Finished (21 Nov):** Linux WebKit decision (human: "do whichever is best"): `gate:task` runs webkit + iphone14 on the host's WebKit, Chromium projects in the Linux container, nothing skipped (`d649410`, TESTING §4, CLAUDE.md). Fixes found by the gate: moz-deploy bash-spawn describe timeout (`d3a6ea1`); `CI_CPU_SCORE` 28,000 → 70,000 (`d43774c`). PD-A close: code review APPROVE, design review PASS (earlier HIGH/M2/M4 confirmed fixed; LOWs in FOLLOWUPS on wip). Docker tidy: 5 anonymous volumes. Staging smoke (deploy job): web-1/web-2 ready on `d43774c`, demo sign-in check ok, live/ready ok.
-- **Half-done, continue here (in order):** 1) **fx 200-burst stress `@perf` on pixel7 depends on the machine**: CI runners score ~46,000–77,000; at a fixed 4× a slow one gets 53–55 fps (< 58): wip CI 44930544649 and the full 5-project run 44930551230 (both `d43774c`) red on that one spec only; main CI on the same commit passed (58.4). Fix on wip: `899890f` calibrates CI too (`throttleRate`, unit test). 2) `1354def`: test-API route's cold import in `beforeAll` (int timed out under load). 3) **Then gate + push main:** `git switch wip/PD-03`, `pnpm gate:task PD-03 P0-17` **with the laptop idle** (last run: laptop CPU score fell to 8,780–11,000, below the reference device even unthrottled → pixel7 54.5 fps; at 15,000–23,000 it passed 59–60), then `git push origin wip/PD-03:main`. If the laptop stays that slow, run the gate on the Mac, or decide (DECISIONS) that a host scoring under `CI_CPU_SCORE/4` reports "can't emulate the reference" instead of a verdict. 4) `gh workflow run scheduled.yml --ref main -f suite=e2e` (full 5-project run) green. 5) **H-48 Claude part:** SSH as `badeshah@72.61.17.208` with **Windows OpenSSH** (`/c/Windows/System32/OpenSSH/ssh.exe`; root login is off) → DSN URL-shaped in web + worker (length only) + one probe error; this laptop's IP was banned by fail2ban ~17:55 UTC (two root attempts; 1 h, increments). 6) Tick "PD-A closed" in PHASES + SESSION_LOG "code-review done `1354def`" → PD-B (PD-04 first; C-75).
-- **Tested:** gate on `d43774c` all PASS (unit 1789/0, int 1445/0, Linux Chromium E2E 34/0, host WebKit 22/0, perf 3/0, changed specs 149/0); gate on `1354def`: all PASS except perf pixel7 (slow laptop, above); `throttleRate` unit 4/0; test-api int 9/0 alone (first case 5.7 s → 0.24 s); wip push check + sast PASS.
-- **Not yet tested:** `899890f` on CI (wip CI for `1354def` running at handoff); Sentry "no new errors for release `d43774c`" (no SSH, no Sentry access): NOT VERIFIED.
+- **Session by talha.syed (Mac), 22 Nov 2026 06:25–~08:00 UTC; baton held.** **Main = `7afcd9c`** once pushed (see Tested): `74fba5b` (= wip/PD-03 `1354def`, fx-perf CI calibration + int timeout fix; CI 44994545759 green, staging deployed, full 5-project run 44994587598 **green**) + the process change (`32f7e91`, `7afcd9c`). **PD-A closed** (this commit).
+- **Finished (22 Nov):** gate `1354def` on the Mac PASS → main. **Process change (human-approved, DECISIONS 22 Nov):** main takes only a CI-green commit (pre-push `ciVerdict`); gate:task E2E = 3 Chromium projects in Linux, WebKit on CI every push (`pnpm e2e:ci-webkit`, every spec on every-page changes); fps/p95 split into `@fps` (nightly scheduled `perf` job + gate:phase; gate:phase fails if the host can't emulate the reference); Windows laptop → WSL2 (H-51); checkpoint per task, not per lettered step; 1 h time-box for infra problems. PD-A close: code review APPROVE WITH FIXES (HIGH + 2 MEDIUM fixed in `7afcd9c`, 3 LOW → FOLLOWUPS); QA no majors (2 pre-existing minors → FOLLOWUPS); H-48 Claude part done (DSN URL-shaped in web-1/web-2/worker, Sentry probe accepted 200 → H-48b for the human); Docker tidy 49 volumes + 2.75 GB images.
+- **Next, continue here:** **PD-04** (buttons, icon button, toast; C-75 tile parity) on a new branch `wip/PD-04` from main. First push of PD-04 is the first real use of the new main rule: push `wip/PD-04`, carry on, push main only when that CI is green.
+- **Tested:** gate `7afcd9c` PASS (unit 1831/0, int 1456/0, Linux Chromium E2E 128/0, perf 5/0/1 skip = one container sample scored 15,813 < 17,500 → no local verdict, as designed; changed 66/0). Split perf specs Linux 10/0 with PERF+FPS (fps 60, p95 ≤ 16.8, 0 long tasks). `e2e:ci-webkit` on the Mac: task 84/0, changed 66/0. Earlier gate run: 3 routes-axe desktop1440 load timeouts (42/0 alone; re-run 128/0).
+- **Not yet tested:** first nightly `perf` job (02:29 UTC); H-48b (Sentry dashboard, human); the hook's CI check on a push whose own CI is skipped (docs-only ancestor path) is unit-tested only until the next such push.
 
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov; `docs/phases/PD.md`). Then P1 resumes with the P1-B close. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
-- **Current sub-phase:** **PD-A** Foundation: ~~PD-00~~ → ~~PD-01~~ → ~~PD-02~~ → ~~PD-03~~ → ~~reviews + MEDIUMs~~ → ~~main (`d43774c`)~~ → ~~close reviews~~ → fx-perf CI fix to main (wip `1354def`) + full run + Sentry check → tick PD-A; then PD-B (controls), PD-C (structure + signature moments, needs H-49). **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done except the staging step, H-48 Claude part.)
+- **Current sub-phase:** **PD-B** Controls: PD-04 → PD-05 → PD-06 → close; then PD-C (structure + signature moments, needs H-49). **PD-A closed 22 Nov.** **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done; staging step done 22 Nov with H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-22 (00:00 local; 21 Nov 18:30 UTC), Syedbadeshah76 (handoff: main `d43774c` deployed; wip `1354def` = fx-perf CI calibration + int timeout fix; PD-A close almost done)
+- **Last updated:** 2026-11-22 (~08:00 UTC), talha.syed (PD-A closed; process change on main; next PD-04)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
-- **Staging live** (release `d43774c` since 21 Nov 17:51 UTC, first deploy with the real Sentry DSN; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
+- **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-00..PD-02 done; PD-02's Linux CI red fix (`c072a49` + Semgrep fix `527fbb8`) verified with `pnpm e2e:linux` and squashed onto main 21 Nov (talha.syed). PD-03 done 21 Nov (talha.syed). 21 Nov: gate ~10.5 min (watchdog limits, Semgrep tar stream), `pnpm e2e:linux` built, Docker tidied (~15 GB).
+- **PD (Molten design):** PD-A (PD-00..PD-03) closed 22 Nov (talha.syed). Next PD-B.
 
 ## Next (top 3)
-1. Handoff steps 1–4: gate `wip/PD-03` (`1354def`) with the laptop idle or on the Mac, push to main, full 5-project run green.
-2. H-48 Claude part on staging (SSH `badeshah@`, Windows OpenSSH), then tick PD-A (and P1-A's staging step).
-3. PD-B: PD-04 (buttons, icon button, toast; C-75 tile parity). Human any time: H-38, H-45, H-46.
+1. PD-04 (buttons, icon button, toast; C-75 tile parity), new branch from main.
+2. Check the first nightly `perf` job (scheduled.yml, 02:29 UTC) and red CI first, as always.
+3. PD-05, PD-06, PD-B close. Human any time: H-51 (WSL2 on the Windows laptop, before its next session), H-48b, H-38, H-45, H-46.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
@@ -78,13 +78,12 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 ## Map of the codebase
 In **`progress/MAP.md`** (read when you need to locate code; add new important paths there).
 
-## Last verified (21 Nov 2026)
+## Last verified (22 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- Main CI 44930544722 (`d43774c`) green; Deploy 44931894973 green (staging `d43774c`, demo sign-in check ok).
-- Gate `d43774c` (Windows) PASS: unit 1789/0, int 1445/0, Linux Chromium E2E 34/0, host WebKit 22/0, perf 3/0, changed 149/0.
-- Full 5-project run 44930551230 (`d43774c`): 1 failed, fx stress pixel7 (slow runner at fixed 4×; fix `899890f` on wip).
-- Gate `1354def`: all PASS but perf pixel7 54.5 fps (laptop score 8,780, below the reference device unthrottled).
-- PD-A close reviews: code APPROVE, design PASS (range `4ecb0de..d43774c`).
+- Main CI 44994545759 (`74fba5b`) green; Deploy 44995595155 green; full 5-project run 44994587598 green.
+- Gate `7afcd9c` (Mac) PASS: unit 1831/0, int 1456/0, Linux Chromium E2E 128/0, perf 5/0/1, changed 66/0.
+- Staging: DSN URL-shaped (len 95) in web-1/web-2/worker; Sentry probe `bdc54839…` HTTP 200.
+- PD-A close: code review APPROVE WITH FIXES (fixed), QA no majors (72 screens; inspected focus + /dev/molten).
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 

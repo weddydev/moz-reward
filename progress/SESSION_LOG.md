@@ -810,3 +810,9 @@ Human: "do whichever is best" → gate runs WebKit projects on the host's WebKit
 PD-A close reviews of `4ecb0de..d43774c`: code APPROVE (4 LOW), design PASS (4 LOW) → FOLLOWUPS (on wip). Docker tidy: 5 anonymous volumes.
 Wip CI 44930544649 + full run 44930551230 red on fx stress pixel7 only (CI runners 46k–77k at fixed 4×) → `899890f` calibrates CI too (unit 4/0). Int timeout → `1354def` (beforeAll import). Gate `1354def` perf pixel7 54.5 fps on a laptop scoring 8,780: main not pushed; wip `1354def` pushed.
 SSH: root refused (PermitRootLogin no), then fail2ban ban; H-48 Claude part NOT VERIFIED. Wip HEAD `1354def`.
+
+## 2026-11-22 (06:25–~08:00 UTC) — PD — PD-A closed + process change, by talha.syed (Mac)
+Gate `1354def` PASS on the Mac (perf 3/0) → main `74fba5b`; CI 44994545759 green, Deploy 44995595155 green, full 5-project 44994587598 green.
+Process change (human-approved; DECISIONS 22 Nov): CI-green-only main (`ciVerdict`), WebKit on CI every push (`e2e:ci-webkit`), `@fps` nightly + gate:phase, `canEmulate` guard, Windows → WSL2 (H-51), checkpoint per task, 1 h infra time-box. Gate `7afcd9c` PASS (E2E 128/0, perf 5/0/1, changed 66/0); first run's 3 routes-axe timeouts were load (42/0 alone).
+H-48 Claude part: DSN URL-shaped (len 95) in web-1/web-2/worker; Sentry probe 200 (`bdc54839…`) → H-48b. QA (qa-engineer, 7 routes × 2 engines × 3 widths): 0 majors, 2 pre-existing minors → FOLLOWUPS. Docker tidy: 49 volumes, 2.75 GB images.
+code-review done 7afcd9c (range d43774c..7afcd9c: APPROVE WITH FIXES; HIGH every-page WebKit run + M1 red conclusions + M2 gate:phase fps verdict fixed test-first; 3 LOW → FOLLOWUPS).
