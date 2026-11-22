@@ -18,6 +18,14 @@ async function open(page: Page, path = "/dev/molten"): Promise<void> {
 
 const sections = (page: Page): Locator => page.getByRole("tablist", { name: "Sections" });
 
+/**
+ * How far the pill sits from the chosen tab (px): ≤ `PILL_PX` once its spring has settled. Not < 1: WebKit keeps
+ * the settled pill on its compositing layer for a few seconds, snapped to the device pixel grid, so it reads up
+ * to one pixel off a tab at a fractional position until it is painted back in place (measured 1.09 px on host
+ * WebKit for the 6th tab at 320 px, then 0.08; CI 45061015313).
+ */
+const PILL_PX = 1.5;
+
 /** The pill's box against the chosen tab's box, once both transitions have settled. */
 async function pillOn(list: Locator): Promise<number> {
   return list.evaluate((l) => {
@@ -61,7 +69,7 @@ test("[PD-06] tabs keyboard: arrows wrap and move focus, Home/End jump, one tab 
   const panel = page.getByRole("tabpanel").filter({ hasText: "live drops near Camden" });
   await expect(panel.locator('[aria-hidden="true"]')).toHaveText("12");
   await expect(panel.locator(".sr-only")).toHaveText("12");
-  await expect.poll(() => pillOn(list), { timeout: 5_000 }).toBeLessThan(1);
+  await expect.poll(() => pillOn(list), { timeout: 5_000 }).toBeLessThan(PILL_PX);
   // Tab moves out of the tablist to the panel (focusable), not to the next tab.
   await page.keyboard.press("Tab");
   await expect(panel).toBeFocused();
@@ -78,7 +86,7 @@ test("[PD-06] tabs rapid switching retargets, never queues: the pill and panel e
   const panel = page.getByRole("tabpanel").filter({ hasText: "new listings this week" });
   // At most one slide at a time on the panel.
   expect(await running(panel)).toBeLessThanOrEqual(1);
-  await expect.poll(() => pillOn(list), { timeout: 5_000 }).toBeLessThan(1);
+  await expect.poll(() => pillOn(list), { timeout: 5_000 }).toBeLessThan(PILL_PX);
   await expect(panel.locator('[aria-hidden="true"]')).toHaveText("48");
 });
 
@@ -105,7 +113,7 @@ test("[PD-06] many tabs scroll inside their own row and keep the chosen one in v
       return r.left >= box.left - 1 && r.right <= box.right + 1;
     });
   await expect.poll(inView).toBe(true);
-  await expect.poll(() => pillOn(list), { timeout: 5_000 }).toBeLessThan(1);
+  await expect.poll(() => pillOn(list), { timeout: 5_000 }).toBeLessThan(PILL_PX);
   // The page itself never scrolls sideways.
   expect(
     await page.evaluate(
@@ -444,19 +452,47 @@ test("[PD-06] slider keyboard: arrows step 10, Home/End and Page keys jump; each
 test("[PD-06] slider drag: the coin follows the pointer, the fill grows, the bubble leans and springs back upright", async ({
   page,
   isMobile,
+  browserName,
 }) => {
   test.skip(isMobile, "a mouse drag; touch drags are the browser's own range input");
+  // Quarantined on WebKit (C-77, TESTING §7): CI 45061015313 failed 3/3 (the bubble never leaned) and host WebKit
+  // under 3 workers 1–3 in 12 (the value stayed 240 through the drag, or no lean); root cause not found in two
+  // attempts (layout-settled press and a per-frame lean sampler did not cure it). Chromium keeps it.
+  test.fixme(browserName === "webkit", "C-77: WebKit mouse drag on the range input, quarantined");
   await open(page);
   await sliderAtRest(page);
   const box = await spend(page).boundingBox();
   if (!box) throw new Error("no slider box");
   const coinX = (v: number): number => box.x + 18 + (v / 720) * (box.width - 36);
   const y = box.y + 32;
+  // The deepest lean is recorded on every frame in the page: read after the drag, the bubble may already be
+  // upright again (90 ms after the last input, then .5 s), which a slow runner's round trips outlast (Linux
+  // Chromium, 2 in 4 runs before; 6/6 after). Frames, not wall-clock time, decide.
+  await sliderTile(page)
+    .locator(".m-bubble")
+    .evaluate((b) => {
+      const w = window as unknown as { __minLean: number; __leanRaf: number };
+      w.__minLean = 0;
+      const tick = (): void => {
+        const m = new DOMMatrixReadOnly(getComputedStyle(b).transform);
+        w.__minLean = Math.min(w.__minLean, (Math.atan2(m.b, m.a) * 180) / Math.PI);
+        w.__leanRaf = requestAnimationFrame(tick);
+      };
+      w.__leanRaf = requestAnimationFrame(tick);
+    });
   await page.mouse.move(coinX(240), y);
   await page.mouse.down();
   for (let i = 1; i <= 6; i++) await page.mouse.move(coinX(240 + i * 40), y);
-  // Mid-drag the bubble leans back against the movement.
-  await expect.poll(() => lean(page), { timeout: 2_000 }).toBeLessThan(-1);
+  // Mid-drag the value follows the pointer and the bubble leaned back against the movement.
+  await expect(spend(page)).not.toHaveValue("240");
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { __minLean: number }).__minLean), {
+      timeout: 2_000,
+    })
+    .toBeLessThan(-1);
+  await page.evaluate(() => {
+    cancelAnimationFrame((window as unknown as { __leanRaf: number }).__leanRaf);
+  });
   await page.mouse.move(box.x + box.width + 20, y);
   await page.mouse.up();
   await expect(spend(page)).toHaveValue("720");
@@ -764,6 +800,8 @@ test("[PD-06] /dev/molten PD-06 tiles at 320, 390 and 1440: no horizontal scroll
   page,
   shoot,
 }) => {
+  // 21 screens and their settling waits: past 60 s on CI's WebKit runner (CI 45061015313).
+  test.slow();
   test.skip(
     !["chromium", "webkit"].includes(test.info().project.name),
     "inspection screens: one project per engine",

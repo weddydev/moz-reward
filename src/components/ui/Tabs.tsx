@@ -73,8 +73,13 @@ export function Tabs<T extends string>({
     const sc = scroller.current;
     const tab = refs.current[index];
     if (!sc || !tab || sc.scrollWidth <= sc.clientWidth) return;
-    const left = tab.offsetLeft;
-    const right = left + tab.offsetWidth;
+    // In the scroller's own coordinates: `offsetLeft` counts from the track (`.m-seg`, positioned), not from the
+    // scroller, so it missed the scroller's 6 px padding and the track's border, and the last tab stayed cut off
+    // where the browser's focus scroll didn't already reveal it (WebKit, CI 45061015313).
+    const box = sc.getBoundingClientRect();
+    const r = tab.getBoundingClientRect();
+    const left = r.left - box.left + sc.scrollLeft;
+    const right = r.right - box.left + sc.scrollLeft;
     if (left < sc.scrollLeft) sc.scrollLeft = left;
     else if (right > sc.scrollLeft + sc.clientWidth) sc.scrollLeft = right - sc.clientWidth;
   }, [index]);

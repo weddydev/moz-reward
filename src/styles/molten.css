@@ -1415,7 +1415,11 @@ html:root.rm .m-tile {
   cursor: pointer;
   opacity: 0;
 }
+/* Shown, the choices rest at full opacity on their own, not only through the pop's fill: whatever an engine does
+   with the restarted animation, both choices always end visible (COMPLIANCE §1; CI 45061015313: Linux WebKit
+   ended "Send privately" at opacity 0 with no animation left). The pop itself is unchanged. */
 .m-rate-actions[data-show] button {
+  opacity: 1;
   animation: m-pop 0.5s var(--spring) both;
 }
 .m-rate-actions[data-show] button + button {
