@@ -864,3 +864,8 @@ Stars 46 vs 52 px: Tailwind preflight makes svg block; `.m-star svg { display:in
 E2E added: star keyboard, rapid taps, COMPLIANCE §1 identical choices after every rating, reduced motion, 44 px targets, rated/unrated screens 320/390/1440 (inspected).
 Linux flakes (tabs keyboard, pasted email, beam click): /dev/molten never marked data-hydrating → LabSection marks it; beam test clicks via locator. Linux `molten-fields` 13/0, 39/0 ×3; ui-states pass.
 Left off: step d Slider.
+
+## 2026-11-23 01:30 — PD — PD-06 red CI fixed + step d Slider (wip/PD-06 ec033ae)
+Done: CI 45057026965 root cause: `.m-field input` box-shadow outranked the global `:focus-visible` halo (specificity, both unlayered); halo restated, parity focus capture pins the unfocused shadow (`379213e`). Step d Slider + tile, parity parts/spec row required, ownHeight off tabs/stars tiles (`ec033ae`).
+Tests: Linux tokens.spec desktop1440 fail→10/0; parity 144/0 both engines; Linux molten-fields 18/0; unit slider 13/0 + spec 23/0; screens 320/390/1440 inspected; pre-push check + sast PASS.
+Left off: step e MemberCard; CI on ec033ae not yet seen.
