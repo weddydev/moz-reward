@@ -869,3 +869,10 @@ Left off: step d Slider.
 Done: CI 45057026965 root cause: `.m-field input` box-shadow outranked the global `:focus-visible` halo (specificity, both unlayered); halo restated, parity focus capture pins the unfocused shadow (`379213e`). Step d Slider + tile, parity parts/spec row required, ownHeight off tabs/stars tiles (`ec033ae`).
 Tests: Linux tokens.spec desktop1440 fail→10/0; parity 144/0 both engines; Linux molten-fields 18/0; unit slider 13/0 + spec 23/0; screens 320/390/1440 inspected; pre-push check + sast PASS.
 Left off: step e MemberCard; CI on ec033ae not yet seen.
+
+## 2026-11-23 — PD — PD-06 step e MemberCard + WebKit CI fixes (wip/PD-06 4177678)
+Done: `MemberCard` (holo, glare, tilt, flip to labelled QR placeholder, touch-only sway; RM/iOS no tilt) + tile on /dev/molten, parts + spec row required, `ownHeight` off text-field-tile.
+Root causes: reference's phone `.back` rule leaks onto the card's back face (40 px circle; flip shows nothing) → scoped in the parity copy (`REFERENCE_FIXES`); headless WebKit renders no 3D (minimal flip card shows the back) → both pages flattened alike; gallery rendered pending placeholders for the new parts (strict-mode E2E) → parts registered.
+Tests: parity full 156/0 (both engines); Linux Chromium + Pixel 7 molten-fields 45/0; unit molten-card 20/0; screens 320/390/1440 front/back inspected. CI 45061015313 (`ec033ae`) RED on WebKit E2E only → `49a55cd` (tabs scroll coords, pill ≤ 1.5 px, choices opacity 1, slider lean per frame, WebKit drag quarantined C-77); CI 45068046655 pending.
+Left off: PD-06 close (gate:task PD-06, design-reviewer + review-animations, DECISIONS batch, FOLLOWUPS, tick).
+
