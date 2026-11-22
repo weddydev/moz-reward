@@ -27,11 +27,14 @@ export default defineConfig({
   // (VISUAL=1: `pnpm gate:phase`, or `pnpm e2e:visual`), never in an ordinary run or in CI.
   // Perf-budget specs (@perf: CPU-throttled fps / long-task budgets) run only on their own, one worker
   // (PERF=1 … --grep @perf --workers 1: gate:task, gate:phase, CI, nightly), so parallel load can't decide
-  // them (process audit 21 Nov: 55.6 fps under a 5-project run, 60 fps alone).
+  // them (process audit 21 Nov: 55.6 fps under a 5-project run, 60 fps alone). Frame-rate budgets (@fps: fps
+  // and p95 frame time) also need FPS=1: they measure the machine as much as the code, so they run on CI's fixed
+  // runners nightly and in gate:phase, never in a push or task gate (DECISIONS 22 Nov).
   ...(() => {
     const skip = [
       ...(process.env.VISUAL ? [] : ["@visual"]),
       ...(process.env.PERF ? [] : ["@perf"]),
+      ...(process.env.FPS ? [] : ["@fps"]),
     ];
     return skip.length ? { grepInvert: new RegExp(skip.join("|")) } : {};
   })(),

@@ -2,12 +2,14 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   changedFiles,
+  ciVerdict,
   DOCS_ONLY_GLOBS,
   gateFor,
   WIP_STEPS,
   needsGate,
   parsePushLines,
   refusal,
+  type CiRun,
   type Git,
 } from "./pre-push";
 
@@ -138,5 +140,63 @@ describe("[P0-14] lefthook runs the guard on every push", () => {
 describe("[P0-14] wip pushes run the cheap checks CI would otherwise catch first (process audit, 21 Nov)", () => {
   it("[P0-14] pnpm check, then Semgrep (3 of 18 red CI runs 14–21 Nov were Semgrep findings on wip pushes)", () => {
     expect(WIP_STEPS).toEqual([["check"], ["sast"]]);
+  });
+});
+
+describe("[P0-14] main only takes a commit CI has already passed (process change, 22 Nov)", () => {
+  const C = "c".repeat(40);
+  const run = (headSha: string, status: string, conclusion: string, id = 1): CiRun => ({
+    headSha,
+    status,
+    conclusion,
+    databaseId: id,
+  });
+  // A ← B ← C: B is a parent of C, A of B. `docsOnly(x, y)`: only docs/progress files differ.
+  const deps = (docsOnlyPairs: string[] = []) => ({
+    isAncestor: (a: string, b: string) => (a === A && (b === B || b === C)) || (a === B && b === C),
+    docsOnly: (a: string, b: string) => docsOnlyPairs.includes(`${a}>${b}`),
+  });
+
+  it("[P0-14] accepts the exact commit with a green CI run", () => {
+    expect(ciVerdict(C, [run(C, "completed", "success")], deps())).toEqual({ ok: true, via: C });
+  });
+
+  it("[P0-14] a green rerun after a red attempt counts; cancelled runs never do", () => {
+    const runs = [run(C, "completed", "failure", 1), run(C, "completed", "success", 2)];
+    expect(ciVerdict(C, runs, deps()).ok).toBe(true);
+    const cancelled = ciVerdict(C, [run(C, "completed", "cancelled")], deps());
+    expect(cancelled.ok).toBe(false);
+  });
+
+  it("[P0-14] refuses while CI for the commit is still running, and says to carry on meanwhile", () => {
+    const v = ciVerdict(C, [run(C, "in_progress", "")], deps());
+    expect(v).toMatchObject({ ok: false });
+    expect(v.ok ? "" : v.why).toMatch(/still running.*carry on/s);
+  });
+
+  it("[P0-14] refuses a commit whose CI is red", () => {
+    const v = ciVerdict(C, [run(C, "completed", "failure")], deps());
+    expect(v.ok ? "" : v.why).toMatch(/red/);
+    // Its own red run wins over a green docs-only ancestor.
+    const both = [run(C, "completed", "failure"), run(B, "completed", "success")];
+    expect(ciVerdict(C, both, deps([`${B}>${C}`])).ok).toBe(false);
+  });
+
+  it("[P0-14] a commit CI skipped (docs/progress only since a green ancestor) rides on that ancestor", () => {
+    expect(ciVerdict(C, [run(B, "completed", "success")], deps([`${B}>${C}`]))).toEqual({
+      ok: true,
+      via: B,
+    });
+  });
+
+  it("[P0-14] a green ancestor doesn't cover code changed after it, nor does a green non-ancestor", () => {
+    expect(ciVerdict(C, [run(B, "completed", "success")], deps()).ok).toBe(false);
+    // B is not an ancestor of A, even if only docs differ.
+    expect(ciVerdict(A, [run(B, "completed", "success")], deps([`${B}>${A}`])).ok).toBe(false);
+  });
+
+  it("[P0-14] no run at all names the way through: push the wip branch, then main once it is green", () => {
+    const v = ciVerdict(C, [], deps());
+    expect(v.ok ? "" : v.why).toMatch(/wip\/.*green/s);
   });
 });

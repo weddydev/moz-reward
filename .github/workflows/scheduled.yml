@@ -2,6 +2,8 @@
 #   Tue + Fri: E2E on all 5 Playwright projects (adds WebKit / iPhone) on the production build,
 #              + k6 smoke against staging once `vars.STAGING_URL` exists (P0-15).
 #   Mon:       ZAP baseline against staging once `vars.STAGING_URL` exists (P0-15).
+#   Nightly:   frame-rate budgets (@fps) + perf-work specs (@perf) alone on one worker, on CI's runners: the
+#              one place fps is measured besides gate:phase (DECISIONS 22 Nov).
 # Budget (ENGINEERING §16): the first job runs `pnpm ci:usage`; at ≥ 80% of the monthly allowance the suites are
 # skipped and a separate job (the only one with actions: write) disables this workflow (push CI continues). Re-enable next month: `gh workflow enable scheduled.yml`.
 # Any failure opens (or comments on) one issue labelled `scheduled-ci`; fix it the next working session.
@@ -11,12 +13,13 @@ on:
   schedule:
     - cron: "17 3 * * 2,5" # Tue + Fri 03:17 UTC — E2E (all projects) + k6
     - cron: "41 4 * * 1" # Mon 04:41 UTC — ZAP baseline
+    - cron: "29 2 * * *" # nightly 02:29 UTC — frame-rate budgets (@fps + @perf)
   workflow_dispatch:
     inputs:
       suite:
         description: Which suite to run
         type: choice
-        options: [e2e, k6, zap, all]
+        options: [e2e, perf, k6, zap, all]
         default: e2e
 
 concurrency:
@@ -31,6 +34,7 @@ env:
   NEXT_TELEMETRY_DISABLED: "1"
   E2E_CRON: "17 3 * * 2,5"
   ZAP_CRON: "41 4 * * 1"
+  PERF_CRON: "29 2 * * *"
 
 jobs:
   budget:
@@ -106,8 +110,8 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium webkit
       - name: E2E, all projects (flaky = failure)
         run: pnpm e2e --fail-on-flaky-tests
-      - name: Perf-budget specs alone (@perf, one worker)
-        run: PERF=1 pnpm e2e --grep @perf --workers 1 --fail-on-flaky-tests
+      - name: Perf-budget and frame-rate specs alone (@perf + @fps, one worker)
+        run: PERF=1 FPS=1 pnpm e2e --grep "@perf|@fps" --workers 1 --fail-on-flaky-tests
       - name: Molten parity, Chromium + WebKit (PD-01)
         run: pnpm test:parity --fail-on-flaky-tests
       - name: artefacts on failure (small, 7 days)
@@ -115,6 +119,50 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: scheduled-e2e-${{ github.run_id }}
+          path: |
+            playwright-report/
+            .artifacts/e2e/build.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  perf:
+    name: frame-rate budgets (@fps + @perf, one worker, Chromium)
+    needs: budget
+    if: >
+      needs.budget.outputs.state != 'pause' && (github.event.schedule == '29 2 * * *' ||
+      (github.event_name == 'workflow_dispatch' && (inputs.suite == 'perf' || inputs.suite == 'all')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: local env (generated test-only secrets, never real ones)
+        run: pnpm setup:env
+      - name: services (Postgres+PostGIS, Redis, Mailpit, MinIO; health waits)
+        run: pnpm services:up
+      - run: pnpm db:migrate
+      - name: production build (.next-e2e)
+        run: pnpm e2e --build-only
+      - name: Playwright browser cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: frame-rate + perf-work specs alone (pixel7 + desktop1440; flaky = failure)
+        run: PERF=1 FPS=1 pnpm e2e --project pixel7 --project desktop1440 --grep "@perf|@fps" --workers 1 --fail-on-flaky-tests
+      - name: artefacts on failure (small, 7 days)
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scheduled-perf-${{ github.run_id }}
           path: |
             playwright-report/
             .artifacts/e2e/build.log
@@ -174,7 +222,7 @@ jobs:
 
   report:
     name: open an issue on failure
-    needs: [budget, pause, e2e, k6, zap]
+    needs: [budget, pause, e2e, perf, k6, zap]
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-slim
     timeout-minutes: 5

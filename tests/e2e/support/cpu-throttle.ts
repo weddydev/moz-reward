@@ -49,7 +49,20 @@ export function throttleRate(nominal: number, score: number): number {
   return Math.min(20, Math.max(1, (nominal * score) / CI_CPU_SCORE));
 }
 
-/** Throttles `page`'s CPU to `nominal`× of the reference runner; returns the CDP session and the rate used. */
+/**
+ * Whether a host scoring `score` can play the reference device at `nominal`× at all: only if it is at least as
+ * fast unthrottled (rate ≥ 1). A slower host (the Windows laptop under load: 8,780 = 0.5×) would measure itself,
+ * not the code, so it gives no verdict there; CI always does (DECISIONS 22 Nov).
+ */
+export function canEmulate(nominal: number, score: number): boolean {
+  return (nominal * score) / CI_CPU_SCORE >= 1;
+}
+
+/**
+ * Throttles `page`'s CPU to `nominal`× of the reference runner; returns the CDP session and the rate used. On a
+ * host too slow to emulate the reference the test is skipped with the score as the reason, except on CI, where
+ * it fails: CI's verdict is the one main relies on, so it can never be skipped there.
+ */
 export async function throttleCpu(
   page: Page,
   testInfo: TestInfo,
@@ -59,6 +72,12 @@ export async function throttleCpu(
   const probe = await page.context().newPage();
   const score = await benchmark(probe);
   await probe.close();
+  if (!canEmulate(nominal, score)) {
+    const why = `host CPU score ${score.toFixed(0)} is below the reference device (${String(CI_CPU_SCORE / nominal)} for ${String(nominal)}× of CI ${String(CI_CPU_SCORE)}): no verdict here, CI measures it`;
+    console.warn(`[cpu] ${why}`);
+    if (process.env.CI) throw new Error(why);
+    testInfo.skip(true, why);
+  }
   const cdp = await page.context().newCDPSession(page);
   const rate = throttleRate(nominal, score);
   const description = `score ${score.toFixed(0)} (CI ${String(CI_CPU_SCORE)}), rate ${rate.toFixed(2)}× for nominal ${String(nominal)}×`;

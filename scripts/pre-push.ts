@@ -6,6 +6,9 @@
  *     the task-closing push (main or `t/*`) runs the full gate (DECISIONS 14 Nov 2026, `gateFor`).
  *   - Runs `pnpm gate:task` unless every changed file is docs/progress-only (the same paths CI's path filter
  *     skips — DOCS_ONLY_GLOBS, kept equal to ci.yml by a test).
+ *   - A push to main that changes code also needs a green CI run for that exact commit (pushed to its `wip/*`
+ *     branch first), or for an ancestor it differs from only in docs/progress files (`ciVerdict`; DECISIONS
+ *     22 Nov): CI's runners, all its projects, are the one verdict, so main never goes red from a local pass.
  * Server-side protection exists only in GITHUB_MODE=pro; in free mode this hook is the guard (it can be
  * bypassed with --no-verify, which the project rules forbid).
  */
@@ -90,6 +93,79 @@ export function canSkipGate(
   });
 }
 
+/** One CI workflow run, as `gh run list --json headSha,status,conclusion,databaseId` prints it. */
+export type CiRun = { headSha: string; status: string; conclusion: string; databaseId: number };
+
+export type CiVerdict = { ok: true; via: string } | { ok: false; why: string };
+
+/**
+ * May main move to `sha`? Yes when CI passed on `sha` itself (any green attempt), or on an ancestor that `sha`
+ * differs from only in docs/progress files (CI's path filter skipped `sha` itself, e.g. a merge of main's
+ * progress commits). A run still going, a red run or none at all → no, with what to do instead.
+ */
+export function ciVerdict(
+  sha: string,
+  runs: readonly CiRun[],
+  deps: {
+    isAncestor: (a: string, b: string) => boolean;
+    docsOnly: (a: string, b: string) => boolean;
+  },
+): CiVerdict {
+  const short = sha.slice(0, 7);
+  const own = runs.filter((r) => r.headSha === sha);
+  if (own.some((r) => r.status === "completed" && r.conclusion === "success"))
+    return { ok: true, via: sha };
+  const going = own.find((r) => r.status !== "completed");
+  if (going)
+    return {
+      ok: false,
+      why: `CI for ${short} is still running (run ${String(going.databaseId)}): push main once it is green, and carry on with other work meanwhile`,
+    };
+  if (own.some((r) => r.status === "completed" && r.conclusion === "failure"))
+    return { ok: false, why: `CI for ${short} is red: fix it on the wip branch first` };
+  const ancestor = runs.find(
+    (r) =>
+      r.status === "completed" &&
+      r.conclusion === "success" &&
+      r.headSha !== sha &&
+      deps.isAncestor(r.headSha, sha) &&
+      deps.docsOnly(r.headSha, sha),
+  );
+  if (ancestor) return { ok: true, via: ancestor.headSha };
+  return {
+    ok: false,
+    why: `no CI run for ${short}: push it to its wip/ branch first, then push main once that run is green`,
+  };
+}
+
+/** CI runs for `sha` plus the latest 100 (the candidates for a green ancestor); null when gh can't answer. */
+function ciRuns(sha: string): CiRun[] | null {
+  const list = (extra: string[]): CiRun[] | null => {
+    const r = spawnSync(
+      "gh",
+      [
+        "run",
+        "list",
+        "--workflow",
+        "ci.yml",
+        "--json",
+        "headSha,status,conclusion,databaseId",
+        ...extra,
+      ],
+      { encoding: "utf8" },
+    );
+    if (r.status !== 0) return null;
+    try {
+      return JSON.parse(r.stdout) as CiRun[];
+    } catch {
+      return null;
+    }
+  };
+  const own = list(["--commit", sha, "--limit", "20"]);
+  const recent = list(["--status", "success", "--limit", "100"]);
+  return own && recent ? [...own, ...recent] : null;
+}
+
 export type Git = (args: string[]) => { ok: boolean; out: string };
 
 const git: Git = (args) => {
@@ -130,6 +206,28 @@ function main(): void {
         : "[pre-push] docs/progress-only push: gate:task skipped (same rule as CI)",
     );
     process.exit(0);
+  }
+  for (const l of lines.filter(
+    (x) => x.remoteRef === "refs/heads/main" && !ZERO.test(x.localSha),
+  )) {
+    const runs = ciRuns(l.localSha);
+    if (!runs) {
+      console.error(
+        "[pre-push] can't read CI status with gh (installed and signed in?): push to main refused",
+      );
+      process.exit(1);
+    }
+    const v = ciVerdict(l.localSha, runs, {
+      isAncestor,
+      docsOnly: (a, b) => !needsGate(changedFiles({ ...l, remoteSha: a, localSha: b })),
+    });
+    if (!v.ok) {
+      console.error(`[pre-push] ${v.why}`);
+      process.exit(1);
+    }
+    console.warn(
+      `[pre-push] CI green for ${v.via.slice(0, 7)}${v.via === l.localSha ? "" : " (only docs/progress files changed since)"}`,
+    );
   }
   if (gateFor(lines) === "check") {
     console.warn(

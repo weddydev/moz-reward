@@ -1,4 +1,4 @@
-import { type Page } from "@playwright/test";
+import { type Page, type TestInfo } from "@playwright/test";
 import { throttleCpu } from "./support/cpu-throttle";
 import { expect, test } from "./support/test";
 
@@ -338,14 +338,11 @@ test("[PD-03] press kit: pressed state, a ripple from the press point, celebrate
 
 /**
  * DESIGN §12 frame budget at 4× CPU (the CI runner as the reference device): 200 bursts fed two per frame keep
- * the engine at its cap; every frame until it sleeps is timed, and long tasks are recorded throughout.
+ * the engine at its cap; every frame until it sleeps is timed, and long tasks are recorded throughout. Two tests
+ * over the same run (DECISIONS 22 Nov): the engine's work (cap, frames, long tasks) on every push (@perf), the
+ * frame rate itself on CI's fixed runners nightly and in gate:phase (@fps).
  */
-test("[PD-03] 200-burst stress at 4× CPU: 60 fps, p95 ≤ 16.8 ms, no long task over 50 ms @perf", async ({
-  page,
-  browserName,
-}) => {
-  // By engine, not project name: CI's @perf step runs pixel7 + desktop1440 (PD-A code review M1).
-  test.skip(browserName !== "chromium", "CPU throttling is a Chromium DevTools feature");
+async function stressRun(page: Page, info: TestInfo) {
   await page.addInitScript(() => {
     const w = window as unknown as { __long: number[] };
     w.__long = [];
@@ -363,7 +360,7 @@ test("[PD-03] 200-burst stress at 4× CPU: 60 fps, p95 ≤ 16.8 ms, no long task
   await page.evaluate(() => {
     (window as unknown as { __long: number[] }).__long = [];
   });
-  const { cdp } = await throttleCpu(page, test.info());
+  const { cdp } = await throttleCpu(page, info);
   const run = await page.evaluate(async () => {
     const w = window as unknown as { __mozFx: Hook; __long: number[] };
     const times: number[] = [];
@@ -392,19 +389,38 @@ test("[PD-03] 200-burst stress at 4× CPU: 60 fps, p95 ≤ 16.8 ms, no long task
   const p95 = Math.round((sorted[Math.floor(sorted.length * 0.95)] ?? 0) * 10) / 10;
   const fps = (1000 * gaps.length) / gaps.reduce((s, g) => s + g, 0);
   const longest = Math.max(0, ...run.long);
-  test.info().annotations.push({
+  info.annotations.push({
     type: "fx stress trace",
     description: `${String(run.fired)} bursts, peak ${String(run.peak)} particles, ${String(times.length)} frames, ${fps.toFixed(1)} fps, p95 ${p95.toFixed(1)} ms, long tasks ${String(run.long.length)} (max ${longest.toFixed(0)} ms)`,
   });
   console.warn(
     `[fx-trace] bursts ${String(run.fired)} peak ${String(run.peak)} frames ${String(times.length)} fps ${fps.toFixed(1)} p95 ${p95.toFixed(1)} long ${String(run.long.length)}/${longest.toFixed(0)}`,
   );
+  return { ...run, fps, p95, longest };
+}
+
+test("[PD-03] 200-burst stress at 4× CPU: engine holds its 420 cap, no long task over 50 ms @perf", async ({
+  page,
+  browserName,
+}) => {
+  // By engine, not project name: CI's @perf step runs pixel7 + desktop1440 (PD-A code review M1).
+  test.skip(browserName !== "chromium", "CPU throttling is a Chromium DevTools feature");
+  const run = await stressRun(page, test.info());
   expect(run.fired).toBe(200);
   expect(run.peak).toBe(420);
-  expect(times.length).toBeGreaterThan(60);
-  expect(fps).toBeGreaterThanOrEqual(58);
-  expect(p95).toBeLessThanOrEqual(16.8);
-  expect(longest).toBeLessThanOrEqual(50);
+  expect(run.times.length).toBeGreaterThan(60);
+  expect(run.longest).toBeLessThanOrEqual(50);
+});
+
+test("[PD-03] 200-burst stress at 4× CPU: 60 fps, p95 ≤ 16.8 ms @fps", async ({
+  page,
+  browserName,
+}) => {
+  test.skip(browserName !== "chromium", "CPU throttling is a Chromium DevTools feature");
+  const run = await stressRun(page, test.info());
+  expect(run.fired).toBe(200);
+  expect(run.fps).toBeGreaterThanOrEqual(58);
+  expect(run.p95).toBeLessThanOrEqual(16.8);
 });
 
 test("[PD-03] /dev/motion at 320, 390 and 1440: no horizontal scroll (screens for inspection, idle + mid-burst)", async ({

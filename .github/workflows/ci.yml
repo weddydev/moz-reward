@@ -93,10 +93,16 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: pw-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      - run: pnpm exec playwright install --with-deps chromium
+          key: pw-cw-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium webkit
       - name: E2E on the production build (pixel7 + desktop1440; flaky = failure)
         run: pnpm e2e --project pixel7 --project desktop1440 --fail-on-flaky-tests
+      # The WebKit half of gate:task (DECISIONS 22 Nov): the pushed commits' task specs + the changed specs on
+      # webkit + iphone14. With the step above, every commit main takes has passed all five projects here.
+      - name: E2E on WebKit (webkit + iphone14; task + changed specs; flaky = failure)
+        env:
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: pnpm e2e:ci-webkit
       - name: Perf-budget specs alone (@perf, one worker; process audit 21 Nov)
         run: PERF=1 pnpm e2e --project pixel7 --project desktop1440 --grep @perf --workers 1 --fail-on-flaky-tests
       - name: Molten parity, Chromium (PD-01; WebKit in the twice-weekly run)

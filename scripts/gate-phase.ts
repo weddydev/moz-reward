@@ -118,12 +118,15 @@ function steps(checkScript: string): PhaseStep[] {
       run: () => e2eStep("e2e (5 projects)", [], {}, STEP_LIMITS.e2eFull),
     },
     {
+      // @fps (frame-rate budgets) too: once per phase here, nightly on CI (DECISIONS 22 Nov). A host too slow to
+      // emulate the reference device skips them with its score as the reason; CI's nightly verdict stands.
       name: "e2e perf (5 projects, 1 worker)",
       from: 0,
       missing: always,
       run: () =>
-        e2eStep("e2e perf (5 projects, 1 worker)", ["--grep", "@perf", "--workers", "1"], {
+        e2eStep("e2e perf (5 projects, 1 worker)", ["--grep", "@perf|@fps", "--workers", "1"], {
           PERF: "1",
+          FPS: "1",
         }),
     },
     {

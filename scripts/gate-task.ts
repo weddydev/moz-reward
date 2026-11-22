@@ -4,7 +4,8 @@
  *   2. `pnpm test:int` (integration + authz matrix);
  *   3. the production build — the same `.next-e2e` build `pnpm e2e` serves (one build, not two) — and
  *      `check:bundle` on it; then `pnpm sast` (Semgrep, scripts/sast.ts: the same command CI runs);
- *   4. E2E specs tagged with the task ID(s), on that build, Chromium + WebKit (flaky = failure);
+ *   4. E2E specs tagged with the task ID(s), on that build, the Chromium projects in the Linux container (flaky =
+ *      failure); the WebKit projects run on CI for every push, and main only takes a commit CI passed;
  *   5. the working tree is exactly as before.
  * Task IDs: arguments, else the IDs in the commits not yet pushed, else the next unticked task in PHASES.md.
  * Needs `pnpm services:up`. Exit 0 only if every step passed.
@@ -33,7 +34,7 @@ import { writeStamp, workingTreeHash } from "./lib/gate-stamp";
 import { isDirectRun } from "../src/lib/is-direct-run";
 
 // Phase tasks (P1-10), design-phase tasks (PD-01, phase PD), security items (S-03), journeys (J2).
-const TASK_ID = /\b((?:P\d|PD|S)-\d{2}|J\d{1,2})\b/g;
+export const TASK_ID = /\b((?:P\d|PD|S)-\d{2}|J\d{1,2})\b/g;
 
 /** Splits the `check` script ("pnpm a && pnpm b …") into its pnpm script names. */
 export function checkParts(checkScript: string): string[] {
@@ -74,16 +75,26 @@ export function unpushedCommitMessages(): string {
 }
 
 /**
- * The gate's Chromium E2E runs in the Linux Playwright container (`pnpm e2e:linux`), so a local pass means what
- * CI's pass means. Process audit 21 Nov: 11 of 18 red CI runs in a week were Linux-only E2E failures that a
- * host-OS gate could not see; all of them were Chromium (push CI runs only pixel7 + desktop1440).
- * WebKit runs on the host's WebKit instead (DECISIONS 21 Nov): Linux WebKit inside the laptop's Docker VM
- * renders ~1 frame/s for 1–2 s after a load, so timing specs fail there deterministically, while the same
- * specs pass on the host's WebKit and on CI's Linux WebKit (twice-weekly run).
+ * The gate's E2E runs in the Linux Playwright container (`pnpm e2e:linux`), so a local pass means what CI's pass
+ * means. Process audit 21 Nov: 11 of 18 red CI runs in a week were Linux-only E2E failures that a host-OS gate
+ * could not see. WebKit is not run here (DECISIONS 22 Nov): no laptop WebKit is evidence (Windows: 12 Nov; Linux
+ * WebKit in a laptop's Docker VM renders ~1 frame/s after a load: 21 Nov; the Mac's alone can't speak for the
+ * other laptop). CI runs the task's and the changed specs on `CI_WEBKIT_PROJECTS` for every push
+ * (`pnpm e2e:ci-webkit`), and the pre-push hook lets main take only a commit CI passed, so every commit on main
+ * has passed all five projects, on the same machines every time.
  */
 export const GATE_LINUX_PROJECTS = ["chromium", "pixel7", "desktop1440"] as const;
-export const GATE_HOST_PROJECTS = ["webkit", "iphone14"] as const;
-export const GATE_E2E_PROJECTS = [...GATE_LINUX_PROJECTS, ...GATE_HOST_PROJECTS] as const;
+export const CI_WEBKIT_PROJECTS = ["webkit", "iphone14"] as const;
+
+/**
+ * Native Windows (not WSL2) can't give the same results as CI and the Mac: Docker bind mounts, cmd.exe spawns,
+ * Git Bash path rewriting, suites that skip there (DECISIONS 22 Nov). The gate still runs, with this warning.
+ */
+export function nativeWindowsWarning(platform: NodeJS.Platform): string | null {
+  return platform === "win32"
+    ? "[gate:task] native Windows: work inside WSL2 (Ubuntu, repo on the Linux filesystem), the one Windows setup whose results match CI (DECISIONS 22 Nov, H-51)"
+    : null;
+}
 
 type Projects = readonly string[];
 const projectArgs = (projects: Projects): string[] => projects.flatMap((p) => ["--project", p]);
@@ -180,6 +191,8 @@ function main(): void {
     readFileSync(path.join("docs", "PHASES.md"), "utf8"),
   );
   console.warn(`[gate:task] task ${ids.join(", ") || "(none)"} — from ${source}`);
+  const windows = nativeWindowsWarning(process.platform);
+  if (windows) console.warn(windows);
 
   const steps: Array<{ name: string; run: () => StepResult }> = checkParts(checkScript).map(
     (script) => ({
@@ -229,27 +242,12 @@ function main(): void {
           linuxE2eStep(`e2e ${task} (Linux Chromium)`, taskE2eArgs(ids, GATE_LINUX_PROJECTS)),
       },
       {
-        name: `e2e ${task} (host WebKit)`,
-        run: () => e2eStep(`e2e ${task} (host WebKit)`, taskE2eArgs(ids, GATE_HOST_PROJECTS)),
-      },
-      {
         name: `e2e perf ${task} (Linux Chromium, 1 worker)`,
         run: () =>
           linuxE2eStep(
             `e2e perf ${task} (Linux Chromium, 1 worker)`,
             perfE2eArgs(ids, GATE_LINUX_PROJECTS),
             { PERF: "1" },
-          ),
-      },
-      {
-        name: `e2e perf ${task} (host WebKit, 1 worker)`,
-        run: () =>
-          e2eStep(
-            `e2e perf ${task} (host WebKit, 1 worker)`,
-            perfE2eArgs(ids, GATE_HOST_PROJECTS),
-            {
-              PERF: "1",
-            },
           ),
       },
     );

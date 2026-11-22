@@ -1,4 +1,4 @@
-import { type APIRequestContext, type Page } from "@playwright/test";
+import { type APIRequestContext, type Page, type TestInfo } from "@playwright/test";
 import { throttleCpu } from "./support/cpu-throttle";
 import { expect, test, testApiHeaders } from "./support/test";
 
@@ -315,19 +315,26 @@ test("[P1-08] progress 0: an empty mould, no wave and nothing to pour", async ({
   );
 });
 
-test("[P1-08] the pour holds 60 fps under 4× CPU throttling @perf", async ({
-  page,
-  signInAs,
-  browserName,
-}) => {
-  // By engine, not project name: CI's @perf step runs pixel7 + desktop1440 (PD-A code review M1).
-  test.skip(browserName !== "chromium", "CPU throttling is a Chromium DevTools feature");
+/**
+ * The pour at 4× CPU (the CI runner as the reference device). Two tests over the same run (DECISIONS 22 Nov):
+ * the pour lands with no long task over 50 ms (DESIGN §12) on every push (@perf); its frame rate on CI's fixed
+ * runners nightly and in gate:phase (@fps).
+ */
+async function pourRun(
+  page: Page,
+  info: TestInfo,
+  signInAs: (role: "customer") => Promise<{ userId: string }>,
+) {
   const me = await signInAs("customer");
   const { shopId } = await seedVault(page.request, me.userId, { progressGold: 720 });
   // The ingot's "first on screen" observer is held until the page has settled, so the pour starts on cue. Loading
   // scrolled down to "How it works" didn't keep it out of view before hydration (run 44723422284: already done).
   await page.addInitScript(() => {
-    const w = window as unknown as { __releaseIngot: () => void };
+    const w = window as unknown as { __releaseIngot: () => void; __long: number[] };
+    w.__long = [];
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) w.__long.push(e.duration);
+    }).observe({ type: "longtask", buffered: false });
     const Real = window.IntersectionObserver;
     const held = new Set<IntersectionObserver>();
     const targets = new WeakMap<IntersectionObserver, Element[]>();
@@ -355,35 +362,61 @@ test("[P1-08] the pour holds 60 fps under 4× CPU throttling @perf", async ({
     };
   });
   await page.setViewportSize({ width: 390, height: 500 });
-  const { cdp } = await throttleCpu(page, test.info());
+  const { cdp } = await throttleCpu(page, info);
   await page.goto(`/vault/${shopId}`);
   await page.waitForLoadState("networkidle");
   await expect(ingot(page)).toHaveAttribute("data-ingot-state", "pending");
   // Release the ingot's observer and record every frame until the pour has landed.
-  const frames = await page.evaluate(async () => {
+  const run = await page.evaluate(async () => {
     const el = document.querySelector(".ingot-pour");
     if (!el) throw new Error("no ingot");
-    (window as unknown as { __releaseIngot: () => void }).__releaseIngot();
+    const w = window as unknown as { __releaseIngot: () => void; __long: number[] };
+    w.__long = []; // only what happens while the pour plays
+    w.__releaseIngot();
     const times: number[] = [];
     const start = performance.now();
     while (performance.now() - start < 3_000) {
       times.push(await new Promise<number>(requestAnimationFrame));
       if (times.length > 3 && el.getAttribute("data-ingot-state") === "done") break;
     }
-    return times;
+    return { times, state: el.getAttribute("data-ingot-state"), long: [...w.__long] };
   });
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  const frames = run.times;
   const gaps = frames.slice(1).map((t, i) => t - (frames[i] ?? t));
   const sorted = [...gaps].sort((a, b) => a - b);
   const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? 0;
   const fps = (1000 * gaps.length) / gaps.reduce((s, g) => s + g, 0);
-  test.info().annotations.push({
+  const longest = Math.max(0, ...run.long);
+  info.annotations.push({
     type: "pour frames",
-    description: `${String(frames.length)} frames, ${fps.toFixed(1)} fps, p95 ${p95.toFixed(1)} ms`,
+    description: `${String(frames.length)} frames, ${fps.toFixed(1)} fps, p95 ${p95.toFixed(1)} ms, long tasks ${String(run.long.length)} (max ${longest.toFixed(0)} ms)`,
   });
-  expect(frames.length).toBeGreaterThan(20);
-  expect(fps).toBeGreaterThanOrEqual(55);
-  expect(p95).toBeLessThanOrEqual(20);
+  return { frames, state: run.state, fps, p95, longest };
+}
+
+test("[P1-08] the pour lands under 4× CPU throttling with no long task over 50 ms @perf", async ({
+  page,
+  signInAs,
+  browserName,
+}) => {
+  // By engine, not project name: CI's @perf step runs pixel7 + desktop1440 (PD-A code review M1).
+  test.skip(browserName !== "chromium", "CPU throttling is a Chromium DevTools feature");
+  const run = await pourRun(page, test.info(), signInAs);
+  expect(run.state).toBe("done");
+  expect(run.frames.length).toBeGreaterThan(20);
+  expect(run.longest).toBeLessThanOrEqual(50);
+});
+
+test("[P1-08] the pour holds 60 fps under 4× CPU throttling @fps", async ({
+  page,
+  signInAs,
+  browserName,
+}) => {
+  test.skip(browserName !== "chromium", "CPU throttling is a Chromium DevTools feature");
+  const run = await pourRun(page, test.info(), signInAs);
+  expect(run.fps).toBeGreaterThanOrEqual(55);
+  expect(run.p95).toBeLessThanOrEqual(20);
 });
 
 test("[P1-08] a progress change after load is announced in a polite live region", async ({
