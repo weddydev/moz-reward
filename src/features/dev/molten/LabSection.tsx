@@ -1,17 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { MoltenHeart } from "@/components/icons/molten-heart";
 import { CountUp } from "@/components/motion/CountUp";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { IconButton } from "@/components/ui/IconButton";
 import { LiquidChoice } from "@/components/ui/LiquidChoice";
+import { StarRating } from "@/components/ui/StarRating";
 import { Switch } from "@/components/ui/Switch";
 import { Tabs } from "@/components/ui/Tabs";
+import { TextField } from "@/components/ui/TextField";
 import { Tile } from "@/components/ui/Tile";
 import { toast } from "@/components/ui/Toast";
-import { TABS } from "@/lib/motion/controls";
+import { BUTTON, TABS } from "@/lib/motion/controls";
 
 /** The reference's ghost-button arrow (16 px, stroke 2.2). */
 export function GhostArrow(): React.JSX.Element {
@@ -40,6 +42,12 @@ export function LabSection(): React.JSX.Element {
   const [reward, setReward] = useState<(typeof REWARDS)[number]["value"]>("coffee");
   const [tab, setTab] = useState<(typeof TAB_ITEMS)[number]["value"]>("wallet");
   const panel = TAB_PANELS[tab];
+  const [rating, setRating] = useState(0);
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState<string | undefined>(undefined);
+  const [tries, setTries] = useState(0);
+  const [sent, setSent] = useState<string | null>(null);
+  const emailInput = useRef<HTMLInputElement>(null);
   return (
     <section aria-labelledby="m-lab" className="m-lab-section">
       <div className="m-sec-head">
@@ -181,6 +189,87 @@ export function LabSection(): React.JSX.Element {
             the direction you moved and the number <b>counts up</b>.
           </p>
         </Tile>
+
+        <Tile data-parity="stars-tile">
+          <div className="m-t-head">
+            <h3>Rate your visit</h3>
+            <span className="m-chip">ignite · 70 ms stagger</span>
+          </div>
+          <div className="m-demo m-demo-col m-demo-start">
+            <StarRating parity="stars" value={rating} onChange={setRating} />
+          </div>
+          <p className="m-how">
+            Stars <b>ignite one after another</b> with a spark each. Any rating gets the{" "}
+            <b>same two equal choices</b>, so the review rules stay intact.
+          </p>
+        </Tile>
+
+        <Tile data-parity="text-field-tile" className="m-w5">
+          <div className="m-t-head">
+            <h3>Input</h3>
+            <span className="m-chip">focus · error · success</span>
+          </div>
+          <div className="m-demo">
+            <form
+              className="m-fform"
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+              }}
+            >
+              <TextField
+                ref={emailInput}
+                parity="text-field"
+                label="Email address"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setEmailError(undefined);
+                  setSent(null);
+                }}
+                error={emailError}
+                errorKey={tries}
+                valid={sent !== null}
+              />
+              <Button
+                type="submit"
+                size={46}
+                resultLabel="Link sent"
+                resultMs={BUTTON.signInBackMs}
+                celebrate={{ coins: 0 }}
+                onClick={() => {
+                  const v = email.trim();
+                  if (!EMAIL.test(v)) {
+                    setTries((n) => n + 1);
+                    setEmailError(
+                      v
+                        ? "That email looks incomplete. Check it has an @ and a domain, like name@example.co.uk."
+                        : "Enter your email address to get a sign-in link.",
+                    );
+                    setSent(null);
+                    emailInput.current?.focus();
+                    return false;
+                  }
+                  setEmailError(undefined);
+                  setSent(v);
+                  return true;
+                }}
+              >
+                Send sign-in link
+              </Button>
+              <p className="m-err" aria-live="polite">
+                {sent === null ? "" : `Sign-in link sent to ${sent}. It works for 15 minutes.`}
+              </p>
+            </form>
+          </div>
+          <p className="m-how">
+            A beam of gold runs out <b>from where you tapped</b>. A bad address <b>shakes</b> and
+            says how to fix it; a good one draws a tick and sparks.
+          </p>
+        </Tile>
       </div>
     </section>
   );
@@ -203,3 +292,6 @@ const TAB_PANELS: Record<(typeof TAB_ITEMS)[number]["value"], { n: number; text:
   offers: { n: 12, text: "live drops near Camden" },
   market: { n: 48, text: "new listings this week" },
 };
+
+/** The reference's address check (the Input tile). */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;

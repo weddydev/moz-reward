@@ -1207,3 +1207,219 @@ html:root.rm .m-tile {
 .m-tabpanel:focus-visible {
   border-radius: 12px;
 }
+
+/* ---------- text field (PD-06; reference `.field`, `.beam`, `.okmark`) ---------- */
+.m-field-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.m-field {
+  position: relative;
+}
+/* Right padding keeps a long value clear of the tick (the field at rest is the reference's). The focus ring is
+   the global one (DESIGN §13); the reference draws none on its field. */
+.m-field input {
+  width: 100%;
+  height: 58px;
+  border: 0;
+  border-radius: 16px 16px 6px 6px;
+  background: var(--ivory);
+  padding: 22px 44px 6px 16px;
+  font:
+    600 16px/1 var(--font-manrope),
+    system-ui,
+    sans-serif;
+  color: var(--ink);
+  box-shadow: inset 0 -1px 0 rgba(178, 128, 28, 0.45);
+}
+.m-field input::placeholder {
+  color: var(--ink-3);
+  font-weight: 500;
+}
+.m-field input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+/* The reference's ink-3 is below AA for a 16 px label (DECISIONS 22 Nov "PD-05 secondary text"): ink-2. */
+.m-field label {
+  position: absolute;
+  left: 16px;
+  top: 19px;
+  max-width: calc(100% - 60px);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 16px;
+  color: var(--ink-2);
+  pointer-events: none;
+  transform-origin: left;
+  transition:
+    transform 0.35s var(--spring),
+    color 0.2s;
+}
+/* Up on focus, with a value (typed, pasted or autofilled) or under a shown placeholder. */
+.m-field input:focus + label,
+.m-field input:not(:placeholder-shown) + label,
+.m-field[data-placeholder] label {
+  transform: translateY(-11px) scale(0.76);
+  color: var(--gold-deep);
+  font-weight: 700;
+}
+.m-field input:-webkit-autofill + label {
+  transform: translateY(-11px) scale(0.76);
+  color: var(--gold-deep);
+  font-weight: 700;
+}
+.m-field input:autofill + label {
+  transform: translateY(-11px) scale(0.76);
+  color: var(--gold-deep);
+  font-weight: 700;
+}
+/* The beam runs out from the tap point (`--ox`, set on press; the centre for keyboard focus). */
+.m-beam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.5px;
+  background: var(--metal);
+  transform: scaleX(0);
+  transform-origin: var(--ox, 50%) 50%;
+  transition: transform 0.55s var(--ease-out);
+  pointer-events: none;
+}
+.m-field input:focus ~ .m-beam {
+  transform: scaleX(1);
+}
+.m-field[data-state="bad"] .m-beam {
+  background: var(--danger);
+  transform: scaleX(1);
+}
+.m-okmark {
+  position: absolute;
+  right: 14px;
+  top: 17px;
+  width: 24px;
+  height: 24px;
+  stroke: var(--success);
+  stroke-width: 2.6;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  transition: stroke-dashoffset 0.4s var(--ease-out);
+  pointer-events: none;
+}
+.m-field[data-state="good"] .m-okmark {
+  stroke-dashoffset: 0;
+}
+.m-field-msg {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.m-field-msg.m-field-err {
+  color: var(--danger);
+}
+
+/* ---------- star rating (PD-06; reference `.stars`, `.star`, `.rate-txt`, `.rate-actions`, `pop`) ---------- */
+.m-rate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+}
+.m-rate svg.m-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.m-stars {
+  display: flex;
+  gap: 6px;
+}
+.m-star {
+  border: 0;
+  background: none;
+  padding: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.35s var(--spring);
+}
+.m-star:disabled {
+  cursor: default;
+}
+/* Inline, like the reference: the line box makes the button 52 px tall (display: block gave 46). */
+.m-star svg {
+  width: 38px;
+  height: 38px;
+  fill: var(--star-off);
+  stroke: rgba(178, 128, 28, 0.55);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+  transition: fill 0.2s;
+}
+/* Hover preview, fine pointers only (no sticky hover on touch). */
+@media (hover: hover) and (pointer: fine) {
+  .m-stars:hover .m-star svg {
+    fill: var(--star-hover);
+  }
+  .m-star.pre svg {
+    fill: var(--gold-light);
+  }
+  .m-star.pre {
+    transform: translateY(-3px) scale(1.08);
+  }
+}
+/* Lit: the metal gradient (the star's own, on its path) with a gold glow. */
+.m-star.lit svg {
+  stroke: var(--gold-deep);
+  filter: drop-shadow(0 3px 8px rgba(255, 190, 50, 0.6));
+}
+.m-rate-txt {
+  margin: 0;
+  font:
+    600 20px/1.2 var(--font-fraunces),
+    Georgia,
+    serif;
+  min-height: 1.2em;
+}
+/* The same two choices for every rating (COMPLIANCE §1): equal in size, look and order. */
+.m-rate-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+.m-rate-actions button {
+  height: 44px;
+  border-radius: 999px;
+  border: 1.5px solid var(--gold);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+}
+.m-rate-actions[data-show] button {
+  animation: m-pop 0.5s var(--spring) both;
+}
+.m-rate-actions[data-show] button + button {
+  animation-delay: 0.06s;
+}
+@keyframes m-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

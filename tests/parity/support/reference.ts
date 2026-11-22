@@ -179,6 +179,27 @@ export async function capture(page: Page, part: string): Promise<Buffer> {
     },
     { name: part, isolate, ownHeight, alone },
   );
+  // A tile shrunk to its own height redraws its gilded edge from a ResizeObserver (the reference's `draw`, the
+  // app's GildedEdge). Wait for that delivery: WebKit can otherwise take the shot first, and the old viewBox is
+  // scaled into the shorter tile (PD-06: the Input tile's seam ran through its title in WebKit only). A
+  // ResizeObserver observed now is notified in the same delivery, after the page's own, whatever the page clock.
+  if (ownHeight)
+    await page.evaluate(
+      (name) =>
+        new Promise<void>((done) => {
+          const el = document.querySelector(`[data-parity="${name}"]`);
+          if (!el) {
+            done();
+            return;
+          }
+          const ro = new ResizeObserver(() => {
+            ro.disconnect();
+            done();
+          });
+          ro.observe(el);
+        }),
+      part,
+    );
   return page.screenshot({ clip: box, caret: "hide" });
 }
 

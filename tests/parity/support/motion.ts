@@ -24,6 +24,18 @@ export type Trigger = {
   waitFor?: string;
   /** Named beats captured besides 0/25/50/75/100% (the liquid pour's stretch at 42% and overshoot at 76%). */
   beats?: readonly number[];
+  /**
+   * Focus the target after the events (a text field's beam runs on focus). Focus rings are hidden on both pages
+   * for that capture: the app keeps DESIGN §13's ring on its field, the reference draws none, and a ring is not
+   * motion (DECISIONS 23 Nov "PD-06 field focus ring").
+   */
+  focus?: true;
+  /**
+   * Page-clock time to run after the events, for a part whose motion starts on timers (the stars ignite 70 ms
+   * apart); then the harness waits for `until` (a selector) and pauses every animation again.
+   */
+  runFor?: number;
+  until?: string;
 };
 
 /** Triggers by part name. Each PD task adds the triggers of the parts it builds. Hover-driven rows (orbit and
@@ -47,6 +59,16 @@ export const TRIGGERS: Record<string, Trigger> = {
     waitFor: '[data-parity="toast"] > *',
   },
   tabs: { target: '[role="tab"]:nth-of-type(2)', events: ["click"] },
+  // Three stars: they ignite 70 ms apart (page-clock timers, run on both pages), the word rises in and the two
+  // equal choices pop in.
+  stars: {
+    target: '[role="radio"]:nth-of-type(3)',
+    events: ["click"],
+    runFor: 150,
+    until: '[data-parity="stars"] > .lit:nth-of-type(3)',
+  },
+  // A tap in the middle of the field: the beam runs out from the centre, the label floats.
+  "text-field": { target: "input", events: ["pointerdown"], focus: true },
 };
 
 /** Fires a part's trigger and pauses every time-based animation at once (see `Trigger`). */
@@ -76,16 +98,24 @@ export async function fire(page: Page, part: string): Promise<void> {
             : new MouseEvent(type, at),
         );
       }
+      if (t.focus) {
+        const style = document.createElement("style");
+        style.textContent = ":focus-visible{outline:none!important}";
+        document.head.append(style);
+        (el as HTMLElement).focus();
+      }
       void document.documentElement.getBoundingClientRect(); // style now, so new transitions exist
       for (const a of document.getAnimations()) if (a.timeline === document.timeline) a.pause();
     },
     { name: part, t: trigger },
   );
-  if (trigger.waitFor) {
+  if (trigger.runFor !== undefined) await page.clock.runFor(trigger.runFor);
+  const settle = trigger.waitFor ?? trigger.until;
+  if (settle) {
     // Polled from the test: under the paused page clock in-page polling never runs.
     const deadline = Date.now() + 5_000;
-    while (!(await page.evaluate((sel) => document.querySelector(sel) !== null, trigger.waitFor))) {
-      if (Date.now() > deadline) throw new Error(`${part} never appeared (${trigger.waitFor})`);
+    while (!(await page.evaluate((sel) => document.querySelector(sel) !== null, settle))) {
+      if (Date.now() > deadline) throw new Error(`${part} never appeared (${settle})`);
       await new Promise((r) => setTimeout(r, 50));
     }
     await page.evaluate(() => {

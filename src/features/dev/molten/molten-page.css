@@ -348,3 +348,22 @@ body:has(.m-page) {
   color: var(--ink-2);
   font-size: 14px;
 }
+/* The Input tile's form (reference `.fform`, `.err`, `.err.okmsg`): the line under the button holds the success
+   message; an error sits under the field (TextField, DESIGN §6 "errors below"). */
+.m-fform {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+.m-err {
+  margin: 0;
+  min-height: 1.3em;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--success);
+}
+/* Rate your visit (reference: inline `align-items:flex-start; gap:12px` on its .demo; the gap is the rating's). */
+.m-demo.m-demo-start {
+  align-items: flex-start;
+  gap: 12px;
+}

@@ -7,19 +7,18 @@ Baton: held by talha.syed since 2026-11-22 17:32 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 22 Nov 2026 ~18:20 UTC (Mac); baton held.** **PD-05 closed** (ticked; close commit on `wip/PD-05`, then the same commit on main once its CI is green: main CI turns green with it). Code `9ec3855` by Syedbadeshah76; CI 45042534742 + full 5-project 45042543781 green on it.
-- **Gate:** no single `gate:task PD-05` run passed: both failed only on the Mac Linux-container `page.goto` stall (navigations starting in one 3–5 s window hang 30–60 s, every 1.5–2.5 min; never on CI). Every step passed on `9ec3855` separately (SESSION_LOG 18:15). 1 h infra time-box spent: not VM memory, not the Next server, not output pipes. Quarantined: **C-76 → PD-B close**, **T-6** (per-step close allowed only for this stall), DECISIONS 22 Nov. Next step for it: log forwarder connects/latency in `scripts/e2e-linux.ts` (FOLLOWUPS [P0-14 infra]) and read the log on the next stall.
-- **Main:** the PD-05 close went to main with a one-time `--no-verify` (human; the hook's gate hit C-76 stalls + the overlays flick flake). Check CI on main first.
-- **Continue here:** 1) CI 45054086915 on main `c0610ec` (running at checkpoint; red → fix first). 2) **PD-06** (Tabs, text field, star rating, slider, member card; `docs/phases/PD.md` §PD-06) on a new `wip/PD-06` from main. Read DESIGN §6.3, §7.4, reference `.seg* .panel .field .beam .stars .slider .mcard*`, COMPLIANCE §1; FOLLOWUPS lines tagged PD-06 (LiquidChoice/Checkbox motion from the value-change effect; `--chk-box`; `useCountUp` live text). 3) PD-B close.
-- **Not yet tested:** CI 45054086915 on main `c0610ec` (same code as green `9ec3855` + progress files); laptop WebKit E2E of `molten-choices` (CI's WebKit step is the evidence); real iPhone goo cost (H-13).
+- **Checkpoint by talha.syed, 23 Nov 2026 ~00:50 local (Mac); baton held. Human: autopilot ON (`/resume autopilot`); finish PD-06 properly, then close PD-B as fast as possible.**
+- **PD-06 in progress on `wip/PD-06`** (HEAD = the "wip(PD-06): b+c" commit pushed with this checkpoint). Lettered steps: **a Tabs done** (`31347b1`: parity 12/0 both engines, Linux E2E 22/0); **b TextField built** (float label, beam from tap point, shake on new error / `errorKey`, `valid` tick, `ref` prop; Button `resultMs`; Input tile; parity text-field + tile pass with a documented label tolerance; harness: `focus` trigger hides rings on both pages, `capture` waits for ResizeObserver delivery after `ownHeight`, full parity 120/0); **c StarRating built** (`src/components/ui/StarRating.tsx`, COMPLIANCE §1 unit tests pass, spec row required, harness `runFor`/`until` for timer-driven ignite) but **its parity failed** (stars 46 vs 52 px tall: fixed by dropping `display:block` on `.m-star svg`; **re-run NOT done**).
+- **Continue here:** 1) `pnpm test:parity --grep "PD-06"` → fix stars/Rate tile until green (both engines). 2) `pnpm e2e:linux tests/e2e/molten-fields.spec.ts tests/e2e/ui-states.spec.ts --project chromium` (last run: the label-float test failed only from a missing scroll, fixed; 3 ui-states `page.goto` timeouts = C-76 stall, rerun alone); add StarRating E2E (keyboard, rapid taps, reduced motion, both choices visible after any rating) + stars-tile screens. 3) Step d **Slider** (`.slider`, coin thumb, tilting bubble ±28°, notch sparks once each; native range underneath), then remove `ownHeight` from `tabs-tile`/`stars-tile`. 4) Step e **MemberCard** (holo, glare, tilt, flip to QR placeholder, idle sway touch-only; no tilt under RM/iOS), remove `ownHeight` from `text-field-tile`. 5) Close: `gate:task PD-06`, `design-reviewer` + `review-animations`, DECISIONS (countUp no pre-frame write; field focus ring kept; TextField error under the field; label ink-2 tolerance; harness ResizeObserver wait + runFor/until), FOLLOWUPS (TextArea/Select still old look → PD-11; LiquidChoice/Checkbox value-change motion and `--chk-box` lines tagged PD-06 still open), tick PHASES. 6) PD-B close (`/subphase-complete`, C-76 first).
+- **Not yet tested:** StarRating parity + E2E; Linux E2E of the text-field tests after the scroll fix; CI on `wip/PD-06` 45055638163 (step a) and main 45054086915 (`c0610ec`, running at checkpoint: check first).
 - **Windows laptop (WSL):** local WebKit only with `--workers 1`; never push or run suites while a gate runs; on a wip branch update main with `git fetch`, not `git pull --rebase origin main`.
-- **Before work:** nothing new (no env vars, migrations or seeds).
+- **Before work:** nothing new (no env vars, migrations or seeds). New tokens `--star-off`, `--star-hover`.
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov; `docs/phases/PD.md`). Then P1 resumes with the P1-B close. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
 - **Current sub-phase:** **PD-B** Controls: ~~PD-04~~ → ~~PD-05~~ → PD-06 → close; then PD-C (structure + signature moments, needs H-49). **PD-A closed 22 Nov.** **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done; staging step done 22 Nov with H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-22 (~18:20 UTC), talha.syed (PD-05 closed on per-step gate evidence; container stall quarantined C-76/T-6)
+- **Last updated:** 2026-11-23 (~00:50 local), talha.syed (PD-06 steps a–c on wip/PD-06; autopilot on)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -28,7 +27,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-04 on main 22 Nov; **PD-05 closed 22 Nov** (code `9ec3855`; carries the main CI fixes). Next PD-06, PD-B close (incl. C-76).
 
 ## Next (top 3)
-1. PD-06 on `wip/PD-06` (after the PD-05 close commit is on main).
+1. PD-06 on `wip/PD-06`: stars parity re-run, then Slider (d), MemberCard (e), close; then PD-B close fast (human, 23 Nov).
 2. Check the first nightly `perf` job (scheduled.yml, 02:29 UTC) and red CI first, as always.
 3. PD-B close (C-76 container stall root cause first). Human any time: H-51 (b) optional dev keys, H-48b, H-38, H-45, H-46.
 

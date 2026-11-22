@@ -1,5 +1,5 @@
 import { RM_MAX_MS } from "./anim";
-import { BUTTON, HEART, LIQUID, SEAL, SWITCH, TABS, TOAST } from "./controls";
+import { BUTTON, FIELD, HEART, LIQUID, SEAL, STARS, SWITCH, TABS, TOAST } from "./controls";
 import { FX } from "./fx";
 import { type Locator } from "./molten-reference";
 import { PRESS } from "./press";
@@ -376,16 +376,52 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "stars",
     element: "Stars",
     task: "PD-06",
-    status: "pending",
+    status: "required",
     values: [
-      { name: "star pop", value: "480", ref: js("stars.slice(0, val)", /duration: (\d+)/g) },
-      { name: "sparks per star", value: "7", ref: js("stars.slice(0, val)", /count: (\d+)/g) },
-      { name: "label", value: "300", ref: js("stars.slice(0, val)", /duration: (\d+)/g, 1) },
-      { name: "stagger", value: "70", ref: js("stars.slice(0, val)", /delay: val \* (\d+)/g) },
+      {
+        name: "star pop",
+        value: "480",
+        ref: js("stars.slice(0, val)", /duration: (\d+)/g),
+        prod: { value: () => STARS.popMs },
+      },
+      {
+        name: "sparks per star",
+        value: "7",
+        ref: js("stars.slice(0, val)", /count: (\d+)/g),
+        prod: { value: () => STARS.sparks },
+      },
+      {
+        name: "label",
+        value: "300",
+        ref: js("stars.slice(0, val)", /duration: (\d+)/g, 1),
+        prod: { value: () => STARS.labelMs },
+      },
+      {
+        name: "stagger",
+        value: "70",
+        ref: js("stars.slice(0, val)", /delay: val \* (\d+)/g),
+        prod: { value: () => STARS.staggerMs },
+      },
       {
         name: "the two choices",
         value: ".5s var(--spring) both",
         ref: css(".rate-actions.show button", "animation", "pop"),
+        prod: {
+          file: MOLTEN_CSS,
+          css: ".m-rate-actions[data-show] button",
+          prop: "animation",
+          part: "m-pop",
+        },
+      },
+      {
+        name: "second choice delay",
+        value: ".06s",
+        ref: css(".rate-actions.show button + button", "animation-delay"),
+        prod: {
+          file: MOLTEN_CSS,
+          css: ".m-rate-actions[data-show] button + button",
+          prop: "animation-delay",
+        },
       },
     ],
   },
@@ -416,19 +452,42 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "text-field",
     element: "Text field",
     task: "PD-06",
-    status: "pending",
+    status: "required",
     values: [
-      { name: "beam", value: ".55s var(--ease-out)", ref: css(".beam", "transition", "transform") },
+      {
+        name: "beam",
+        value: ".55s var(--ease-out)",
+        ref: css(".beam", "transition", "transform"),
+        prod: { file: MOLTEN_CSS, css: ".m-beam", prop: "transition", part: "transform" },
+      },
       {
         name: "label",
         value: ".35s var(--spring)",
         ref: css(".field label", "transition", "transform"),
+        prod: { file: MOLTEN_CSS, css: ".m-field label", prop: "transition", part: "transform" },
       },
-      { name: "shake", value: "420", ref: js("anim(field", /duration: (\d+)/g) },
+      {
+        name: "shake",
+        value: "420",
+        ref: js("anim(field", /duration: (\d+)/g),
+        prod: { value: () => FIELD.shakeMs },
+      },
       {
         name: "tick",
         value: ".4s var(--ease-out)",
         ref: css(".field .okmark", "transition", "stroke-dashoffset"),
+        prod: {
+          file: MOLTEN_CSS,
+          css: ".m-okmark",
+          prop: "transition",
+          part: "stroke-dashoffset",
+        },
+      },
+      {
+        name: "sign-in label back",
+        value: "2200",
+        ref: js("celebrate(btn, null, 0)", /rollLabel\(btn, (\d+)\)/g),
+        prod: { value: () => BUTTON.signInBackMs },
       },
     ],
   },

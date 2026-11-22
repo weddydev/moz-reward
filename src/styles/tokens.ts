@@ -157,6 +157,8 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
       { name: "gild-shine", use: "Light gliding along the edge" },
       { name: "gild-glint", use: "Gem glint star" },
       { name: "pour-edge", use: "Coin switch pour, its bulging leading edge (PD-05)" },
+      { name: "star-off", use: "Star rating, an unlit star (PD-06)" },
+      { name: "star-hover", use: "Star rating, stars under a hovering pointer (PD-06)" },
       { name: "on-obsidian", use: "Text on obsidian" },
       { name: "on-obsidian-2", use: "Small text on obsidian" },
       { name: "on-obsidian-3", use: "List text on obsidian" },

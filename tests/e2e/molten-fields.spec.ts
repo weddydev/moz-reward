@@ -118,7 +118,79 @@ test("[PD-06] tabs under reduced motion: no slide, the number shows at once", as
   await expect(panel.locator('[aria-hidden="true"]')).toHaveText("48");
 });
 
-test("[PD-06] targets ≥ 44 px: every tab", async ({ page }) => {
+const emailField = (page: Page): Locator =>
+  page.locator('[data-parity="text-field-tile"]').getByLabel("Email address");
+const fieldBox = (input: Locator): Locator => input.locator("xpath=..");
+
+test("[PD-06] text field: an empty submit shakes, turns the beam red, explains and refocuses; typing clears it", async ({
+  page,
+}) => {
+  await open(page);
+  const input = emailField(page);
+  const send = page.getByRole("button", { name: "Send sign-in link" });
+  await send.click();
+  await expect(input).toHaveAttribute("aria-invalid", "true");
+  await expect(input).toHaveAccessibleDescription(
+    "Enter your email address to get a sign-in link.",
+  );
+  await expect(fieldBox(input)).toHaveAttribute("data-state", "bad");
+  await expect(input).toBeFocused();
+  // The same error again (a second failed submit) shakes again.
+  await send.click();
+  expect(await running(fieldBox(input))).toBeGreaterThanOrEqual(1);
+  // Typing clears the error.
+  await input.fill("a");
+  await expect(input).not.toHaveAttribute("aria-invalid", "true");
+  await expect(fieldBox(input)).not.toHaveAttribute("data-state");
+});
+
+test("[PD-06] text field: a pasted invalid address says how to fix it; a good one draws the tick and rolls the label", async ({
+  page,
+}) => {
+  await open(page);
+  const input = emailField(page);
+  await input.focus();
+  // Pasted, not typed: the whole value arrives in one input event.
+  await page.keyboard.insertText("aisha@example");
+  await page.keyboard.press("Enter");
+  await expect(input).toHaveAccessibleDescription(
+    "That email looks incomplete. Check it has an @ and a domain, like name@example.co.uk.",
+  );
+  await input.fill("aisha@example.co.uk");
+  await page.keyboard.press("Enter");
+  await expect(fieldBox(input)).toHaveAttribute("data-state", "good");
+  await expect(page.getByText("Sign-in link sent to aisha@example.co.uk.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Link sent" })).toBeVisible();
+});
+
+test("[PD-06] text field: the label floats on focus and with an autofilled value; the beam follows the tap point", async ({
+  page,
+}) => {
+  await open(page);
+  const input = emailField(page);
+  const label = fieldBox(input).locator("label");
+  const scale = (): Promise<number> =>
+    label.evaluate((l) => new DOMMatrixReadOnly(getComputedStyle(l).transform).a);
+  await expect.poll(scale).toBe(1);
+  // A tap near the left edge: the beam's origin is there.
+  await input.scrollIntoViewIfNeeded();
+  const box = await input.boundingBox();
+  if (!box) throw new Error("no field box");
+  await page.mouse.click(box.x + box.width * 0.2, box.y + box.height / 2);
+  await expect(input).toBeFocused();
+  const ox = await fieldBox(input).evaluate((f) => f.style.getPropertyValue("--ox"));
+  expect(Number.parseFloat(ox)).toBeGreaterThan(15);
+  expect(Number.parseFloat(ox)).toBeLessThan(25);
+  await expect.poll(scale, { timeout: 5_000 }).toBeCloseTo(0.76, 2);
+  // A value set without typing (what autofill does) keeps the label up after blur.
+  await input.evaluate((el: HTMLInputElement) => {
+    el.value = "aisha@example.co.uk";
+    el.blur();
+  });
+  await expect.poll(scale, { timeout: 5_000 }).toBeCloseTo(0.76, 2);
+});
+
+test("[PD-06] targets ≥ 44 px: every tab and the text field", async ({ page }) => {
   await open(page);
   const tabs = await page.locator(".m-seg [role='tab']").filter({ visible: true }).all();
   expect(tabs.length).toBeGreaterThanOrEqual(3);
@@ -127,6 +199,8 @@ test("[PD-06] targets ≥ 44 px: every tab", async ({ page }) => {
     expect(b?.height ?? 0, `tab ${String(i)}`).toBeGreaterThanOrEqual(44);
     expect(b?.width ?? 0, `tab ${String(i)}`).toBeGreaterThanOrEqual(44);
   }
+  const field = await emailField(page).boundingBox();
+  expect(field?.height ?? 0).toBeGreaterThanOrEqual(44);
 });
 
 test("[PD-06] /dev/molten PD-06 tiles at 320, 390 and 1440: no horizontal scroll (screens for inspection)", async ({
@@ -144,7 +218,7 @@ test("[PD-06] /dev/molten PD-06 tiles at 320, 390 and 1440: no horizontal scroll
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow, `/dev/molten at ${String(width)}`).toBeLessThanOrEqual(0);
-    for (const tile of ["tabs-tile"]) {
+    for (const tile of ["tabs-tile", "text-field-tile"]) {
       await page.locator(`[data-parity="${tile}"]`).scrollIntoViewIfNeeded();
       await shoot(`molten-${tile}-${String(width)}`, { fullPage: false });
     }

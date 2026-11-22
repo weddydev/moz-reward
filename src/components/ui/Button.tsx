@@ -38,6 +38,8 @@ type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
   icon?: ReactNode;
   /** The label the button rolls to after a successful click (DESIGN §7.4 label roll). */
   resultLabel?: string;
+  /** How long the result label shows before rolling back (default 1.7 s; the reference's sign-in button: 2.2 s). */
+  resultMs?: number;
   /** Sparks (and `coins`, default 6) from the press point after a successful click. Opt-in. */
   celebrate?: boolean | { coins: number };
   /** May be async: resolving to `false` (or throwing) means "not a success": no roll, no celebration. */
@@ -71,6 +73,7 @@ export function Button({
   loading = false,
   icon,
   resultLabel,
+  resultMs = BUTTON.labelBackMs,
   celebrate,
   className,
   children,
@@ -105,7 +108,7 @@ export function Button({
       celebrating.current = false;
       el.classList.remove("ok");
       setRolled(false);
-    }, BUTTON.labelBackMs);
+    }, resultMs);
   };
 
   const handleClick = (e: MouseEvent<HTMLButtonElement>): void => {

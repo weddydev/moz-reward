@@ -169,16 +169,41 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     anchor: '<article class="tile w4"',
     task: "PD-06",
     status: "required",
+    // Until PD-06 builds its row-mates (Rate your visit, Molten slider), which set the row's height.
+    ownHeight: true,
   },
   { name: "tabs", title: "Tabs", anchor: 'id="seg"', task: "PD-06", status: "required" },
-  { name: "stars", title: "Star rating", anchor: 'id="stars"', task: "PD-06", status: "pending" },
+  {
+    name: "stars-tile",
+    title: "Rate your visit tile",
+    anchor: '<article class="tile w4"',
+    task: "PD-06",
+    status: "required",
+    // Until PD-06 builds its row-mate (Molten slider), which can set the row's height.
+    ownHeight: true,
+  },
+  { name: "stars", title: "Star rating", anchor: 'id="stars"', task: "PD-06", status: "required" },
   { name: "slider", title: "Slider", anchor: 'id="slider"', task: "PD-06", status: "pending" },
+  {
+    name: "text-field-tile",
+    title: "Input tile",
+    anchor: '<article class="tile w5"',
+    task: "PD-06",
+    status: "required",
+    // Until PD-06 builds its row-mate (Member card), which sets the row's height.
+    ownHeight: true,
+  },
   {
     name: "text-field",
     title: "Text field",
     anchor: 'id="field"',
     task: "PD-06",
-    status: "pending",
+    status: "required",
+    tolerance: {
+      browser: "all",
+      max: 0.03,
+      why: 'the resting label is ink-2, not the reference\'s ink-3, which is below AA at 16 px (DECISIONS 22 Nov "PD-05 secondary text"); measured 1.2-1.8% static, 2.6% at the first frame (390, both engines)',
+    },
   },
   {
     name: "member-card",

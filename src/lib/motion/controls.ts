@@ -5,6 +5,8 @@
 export const BUTTON = {
   /** Label rolls back to the idle text after (reference `rollLabel` ms = 1700). */
   labelBackMs: 1700,
+  /** The Input tile's sign-in button rolls back later (reference `rollLabel(btn, 2200)`). */
+  signInBackMs: 2200,
 } as const;
 
 export const HEART = {
@@ -137,4 +139,27 @@ export const TABS = {
   panelShiftPx: 32,
   /** The panel's number counts up from 0 (cubic out). */
   countUpMs: 650,
+} as const;
+
+/** Text field (PD-06; reference `.field`, `.beam`, `.okmark` + "input"). The beam, label and tick are CSS. */
+export const FIELD = {
+  /** A new error shakes the field (−10, 9, −6, 3 px, ease-out). */
+  shakeMs: 420,
+  shakePx: [0, -10, 9, -6, 3, 0] as const,
+} as const;
+
+/** Star rating (PD-06; reference `.stars`, `.star`, `.rate-*` + "stars"). The two choices' pop is CSS. */
+export const STARS = {
+  /** Each chosen star pops (.6 → 1.3 at half → 1, rotating −20° → 8° → 0). */
+  popMs: 480,
+  popEasing: "cubic-bezier(.3,1.4,.5,1)",
+  /** One star after another. */
+  staggerMs: 70,
+  sparks: 7,
+  sparkSpeed: [80, 200] as const,
+  sparkLife: [0.3, 0.55] as const,
+  /** The rating's word rises in after the last star (delay = rating × stagger). */
+  labelMs: 300,
+  /** What each rating says (0 = none yet). */
+  words: ["Tap a star", "Poor", "Fair", "Good", "Great", "Outstanding"] as const,
 } as const;
