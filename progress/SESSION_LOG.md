@@ -853,3 +853,8 @@ PD-05 coin switch, liquid choice, segmented control, seal checkbox (code by Syed
 Gate run 1: all PASS except PD-05 E2E 20/4 (4 desktop1440 `page.goto` 60 s stalls; spec alone 8/0, 3 projects 24/0). Run 2: PD-05 E2E 24/0; changed specs 477/14 (all goto stalls in 4 windows); reruns 170/0(+2 overlays timing, then overlays 50/0); parity PD-05 44/0 Chromium + WebKit; unit 1883/0, int 1456/0/1.
 Stall diagnosis (1 h time-box): not VM memory, not the Next server, not output pipes; quarantined C-76/T-6 → PD-B close. DECISIONS: toast axe exclusion; per-step close. FOLLOWUPS: alerts.test.ts injected clock.
 Main push: hook gate (ids PD-06) changed specs 488/3 (2 container stalls, overlays:334 flick under load) → human chose a one-time `--no-verify` (DECISIONS 22 Nov); flick flake → FOLLOWUPS.
+
+## 2026-11-23 00:50 — PD — PD-06 steps a–c (Tabs, TextField, StarRating) on wip/PD-06
+Done: a Tabs (`31347b1`); b TextField + Input tile; c StarRating + Rate tile (parity not yet green). Harness: focus trigger, ResizeObserver wait after ownHeight, runFor/until.
+Tests: unit molten-fields 24/0 (+ spec/parts/ui/press 75/0); parity a 12/0; full parity 120/0 (before c); Linux E2E b 53 pass / 4 fail (1 test bug fixed, 3 C-76 goto stalls).
+Left off: re-run PD-06 parity for stars after the svg-height fix; then Slider (d).
