@@ -816,3 +816,7 @@ Gate `1354def` PASS on the Mac (perf 3/0) → main `74fba5b`; CI 44994545759 gre
 Process change (human-approved; DECISIONS 22 Nov): CI-green-only main (`ciVerdict`), WebKit on CI every push (`e2e:ci-webkit`), `@fps` nightly + gate:phase, `canEmulate` guard, Windows → WSL2 (H-51), checkpoint per task, 1 h infra time-box. Gate `7afcd9c` PASS (E2E 128/0, perf 5/0/1, changed 66/0); first run's 3 routes-axe timeouts were load (42/0 alone).
 H-48 Claude part: DSN URL-shaped (len 95) in web-1/web-2/worker; Sentry probe 200 (`bdc54839…`) → H-48b. QA (qa-engineer, 7 routes × 2 engines × 3 widths): 0 majors, 2 pre-existing minors → FOLLOWUPS. Docker tidy: 49 volumes, 2.75 GB images.
 code-review done 7afcd9c (range d43774c..7afcd9c: APPROVE WITH FIXES; HIGH every-page WebKit run + M1 red conclusions + M2 gate:phase fps verdict fixed test-first; 3 LOW → FOLLOWUPS).
+
+## 2026-11-22 (~08:45 UTC) — PD — handoff by talha.syed (Mac)
+PD-04 built and reviewed on `wip/PD-04` (`2fbeb3e`): parity 26/26 both engines, unit 1852/0, design review PASS WITH FIXES (7 MEDIUM + 4 LOW fixed). Not on main yet: gate + CI on `2fbeb3e` were running at handoff (every-page WebKit run). Main `e8e9eae`. Baton freed.
+
