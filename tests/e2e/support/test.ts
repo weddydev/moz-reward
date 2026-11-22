@@ -93,7 +93,11 @@ async function axeProblems(page: Page, baseURL: string | undefined): Promise<Gua
         }),
     )
     .catch(() => undefined);
-  const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
+  // Toasts are left out: each runs on its own 3.6 s timer, so one can start its 260 ms fall-and-fade while
+  // the scan is running, after the wait above, and axe then reads its fading text as low contrast (full CI
+  // 45037229830, loyalty-settings on Pixel 7). A fully shown toast is axe-checked in overlays.spec
+  // "[P0-09] toast open: axe clean".
+  const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).exclude(".m-toast").analyze();
   return results.violations
     .filter((v) => v.impact === "serious" || v.impact === "critical")
     .map((v) => ({
