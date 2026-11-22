@@ -25,9 +25,9 @@ export type Trigger = {
   /** Named beats captured besides 0/25/50/75/100% (the liquid pour's stretch at 42% and overshoot at 76%). */
   beats?: readonly number[];
   /**
-   * Focus the target after the events (a text field's beam runs on focus). Focus rings are hidden on both pages
-   * for that capture: the app keeps DESIGN §13's ring on its field, the reference draws none, and a ring is not
-   * motion (DECISIONS 23 Nov "PD-06 field focus ring").
+   * Focus the target after the events (a text field's beam runs on focus). Focus rings (outline and halo) are
+   * hidden on both pages for that capture, the target keeping its unfocused shadow: the app keeps DESIGN §13's
+   * ring on its field, the reference draws none, and a ring is not motion (DECISIONS 23 Nov "PD-06 field focus ring").
    */
   focus?: true;
   /**
@@ -102,7 +102,10 @@ export async function fire(page: Page, part: string): Promise<void> {
         const style = document.createElement("style");
         style.textContent = ":focus-visible{outline:none!important}";
         document.head.append(style);
-        (el as HTMLElement).focus();
+        // The ring's halo is a box-shadow: keep the target's unfocused shadow (the field's underline) instead.
+        const html = el as HTMLElement;
+        html.style.setProperty("box-shadow", getComputedStyle(html).boxShadow, "important");
+        html.focus();
       }
       void document.documentElement.getBoundingClientRect(); // style now, so new transitions exist
       for (const a of document.getAnimations()) if (a.timeline === document.timeline) a.pause();

@@ -1234,6 +1234,11 @@ html:root.rm .m-tile {
   color: var(--ink);
   box-shadow: inset 0 -1px 0 rgba(178, 128, 28, 0.45);
 }
+/* `.m-field input` outranks the global `:focus-visible` (both unlayered), so the ring's halo is restated here:
+   keyboard focus shows the reference ring alone, in place of the field's own underline shadow. */
+.m-field input:focus-visible {
+  box-shadow: 0 0 0 5px var(--focus-ring);
+}
 .m-field input::placeholder {
   color: var(--ink-3);
   font-weight: 500;
