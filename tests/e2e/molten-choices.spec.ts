@@ -6,6 +6,11 @@ import { expect, test } from "./support/test";
  * behaviour the parity harness can't see (keyboard, rapid input, resize mid-pour, lite tier, reduced motion,
  * targets) and the screens for inspection. Pixel and motion parity: tests/parity.
  */
+// /dev/ui is the longest page: the guard's closing axe scan of it alone takes much of the default 30 s on the Linux
+// container, so a full test plus the scan timed out ("Tearing down guard", gate 22 Nov). Same limit as the other
+// /dev/ui specs (ui-gallery, ui-states); no assertion changes.
+test.describe.configure({ timeout: 60_000 });
+
 async function open(page: Page, path = "/dev/ui"): Promise<void> {
   await page.goto(path);
   // /dev/ui is long and can hydrate its segment after the root layout (C-20): wait for both.
