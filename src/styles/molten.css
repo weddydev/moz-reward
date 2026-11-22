@@ -961,7 +961,8 @@ html:root.rm .m-tile {
 .m-opt:active:not(:disabled) {
   transform: scale(0.94);
 }
-.m-opt:disabled {
+/* `data-disabled`, not `:disabled`: the hydration lock (C-20) must not flash the options dim. */
+.m-opt[data-disabled] {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -1002,7 +1003,8 @@ html:root.rm .m-tile {
 .m-chk {
   min-height: 44px;
 }
-.m-chk:has(.m-chk-input:disabled) {
+/* `data-disabled`, not `:disabled`: the hydration lock (C-20) must not flash the row dim. */
+.m-chk[data-disabled] {
   cursor: not-allowed;
   opacity: 0.55;
 }

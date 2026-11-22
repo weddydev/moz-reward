@@ -85,12 +85,16 @@ export const SEAL = {
 /** An option's place inside a liquid group: left edge, width and centre, in px from the group's padding box. */
 export type Slot = { x: number; w: number; c: number };
 
-/** Pure: the blob's pour from slot `a` to slot `b` (reference `select()`): stretch, overshoot, settle. */
-export function blobKeyframes(a: Slot, b: Slot): Keyframe[] {
+/**
+ * Pure: the blob's pour from slot `a` to slot `b` (reference `select()`): stretch, overshoot, settle. `from` is
+ * the blob's current computed transform when a pour is interrupted, so it carries on from the shape it is in
+ * (the reference restarts from a round blob on the old choice; design review 22 Nov).
+ */
+export function blobKeyframes(a: Slot, b: Slot, from?: string): Keyframe[] {
   const mid = (a.x + b.x) / 2;
   const dir = b.x > a.x ? 1 : -1;
   return [
-    { transform: `translateX(${String(a.x)}px) scale(1,1)` },
+    { transform: from ?? `translateX(${String(a.x)}px) scale(1,1)` },
     { transform: `translateX(${String(mid)}px) scale(1.3,.76)`, offset: LIQUID.stretchAt },
     {
       transform: `translateX(${String(b.x + dir * LIQUID.overshootPx)}px) scale(.92,1.1)`,
@@ -100,11 +104,14 @@ export function blobKeyframes(a: Slot, b: Slot): Keyframe[] {
   ];
 }
 
-/** Pure: droplet `k`'s arc from slot `a` to slot `b` (the first rises 12 px, the second dips 14 px). */
-export function dropKeyframes(a: Slot, b: Slot, k: number): Keyframe[] {
+/**
+ * Pure: droplet `k`'s arc from slot `a` to slot `b` (the first rises 12 px, the second dips 14 px); `from` is its
+ * current computed transform when a pour is interrupted mid-flight.
+ */
+export function dropKeyframes(a: Slot, b: Slot, k: number, from?: string): Keyframe[] {
   const r = LIQUID.dropSize / 2;
   return [
-    { transform: `translateX(${String(a.c - r)}px) translateY(0) scale(.7)` },
+    { transform: from ?? `translateX(${String(a.c - r)}px) translateY(0) scale(.7)` },
     {
       transform: `translateX(${String((a.c + b.c) / 2 - r)}px) translateY(${k ? "14" : "-12"}px) scale(1)`,
       offset: 0.5,

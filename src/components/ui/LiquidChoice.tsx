@@ -84,8 +84,10 @@ export function LiquidChoice<T extends string>({
   /** The chosen option, or -1 when nothing is chosen yet (no gold shows; the first option takes the tab stop). */
   const index = options.findIndex((o) => o.value === current);
   const n = options.length;
+  // The chosen option holds the tab stop unless it is disabled (then nothing could reach the group): the first
+  // enabled option takes it, as when nothing is chosen.
   const tabStop =
-    index >= 0
+    index >= 0 && options[index]?.disabled !== true
       ? index
       : Math.max(
           0,
@@ -125,10 +127,13 @@ export function LiquidChoice<T extends string>({
       const bSlot = slotOf(target);
       let aSlot = slotOf(origin);
       const running = animationsOf(b);
+      let shape: string | undefined;
       if (running.length > 0) {
-        // Retarget: start from the blob's current position and width, not from the old choice.
-        const x = new DOMMatrixReadOnly(getComputedStyle(b).transform).m41;
-        const w = b.getBoundingClientRect().width;
+        // Retarget: carry on from the gold's current position and shape (stretch included), not from the old
+        // choice. Its layout width (offsetWidth) is unscaled, so the droplets' start centre is right too.
+        shape = getComputedStyle(b).transform;
+        const x = new DOMMatrixReadOnly(shape).m41;
+        const w = b.offsetWidth;
         aSlot = { x, w, c: x + w / 2 };
       }
       for (const a of running) a.cancel();
@@ -138,17 +143,20 @@ export function LiquidChoice<T extends string>({
         place(to);
         return;
       }
-      anim(b, blobKeyframes(aSlot, bSlot), {
+      anim(b, blobKeyframes(aSlot, bSlot, shape), {
         duration: LIQUID.blobMs,
         easing: LIQUID.easing,
         fill: "none",
       });
       drops.current.forEach((d, k) => {
         if (!d) return;
-        for (const a of animationsOf(d)) a.cancel();
+        const flying = animationsOf(d);
+        // A droplet still in flight carries on from where it is.
+        const dropFrom = flying.length > 0 ? getComputedStyle(d).transform : undefined;
+        for (const a of flying) a.cancel();
         d.style.left = "0";
         d.style.transform = `translateX(${String(bSlot.c - LIQUID.dropSize / 2)}px)`;
-        anim(d, dropKeyframes(aSlot, bSlot, k), {
+        anim(d, dropKeyframes(aSlot, bSlot, k, dropFrom), {
           duration: LIQUID.dropsMs,
           delay: LIQUID.dropDelayMs + k * LIQUID.dropStaggerMs,
           easing: LIQUID.easing,
@@ -280,6 +288,8 @@ export function LiquidChoice<T extends string>({
           aria-checked={i === index}
           tabIndex={i === tabStop ? 0 : -1}
           disabled={groupDisabled || o.disabled === true || (controlled && !hydrated)}
+          // Dimmed only when really disabled, never for the hydration lock (C-20; design review 22 Nov).
+          data-disabled={groupDisabled || o.disabled === true ? "" : undefined}
           onClick={() => {
             choose(i, false);
           }}

@@ -91,7 +91,12 @@ export function Checkbox({
 
   return (
     <div className={cx("flex flex-col gap-1", className)}>
-      <label htmlFor={id} className="m-chk select-none">
+      <label
+        htmlFor={id}
+        className="m-chk select-none"
+        // Dimmed only when really disabled, never for the hydration lock (C-20; design review 22 Nov).
+        data-disabled={disabled ? "" : undefined}
+      >
         <input
           {...input}
           id={id}

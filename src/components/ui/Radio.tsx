@@ -64,8 +64,12 @@ export function RadioGroup<T extends string>({
   ) : null;
   if (variant === "cards")
     return (
-      <div className={cx("flex min-w-0 flex-col gap-2", disabled && "opacity-55", className)}>
-        <span id={`${id}-label`} className="text-small text-ink font-semibold">
+      // The options dim themselves (`.m-opt[data-disabled]`); dimming this wrapper too stacked to ~30%.
+      <div className={cx("flex min-w-0 flex-col gap-2", className)}>
+        <span
+          id={`${id}-label`}
+          className={cx("text-small text-ink font-semibold", disabled && "opacity-55")}
+        >
           {label}
         </span>
         <LiquidChoice

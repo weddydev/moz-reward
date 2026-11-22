@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   blobKeyframes,
@@ -49,6 +50,16 @@ describe("[PD-05] liquid geometry (pure)", () => {
       transform: "translateX(1px) scale(.92,1.1)",
       offset: 0.76,
     });
+  });
+
+  it("[PD-05] a second choice mid-pour starts from the gold's current shape, not a round blob", () => {
+    const mid = "matrix(1.3, 0, 0, 0.76, 55, 0)";
+    const frames = blobKeyframes(a, b, mid);
+    expect(frames[0]).toEqual({ transform: mid });
+    expect(frames.slice(1)).toEqual(blobKeyframes(a, b).slice(1));
+    const drop = "matrix(1, 0, 0, 1, 80, -12)";
+    expect(dropKeyframes(a, b, 0, drop)[0]).toEqual({ transform: drop });
+    expect(dropKeyframes(a, b, 0, drop).slice(1)).toEqual(dropKeyframes(a, b, 0).slice(1));
   });
 
   it("[PD-05] the first droplet rises 12 px, the second dips 14 px, both by their centre", () => {
@@ -453,5 +464,76 @@ describe("[PD-05] Seal checkbox", () => {
     const box = screen.getByRole("checkbox", { name: "Accept the terms" });
     expect(box).toHaveAttribute("aria-invalid", "true");
     expect(box).toHaveAccessibleDescription("Tick to continue.");
+  });
+});
+
+describe("[PD-05] review fixes (design review 22 Nov)", () => {
+  it("[PD-05] the hydration lock (C-20) never dims: only a real disabled option or box carries data-disabled", () => {
+    // Server render = before hydration: controlled controls are locked (disabled) but must not look disabled.
+    const html = renderToString(
+      <>
+        <LiquidChoice
+          label="Pick"
+          value="a"
+          onChange={() => undefined}
+          options={[
+            { value: "a", label: "A" },
+            { value: "b", label: "B", disabled: true },
+          ]}
+        />
+        <Checkbox label="Locked" checked={false} onCheckedChange={() => undefined} />
+        <Checkbox label="Off" disabled />
+      </>,
+    );
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const opts = [...doc.querySelectorAll(".m-opt")];
+    expect(opts.map((o) => o.hasAttribute("disabled"))).toEqual([true, true]);
+    expect(opts.map((o) => o.hasAttribute("data-disabled"))).toEqual([false, true]);
+    const rows = [...doc.querySelectorAll(".m-chk")];
+    expect(rows.map((r) => r.querySelector("input")?.hasAttribute("disabled"))).toEqual([
+      true,
+      true,
+    ]);
+    expect(rows.map((r) => r.hasAttribute("data-disabled"))).toEqual([false, true]);
+  });
+
+  it("[PD-05] a chosen option that is disabled keeps the group reachable: the tab stop is the first enabled option", () => {
+    render(
+      <LiquidChoice
+        label="Pick"
+        defaultValue="b"
+        options={[
+          { value: "a", label: "A" },
+          { value: "b", label: "B", disabled: true },
+          { value: "c", label: "C" },
+        ]}
+      />,
+    );
+    expect(screen.getAllByRole("radio").map((r) => r.tabIndex)).toEqual([0, -1, -1]);
+    expect(screen.getByRole("radio", { name: "B" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("[PD-05] SegmentedControl is a quiet filter: choosing throws no sparks", () => {
+    vi.useFakeTimers();
+    function Range(): React.JSX.Element {
+      const [v, setV] = useState("7");
+      return (
+        <SegmentedControl
+          label="Range"
+          value={v}
+          onChange={setV}
+          options={[
+            { value: "7", label: "7 days" },
+            { value: "30", label: "30 days" },
+          ]}
+        />
+      );
+    }
+    render(<Range />);
+    fireEvent.click(screen.getByRole("radio", { name: "30 days" }));
+    act(() => {
+      vi.advanceTimersByTime(LIQUID.sparkAtMs + 50);
+    });
+    expect(fx.burst).not.toHaveBeenCalled();
   });
 });

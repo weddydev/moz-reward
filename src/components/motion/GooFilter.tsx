@@ -6,7 +6,8 @@ export const GOO_ID = "m-goo";
 /**
  * The goo filter (PD-05; reference `#goo`), defined once in the root layout for every liquid indicator (liquid
  * choice, segmented control, the dock in PD-07): blur the gold, then cut its alpha to a hard edge so drops that
- * touch merge like liquid. A zero-size, hidden SVG; the lite tier and WebKit fallbacks drop the filter in CSS.
+ * touch merge like liquid. A zero-size, hidden SVG; the lite tier drops the filter in CSS (`.lite .m-goo`). WebKit keeps it (DECISIONS
+ * 22 Nov "PD-05 WebKit goo").
  */
 export function GooFilter(): React.JSX.Element {
   return (

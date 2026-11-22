@@ -37,6 +37,23 @@ async function blobOn(group: Locator, name: string): Promise<{ dx: number; dw: n
   }, name);
 }
 
+/**
+ * Waits until the gold rests on option `name`: no pour running and the blob on the option's box. One read per
+ * poll, so a runner that paints slowly after a load (Linux WebKit) can't pass the "no animation" check before
+ * the last pour has begun and then read a mid-flight position.
+ */
+async function restsOn(group: Locator, name: string): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const at = await blobOn(group, name);
+        return (await running(blob(group))) === 0 && at.dx < 1 && at.dw < 1;
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+}
+
 test("[PD-05] keyboard: Space toggles the coin switch and the seal checkbox; focus is visible", async ({
   page,
 }) => {
@@ -87,10 +104,7 @@ test("[PD-05] keyboard: arrow keys pour the liquid choice, wrap and skip the dis
   expect(await group.locator('[role="radio"][tabindex="0"]').count()).toBe(1);
   await expect(group.locator('[role="radio"][tabindex="0"]')).toHaveText(/^Cake/);
   // The gold comes to rest on the choice.
-  await expect.poll(() => running(blob(group))).toBe(0);
-  const at = await blobOn(group, "Cake");
-  expect(at.dx).toBeLessThan(1);
-  expect(at.dw).toBeLessThan(1);
+  await restsOn(group, "Cake");
 });
 
 test("[PD-05] rapid input retargets, never queues: the switch, the liquid choice and the checkbox end on the last press", async ({
@@ -108,7 +122,7 @@ test("[PD-05] rapid input retargets, never queues: the switch, the liquid choice
   const coffee = group.getByRole("radio", { name: /^Coffee/ });
   const cake = group.getByRole("radio", { name: /^Cake/ });
   await coffee.click();
-  await expect.poll(() => running(blob(group))).toBe(0);
+  await restsOn(group, "Coffee");
   // Cake, Coffee, Cake inside one task: each pour cancels the last.
   await group.evaluate((g) => {
     const [c, k] = [...g.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
@@ -118,14 +132,63 @@ test("[PD-05] rapid input retargets, never queues: the switch, the liquid choice
   });
   await expect(cake).toHaveAttribute("aria-checked", "true");
   expect(await running(blob(group))).toBeLessThanOrEqual(1);
-  await expect.poll(() => running(blob(group))).toBe(0);
-  const at = await blobOn(group, "Cake");
-  expect(at.dx).toBeLessThan(1);
+  await restsOn(group, "Cake");
 
   const box = page.getByRole("checkbox", { name: "Email me offers" });
   const was = await box.isChecked();
   for (let i = 0; i < 4; i++) await box.click();
   expect(await box.isChecked()).toBe(was);
+});
+
+test("[PD-05] a second choice mid-pour carries on from the gold's current shape (stretch kept)", async ({
+  page,
+}) => {
+  await open(page);
+  const group = reward(page);
+  await group.getByRole("radio", { name: /^Coffee/ }).click();
+  await restsOn(group, "Coffee");
+  // Start the pour to Cake, hold it at the stretch beat, read the shape, choose Coffee again and read the new
+  // pour's first keyframe. React commits the pour just after the click, so each step waits for its animation
+  // (polled with timers, not frames); the held pour is paused, so no frame timing is involved.
+  const r = await group.evaluate(async (g) => {
+    const [coffee, cake] = [...g.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+    const b = g.querySelector<HTMLElement>(".m-blob");
+    if (!coffee || !cake || !b) return null;
+    const until = async <T>(get: () => T | undefined): Promise<T | undefined> => {
+      for (let i = 0; i < 100; i++) {
+        const v = get();
+        if (v !== undefined) return v;
+        await new Promise((res) => setTimeout(res, 10));
+      }
+      return undefined;
+    };
+    cake.click();
+    const pour = await until(() => b.getAnimations()[0]);
+    if (!pour) return null;
+    pour.pause();
+    // The effect's easing (.45,0,.2,1) reaches the 42% stretch keyframe at about 34% of the time.
+    pour.currentTime = 660 * 0.34;
+    const held = getComputedStyle(b).transform;
+    coffee.click();
+    const next = await until(() => b.getAnimations().find((a) => a !== pour));
+    const first = (next?.effect as KeyframeEffect | null)?.getKeyframes()[0]?.transform;
+    return {
+      held,
+      first: typeof first === "string" ? first : null,
+      count: b.getAnimations().length,
+    };
+  });
+  expect(r).not.toBeNull();
+  expect(r?.count).toBe(1); // the old pour is gone, not queued
+  expect(r?.first).toBe(r?.held);
+  // Held at the stretch beat: close to 1.3 × .76, far from round.
+  const m = /^matrix\(([^,]+), [^,]+, [^,]+, ([^,]+),/.exec(r?.held ?? "");
+  expect(Number(m?.[1])).toBeGreaterThan(1.2);
+  expect(Number(m?.[2])).toBeLessThan(0.85);
+  await expect(group.getByRole("radio", { name: /^Coffee/ })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
 });
 
 test("[PD-05] a resize mid-pour snaps the gold to the choice's new box", async ({ page }) => {
@@ -136,13 +199,10 @@ test("[PD-05] a resize mid-pour snaps the gold to the choice's new box", async (
   await open(page);
   const group = reward(page);
   await group.getByRole("radio", { name: /^Coffee/ }).click();
-  await expect.poll(() => running(blob(group))).toBe(0);
+  await restsOn(group, "Coffee");
   await group.getByRole("radio", { name: /^Cake/ }).click();
   await page.setViewportSize({ width: 360, height: 800 });
-  await expect.poll(() => running(blob(group))).toBe(0);
-  const at = await blobOn(group, "Cake");
-  expect(at.dx).toBeLessThan(1);
-  expect(at.dw).toBeLessThan(1);
+  await restsOn(group, "Cake");
 });
 
 test("[PD-05] lite tier: no goo filter and no droplets; the blob still pours", async ({ page }) => {
@@ -154,8 +214,7 @@ test("[PD-05] lite tier: no goo filter and no droplets; the blob still pours", a
   await expect(group.locator(".m-goo")).toHaveCSS("filter", "none");
   for (const d of await group.locator(".m-drop").all()) await expect(d).toBeHidden();
   await group.getByRole("radio", { name: /^Coffee/ }).click();
-  await expect.poll(() => running(blob(group))).toBe(0);
-  expect((await blobOn(group, "Coffee")).dx).toBeLessThan(1);
+  await restsOn(group, "Coffee");
   // Full tier: the filter is the shared one from the root layout (defined once).
   await page.evaluate(() => {
     document.documentElement.classList.remove("lite");
