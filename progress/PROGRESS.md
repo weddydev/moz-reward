@@ -7,29 +7,29 @@ Baton: held by Syedbadeshah76 since 2026-11-22 09:17 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handoff by talha.syed (Mac), 22 Nov 2026 ~09:15 UTC; baton free.** **PD-04 closed and on main** (this commit; `wip/PD-04` = main). Pushed with a **one-time hook bypass** at the human's instruction before CI finished (DECISIONS 22 Nov "PD-04 pushed before CI").
-- **Continue here (in order):** 1) **Check CI for main's HEAD first** (`gh run list --branch main --limit 2`; every-page change, WebKit runs every spec, ~35 min) and the staging deploy. **Red → fix it before anything else** (likely areas: specs that wait for animations to settle on pages with Molten buttons; local load timeouts passed rerun on 2 workers). 2) Then **PD-05** on `wip/PD-05` from main (coin switch, liquid choice, segmented control, seal checkbox); when the Coin switch tile lands next to the Buttons tile, remove the Buttons tile's `ownHeight` in `src/features/dev/molten/parity-parts.ts`.
-- **Tested before the push (`2fbeb3e`):** parity both engines (PD-04 18/18 after the review batch; 26/26 full), unit 1852/0, PD-04 E2E Linux Chromium 32/0 + host WebKit 9/0, gate all PASS except changed specs 94/10 (load: the 10 pass on 2 workers, 18/0).
-- **CI at handoff:** main `f153279` run 45006025356 **in progress** (wip `2fbeb3e` run 45005263448 in progress too); last completed main CI 44994545759 (`74fba5b`) green.
-- **Not yet tested:** CI on main's HEAD (full pixel7/desktop1440 + WebKit every spec) and its staging deploy. First run of the nightly `perf` job (02:29 UTC).
-- **Before work:** nothing new (no env vars, migrations or seeds). Windows laptop: H-51 (WSL2) first.
+- **Checkpoint by Syedbadeshah76, 22 Nov 2026 ~10:30 UTC; baton held (same developer continues in WSL).** **This laptop now works in WSL2** (H-51: human steps done; Claude set up `~/moz-reward` on Ubuntu 24.04, node 24, Docker integration, Playwright browsers, `.env.local`, services, migrations; DECISIONS 22 Nov). **Open the VS Code WSL window and `/resume` there**; the old `D:moz-reward-git` checkout is retired (still on main, clean).
+- **PD-05 half-done on `wip/PD-05`, HEAD `a6236e1`** (checkpoint commit, not a task close). Built: `Switch` (coin knob), new `LiquidChoice` (goo blob + droplets; backs `SegmentedControl` and `RadioGroup variant="cards"`), seal `Checkbox`, `GooFilter` (`#m-goo`) in the root layout (**every-page change**), the three lab tiles on `/dev/molten`, `/dev/ui` LiquidChoice block, parity parts + triggers (+ liquid beats .42/.76), spec rows PD-05 required, 4 colour tokens. Also **main CI red fixes** (run 45006025356, PD-04): gilded-gate timeline ignores infinite idle loops; portal-shells `settledBox` waits on the toast's own animations, not its progress bar.
+- **Continue here (in order):** 1) CI for `a6236e1` (run 45011219404; it tells whether the two main-CI fixes hold). 2) PD-05 E2E spec (`tests/e2e/molten-choices.spec.ts`: keyboard for all three; rapid toggling; resize mid-pour; lite tier (no filter, no drops); reduced motion; targets ≥ 44 px; screens 320/390/1440 of the three tiles); update `tokens.spec.ts` "[P0-08] AC5 Full" (switch thumb transition is now the .7 s coin, not dur-fast) and check `ui-states.spec.ts` segmented one-line test. 3) Parity WebKit + Linux container runs; decide the WebKit goo fallback (brief: "no filter, plain spring", reviewed and logged). 4) `review-animations` / design-reviewer on the diff, then `pnpm gate:task` (+ full 5-project E2E: root layout changed). 5) Close PD-05, merge to main.
+- **Tested so far (`a6236e1`):** parity Chromium PD-05 + Buttons tile 24/24 (ownHeight removed); component tests `molten-choices.test.tsx` 22/0; `pnpm check` PASS (unit 1857/0). WSL: `pnpm check` PASS, unit 1879/0 (0 skipped: the suites Windows skipped now run).
+- **Not yet tested:** WebKit parity, Linux container runs, the two CI-fix specs locally, PD-05 E2E, gate:task, CI on `a6236e1`. Main `f153279` CI is **red** until `wip/PD-05` lands (the fixes are on it).
+- **Before work (WSL):** nothing (env, services, migrations, browsers done). H-51 leftovers (VPS key, optional dev keys) are the human's, not blocking.
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov; `docs/phases/PD.md`). Then P1 resumes with the P1-B close. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
 - **Current sub-phase:** **PD-B** Controls: ~~PD-04~~ → PD-05 → PD-06 → close; then PD-C (structure + signature moments, needs H-49). **PD-A closed 22 Nov.** **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done; staging step done 22 Nov with H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-22 (~09:15 UTC), talha.syed (PD-04 closed to main, CI pending; next PD-05)
+- **Last updated:** 2026-11-22 (~10:30 UTC), Syedbadeshah76 (PD-05 checkpoint on `wip/PD-05` `a6236e1`; laptop moved to WSL2)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-A closed 22 Nov; **PD-04 on main 22 Nov** (`f153279`, CI pending). Next PD-05, PD-06, PD-B close.
+- **PD (Molten design):** PD-A closed 22 Nov; PD-04 on main 22 Nov (`f153279`, **main CI red**: fixes ride on `wip/PD-05`). **PD-05 in progress** (`wip/PD-05` `a6236e1`). Next PD-06, PD-B close.
 
 ## Next (top 3)
-1. Main CI after the PD-04 push green (fix first if red), then PD-05.
+1. Finish PD-05 on `wip/PD-05` from WSL (handoff note order); it carries the main CI fixes, so land it promptly.
 2. Check the first nightly `perf` job (scheduled.yml, 02:29 UTC) and red CI first, as always.
-3. PD-05, PD-06, PD-B close. Human any time: H-51 (WSL2 on the Windows laptop, before its next session), H-48b, H-38, H-45, H-46.
+3. PD-06, PD-B close. Human any time: H-51 leftovers, H-48b, H-38, H-45, H-46.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
@@ -81,8 +81,8 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
 - PD-04 (`2fbeb3e`): parity 26/26 Chromium + WebKit; unit 1852/0; PD-04 E2E Linux Chromium 32/0, host WebKit 9/0.
 - Gate `2fbeb3e`: all PASS except changed specs 94/10 (load timeouts; the 10 pass on 2 workers, 18/0).
-- PD-04 design review: PASS WITH FIXES (7 MEDIUM + 4 LOW fixed in `2fbeb3e`).
-- Main CI 44994545759 (`74fba5b`) green; Deploy 44995595155 green; full 5-project 44994587598 green. Main `f153279` CI in progress.
+- PD-05 checkpoint `a6236e1` in WSL2 (first run there): `pnpm check` PASS, unit 1879/0; parity Chromium PD-05 24/24 (Windows host).
+- Main CI 45006025356 (`f153279`, PD-04) **red**: gilded-gate timeline (Infinity from idle loops) + portal-shells toast settle (progress bar); fixes in `a6236e1`. Last green main CI 44999822284.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 
