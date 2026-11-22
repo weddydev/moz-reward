@@ -279,7 +279,8 @@ test.describe("[P0-08] AC5: reduced motion", () => {
       .locator('[data-part="thumb"]');
     const m = await motionOf(thumb);
     expect(m.properties).toContain("transform");
-    expect(m.maxMs).toBe(toMs(declared.get("dur-fast") ?? ""));
+    // The coin roll (PD-05): `.m-tgl-coin` transform .7 s, locked to the reference by the spec row "coin-switch".
+    expect(m.maxMs).toBe(700);
   });
 });
 

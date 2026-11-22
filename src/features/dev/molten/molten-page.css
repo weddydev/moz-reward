@@ -299,6 +299,10 @@ body:has(.m-page) {
   gap: 12px;
   width: 100%;
 }
+/* The lab tile copies the reference's 28 px rows for parity; product rows are 44 px (molten.css `.m-chk`). */
+.m-chks .m-chk {
+  min-height: 0;
+}
 .m-how {
   margin: 0;
   color: var(--ink-2);

@@ -215,7 +215,9 @@ test.describe("[P0-09] UI gallery states", () => {
         });
         return new Set(els).size;
       });
-      expect(count).toBeGreaterThan(30);
+      // Switch and Checkbox left this set in PD-05: their press is the Molten coin and seal reaction from the
+      // reference (no press-down scale there), covered by molten-choices.spec.ts.
+      expect(count).toBeGreaterThan(20);
       const failures: string[] = [];
       for (let i = 0; i < count; i++) {
         const el = page.locator(`[data-press-probe="${String(i)}"]`);
