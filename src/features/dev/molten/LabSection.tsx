@@ -14,6 +14,7 @@ import { TextField } from "@/components/ui/TextField";
 import { Tile } from "@/components/ui/Tile";
 import { toast } from "@/components/ui/Toast";
 import { BUTTON, TABS } from "@/lib/motion/controls";
+import { useHydrated } from "@/lib/use-hydrated";
 
 /** The reference's ghost-button arrow (16 px, stroke 2.2). */
 export function GhostArrow(): React.JSX.Element {
@@ -48,8 +49,15 @@ export function LabSection(): React.JSX.Element {
   const [tries, setTries] = useState(0);
   const [sent, setSent] = useState<string | null>(null);
   const emailInput = useRef<HTMLInputElement>(null);
+  // The page can hydrate after the root layout marks <html data-hydrated> (C-20): until this section owns its
+  // controls, it says so, and tests wait for no [data-hydrating] before they type or press keys.
+  const hydrated = useHydrated();
   return (
-    <section aria-labelledby="m-lab" className="m-lab-section">
+    <section
+      aria-labelledby="m-lab"
+      className="m-lab-section"
+      data-hydrating={hydrated ? undefined : ""}
+    >
       <div className="m-sec-head">
         <div>
           <p className="m-eyebrow">Controls lab · everything here is live</p>

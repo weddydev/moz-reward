@@ -33,6 +33,12 @@ async function pillOn(list: Locator): Promise<number> {
 const running = (el: Locator): Promise<number> =>
   el.evaluate((n) => n.getAnimations().filter((a) => a.playState === "running").length);
 
+/** Running animations on the element and everything inside it (the choices' pop and spring settle). */
+const runningWithin = (el: Locator): Promise<number> =>
+  el.evaluate(
+    (n) => n.getAnimations({ subtree: true }).filter((a) => a.playState === "running").length,
+  );
+
 test("[PD-06] tabs keyboard: arrows wrap and move focus, Home/End jump, one tab stop, the number counts up", async ({
   page,
 }) => {
@@ -173,10 +179,11 @@ test("[PD-06] text field: the label floats on focus and with an autofilled value
     label.evaluate((l) => new DOMMatrixReadOnly(getComputedStyle(l).transform).a);
   await expect.poll(scale).toBe(1);
   // A tap near the left edge: the beam's origin is there.
-  await input.scrollIntoViewIfNeeded();
+  // Clicked through the locator, so Playwright waits for the field to stop moving (the tile's rise, late
+  // layout) before it picks the point; a raw mouse click at a box measured earlier could miss.
   const box = await input.boundingBox();
   if (!box) throw new Error("no field box");
-  await page.mouse.click(box.x + box.width * 0.2, box.y + box.height / 2);
+  await input.click({ position: { x: box.width * 0.2, y: box.height / 2 } });
   await expect(input).toBeFocused();
   const ox = await fieldBox(input).evaluate((f) => f.style.getPropertyValue("--ox"));
   expect(Number.parseFloat(ox)).toBeGreaterThan(15);
@@ -190,7 +197,143 @@ test("[PD-06] text field: the label floats on focus and with an autofilled value
   await expect.poll(scale, { timeout: 5_000 }).toBeCloseTo(0.76, 2);
 });
 
-test("[PD-06] targets ≥ 44 px: every tab and the text field", async ({ page }) => {
+const rating = (page: Page): Locator => page.getByRole("radiogroup", { name: "Rate your visit" });
+const rateTile = (page: Page): Locator => page.locator('[data-parity="stars-tile"]');
+const litCount = (group: Locator): Promise<number> => group.locator(".m-star.lit").count();
+
+/** What makes the two choices look alike: box size and every visible style, compared one to one. */
+async function choiceLooks(tile: Locator): Promise<Array<Record<string, string>>> {
+  return tile.locator(".m-rate-actions button").evaluateAll((buttons) =>
+    buttons.map((b) => {
+      const s = getComputedStyle(b);
+      const r = b.getBoundingClientRect();
+      return {
+        w: r.width.toFixed(1),
+        h: r.height.toFixed(1),
+        bg: s.backgroundColor + s.backgroundImage,
+        border: s.border,
+        radius: s.borderRadius,
+        color: s.color,
+        font: `${s.fontWeight} ${s.fontSize} ${s.fontFamily}`,
+        opacity: s.opacity,
+        transform: s.transform,
+      };
+    }),
+  );
+}
+
+test("[PD-06] star rating keyboard: one tab stop, arrows move and choose without wrapping, the word follows", async ({
+  page,
+}) => {
+  await open(page);
+  const group = rating(page);
+  const star = (n: number): Locator =>
+    group.getByRole("radio", { name: n === 1 ? "1 star" : `${String(n)} stars` });
+  await expect(group.locator('[role="radio"][tabindex="0"]')).toHaveCount(1);
+  await star(1).focus();
+  await page.keyboard.press("ArrowLeft");
+  // No wrap below 1: the first star is chosen and keeps focus.
+  await expect(star(1)).toBeFocused();
+  await expect(star(1)).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await expect(star(4)).toBeFocused();
+  await expect(star(4)).toHaveAttribute("aria-checked", "true");
+  await expect(group.locator('[aria-checked="true"]')).toHaveCount(1);
+  await expect(group.locator('[role="radio"][tabindex="0"]')).toHaveCount(1);
+  await expect(rateTile(page).locator(".m-rate-txt")).toHaveText("Great");
+  await expect.poll(() => litCount(group), { timeout: 5_000 }).toBe(4);
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  // No wrap above 5.
+  await expect(star(5)).toBeFocused();
+  await expect(rateTile(page).locator(".m-rate-txt")).toHaveText("Outstanding");
+  // Tab leaves the group for the first choice, which is now reachable.
+  await page.keyboard.press("Tab");
+  await expect(rateTile(page).getByRole("button", { name: "Post on Google" })).toBeFocused();
+});
+
+test("[PD-06] star rating rapid taps retarget, never queue: the stars end on the last tap", async ({
+  page,
+}) => {
+  await open(page);
+  const group = rating(page);
+  await group.scrollIntoViewIfNeeded();
+  for (const n of [5, 2, 4, 1, 3])
+    await group.getByRole("radio", { name: n === 1 ? "1 star" : `${String(n)} stars` }).click();
+  await expect(group.getByRole("radio", { name: "3 stars" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await expect(group.locator('[aria-checked="true"]')).toHaveCount(1);
+  await expect(rateTile(page).locator(".m-rate-txt")).toHaveText("Good");
+  // The earlier taps' ignitions were cancelled: exactly three stay lit, then and after their time has passed.
+  await expect.poll(() => litCount(group), { timeout: 5_000 }).toBe(3);
+  // The word rises in after the last star (3 × 70 ms + 300 ms), past any 5-star ignition's 280 ms.
+  await expect
+    .poll(() => running(rateTile(page).locator(".m-rate-txt")), { timeout: 5_000 })
+    .toBe(0);
+  expect(await litCount(group)).toBe(3);
+});
+
+test("[PD-06] star rating never gates reviews: before a rating the choices are inert; after ANY rating both are there, identical (COMPLIANCE §1)", async ({
+  page,
+}) => {
+  await open(page);
+  const tile = rateTile(page);
+  const group = rating(page);
+  const actions = tile.locator(".m-rate-actions");
+  // Before a rating: space held, nothing reachable.
+  await expect(actions).toHaveAttribute("inert", "");
+  await expect(tile.locator(".m-rate-actions button")).toHaveText([
+    "Post on Google",
+    "Send privately",
+  ]);
+  let first: Array<Record<string, string>> | undefined;
+  for (const n of [1, 5, 2, 4, 3]) {
+    await group.getByRole("radio", { name: n === 1 ? "1 star" : `${String(n)} stars` }).click();
+    await expect(actions).not.toHaveAttribute("inert");
+    const google = tile.getByRole("button", { name: "Post on Google" });
+    const privately = tile.getByRole("button", { name: "Send privately" });
+    await expect(google).toBeVisible();
+    await expect(privately).toBeVisible();
+    await expect(google).toBeEnabled();
+    await expect(privately).toBeEnabled();
+    // Same two, same order, whatever the rating.
+    await expect(tile.locator(".m-rate-actions button")).toHaveText([
+      "Post on Google",
+      "Send privately",
+    ]);
+    // Once the pop-in has settled (spring overshoot included), the two look exactly alike, and alike for
+    // every rating.
+    await expect.poll(() => runningWithin(actions), { timeout: 5_000 }).toBe(0);
+    const looks = await choiceLooks(tile);
+    expect(looks.map((l) => l.opacity)).toEqual(["1", "1"]);
+    expect(looks[1], `rating ${String(n)}: the two choices differ`).toEqual(looks[0]);
+    first ??= looks;
+    expect(looks, `rating ${String(n)} looks unlike rating 1`).toEqual(first);
+  }
+});
+
+test("[PD-06] star rating under reduced motion: every star lights at once, no pop", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await open(page);
+  await expect(page.locator("html")).toHaveClass(/(^|\s)rm(\s|$)/);
+  const group = rating(page);
+  await group.getByRole("radio", { name: "5 stars" }).click();
+  // All five at once (no 70 ms stagger), with no pop running on any star.
+  await expect.poll(() => litCount(group), { timeout: 500 }).toBe(5);
+  for (const s of await group.locator(".m-star").all()) expect(await running(s)).toBe(0);
+  await expect(rateTile(page).getByRole("button", { name: "Post on Google" })).toBeVisible();
+  await expect(rateTile(page).getByRole("button", { name: "Send privately" })).toBeVisible();
+});
+
+test("[PD-06] targets ≥ 44 px: every tab, the text field, each star and both rating choices", async ({
+  page,
+}) => {
   await open(page);
   const tabs = await page.locator(".m-seg [role='tab']").filter({ visible: true }).all();
   expect(tabs.length).toBeGreaterThanOrEqual(3);
@@ -201,6 +344,28 @@ test("[PD-06] targets ≥ 44 px: every tab and the text field", async ({ page })
   }
   const field = await emailField(page).boundingBox();
   expect(field?.height ?? 0).toBeGreaterThanOrEqual(44);
+  // Measured at rest: the tile's scroll-driven rise scales everything inside it until it is in view.
+  await rateTile(page).scrollIntoViewIfNeeded();
+  await expect
+    .poll(
+      () =>
+        rateTile(page).evaluate(
+          (t) => new DOMMatrixReadOnly(getComputedStyle(t).transform).isIdentity,
+        ),
+      { timeout: 5_000 },
+    )
+    .toBe(true);
+  const stars = await rating(page).getByRole("radio").all();
+  expect(stars).toHaveLength(5);
+  for (const [i, st] of stars.entries()) {
+    const b = await st.boundingBox();
+    expect(b?.height ?? 0, `star ${String(i + 1)}`).toBeGreaterThanOrEqual(44);
+    expect(b?.width ?? 0, `star ${String(i + 1)}`).toBeGreaterThanOrEqual(44);
+  }
+  for (const choice of await rateTile(page).locator(".m-rate-actions button").all()) {
+    const b = await choice.boundingBox();
+    expect(b?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
 });
 
 test("[PD-06] /dev/molten PD-06 tiles at 320, 390 and 1440: no horizontal scroll (screens for inspection)", async ({
@@ -218,9 +383,19 @@ test("[PD-06] /dev/molten PD-06 tiles at 320, 390 and 1440: no horizontal scroll
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow, `/dev/molten at ${String(width)}`).toBeLessThanOrEqual(0);
-    for (const tile of ["tabs-tile", "text-field-tile"]) {
+    for (const tile of ["tabs-tile", "text-field-tile", "stars-tile"]) {
       await page.locator(`[data-parity="${tile}"]`).scrollIntoViewIfNeeded();
       await shoot(`molten-${tile}-${String(width)}`, { fullPage: false });
     }
+  }
+  // Rated: the word and the two equal choices, once they have settled.
+  await rating(page).getByRole("radio", { name: "4 stars" }).click();
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+    await rateTile(page).scrollIntoViewIfNeeded();
+    await expect
+      .poll(() => runningWithin(rateTile(page).locator(".m-rate-actions")), { timeout: 5_000 })
+      .toBe(0);
+    await shoot(`molten-stars-tile-rated-${String(width)}`, { fullPage: false });
   }
 });
