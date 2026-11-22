@@ -3,29 +3,29 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by Syedbadeshah76 since 2026-11-22 15:55 UTC
+Baton: free — last held by Syedbadeshah76, 2026-11-22 16:15 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handed over by Syedbadeshah76, 22 Nov 2026 ~15:55 UTC (WSL laptop); baton free.** **PD-05 code complete on `wip/PD-05`, HEAD `a625eba`** (pushed). Not yet ticked or on main: only the gate, CI and the close are left. Main `f153279` CI is still **red** (PD-04); the fixes are on `wip/PD-05` (proven green there: CI 45030522704 on `3fe211d`), so landing PD-05 turns main green.
-- **Finished this session:** CI 45011219404's 16 failures fixed (seal checkbox rows are 44 px tall with the invisible input over the row; the 8 px `::after` overhang painted over the row above and hid the input from Playwright: join.spec ×10; ui-states AC5 floor and tokens AC5 follow the Molten coin/seal press); new `tests/e2e/molten-choices.spec.ts` (keyboard, rapid input, mid-pour retarget keeps the shape, resize mid-pour, lite tier, reduced motion, 44 px targets, form values, screens 320/390/1440); WebKit goo decision (WebKit keeps the filter; fallback = lite path); design review (0 BLOCK/HIGH): both MEDIUMs fixed test-first (no dim during the C-20 hydration lock: `data-disabled`, not `:disabled`; an interrupted pour starts from the blob's current shape), LOWs fixed on touched lines (tab stop when the chosen option is disabled, SegmentedControl without sparks, no double dim on card groups), the rest in FOLLOWUPS; DECISIONS 22 Nov ×2 (on the wip branch); H-51 (a) verified.
-- **Continue here (in order):** 1) `git switch wip/PD-05 && git merge --ff-only origin/wip/PD-05`, check HEAD `a625eba`. 2) CI for `a625eba` (run 45039642190) and the full 5-project run 45037229830 (`1177632`, dispatched for the root-layout change): green, or fix. 3) `pnpm gate:task PD-05` with **nothing else running** (it was mid-run at handoff on this laptop; the previous run's only failures were the 30 s limit on `/dev/ui`, fixed in `a625eba`). 4) Close: tick PD-05 in PHASES, PROGRESS/SESSION_LOG lines, add the FOLLOWUPS line "`alerts.test.ts` 1×/6×/12× windows bound wall-clock sleeps (700 ms in a 1,200 ms window); failed once in a busy gate, 14/0 alone, green on CI: use an injected clock" (P0-13 owner / P1-18); commit, push wip, and once that CI is green push the same commit to main. 5) PD-06.
-- **Tested (`1177632` / `a625eba`):** unit 1883/0; integration 1456/0/1 (one gate run had the alerts wall-clock flake, 14/0 alone); typecheck, lint, format, titles, build, check:bundle, sast PASS (gate); parity PD-05 Chromium 22/22 in the Linux container, WebKit 41/44 in parallel and the 3 seal-tile tests 10/10 alone; `molten-choices` Linux Chromium (3 projects) 21/0 plus the retarget test 2/0; join/ui-states/tokens 101/0 after the fixes (3 token-page teardown timeouts under load, 20/0 alone: FOLLOWUPS); CI 45030522704 (`3fe211d`) green.
-- **Not yet tested:** `gate:task PD-05` end to end (E2E, perf, changed specs, parity steps); CI on `a625eba`; full 5-project run; WebKit E2E of `molten-choices` (laptop WebKit isn't evidence: CI's WebKit step is); real iPhone goo cost (H-13).
-- **This laptop (WSL) lessons:** run local WebKit with `--workers 1` (parallel WPEWebProcess crashes wrote 16 GB of dumps to C:\ `%LOCALAPPDATA%\Temp\wsl-crashes` and filled the disk; human deleted them); never push while a gate runs (the hook's check + SAST starved the gate's E2E).
+- **Handed over by Syedbadeshah76, 22 Nov 2026 ~16:15 UTC (WSL laptop); baton free.** **PD-05 code complete on `wip/PD-05`, HEAD `9ec3855`** (pushed). Not ticked, not on main: CI, the gate and the close are left. Main `f153279` CI is still **red** (PD-04); its fixes are on `wip/PD-05` (green there: CI 45030522704 on `3fe211d`), so landing PD-05 turns main green.
+- **Finished:** CI 45011219404's 16 failures fixed (seal checkbox rows 44 px with the input over the row; ui-states/tokens AC5 follow the Molten press); `tests/e2e/molten-choices.spec.ts` (60 s limit like the other `/dev/ui` specs: the guard's axe scan of the gallery is long); WebKit goo decision; design review 0 BLOCK/HIGH, both MEDIUMs fixed test-first, LOWs fixed or in FOLLOWUPS; **last commit `9ec3855`**: the E2E guard's closing axe scan excludes `.m-toast` (a toast's timed 260 ms exit could start mid-scan: full CI 45037229830's only problem, loyalty-settings Pixel 7 flaky; fully shown toasts keep `overlays.spec` "[P0-09] toast open: axe clean"). H-51 (a) verified.
+- **Continue here (in order):** 1) `git switch wip/PD-05 && git merge --ff-only origin/wip/PD-05`, check HEAD `9ec3855`. 2) CI 45042534742 (`9ec3855`) and the full 5-project run 45042543781 (`9ec3855`, needed: root layout + `tests/e2e/support` changed): green, or fix. 3) `pnpm gate:task PD-05` with **nothing else running** and no push during it (it never ran end to end on the final code: earlier runs hit load, the 30 s `/dev/ui` limit and an unrelated alerts wall-clock flake). 4) Close: DECISIONS line "E2E guard's closing axe scan excludes toasts" (why: timed exit mid-scan, CI 45037229830; toast contrast stays covered by overlays.spec), FOLLOWUPS line "`alerts.test.ts` 1×/6×/12× windows bound wall-clock sleeps (700 ms in a 1,200 ms window); failed once in a busy gate, 14/0 alone: use an injected clock (P0-13 owner / P1-18)", tick PD-05 in PHASES, PROGRESS/SESSION_LOG; commit, push wip, and once its CI is green push the same commit to main. 5) PD-06.
+- **Tested:** unit 1883/0; integration 1456/0/1; gate steps typecheck, lint, format, titles, build, check:bundle, sast PASS; parity PD-05 Chromium 22/22 (Linux container), WebKit seal tiles 10/10 alone; `molten-choices` Linux Chromium 21/0 + retarget 2/0; join/ui-states/tokens 101/0; full 5-project CI on `1177632`: 1264 passed, 0 failed, 1 flaky (the toast/axe race fixed in `9ec3855`); CI 45030522704 green.
+- **Not yet tested:** `gate:task PD-05` end to end; CI and the full run on `9ec3855` (running at handoff); laptop WebKit E2E of `molten-choices` (CI's WebKit step is the evidence); real iPhone goo cost (H-13).
+- **This laptop (WSL):** local WebKit only with `--workers 1` (parallel crashes wrote 16 GB of dumps to C:); never push or run suites while a gate runs; `git pull --rebase origin main` while on a wip branch rebases it: update main with `git fetch` instead.
 - **Before work:** nothing new (no env vars, migrations or seeds).
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov; `docs/phases/PD.md`). Then P1 resumes with the P1-B close. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
 - **Current sub-phase:** **PD-B** Controls: ~~PD-04~~ → PD-05 → PD-06 → close; then PD-C (structure + signature moments, needs H-49). **PD-A closed 22 Nov.** **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done; staging step done 22 Nov with H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-22 (~15:55 UTC), Syedbadeshah76 (handoff: PD-05 code complete on `wip/PD-05` `a625eba`; gate, CI and close left)
+- **Last updated:** 2026-11-22 (~16:15 UTC), Syedbadeshah76 (handoff: PD-05 code complete on `wip/PD-05` `9ec3855`; CI, gate and close left)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-A closed 22 Nov; PD-04 on main 22 Nov (`f153279`, **main CI red**: fixes ride on `wip/PD-05`). **PD-05 code complete** (`wip/PD-05` `a625eba`): gate, CI and close left. Next PD-06, PD-B close.
+- **PD (Molten design):** PD-A closed 22 Nov; PD-04 on main 22 Nov (`f153279`, **main CI red**: fixes ride on `wip/PD-05`). **PD-05 code complete** (`wip/PD-05` `9ec3855`): gate, CI and close left. Next PD-06, PD-B close.
 
 ## Next (top 3)
 1. Close PD-05 (handoff note steps 1–4: CI, gate:task alone, close, main); it turns main CI green.
@@ -80,10 +80,10 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (22 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- PD-05 `1177632`: gate steps check/int/build/sast PASS (unit 1883/0, int 1456/0/1); E2E step not yet green end to end (load and the 30 s `/dev/ui` limit, fixed in `a625eba`).
+- PD-05 `1177632`/`9ec3855`: gate steps check/int/build/sast PASS (unit 1883/0, int 1456/0/1); gate E2E step not yet green end to end (load, then the `/dev/ui` limit fixed in `a625eba`).
 - PD-05 parity: Chromium 22/22 (Linux container); WebKit seal tiles 10/10 alone, 41/44 in parallel (laptop load).
 - PD-05 E2E `molten-choices` Linux Chromium 21/0 + retarget 2/0; join/ui-states/tokens 101/0.
-- CI 45030522704 (`3fe211d`, wip/PD-05) green: the PD-04 main-CI fixes hold. Main `f153279` still red until PD-05 lands.
+- CI 45030522704 (`3fe211d`) green; full 5-project 45037229830 (`1177632`): 1264/0, 1 flaky (toast/axe race, fixed in `9ec3855`). Main `f153279` red until PD-05 lands.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 
