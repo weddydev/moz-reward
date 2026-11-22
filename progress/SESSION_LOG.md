@@ -804,3 +804,9 @@ Wip CI 44918269127 (`1375f2b`) green. MEDIUM batch `d8656bf` (code M1 @perf brow
 Linux WebKit root cause: CPU-rendered WebKit ~1 rAF/s for 1–2 s after load/navigation (/dev/motion; host 58), /dev/molten 0–6 fps; JIT fine; not CSS-specific. Fixed `:338`, `:959`, molten Language (creation-time animation hooks, `saveAs`, DOM scroll, `test.slow`); `:482`/`:514` pass alone (load). `pnpm e2e:linux` 14/0 + 5/0.
 Gate `73f46c8`: unit 1788/0/22, int 1445/0/12, build, sast PASS; Linux tagged E2E 403/6/61, 6 new WebKit-only failures (fx :78, molten :65, motion :492/:671, gilded-gate :435): alone Linux 17/8 (webkit + iphone14), host WebKit 10/0. Main not pushed; human decision asked on Linux WebKit handling.
 Wip HEAD: this commit (after `73f46c8`).
+
+## 2026-11-22 (local; 21 Nov ~16:50–18:30 UTC) — PD — Linux WebKit split, main push, PD-A close reviews, handoff by Syedbadeshah76 (Windows)
+Human: "do whichever is best" → gate runs WebKit projects on the host's WebKit, Chromium in Linux (`d649410`, test first); macOS nightly rejected (no Docker for services). Gate fixes: moz-deploy describe timeout (`d3a6ea1`), `CI_CPU_SCORE` 70,000 (`d43774c`). Gate `d43774c` all PASS (unit 1789/0, int 1445/0, Linux Chromium 34/0, host WebKit 22/0, perf 3/0, changed 149/0); pushed to main (stamp skip); main CI 44930544722 green; staging deploy 44931894973 green (smoke ok).
+PD-A close reviews of `4ecb0de..d43774c`: code APPROVE (4 LOW), design PASS (4 LOW) → FOLLOWUPS (on wip). Docker tidy: 5 anonymous volumes.
+Wip CI 44930544649 + full run 44930551230 red on fx stress pixel7 only (CI runners 46k–77k at fixed 4×) → `899890f` calibrates CI too (unit 4/0). Int timeout → `1354def` (beforeAll import). Gate `1354def` perf pixel7 54.5 fps on a laptop scoring 8,780: main not pushed; wip `1354def` pushed.
+SSH: root refused (PermitRootLogin no), then fail2ban ban; H-48 Claude part NOT VERIFIED. Wip HEAD `1354def`.

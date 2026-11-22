@@ -3,33 +3,33 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by Syedbadeshah76 since 2026-11-21 14:51 UTC
+Baton: held by talha.syed since 2026-11-22 06:25 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by Syedbadeshah76 (Windows), 21 Nov 2026 ~16:45 UTC; baton kept.** Work is on **`wip/PD-03`, pushed HEAD `eba5648`**. **Main is still `8c2a9f2`** (progress only since `d055dd6`): not pushed to main, the pre-push gate is red on Linux WebKit (below). **Waiting on a human decision** (question in the last reply; see 1).
-- **Finished (21 Nov, Syedbadeshah76):** wip CI 44918269127 (`1375f2b`) green. PD-A review MEDIUM batch `d8656bf`: code M1 (fx + vault `@perf` skip by `browserName`), M2 (watchdog kills the tree on SIGINT/SIGTERM/SIGHUP, exit 130/143/129), design M2 (focus ring = reference; `--focus-ring` rgba(210,160,51,.55); DESIGN §3; AC4 E2E rewritten), M4 (`.m-dark[data-lift]:hover` rises 4px; `src/styles/molten.test.ts`). Main-push-gate specs fixed (`d8656bf`): route-transition hooks catch animations at creation (`catchRouteAnimations`), video via `saveAs`, morph nav 15 s, molten Language DOM scroll + `test.slow`. Merged main's checkpoint (`70f1856`); DECISIONS + FOLLOWUPS (`33cad23`); Semgrep fix in the new CSS test (`73f46c8`).
-- **Root cause found:** Playwright's **Linux** WebKit (CPU compositor, `e2e:linux` container; same engine as CI's ubuntu nightly) runs ~1 frame/s for 1–2 s after a load or navigation and 0–6 fps on `/dev/molten` (host WebKit 58 fps on /dev/motion; JIT fine). Timing/frame-driven motion specs fail there deterministically and pass on host WebKit.
-- **Half-done, continue here:** 1) **Human decision needed** on how Linux WebKit is handled (options in the last reply: (a) gate runs WebKit projects on the host browser, Chromium projects in Linux, nightly WebKit moves to a macOS runner (free while public, C-43); (b) keep making each spec frame-independent; (c) skip timing specs on Linux WebKit with a CARRIED row). 2) Latest gate on `73f46c8`: everything PASS up to tagged Linux E2E 403/6/61 (all WebKit): fx `:78`, molten `:65`, motion `:492`, `:671`, gilded-gate `:435`; alone on Linux 17/8 (webkit + iphone14 only), **host WebKit + iphone14 10/0**. 3) After main: `gh workflow run scheduled.yml --ref main -f suite=e2e` = the full 5-project run for the every-page focus-ring/`.rm` change; then PD-A `/subphase-complete` (H-48 DSN check on that deploy).
-- **Tested:** watchdog signals in a Linux node container (old FAIL ×2, new PASS ×2; vitest case is POSIX-only, skipped on Windows); molten lift test fails on old CSS, passes new; AC4 fails on old CSS (host chromium); `pnpm e2e:linux` fixed motion specs 14/0 (5 projects), molten Language 5/0; gate on `73f46c8`: typecheck, lint, format, titles, unit 1788/0/22, int 1445/0/12, build, bundle, sast, lint:sh PASS. Screens inspected: `frame-morph-390--webkit` (host: real mid-morph; Linux video shows the pre-click page → FOLLOWUPS), `molten-language-390--iphone14` OK.
-- **Not yet tested:** new AC4 focus-ring E2E after the CSS change (ran only as part of the gate's tagged set: its result is in the 403 passes, not separately); `@perf` step, changed-specs step and parity step of the gate (not run, earlier step failed); wip CI for this push.
+- **Handoff by Syedbadeshah76 (Windows), 21 Nov 2026 18:30 UTC; baton free.** **Main = `d43774c`** (PD-03 + PD-A review fixes + gate split landed; main CI 44930544722 green; staging deployed `d43774c`, Deploy 44931894973 green). **`wip/PD-03` pushed HEAD `1354def`** = main + 3 fix commits not yet on main (`899890f`, `1354def`, plus FOLLOWUPS/DECISIONS lines in them).
+- **Finished (21 Nov):** Linux WebKit decision (human: "do whichever is best"): `gate:task` runs webkit + iphone14 on the host's WebKit, Chromium projects in the Linux container, nothing skipped (`d649410`, TESTING §4, CLAUDE.md). Fixes found by the gate: moz-deploy bash-spawn describe timeout (`d3a6ea1`); `CI_CPU_SCORE` 28,000 → 70,000 (`d43774c`). PD-A close: code review APPROVE, design review PASS (earlier HIGH/M2/M4 confirmed fixed; LOWs in FOLLOWUPS on wip). Docker tidy: 5 anonymous volumes. Staging smoke (deploy job): web-1/web-2 ready on `d43774c`, demo sign-in check ok, live/ready ok.
+- **Half-done, continue here (in order):** 1) **fx 200-burst stress `@perf` on pixel7 depends on the machine**: CI runners score ~46,000–77,000; at a fixed 4× a slow one gets 53–55 fps (< 58): wip CI 44930544649 and the full 5-project run 44930551230 (both `d43774c`) red on that one spec only; main CI on the same commit passed (58.4). Fix on wip: `899890f` calibrates CI too (`throttleRate`, unit test). 2) `1354def`: test-API route's cold import in `beforeAll` (int timed out under load). 3) **Then gate + push main:** `git switch wip/PD-03`, `pnpm gate:task PD-03 P0-17` **with the laptop idle** (last run: laptop CPU score fell to 8,780–11,000, below the reference device even unthrottled → pixel7 54.5 fps; at 15,000–23,000 it passed 59–60), then `git push origin wip/PD-03:main`. If the laptop stays that slow, run the gate on the Mac, or decide (DECISIONS) that a host scoring under `CI_CPU_SCORE/4` reports "can't emulate the reference" instead of a verdict. 4) `gh workflow run scheduled.yml --ref main -f suite=e2e` (full 5-project run) green. 5) **H-48 Claude part:** SSH as `badeshah@72.61.17.208` with **Windows OpenSSH** (`/c/Windows/System32/OpenSSH/ssh.exe`; root login is off) → DSN URL-shaped in web + worker (length only) + one probe error; this laptop's IP was banned by fail2ban ~17:55 UTC (two root attempts; 1 h, increments). 6) Tick "PD-A closed" in PHASES + SESSION_LOG "code-review done `1354def`" → PD-B (PD-04 first; C-75).
+- **Tested:** gate on `d43774c` all PASS (unit 1789/0, int 1445/0, Linux Chromium E2E 34/0, host WebKit 22/0, perf 3/0, changed specs 149/0); gate on `1354def`: all PASS except perf pixel7 (slow laptop, above); `throttleRate` unit 4/0; test-api int 9/0 alone (first case 5.7 s → 0.24 s); wip push check + sast PASS.
+- **Not yet tested:** `899890f` on CI (wip CI for `1354def` running at handoff); Sentry "no new errors for release `d43774c`" (no SSH, no Sentry access): NOT VERIFIED.
+
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov; `docs/phases/PD.md`). Then P1 resumes with the P1-B close. **P0 officially closed 17 Nov (human)**; its gate, DoD evidence, demo and leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Human tasks (H-45 etc.) are done by the human later; don't wait on them.
-- **Current sub-phase:** **PD-A** Foundation: ~~PD-00~~ → ~~PD-01~~ → ~~PD-02~~ (Linux CI fix on main 21 Nov) → ~~PD-03~~ (on `wip/PD-03`) → ~~MEDIUM batch M1/M2~~ → ~~reviews~~ → ~~review MEDIUMs~~ → main → `/subphase-complete`; then PD-B (controls), PD-C (structure + signature moments, needs H-49). **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done except the staging step, which waits for H-48.)
+- **Current sub-phase:** **PD-A** Foundation: ~~PD-00~~ → ~~PD-01~~ → ~~PD-02~~ → ~~PD-03~~ → ~~reviews + MEDIUMs~~ → ~~main (`d43774c`)~~ → ~~close reviews~~ → fx-perf CI fix to main (wip `1354def`) + full run + Sentry check → tick PD-A; then PD-B (controls), PD-C (structure + signature moments, needs H-49). **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done except the staging step, H-48 Claude part.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-21, Syedbadeshah76 (checkpoint: `wip/PD-03`; PD-A MEDIUMs done; main push gate red on Linux WebKit only, decision needed)
+- **Last updated:** 2026-11-22 (00:00 local; 21 Nov 18:30 UTC), Syedbadeshah76 (handoff: main `d43774c` deployed; wip `1354def` = fx-perf CI calibration + int timeout fix; PD-A close almost done)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
-- **Staging live** (release `8353e00`; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys roll back until H-48.
+- **Staging live** (release `d43774c` since 21 Nov 17:51 UTC, first deploy with the real Sentry DSN; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
 - **PD (Molten design):** PD-00..PD-02 done; PD-02's Linux CI red fix (`c072a49` + Semgrep fix `527fbb8`) verified with `pnpm e2e:linux` and squashed onto main 21 Nov (talha.syed). PD-03 done 21 Nov (talha.syed). 21 Nov: gate ~10.5 min (watchdog limits, Semgrep tar stream), `pnpm e2e:linux` built, Docker tidied (~15 GB).
 
 ## Next (top 3)
-1. **Human decision: Linux WebKit in the gate/nightly** (handoff note 1); then apply it, gate, push main, full 5-project CI run.
-2. PD-A `/subphase-complete` (MEDIUMs done in `d8656bf`).
-3. **H-48 human part done 21 Nov** (real DSN set 13:49 UTC): Claude's part on the next staging deploy (DSN URL-shaped in web + worker, one probe error confirmed in Sentry) → then close P1-A and PD-A staging steps. Human any time: H-38, H-45, H-46.
+1. Handoff steps 1–4: gate `wip/PD-03` (`1354def`) with the laptop idle or on the Mac, push to main, full 5-project run green.
+2. H-48 Claude part on staging (SSH `badeshah@`, Windows OpenSSH), then tick PD-A (and P1-A's staging step).
+3. PD-B: PD-04 (buttons, icon button, toast; C-75 tile parity). Human any time: H-38, H-45, H-46.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
@@ -72,7 +72,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-49 | P0 close (human 17 Nov) | P1-18 + P1 `/phase-complete` | P0's heavy gate and definition of done: `gate:phase` covers P0 + P1; code/security/design reviews of P0-E commits not yet reviewed (at the P1-A close); P0 DoD bullets checked; client demo covers P0 + P1 together (`docs/DEMO_GUIDE.md` + Demo 2). (P0 close lines in PHASES ticked 17 Nov by the human's decision.) | gate:phase summary + SESSION_LOG + DEMO_NOTES |
 
 ## Blockers
-- Human: **H-48 🔴** (staging Sentry DSN; blocks the next staging deploy once the batch lands). Now: H-45 (UptimeRobot staging monitors, after the `e9aa786` deploy), H-42 tail (delete the old `moz-backups` B2 key). Needed later: at the P0 close H-29 (`backup:verify`), H-13 (real devices), H-23 (drafts to the solicitor), H-14 (send demo notes).
+- Human: none blocking (H-48 human part done; staging deploys again). Now: H-45 (UptimeRobot staging monitors, after the `e9aa786` deploy), H-42 tail (delete the old `moz-backups` B2 key). Needed later: at the P0 close H-29 (`backup:verify`), H-13 (real devices), H-23 (drafts to the solicitor), H-14 (send demo notes).
 - Technical: C-40 (quarantined test) blocks the P0 phase gate. Known risk: wal-g `wal-push` hangs without `ca-certificates` in the Postgres image (wal-g #2550).
 
 ## Map of the codebase
@@ -80,11 +80,11 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (21 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- Gate `73f46c8` (Windows): all steps PASS up to Linux tagged E2E 403/6/61 (6 = Linux WebKit only; alone 17/8 Linux, host WebKit 10/0).
-- `gate:task PD-03` (Mac) PASS on `4ecb0de`: unit 1804/0, int 1456/0/1, Linux e2e 51/0, perf 1/0, changed specs 97/0; wip CI 44909391859 green.
-- Main push gate (b7d1c3f, tags PD-03/P0-10/PD-02/P1-03): Linux e2e 248/5/12 FAIL (5 existing P0-10/PD-02 specs, handoff note).
-- Review fixes `675cdad`: `.rm` E2E failed before (`m-spin 0.15s`), passes after; RM specs 59/1; sast 5/0; gitleaks worktree scan clean + planted token blocked.
-- Main CI 44901375933 (`83bb4e5`) green; Deploy fails on H-48 as expected.
+- Main CI 44930544722 (`d43774c`) green; Deploy 44931894973 green (staging `d43774c`, demo sign-in check ok).
+- Gate `d43774c` (Windows) PASS: unit 1789/0, int 1445/0, Linux Chromium E2E 34/0, host WebKit 22/0, perf 3/0, changed 149/0.
+- Full 5-project run 44930551230 (`d43774c`): 1 failed, fx stress pixel7 (slow runner at fixed 4×; fix `899890f` on wip).
+- Gate `1354def`: all PASS but perf pixel7 54.5 fps (laptop score 8,780, below the reference device unthrottled).
+- PD-A close reviews: code APPROVE, design PASS (range `4ecb0de..d43774c`).
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 
