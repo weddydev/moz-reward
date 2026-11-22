@@ -188,7 +188,11 @@ test("[PD-04] /dev/molten and /dev/ui at 320, 390 and 1440: no horizontal scroll
   page,
   shoot,
 }) => {
-  test.skip(test.info().project.name !== "chromium", "inspection screens: one browser is enough");
+  // Both engines (design review M7): Chromium in the gate, WebKit on CI and the Mac.
+  test.skip(
+    !["chromium", "webkit"].includes(test.info().project.name),
+    "inspection screens: one project per engine",
+  );
   for (const path of ["/dev/molten", "/dev/ui"]) {
     await open(page, path);
     for (const width of [320, 390, 1440]) {
@@ -200,6 +204,15 @@ test("[PD-04] /dev/molten and /dev/ui at 320, 390 and 1440: no horizontal scroll
       if (path === "/dev/molten") {
         await page.locator('[data-parity="tile"]').scrollIntoViewIfNeeded();
         await shoot(`molten-buttons-${String(width)}`, { fullPage: false });
+        // The focus ring on the molten button, by keyboard.
+        await molten(page).focus();
+        await page.keyboard.press("Shift+Tab");
+        await page.keyboard.press("Tab");
+        await expect(molten(page)).toBeFocused();
+        await shoot(`molten-focus-${String(width)}`, { fullPage: false });
+        await page.evaluate(() => {
+          (document.activeElement as HTMLElement | null)?.blur();
+        });
       } else {
         await page.getByText("Actions", { exact: true }).first().scrollIntoViewIfNeeded();
         await shoot(`ui-buttons-${String(width)}`, { fullPage: false });

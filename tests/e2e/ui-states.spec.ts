@@ -11,9 +11,12 @@ async function settle(page: Page): Promise<void> {
   // Controls disabled until hydration fade in once enabled; measure the settled page.
   await expect(page.locator('[data-overlay-trigger="modal"]')).toBeEnabled();
   await page.waitForFunction(() =>
-    document
-      .getAnimations()
-      .every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity),
+    document.getAnimations().every(
+      (a) =>
+        a.timeline !== document.timeline || // scroll-driven (the Tile's rise) never "finishes"
+        a.playState !== "running" ||
+        a.effect?.getTiming().iterations === Infinity,
+    ),
   );
 }
 

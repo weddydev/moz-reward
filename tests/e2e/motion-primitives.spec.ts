@@ -78,7 +78,13 @@ async function settledOn(page: Page, selector: string): Promise<void> {
   await page.waitForFunction(
     (s) =>
       [...document.querySelectorAll(s)].every((el) =>
-        el.getAnimations().every((a) => a.playState !== "running"),
+        el.getAnimations().every(
+          (a) =>
+            a.playState !== "running" ||
+            // Idle loops (PD-04: the orbit button's light) and scroll-driven animations never "finish".
+            a.effect?.getTiming().iterations === Infinity ||
+            a.timeline !== document.timeline,
+        ),
       ),
     selector,
   );

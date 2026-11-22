@@ -143,6 +143,41 @@ describe("[PD-04] Molten button", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
+  it("[PD-04] a busy or disabled button doesn't press, ripple or lean (design review M1)", () => {
+    render(
+      <>
+        <Button loading>Busy</Button>
+        <Button disabled>Off</Button>
+      </>,
+    );
+    for (const name of ["Busy", "Off"]) {
+      const b = screen.getByRole("button", { name });
+      fireEvent.pointerDown(b, { button: 0, clientX: 5, clientY: 5 });
+      expect(b).not.toHaveClass("down");
+    }
+    expect(press.ripple).not.toHaveBeenCalled();
+  });
+
+  it("[PD-04] two clicks before an async action resolves celebrate once (design review M2)", async () => {
+    let finish: (v: unknown) => void = () => undefined;
+    const pending = new Promise((r) => {
+      finish = r;
+    });
+    render(
+      <Button resultLabel="Done" celebrate onClick={() => pending}>
+        Save
+      </Button>,
+    );
+    const btn = screen.getByRole("button", { name: "Save" });
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+    await act(async () => {
+      finish(true);
+      await pending;
+    });
+    expect(press.celebrate).toHaveBeenCalledTimes(1);
+  });
+
   it("[PD-04] the ghost button keeps its arrow after the label, inside the underline", () => {
     render(
       <Button variant="ghost" icon={<svg data-testid="arrow" />}>

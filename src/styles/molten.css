@@ -355,6 +355,12 @@ html:root.rm *::after {
 }
 .m-btn:disabled {
   opacity: 0.55;
+  box-shadow: none;
+}
+/* A disabled button doesn't look live: its flowing fill and orbiting light hold still (design review M6). */
+.m-btn:disabled::before,
+.m-btn-orbit:disabled {
+  animation-play-state: paused;
 }
 .m-btn-molten {
   color: var(--ink);
@@ -445,7 +451,7 @@ html:root.rm *::after {
     transform 0.5s var(--spring),
     opacity 0.25s;
   text-align: center;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .m-btn .m-lbl .l2 {
   transform: translateY(120%);
@@ -472,7 +478,7 @@ html:root.rm *::after {
   gap: 8px;
   min-width: 0;
   text-align: center;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .m-btn[aria-busy="true"] .m-lbl,
 .m-btn[aria-busy="true"] .m-txt,
@@ -505,6 +511,11 @@ html:root.rm *::after {
     animation-duration: 1.1s;
     color: var(--ink);
   }
+}
+/* Lite tier (DESIGN §7.2 "no light glides"): the orbit holds still; it is the one button loop painted on the main
+   thread every frame (a registered custom property), the molten flow is a compositor transform. */
+.lite .m-btn-orbit {
+  animation: none;
 }
 @keyframes m-orbit {
   to {
@@ -540,6 +551,10 @@ html:root.rm *::after {
   width: 16px;
   height: 16px;
   transition: transform 0.45s var(--spring);
+}
+/* No arrow: the underline runs the full label width. */
+.m-btn-ghost .u:not(:has(svg))::after {
+  right: 0;
 }
 @media (hover: hover) and (pointer: fine) {
   .m-btn-ghost:hover .u::after {
@@ -636,7 +651,14 @@ html:root.rm *::after {
   overflow: hidden;
   font-weight: 600;
   font-size: 14px;
-  pointer-events: auto;
+  /* Taps go through, as the reference's (a toast must not block what lies under it on a phone for 3.6 s); a fine
+     pointer can still hover it to hold it, and the Dismiss key target always takes input (design review M3). */
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .m-toast {
+    pointer-events: auto;
+  }
 }
 .m-toast .tc {
   width: 30px;
@@ -651,6 +673,7 @@ html:root.rm *::after {
 }
 /* Dismiss: out of sight until a keyboard user focuses it (the toast at rest is the reference's). */
 .m-toast-x {
+  pointer-events: auto;
   position: absolute;
   width: 1px;
   height: 1px;
@@ -658,7 +681,7 @@ html:root.rm *::after {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.m-toast-x:focus-visible {
+.m-toast-x:focus {
   position: static;
   width: 44px;
   height: 44px;
@@ -670,6 +693,7 @@ html:root.rm *::after {
   border-radius: 12px;
   margin: -8px -10px -8px 0;
   color: var(--on-obsidian);
+  outline-color: var(--on-obsidian);
 }
 .m-toast .bar2 {
   position: absolute;

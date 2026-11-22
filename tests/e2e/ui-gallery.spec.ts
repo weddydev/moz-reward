@@ -21,9 +21,12 @@ test.describe("[P0-09] UI gallery", () => {
     // enabled, and axe measures contrast mid-fade if it runs then.
     await expect(page.locator('[data-overlay-trigger="modal"]')).toBeEnabled();
     await page.waitForFunction(() =>
-      document
-        .getAnimations()
-        .every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity),
+      document.getAnimations().every(
+        (a) =>
+          a.timeline !== document.timeline || // scroll-driven (the Tile's rise) never "finishes"
+          a.playState !== "running" ||
+          a.effect?.getTiming().iterations === Infinity,
+      ),
     );
 
     // No horizontal page overflow (mobile browsers would zoom the whole page out).

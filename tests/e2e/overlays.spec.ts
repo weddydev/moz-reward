@@ -17,7 +17,13 @@ async function open(page: Page, demo: string): Promise<void> {
   // Let the enter transition finish before measuring.
   await page.waitForFunction(() =>
     [...document.querySelectorAll("dialog[open] *")].every((el) =>
-      el.getAnimations().every((a) => a.playState !== "running"),
+      el.getAnimations().every(
+        (a) =>
+          a.playState !== "running" ||
+          // Idle loops (PD-04: the orbit button's light) and scroll-driven animations never "finish".
+          a.effect?.getTiming().iterations === Infinity ||
+          a.timeline !== document.timeline,
+      ),
     ),
   );
 }
@@ -155,9 +161,12 @@ test.describe("[P0-09] overlays", () => {
     await region.getByRole("button", { name: "Dismiss" }).focus();
     // Scan once the toast has finished entering: mid-fade its text is measured at partial opacity.
     await page.waitForFunction(() =>
-      document
-        .getAnimations()
-        .every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity),
+      document.getAnimations().every(
+        (a) =>
+          a.timeline !== document.timeline || // scroll-driven (the Tile's rise) never "finishes"
+          a.playState !== "running" ||
+          a.effect?.getTiming().iterations === Infinity,
+      ),
     );
     expect(await serious(page)).toEqual([]);
     // End on a settled page: dismiss it and wait for it to go before the guard's scan.

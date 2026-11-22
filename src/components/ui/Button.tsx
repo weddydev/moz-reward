@@ -83,6 +83,7 @@ export function Button({
   // The visible roll is a class set in the click's own task (as the reference does); `rolled` only moves the
   // accessible name to the result label while it shows.
   const [rolled, setRolled] = useState(false);
+  const celebrating = useRef(false);
   const backTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const flowing = variant === "molten" || variant === "destructive";
   usePress(ref, { ripple: flowing });
@@ -101,6 +102,7 @@ export function Button({
     setRolled(true);
     clearTimeout(backTimer.current);
     backTimer.current = setTimeout(() => {
+      celebrating.current = false;
       el.classList.remove("ok");
       setRolled(false);
     }, BUTTON.labelBackMs);
@@ -113,11 +115,17 @@ export function Button({
     }
     const el = ref.current;
     const point = { clientX: e.clientX, clientY: e.clientY };
-    const showing = el?.classList.contains("ok") ?? false;
+    // One celebration per roll: a click while the result shows, or while an earlier async click is still
+    // pending, doesn't celebrate again (design review M2).
+    const showing = (el?.classList.contains("ok") ?? false) || celebrating.current;
+    if (celebrate) celebrating.current = true;
     const result = onClick?.(e);
     if (resultLabel === undefined && !celebrate) return;
     onSettled(result, (ok) => {
-      if (!ok || !ref.current) return;
+      if (!ok || !ref.current) {
+        if (!showing) celebrating.current = false;
+        return;
+      }
       if (celebrate && !showing && variant !== "destructive")
         burstAt(ref.current, point, typeof celebrate === "object" ? celebrate.coins : undefined);
       roll();

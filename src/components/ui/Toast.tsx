@@ -238,7 +238,9 @@ function ToastView({ item }: { item: ToastItem }) {
   return (
     <li ref={ref} data-leaving={item.leaving} data-tone={item.tone} className="m-toast">
       <span className="tc grid place-items-center" aria-hidden="true">
-        {item.tone === "error" ? <CircleAlert size={18} strokeWidth={1.8} /> : null}
+        {item.tone === "error" ? (
+          <CircleAlert size={18} strokeWidth={1.8} className="text-ink" />
+        ) : null}
       </span>
       <span data-part="message" className="min-w-0 flex-1 [overflow-wrap:anywhere]">
         {item.message}
@@ -273,7 +275,7 @@ export function Toaster({ parity }: { parity?: string } = {}): React.JSX.Element
       {/* The stack positions itself (molten.css `.m-toasts`); on app shells it sits above the bottom nav. */}
       <section
         aria-label="Notifications"
-        className="[--toast-bottom:var(--fixed-bottom)] lg:[--toast-bottom:1.5rem]"
+        className="[--toast-bottom:max(var(--fixed-bottom),calc(20px+env(safe-area-inset-bottom,0px)))]"
       >
         <ol className="m-toasts" data-parity={parity}>
           {visible.map((t) => (

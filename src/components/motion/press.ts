@@ -16,6 +16,10 @@ import { countUp, magneticOffset, ripple } from "@/lib/motion/press";
  * - `useCountUp(ref, value, ms)`: counts the element's text to each new value (cubic out, 700 ms), from the
  *   previous one; under reduced motion the new value shows at once.
  */
+/** A control that can't act now (disabled or busy) neither presses, ripples nor leans (PD-04 design review). */
+const inert = (el: Element): boolean =>
+  el.matches(':disabled, [aria-busy="true"], [aria-disabled="true"]');
+
 export function usePress(
   ref: RefObject<HTMLElement | null>,
   opts: { ripple?: boolean; haptic?: boolean } = {},
@@ -26,7 +30,7 @@ export function usePress(
     const el = ref.current;
     if (!el) return;
     const down = (e: PointerEvent): void => {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || inert(el)) return;
       el.classList.add("down");
       if (withRipple) ripple(el, e);
     };
@@ -65,6 +69,7 @@ export function useMagnetic(
     )
       return;
     const move = (e: PointerEvent): void => {
+      if (inert(el)) return;
       const r = el.getBoundingClientRect();
       const x = e.clientX - r.left;
       const y = e.clientY - r.top;
