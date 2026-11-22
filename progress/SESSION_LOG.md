@@ -858,3 +858,9 @@ Main push: hook gate (ids PD-06) changed specs 488/3 (2 container stalls, overla
 Done: a Tabs (`31347b1`); b TextField + Input tile; c StarRating + Rate tile (parity not yet green). Harness: focus trigger, ResizeObserver wait after ownHeight, runFor/until.
 Tests: unit molten-fields 24/0 (+ spec/parts/ui/press 75/0); parity a 12/0; full parity 120/0 (before c); Linux E2E b 53 pass / 4 fail (1 test bug fixed, 3 C-76 goto stalls).
 Left off: re-run PD-06 parity for stars after the svg-height fix; then Slider (d).
+
+## 2026-11-23 — PD — PD-06 step c (StarRating) finished on wip/PD-06 `413acf8`
+Stars 46 vs 52 px: Tailwind preflight makes svg block; `.m-star svg { display:inline }` → parity PD-06 36/0 Chromium + WebKit.
+E2E added: star keyboard, rapid taps, COMPLIANCE §1 identical choices after every rating, reduced motion, 44 px targets, rated/unrated screens 320/390/1440 (inspected).
+Linux flakes (tabs keyboard, pasted email, beam click): /dev/molten never marked data-hydrating → LabSection marks it; beam test clicks via locator. Linux `molten-fields` 13/0, 39/0 ×3; ui-states pass.
+Left off: step d Slider.

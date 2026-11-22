@@ -7,10 +7,10 @@ Baton: held by talha.syed since 2026-11-22 17:32 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 23 Nov 2026 ~00:50 local (Mac); baton held. Human: autopilot ON (`/resume autopilot`); finish PD-06 properly, then close PD-B as fast as possible: fast means less overhead, never skipping a necessary check, review or criterion (human, 23 Nov).**
-- **PD-06 in progress on `wip/PD-06`** (pushed HEAD `62c72c5`). Lettered steps: **a Tabs done** (`31347b1`: parity 12/0 both engines, Linux E2E 22/0); **b TextField built** (float label, beam from tap point, shake on new error / `errorKey`, `valid` tick, `ref` prop; Button `resultMs`; Input tile; parity text-field + tile pass with a documented label tolerance; harness: `focus` trigger hides rings on both pages, `capture` waits for ResizeObserver delivery after `ownHeight`, full parity 120/0); **c StarRating built** (`src/components/ui/StarRating.tsx`, COMPLIANCE §1 unit tests pass, spec row required, harness `runFor`/`until` for timer-driven ignite) but **its parity failed** (stars 46 vs 52 px tall: fixed by dropping `display:block` on `.m-star svg`; **re-run NOT done**).
-- **Continue here:** 1) `pnpm test:parity --grep "PD-06"` → fix stars/Rate tile until green (both engines). 2) `pnpm e2e:linux tests/e2e/molten-fields.spec.ts tests/e2e/ui-states.spec.ts --project chromium` (last run: the label-float test failed only from a missing scroll, fixed; 3 ui-states `page.goto` timeouts = C-76 stall, rerun alone); add StarRating E2E (keyboard, rapid taps, reduced motion, both choices visible after any rating) + stars-tile screens. 3) Step d **Slider** (`.slider`, coin thumb, tilting bubble ±28°, notch sparks once each; native range underneath), then remove `ownHeight` from `tabs-tile`/`stars-tile`. 4) Step e **MemberCard** (holo, glare, tilt, flip to QR placeholder, idle sway touch-only; no tilt under RM/iOS), remove `ownHeight` from `text-field-tile`. 5) Close: `gate:task PD-06`, `design-reviewer` + `review-animations`, DECISIONS (countUp no pre-frame write; field focus ring kept; TextField error under the field; label ink-2 tolerance; harness ResizeObserver wait + runFor/until), FOLLOWUPS (TextArea/Select still old look → PD-11; LiquidChoice/Checkbox value-change motion and `--chk-box` lines tagged PD-06 still open), tick PHASES. 6) PD-B close (`/subphase-complete`, C-76 first).
-- **Not yet tested:** StarRating parity + E2E; Linux E2E of the text-field tests after the scroll fix; CI on `wip/PD-06` 45055638163 (step a) and main 45054086915 (`c0610ec`, running at checkpoint: check first).
+- **Checkpoint by talha.syed, 23 Nov 2026 (Mac); baton held. Human: autopilot ON (`/resume autopilot`); finish PD-06 properly, then close PD-B as fast as possible: fast means less overhead, never skipping a necessary check, review or criterion (human, 23 Nov).**
+- **PD-06 in progress on `wip/PD-06`** (pushed HEAD `413acf8`). Lettered steps: **a Tabs done** (`31347b1`: parity 12/0 both engines, Linux E2E 22/0); **b TextField done** (float label, beam from tap point, shake on new error / `errorKey`, `valid` tick, `ref` prop; Button `resultMs`; Input tile; label tolerance documented; harness `focus` trigger + ResizeObserver wait); **c StarRating done** (`413acf8`: `.m-star svg` set `display:inline` explicitly because Tailwind preflight makes svgs block; parity PD-06 36/0 Chromium + WebKit; E2E keyboard, rapid taps, COMPLIANCE §1 identical choices after every rating, reduced motion, 44 px targets, rated/unrated screens 320/390/1440 inspected; `/dev/molten` LabSection now marks `data-hydrating` until hydrated, which fixed Linux keyboard/paste flakes).
+- **Continue here:** 1) Step d **Slider** (`.slider`, coin thumb, tilting bubble ±28°, notch sparks once each; native range underneath; keyboard steps spark each notch once), then remove `ownHeight` from `tabs-tile`/`stars-tile`. 2) Step e **MemberCard** (holo, glare, tilt, flip to QR placeholder, idle sway touch-only; no tilt under RM/iOS), remove `ownHeight` from `text-field-tile`. 3) Close: `gate:task PD-06`, `design-reviewer` + `review-animations`, DECISIONS (countUp no pre-frame write; field focus ring kept; TextField error under the field; label ink-2 tolerance; harness ResizeObserver wait + runFor/until; star svg inline vs preflight; gallery `data-hydrating`), FOLLOWUPS (TextArea/Select still old look → PD-11; LiquidChoice/Checkbox value-change motion and `--chk-box` lines tagged PD-06 still open), tick PHASES. 4) PD-B close (`/subphase-complete`, C-76 first).
+- **Not yet tested:** CI on `wip/PD-06` `413acf8` (pushed; it superseded 45057026965 on `62c72c5`, which was green through unit/int/build when replaced): check it first. Step c on WebKit E2E (CI only, by rule). main 45054086915 (`c0610ec`) green.
 - **Windows laptop (WSL):** local WebKit only with `--workers 1`; never push or run suites while a gate runs; on a wip branch update main with `git fetch`, not `git pull --rebase origin main`.
 - **Before work:** nothing new (no env vars, migrations or seeds). New tokens `--star-off`, `--star-hover`.
 ## Status
@@ -18,7 +18,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** **PD-B** Controls: ~~PD-04~~ → ~~PD-05~~ → PD-06 → close; then PD-C (structure + signature moments, needs H-49). **PD-A closed 22 Nov.** **P1-B** (P1-05..P1-09) is complete; its `/subphase-complete` runs after PD-C. (P1-A: everything done; staging step done 22 Nov with H-48.)
 - **GITHUB_MODE:** `free` (H-25 answered 9 Nov 2026; ENGINEERING §16). Switch to `pro` later by upgrading the plan and changing this line.
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-23 (~00:50 local), talha.syed (PD-06 steps a–c on wip/PD-06; autopilot on)
+- **Last updated:** 2026-11-23, talha.syed (PD-06 step c done on wip/PD-06 `413acf8`; autopilot on)
 - **Staging and production:** one Hostinger VPS 72.61.17.208, hardened 15 Nov; **staging live 15 Nov** (release `8353e00` since 16 Nov; origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -27,7 +27,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-04 on main 22 Nov; **PD-05 closed 22 Nov** (code `9ec3855`; carries the main CI fixes). Next PD-06, PD-B close (incl. C-76).
 
 ## Next (top 3)
-1. PD-06 on `wip/PD-06`: stars parity re-run, then Slider (d), MemberCard (e), close; then PD-B close fast (human, 23 Nov).
+1. PD-06 on `wip/PD-06`: Slider (d), MemberCard (e), close; then PD-B close fast (human, 23 Nov).
 2. Check the first nightly `perf` job (scheduled.yml, 02:29 UTC) and red CI first, as always.
 3. PD-B close (C-76 container stall root cause first). Human any time: H-51 (b) optional dev keys, H-48b, H-38, H-45, H-46.
 
@@ -78,11 +78,10 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 ## Map of the codebase
 In **`progress/MAP.md`** (read when you need to locate code; add new important paths there).
 
-## Last verified (22 Nov 2026)
+## Last verified (23 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- PD-05 `9ec3855`: CI 45042534742 + full 5-project 45042543781 green.
-- Gate run 2 (Mac): check/int/build/sast PASS (unit 1883/0, int 1456/0/1); PD-05 E2E Linux Chromium 24/0; changed specs 477/14 (all container goto stalls) → reruns 170/0 + overlays 50/0.
-- Parity PD-05 44/0 Chromium + WebKit (host). `molten-choices` alone desktop1440 8/0, 3 projects 24/0.
+- PD-06 c `413acf8`: parity PD-06 36/0 Chromium + WebKit (host); Linux Chromium `molten-fields` 13/0 (and 39/0 ×3 diagnosing the hydration flake); `ui-states` all pass; pre-push `pnpm check` + sast PASS.
+- main 45054086915 (`c0610ec`, PD-05) green. PD-05 gate evidence: SESSION_LOG 22 Nov.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 
