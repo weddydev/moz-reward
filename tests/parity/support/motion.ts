@@ -77,6 +77,8 @@ export const TRIGGERS: Record<string, Trigger> = {
   "text-field": { target: "input", events: ["pointerdown"], focus: true },
   // A drag from 240 to 480: the bubble leans back to −28° (and the Coffee notch sparks; sparks are FX).
   slider: { target: "input", values: ["250", "480"], events: [] },
+  // A tap: the card turns over to the QR side (.7 s spring).
+  "member-card": { events: ["click"] },
 };
 
 /** Fires a part's trigger and pauses every time-based animation at once (see `Trigger`). */

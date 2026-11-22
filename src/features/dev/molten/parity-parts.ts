@@ -193,8 +193,6 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     anchor: '<article class="tile w5"',
     task: "PD-06",
     status: "required",
-    // Until PD-06 builds its row-mate (Member card), which sets the row's height.
-    ownHeight: true,
   },
   {
     name: "text-field",
@@ -209,11 +207,18 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     },
   },
   {
+    name: "member-card-tile",
+    title: "Member card tile",
+    anchor: '<article class="tile w7"',
+    task: "PD-06",
+    status: "required",
+  },
+  {
     name: "member-card",
     title: "Member card",
     anchor: 'id="mcard"',
     task: "PD-06",
-    status: "pending",
+    status: "required",
   },
   { name: "dock", title: "Floating dock", anchor: 'id="dock"', task: "PD-07", status: "pending" },
   {
@@ -246,6 +251,36 @@ export function addParityHooks(html: string, parts: readonly ParityPart[] = PARI
     if (out.slice(open, at).includes(">"))
       throw new Error(`parity anchor is not in an opening tag: ${part.name}`);
     out = `${out.slice(0, nameEnd)} data-parity="${part.name}"${out.slice(nameEnd)}`;
+  }
+  return out;
+}
+
+/**
+ * Defects of the frozen reference that the copy corrects, so parity judges the design it intends (each one a
+ * DECISIONS line; the original is never touched). Each `from` must appear exactly once.
+ * - The phone's back button rule `.back{position:absolute;top:50px;left:14px;width:40px;height:40px;
+ *   border-radius:50%;…}` also matches the member card's `.mface.back`, so in the reference the card's back face
+ *   is a 40 px blurred circle and a flip shows an empty card (DECISIONS 23 Nov "PD-06 member card back"). Scoped
+ *   to the phone's button, the back face is the whole card with the QR code, as the tile's copy says.
+ */
+export const REFERENCE_FIXES: readonly { why: string; from: string; to: string }[] = [
+  {
+    why: "the phone's .back button rule leaks onto the member card's back face",
+    from: ".back{position:absolute;top:50px;left:14px;",
+    to: ".back:not(.mface){position:absolute;top:50px;left:14px;",
+  },
+];
+
+/** Applies `REFERENCE_FIXES`; throws if a fix no longer matches exactly once (the reference changed). */
+export function withReferenceFixes(html: string): string {
+  let out = html;
+  for (const fix of REFERENCE_FIXES) {
+    const hits = out.split(fix.from).length - 1;
+    if (hits !== 1)
+      throw new Error(
+        `reference fix matched ${String(hits)} times (${fix.why}): update REFERENCE_FIXES`,
+      );
+    out = out.replace(fix.from, fix.to);
   }
   return out;
 }

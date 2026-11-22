@@ -239,3 +239,148 @@ export function sliderTilt(dFraction: number, dtMs: number): number {
 export function crossedNotches(prev: number, next: number, notches: readonly number[]): number[] {
   return notches.filter((m) => prev < m && next >= m).sort((a, b) => a - b);
 }
+
+/**
+ * Molten member card (PD-06; DESIGN §6, §6.3, §7.4; reference `.mcard`, `.mface`, `.holo`, `.glare` + "member
+ * card"). The tilt, spring back, flip and idle sway are CSS; the pointer only sets where the card leans and where
+ * the foil and glare sit (once per frame).
+ */
+export const MEMBER_CARD = {
+  /** Tilt across the card's height: `(.5 - py) * 22`, so ±11° about the x axis. */
+  tiltXDeg: 22,
+  /** Tilt across its width: `(px - .5) * 26`, so ±13° about the y axis. */
+  tiltYDeg: 26,
+  /** Tracking the pointer (`.m-mcard.live` transition, linear). */
+  trackMs: 120,
+  /** Spring back upright, and the flip (`.m-mcard` transition, `--spring`). */
+  springMs: 700,
+  /** Idle sway on touch-only screens (`.m-mcard.idle`, alternate). */
+  swayMs: 7000,
+  /** The foil gradient is this many times the face (reference `background-size: 260%`). */
+  holoSize: 2.6,
+  /** The decorative QR placeholder: cells per side and the reference's seed. */
+  qrCells: 25,
+  qrSeed: 42,
+} as const;
+
+const unit = (v: number): number => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.5);
+
+/**
+ * Pure: where a pointer sits on the card, 0–1 across and down (reference `clamp(0, 1, (x - left) / width)`),
+ * clamped to the card; a card with no size (not laid out yet) or a pointer with no position reads as its centre.
+ */
+export function cardPointer(
+  clientX: number,
+  clientY: number,
+  rect: { left: number; top: number; width: number; height: number },
+): { px: number; py: number } {
+  return {
+    px: rect.width > 0 ? unit((clientX - rect.left) / rect.width) : 0.5,
+    py: rect.height > 0 ? unit((clientY - rect.top) / rect.height) : 0.5,
+  };
+}
+
+/**
+ * Pure: the card's lean (degrees) for a pointer at (`px`, `py`): the top comes towards a pointer above the middle
+ * (+x rotation) and the right side towards a pointer right of it; ±11° / ±13° at the edges, 0 at the centre.
+ */
+export function cardTilt(px: number, py: number): { rx: number; ry: number } {
+  const rx = (0.5 - unit(py)) * MEMBER_CARD.tiltXDeg;
+  const ry = (unit(px) - 0.5) * MEMBER_CARD.tiltYDeg;
+  // No −0 (a CSS value written as "-0.00deg").
+  return { rx: rx === 0 ? 0 : rx, ry: ry === 0 ? 0 : ry };
+}
+
+/**
+ * Pure: the foil's offset as a fraction of its own size, the same picture as the reference's `background-size:
+ * 260%` at `background-position: px py`, but moved with a transform (composite only): the 2.6× layer slides left
+ * by (2.6 − 1) × px of the face, i.e. 1.6/2.6 × px of itself.
+ */
+export function holoShift(px: number, py: number): { x: number; y: number } {
+  const k = (MEMBER_CARD.holoSize - 1) / MEMBER_CARD.holoSize;
+  const x = -k * unit(px);
+  const y = -k * unit(py);
+  return { x: x === 0 ? 0 : x, y: y === 0 ? 0 : y };
+}
+
+/**
+ * Pure: the glare for a pointer at (`px`, `py`) on a `w` × `h` face (px), as a transform of one square light whose
+ * radius at scale 1 is half the face's diagonal. The reference draws `radial-gradient(circle at gx gy, …)`, whose
+ * ray reaches the farthest corner, so the light grows towards the edges: `scale` is that ray over the half
+ * diagonal (1 at the centre, 2 in a corner). On the back face (`flipped`) the card is turned over, so the light
+ * sits mirrored across (reference `flipped ? 1 - px : px`). `x`/`y` place the square's top-left corner.
+ */
+export function cardGlare(
+  px: number,
+  py: number,
+  w: number,
+  h: number,
+  flipped: boolean,
+): { x: number; y: number; size: number; scale: number } {
+  const gx = flipped ? 1 - unit(px) : unit(px);
+  const gy = unit(py);
+  const half = Math.hypot(w / 2, h / 2);
+  if (!(half > 0)) return { x: 0, y: 0, size: 0, scale: 1 };
+  const ray = Math.hypot(Math.max(gx, 1 - gx) * w, Math.max(gy, 1 - gy) * h);
+  return { x: gx * w - half, y: gy * h - half, size: 2 * half, scale: ray / half };
+}
+
+/**
+ * Pure: is this an iPhone, iPad or iPod (iPadOS reports a Mac, so a "Mac" with a touch screen counts)? DESIGN §6:
+ * the card never tilts there, since iOS only allows motion after a permission prompt the card never shows.
+ */
+export function isIOSDevice(nav: {
+  userAgent: string;
+  platform?: string;
+  maxTouchPoints?: number;
+}): boolean {
+  if (/\b(iPhone|iPad|iPod)\b/.test(nav.userAgent)) return true;
+  return nav.platform === "MacIntel" && (nav.maxTouchPoints ?? 0) > 1;
+}
+
+/**
+ * Pure: what the member card does on this device. Reduced motion: nothing follows the pointer and nothing sways
+ * (the flip still turns, in .12 s). iOS: no tilt and no sway; the foil and glare still follow the finger. A fine
+ * pointer (mouse, trackpad) never sways: the card waits for the pointer. A touch-only screen sways when untouched.
+ */
+export function memberCardMotion(env: { reduced: boolean; ios: boolean; fine: boolean }): {
+  follow: boolean;
+  tilt: boolean;
+  sway: boolean;
+} {
+  const follow = !env.reduced;
+  const tilt = follow && !env.ios;
+  return { follow, tilt, sway: tilt && !env.fine };
+}
+
+/**
+ * Pure: the decorative QR-style pattern of the card's back (the reference's: a Lehmer generator from seed 42,
+ * cells above .52 drawn, three finder squares), row by row. Not a code: P1-14 puts the real one there.
+ */
+export function qrPlaceholderCells(
+  size: number = MEMBER_CARD.qrCells,
+  seed: number = MEMBER_CARD.qrSeed,
+): boolean[][] {
+  let s = seed;
+  const rand = (): number => (s = (s * 16807) % 2147483647) / 2147483647;
+  // Row by row, left to right: the reference's draw order, so the same cells come out.
+  const cells = Array.from({ length: size }, () =>
+    Array.from({ length: size }, () => rand() > 0.52),
+  );
+  const finder = (fx: number, fy: number): void => {
+    for (let y = 0; y < 7; y++)
+      for (let x = 0; x < 7; x++) {
+        const ring = x === 0 || y === 0 || x === 6 || y === 6;
+        const core = x >= 2 && x <= 4 && y >= 2 && y <= 4;
+        const row = cells[fy + y];
+        if (row && fx + x < size) row[fx + x] = ring || core;
+      }
+  };
+  for (const [fx, fy] of [
+    [0, 0],
+    [size - 7, 0],
+    [0, size - 7],
+  ] as const)
+    finder(fx, fy);
+  return cells;
+}

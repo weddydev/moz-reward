@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { IconButton } from "@/components/ui/IconButton";
 import { LiquidChoice } from "@/components/ui/LiquidChoice";
+import { MemberCard } from "@/components/ui/MemberCard";
 import { Slider } from "@/components/ui/Slider";
 import { StarRating } from "@/components/ui/StarRating";
 import { Switch } from "@/components/ui/Switch";
@@ -310,6 +311,26 @@ export function LabSection(): React.JSX.Element {
           <p className="m-how">
             A beam of gold runs out <b>from where you tapped</b>. A bad address <b>shakes</b> and
             says how to fix it; a good one draws a tick and sparks.
+          </p>
+        </Tile>
+
+        <Tile data-parity="member-card-tile" className="m-w7">
+          <div className="m-t-head">
+            <h3>Member card</h3>
+            <span className="m-chip">holographic · tap to flip</span>
+          </div>
+          <MemberCard
+            parity="member-card"
+            name="Aisha Khan"
+            memberId="K7Q-42M"
+            tier="Gold member"
+            since="since Nov 2026"
+            backText="Show this at the till · K7Q-42M"
+            backLabel="Member card showing a QR code placeholder. Press to turn back"
+          />
+          <p className="m-how">
+            Foil and glare <b>follow your finger</b>, the card <b>tilts in 3D</b>, and a tap flips
+            it to the QR code. On phones it sways gently when untouched.
           </p>
         </Tile>
       </div>

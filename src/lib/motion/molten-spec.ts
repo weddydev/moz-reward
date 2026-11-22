@@ -1,5 +1,17 @@
 import { RM_MAX_MS } from "./anim";
-import { BUTTON, FIELD, HEART, LIQUID, SEAL, SLIDER, STARS, SWITCH, TABS, TOAST } from "./controls";
+import {
+  BUTTON,
+  FIELD,
+  HEART,
+  LIQUID,
+  MEMBER_CARD,
+  SEAL,
+  SLIDER,
+  STARS,
+  SWITCH,
+  TABS,
+  TOAST,
+} from "./controls";
 import { FX } from "./fx";
 import { type Locator } from "./molten-reference";
 import { PRESS } from "./press";
@@ -522,22 +534,43 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "member-card",
     element: "Member card",
     task: "PD-06",
-    status: "pending",
+    status: "required",
     values: [
       {
         name: "tracking",
         value: ".12s linear",
         ref: css(".mcard.live", "transition", "transform"),
+        prod: { file: MOLTEN_CSS, css: ".m-mcard.live", prop: "transition", part: "transform" },
       },
       {
         name: "spring back and flip",
         value: ".7s var(--spring)",
         ref: css(".mcard", "transition", "transform"),
+        prod: { file: MOLTEN_CSS, css: ".m-mcard", prop: "transition", part: "transform" },
       },
       {
         name: "idle sway",
         value: "7s var(--ease-io) infinite alternate",
         ref: css(".mcard.idle", "animation", "sway"),
+        prod: { file: MOLTEN_CSS, css: ".m-mcard.idle", prop: "animation", part: "m-sway" },
+      },
+      {
+        name: "tilt across the height (deg, ±half)",
+        value: "22",
+        ref: js("card.style.setProperty('--rx'", /\(\.5 - py\) \* (\d+)\)/g),
+        prod: { value: () => MEMBER_CARD.tiltXDeg },
+      },
+      {
+        name: "tilt across the width (deg, ±half)",
+        value: "26",
+        ref: js("card.style.setProperty('--rx'", /\(px - \.5\) \* (\d+)\)/g),
+        prod: { value: () => MEMBER_CARD.tiltYDeg },
+      },
+      {
+        name: "foil size",
+        value: "260%",
+        ref: css(".holo", "background-size", "260%"),
+        prod: { value: () => `${String(Math.round(MEMBER_CARD.holoSize * 100))}%` },
       },
     ],
   },

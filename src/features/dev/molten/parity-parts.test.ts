@@ -1,7 +1,14 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { addParityHooks, PARITY_PARTS, parityLimit, withAppFonts } from "./parity-parts";
+import {
+  addParityHooks,
+  PARITY_PARTS,
+  parityLimit,
+  REFERENCE_FIXES,
+  withAppFonts,
+  withReferenceFixes,
+} from "./parity-parts";
 
 const ROOT = path.resolve(__dirname, "../../../..");
 const original = readFileSync(path.join(ROOT, "design/reference/molten/index.html"), "utf8");
@@ -24,8 +31,8 @@ describe("[PD-01] parity parts and the reference copy", () => {
     );
   });
 
-  it("[PD-01] the committed copy is the original with hooks and app fonts, nothing else (pnpm parity:reference)", () => {
-    expect(copy).toBe(addParityHooks(withAppFonts(original)));
+  it("[PD-01] the committed copy is the original with hooks, app fonts and the listed fixes, nothing else (pnpm parity:reference)", () => {
+    expect(copy).toBe(addParityHooks(withReferenceFixes(withAppFonts(original))));
     expect(copy).not.toContain("fonts.googleapis.com");
   });
 
@@ -53,5 +60,19 @@ describe("[PD-01] parity parts and the reference copy", () => {
     expect(parityLimit(all, "webkit", 0.01)).toBe(0.015);
     // Never below the harness limit.
     expect(parityLimit(all, "webkit", 0.02)).toBe(0.02);
+  });
+
+  it("[PD-06] reference fixes: the phone's .back rule no longer reaches the member card's back face; a stale fix fails loudly", () => {
+    const fixed = withReferenceFixes(original);
+    for (const fix of REFERENCE_FIXES) {
+      expect(fixed).toContain(fix.to);
+      expect(fixed.split(fix.from).length - 1, fix.why).toBe(0);
+    }
+    // The card's own back-face rule is untouched; only the phone's button rule is scoped.
+    expect(fixed).toContain(".mface.back{transform:rotateY(180deg)");
+    expect(fixed).toContain('class="mface back"');
+    expect(() => withReferenceFixes(original.replace(".back{position:absolute", ".bk{"))).toThrow(
+      /leaks onto the member card/,
+    );
   });
 });

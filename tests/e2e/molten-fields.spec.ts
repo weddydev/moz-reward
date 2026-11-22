@@ -535,6 +535,231 @@ test("[PD-06] slider target ≥ 44 px, keyboard focus ring on the coin", async (
   expect(ring).toBe("solid 2px 3px");
 });
 
+const cardTile = (page: Page): Locator => page.locator('[data-parity="member-card-tile"]');
+const memberCard = (page: Page): Locator => page.locator('[data-parity="member-card"]');
+
+/** The tile at rest (its scroll-driven rise done) and the card's own motion settled. */
+async function cardAtRest(page: Page): Promise<void> {
+  await cardTile(page).scrollIntoViewIfNeeded();
+  await expect
+    .poll(
+      () =>
+        cardTile(page).evaluate(
+          (t) => new DOMMatrixReadOnly(getComputedStyle(t).transform).isIdentity,
+        ),
+      { timeout: 5_000 },
+    )
+    .toBe(true);
+}
+
+/** The card's turn and lean as drawn: y rotation from its matrix (0 front, 180 back), x lean, both in degrees. */
+const cardAngles = (page: Page): Promise<{ ry: number; rx: number }> =>
+  memberCard(page).evaluate((c) => {
+    const m = new DOMMatrixReadOnly(getComputedStyle(c).transform);
+    const deg = (r: number): number => (r * 180) / Math.PI;
+    // rotateX(a) rotateY(b) = [[cos b, 0, sin b], [sin a sin b, cos a, −sin a cos b], [−cos a sin b, sin a, cos a
+    // cos b]] (rows); DOMMatrix mCR is column C, row R. Exact for any turn (180 when on its back).
+    const ry = deg(Math.atan2(m.m31, m.m11));
+    return { ry: ry < -90 ? ry + 360 : ry, rx: deg(Math.atan2(m.m23, m.m22)) };
+  });
+
+/**
+ * A tap or click at the card's centre, as a person makes it: on touch-only screens the card sways (an endless
+ * animation), so Playwright's "stable" wait on `locator.click()` would never end; the centre barely moves.
+ */
+async function tapCard(page: Page, hasTouch: boolean): Promise<void> {
+  const b = await memberCard(page).boundingBox();
+  if (!b) throw new Error("no card box");
+  const x = b.x + b.width / 2;
+  const y = b.y + b.height / 2;
+  if (hasTouch) await page.touchscreen.tap(x, y);
+  else await page.mouse.click(x, y);
+}
+
+/** Settled on a face: no running transition or animation on the card, turned to `face`. */
+async function settledOn(page: Page, face: "front" | "back"): Promise<void> {
+  await expect(memberCard(page)).toHaveAttribute("data-face", face);
+  await expect.poll(() => running(memberCard(page)), { timeout: 5_000 }).toBe(0);
+  const { ry } = await cardAngles(page);
+  expect(Math.abs(ry - (face === "back" ? 180 : 0))).toBeLessThan(0.5);
+}
+
+test("[PD-06] member card: a click, Enter and Space turn it to the QR placeholder and back; the name says which side", async ({
+  page,
+  hasTouch,
+}) => {
+  await open(page);
+  await cardAtRest(page);
+  const card = memberCard(page);
+  await expect(card).toHaveAttribute("role", "button");
+  await expect(card).toHaveAccessibleName(
+    "Member card: Aisha Khan, K7Q-42M. Press to show QR code",
+  );
+  await tapCard(page, hasTouch);
+  await settledOn(page, "back");
+  await expect(card).toHaveAccessibleName(
+    "Member card showing a QR code placeholder. Press to turn back",
+  );
+  // The back holds the labelled placeholder, drawn (the reference's pattern: ink cells on white).
+  const qr = card.locator('canvas[aria-label="QR code placeholder"]');
+  await expect(qr).toHaveCount(1);
+  const inked = await qr.evaluate((c: HTMLCanvasElement) => {
+    const d = c.getContext("2d")?.getImageData(0, 0, c.width, c.height).data ?? [];
+    let n = 0;
+    for (let i = 3; i < d.length; i += 4) if ((d[i] ?? 0) > 0) n++;
+    return n;
+  });
+  expect(inked).toBeGreaterThan(200);
+  // Keyboard: focus it, Enter turns it back, Space turns it over again without scrolling the page.
+  await card.focus();
+  await page.keyboard.press("Enter");
+  await settledOn(page, "front");
+  const y = await page.evaluate(() => window.scrollY);
+  await page.keyboard.press("Space");
+  await settledOn(page, "back");
+  expect(await page.evaluate(() => window.scrollY)).toBe(y);
+  // Its focus ring (DESIGN §13).
+  const ring = await card.evaluate((c) => {
+    const cs = getComputedStyle(c);
+    return `${cs.outlineStyle} ${cs.outlineWidth}`;
+  });
+  expect(ring).toBe("solid 2px");
+});
+
+test("[PD-06] member card rapid flips retarget, never queue: it ends on the side the count says", async ({
+  page,
+  hasTouch,
+}) => {
+  await open(page);
+  await cardAtRest(page);
+  const card = memberCard(page);
+  for (let i = 0; i < 5; i++) await tapCard(page, hasTouch);
+  await settledOn(page, "back");
+  await card.focus();
+  for (let i = 0; i < 4; i++) await page.keyboard.press("Enter", { delay: 0 });
+  await settledOn(page, "back");
+});
+
+test("[PD-06] member card: a mouse tilts it and lights the glare; leaving fast springs it back upright", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, "a mouse over the card; touch screens sway instead (next test)");
+  await open(page);
+  await cardAtRest(page);
+  const box = await memberCard(page).boundingBox();
+  if (!box) throw new Error("no card box");
+  // Up and to the right (80% across, 20% down; well inside, so the leaning card stays under the pointer): the
+  // top comes towards it, (.5 − .2) × 22 = 6.6°, and the right side, (.8 − .5) × 26 = 7.8°.
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.2, { steps: 4 });
+  await expect(memberCard(page)).toHaveClass(/\blive\b/);
+  await expect
+    .poll(async () => (await cardAngles(page)).ry, { timeout: 2_000 })
+    .toBeGreaterThan(6.5);
+  await expect.poll(() => running(memberCard(page)), { timeout: 2_000 }).toBe(0);
+  const tilted = await cardAngles(page);
+  // The pointer is read on the leaning card's box, so the angles land near, not exactly on, 6.6° and 7.8°.
+  expect(tilted.rx).toBeGreaterThan(5);
+  expect(tilted.rx).toBeLessThanOrEqual(11.01);
+  expect(tilted.ry).toBeLessThanOrEqual(13.01);
+  await expect
+    .poll(() =>
+      memberCard(page)
+        .locator(".m-glare")
+        .first()
+        .evaluate((g) => getComputedStyle(g).opacity),
+    )
+    .toBe("1");
+  // Out in one jump (a fast exit): it springs back upright and the glare fades.
+  await page.mouse.move(box.x + box.width + 300, box.y - 200);
+  await expect(memberCard(page)).not.toHaveClass(/\blive\b/);
+  await expect.poll(() => running(memberCard(page)), { timeout: 5_000 }).toBe(0);
+  const rest = await cardAngles(page);
+  expect(Math.abs(rest.rx) + Math.abs(rest.ry)).toBeLessThan(0.5);
+  // A fine pointer never sways.
+  await expect(memberCard(page)).not.toHaveClass(/\bidle\b/);
+});
+
+test("[PD-06] member card idle sway: only on touch-only screens, never on iOS, never while turned over", async ({
+  page,
+  hasTouch,
+}) => {
+  await open(page);
+  await cardAtRest(page);
+  const fine = await page.evaluate(() => matchMedia("(hover: hover) and (pointer: fine)").matches);
+  // iOS (the iphone14 project, an iPhone user agent): no tilt and no sway (DESIGN §6).
+  const ios = /\b(iPhone|iPad|iPod)\b/.test(await page.evaluate(() => navigator.userAgent));
+  const sways = !fine && !ios;
+  const card = memberCard(page);
+  await expect(card).toHaveClass(sways ? /\bidle\b/ : /^(?!.*\bidle\b)/);
+  if (sways) {
+    expect(
+      await card.evaluate((c) => c.getAnimations().map((a) => (a as CSSAnimation).animationName)),
+    ).toEqual(["m-sway"]);
+    await tapCard(page, hasTouch);
+    await settledOn(page, "back");
+    await expect(card).not.toHaveClass(/\bidle\b/);
+  }
+});
+
+test("[PD-06] member card under reduced motion: the pointer moves nothing, no sway; it still turns over", async ({
+  page,
+  isMobile,
+  hasTouch,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await open(page);
+  await expect(page.locator("html")).toHaveClass(/(^|\s)rm(\s|$)/);
+  await cardAtRest(page);
+  const card = memberCard(page);
+  await expect(card).not.toHaveClass(/\bidle\b/);
+  if (!isMobile) {
+    const box = await card.boundingBox();
+    if (!box) throw new Error("no card box");
+    await page.mouse.move(box.x + box.width - 2, box.y + 2, { steps: 4 });
+    await page.evaluate(
+      () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+    );
+    await expect(card).not.toHaveClass(/\blive\b/);
+    expect(await card.evaluate((c) => c.style.getPropertyValue("--rx"))).toBe("");
+    const a = await cardAngles(page);
+    expect(Math.abs(a.rx) + Math.abs(a.ry)).toBeLessThan(0.01);
+  }
+  await tapCard(page, hasTouch);
+  await settledOn(page, "back");
+});
+
+test("[PD-06] member card: a ≥ 44 px target; turned over then resized, it stays on its back and fits", async ({
+  page,
+  hasTouch,
+}) => {
+  await open(page);
+  await cardAtRest(page);
+  const card = memberCard(page);
+  const b = await card.boundingBox();
+  expect(b?.height ?? 0).toBeGreaterThanOrEqual(44);
+  expect(b?.width ?? 0).toBeGreaterThanOrEqual(44);
+  await tapCard(page, hasTouch);
+  await settledOn(page, "back");
+  const size = page.viewportSize();
+  await page.setViewportSize({ width: 320, height: 700 });
+  await cardAtRest(page);
+  await settledOn(page, "back");
+  const fit = await page.evaluate(() => {
+    const c = document.querySelector('[data-parity="member-card"]')?.getBoundingClientRect();
+    const t = document.querySelector('[data-parity="member-card-tile"]')?.getBoundingClientRect();
+    return c && t
+      ? {
+          c: c.right <= t.right + 0.5 && c.left >= t.left - 0.5,
+          over: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        }
+      : null;
+  });
+  expect(fit).toEqual({ c: true, over: 0 });
+  if (size) await page.setViewportSize(size);
+});
+
 test("[PD-06] /dev/molten PD-06 tiles at 320, 390 and 1440: no horizontal scroll (screens for inspection)", async ({
   page,
   shoot,
@@ -550,7 +775,13 @@ test("[PD-06] /dev/molten PD-06 tiles at 320, 390 and 1440: no horizontal scroll
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow, `/dev/molten at ${String(width)}`).toBeLessThanOrEqual(0);
-    for (const tile of ["tabs-tile", "text-field-tile", "stars-tile", "slider-tile"]) {
+    for (const tile of [
+      "tabs-tile",
+      "text-field-tile",
+      "stars-tile",
+      "slider-tile",
+      "member-card-tile",
+    ]) {
       await page.locator(`[data-parity="${tile}"]`).scrollIntoViewIfNeeded();
       await shoot(`molten-${tile}-${String(width)}`, { fullPage: false });
     }
@@ -564,5 +795,14 @@ test("[PD-06] /dev/molten PD-06 tiles at 320, 390 and 1440: no horizontal scroll
       .poll(() => runningWithin(rateTile(page).locator(".m-rate-actions")), { timeout: 5_000 })
       .toBe(0);
     await shoot(`molten-stars-tile-rated-${String(width)}`, { fullPage: false });
+  }
+  // The member card turned over to the QR placeholder.
+  await cardAtRest(page);
+  await tapCard(page, false);
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+    await cardAtRest(page);
+    await settledOn(page, "back");
+    await shoot(`molten-member-card-tile-back-${String(width)}`, { fullPage: false });
   }
 });
