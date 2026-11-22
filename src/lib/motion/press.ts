@@ -119,7 +119,8 @@ export function countUp(
     show(to);
     return () => to;
   }
-  show(from);
+  // Nothing is written before the first frame (the reference's `countUp`): that frame runs before the next paint,
+  // so the old text never shows, and a paused page clock (the parity harness) keeps the end value on both pages.
   const t0 = performance.now();
   let raf = 0;
   const frame = (now: number): void => {

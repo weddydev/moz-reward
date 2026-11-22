@@ -1,5 +1,5 @@
 import { RM_MAX_MS } from "./anim";
-import { BUTTON, HEART, LIQUID, SEAL, SWITCH, TOAST } from "./controls";
+import { BUTTON, HEART, LIQUID, SEAL, SWITCH, TABS, TOAST } from "./controls";
 import { FX } from "./fx";
 import { type Locator } from "./molten-reference";
 import { PRESS } from "./press";
@@ -333,18 +333,42 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "tabs",
     element: "Tabs",
     task: "PD-06",
-    status: "pending",
+    status: "required",
     values: [
       {
         name: "pill",
         value: ".6s var(--spring)",
         ref: css(".seg-ind,.seg-trail", "transition", "transform"),
+        prod: {
+          file: MOLTEN_CSS,
+          css: ".m-seg-ind, .m-seg-trail",
+          prop: "transition",
+          part: "transform",
+        },
       },
-      { name: "panel slide", value: "380", ref: js("function go(", /duration: (\d+)/g) },
+      {
+        name: "trail",
+        value: ".95s",
+        ref: css(".seg-trail", "transition-duration"),
+        prod: { file: MOLTEN_CSS, css: ".m-seg-trail", prop: "transition-duration" },
+      },
+      {
+        name: "panel slide",
+        value: "380",
+        ref: js("function go(", /duration: (\d+)/g),
+        prod: { value: () => TABS.panelMs },
+      },
+      {
+        name: "panel shift (px)",
+        value: "32",
+        ref: js("function go(", /dir \* (\d+)\}px/g),
+        prod: { value: () => TABS.panelShiftPx },
+      },
       {
         name: "count-up",
         value: "650",
         ref: js("function go(", /countUp\(big, \+big\.dataset\.n, (\d+)\)/g),
+        prod: { value: () => TABS.countUpMs },
       },
     ],
   },

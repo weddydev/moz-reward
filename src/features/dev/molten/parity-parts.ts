@@ -163,7 +163,14 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     task: "PD-05",
     status: "required",
   },
-  { name: "tabs", title: "Tabs", anchor: 'id="seg"', task: "PD-06", status: "pending" },
+  {
+    name: "tabs-tile",
+    title: "Tabs tile",
+    anchor: '<article class="tile w4"',
+    task: "PD-06",
+    status: "required",
+  },
+  { name: "tabs", title: "Tabs", anchor: 'id="seg"', task: "PD-06", status: "required" },
   { name: "stars", title: "Star rating", anchor: 'id="stars"', task: "PD-06", status: "pending" },
   { name: "slider", title: "Slider", anchor: 'id="slider"', task: "PD-06", status: "pending" },
   {

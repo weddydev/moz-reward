@@ -54,8 +54,8 @@ describe("[PD-03] useCountUp", () => {
     expect(container.textContent).toBe("875");
 
     rerender(<Count value={2000} ms={700} />);
-    // No jump to 1,000 (the old target): the new count starts at 875.
-    expect(container.textContent).toBe("875");
+    // No jump to 1,000 (the old target): the new count's first frame (before paint) is at 875. Nothing is written
+    // before that frame (PD-06, the reference's countUp).
     frameAt(350);
     expect(container.textContent).toBe("875");
     frameAt(1050);

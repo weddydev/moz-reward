@@ -322,3 +322,29 @@ body:has(.m-page) {
   /* The vault's padding (26 px) and border (1 px): the row wraps where the reference's does. */
   padding: 0 27px;
 }
+/* The Tabs, Rate your visit and Molten slider tiles' columns (reference: inline styles on their .demo). */
+.m-demo.m-demo-col {
+  flex-direction: column;
+  align-items: stretch;
+}
+/* Reference `.panels` (min-height 84 px) and `.panel`, `.panel .big`, `.panel p`. */
+.m-tab-demo {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-height: 84px;
+  padding: 8px 2px;
+}
+.m-tab-demo .m-big {
+  font:
+    600 44px/1 var(--font-fraunces),
+    Georgia,
+    serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.m-tab-demo p {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 14px;
+}

@@ -96,16 +96,25 @@ export function useMagnetic(
 
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-/** Render the value as the element's only text (`{formatCount(value)}`); the hook counts it before paint. */
-export function useCountUp(ref: RefObject<Element | null>, value: number, ms?: number): void {
+/**
+ * Render the value as the element's only text (`{formatCount(value)}`); the hook counts it before paint. With
+ * `start`, the first render counts from it too (a tab panel's number counts from 0 each time it is shown);
+ * without, the first render shows the value as rendered (the server's text is already right).
+ */
+export function useCountUp(
+  ref: RefObject<Element | null>,
+  value: number,
+  ms?: number,
+  start?: number,
+): void {
   // The number on screen: the last target, or where an interrupted count stopped.
-  const shown = useRef<number | null>(null);
+  const shown = useRef<number | null>(start ?? null);
   useIsoLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     const from = shown.current;
     shown.current = value;
-    if (from === null || from === value) return; // first render: the server-rendered text is already right
+    if (from === null || from === value) return; // first render without `start`: the rendered text is right
     const cancel = countUp(el, value, ms, from);
     return () => {
       shown.current = cancel();

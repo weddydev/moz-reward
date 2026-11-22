@@ -129,3 +129,12 @@ export function nextEnabled(disabled: readonly boolean[], from: number, dir: 1 |
   }
   return from;
 }
+
+/** Tabs (PD-06; reference `.seg*`, `.panel` + "tabs"). The pill and its trail are CSS transitions. */
+export const TABS = {
+  /** The new panel slides in from the side you moved toward. */
+  panelMs: 380,
+  panelShiftPx: 32,
+  /** The panel's number counts up from 0 (cubic out). */
+  countUpMs: 650,
+} as const;

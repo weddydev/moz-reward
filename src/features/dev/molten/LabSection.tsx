@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import { MoltenHeart } from "@/components/icons/molten-heart";
+import { CountUp } from "@/components/motion/CountUp";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { IconButton } from "@/components/ui/IconButton";
 import { LiquidChoice } from "@/components/ui/LiquidChoice";
 import { Switch } from "@/components/ui/Switch";
+import { Tabs } from "@/components/ui/Tabs";
 import { Tile } from "@/components/ui/Tile";
 import { toast } from "@/components/ui/Toast";
+import { TABS } from "@/lib/motion/controls";
 
 /** The reference's ghost-button arrow (16 px, stroke 2.2). */
 export function GhostArrow(): React.JSX.Element {
@@ -35,6 +38,8 @@ export function LabSection(): React.JSX.Element {
   const [alerts, setAlerts] = useState(true);
   const [happyHour, setHappyHour] = useState(false);
   const [reward, setReward] = useState<(typeof REWARDS)[number]["value"]>("coffee");
+  const [tab, setTab] = useState<(typeof TAB_ITEMS)[number]["value"]>("wallet");
+  const panel = TAB_PANELS[tab];
   return (
     <section aria-labelledby="m-lab" className="m-lab-section">
       <div className="m-sec-head">
@@ -157,6 +162,25 @@ export function LabSection(): React.JSX.Element {
             <b>floods from the centre</b>, the tick draws itself, a ring and sparks fly off.
           </p>
         </Tile>
+
+        <Tile data-parity="tabs-tile">
+          <div className="m-t-head">
+            <h3>Tabs</h3>
+            <span className="m-chip">spring + trail</span>
+          </div>
+          <div className="m-demo m-demo-col">
+            <Tabs parity="tabs" label="Sections" items={TAB_ITEMS} value={tab} onChange={setTab}>
+              <div key={tab} className="m-tab-demo">
+                <CountUp className="m-big" value={panel.n} ms={TABS.countUpMs} />
+                <p>{panel.text}</p>
+              </div>
+            </Tabs>
+          </div>
+          <p className="m-how">
+            A gold pill springs across with a <b>light trail</b> behind it; content slides in from
+            the direction you moved and the number <b>counts up</b>.
+          </p>
+        </Tile>
       </div>
     </section>
   );
@@ -167,3 +191,15 @@ const REWARDS = [
   { value: "cake", label: "Cake", detail: "800 gold" },
   { value: "both", label: "Both", detail: "1,000 gold" },
 ] as const;
+
+const TAB_ITEMS = [
+  { value: "wallet", label: "Wallet" },
+  { value: "offers", label: "Offers" },
+  { value: "market", label: "Market" },
+] as const;
+
+const TAB_PANELS: Record<(typeof TAB_ITEMS)[number]["value"], { n: number; text: string }> = {
+  wallet: { n: 2480, text: "gold across 3 shops" },
+  offers: { n: 12, text: "live drops near Camden" },
+  market: { n: 48, text: "new listings this week" },
+};

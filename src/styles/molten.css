@@ -1105,3 +1105,105 @@ html:root.rm .m-tile {
 .m-liquid[data-empty] .m-goo {
   visibility: hidden;
 }
+
+/* ---------- tabs (PD-06; reference `.seg`, `.seg-ind`, `.seg-trail`, `.panels`, `.panel`) ---------- */
+/* Full width in any parent (the reference's `.seg` and `.panels` are `width: 100%`; a wrapping flex row would
+   otherwise shrink the tabs to their labels). */
+.m-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+}
+/*
+ * The row that scrolls when the labels don't fit. Its 6 px padding (given back by the negative margin) keeps the
+ * focus ring and the pill's glow inside the scroll clip, so a row that fits looks exactly like the reference.
+ */
+.m-seg-scroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 6px 6px 18px;
+  margin: -6px -6px -18px;
+}
+.m-seg-scroll::-webkit-scrollbar {
+  display: none;
+}
+/*
+ * Equal columns (`--n` tabs): `1fr` auto columns under `width: max-content` all take the widest label's width,
+ * and `min-width: 100%` spreads them across the row when they fit (the reference's `repeat(3, 1fr)`).
+ */
+.m-seg {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  padding: 4px;
+  border-radius: 16px;
+  background: var(--obsidian);
+  width: max-content;
+  min-width: 100%;
+}
+.m-seg-ind,
+.m-seg-trail {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / var(--n, 3));
+  border-radius: 12px;
+  transform: translateX(calc(var(--i, 0) * 100%));
+  transition: transform 0.6s var(--spring);
+}
+.m-seg-ind {
+  background: var(--metal);
+  box-shadow: 0 6px 18px -6px rgba(255, 190, 50, 0.7);
+}
+.m-seg-trail {
+  background: rgba(255, 206, 74, 0.28);
+  transition-duration: 0.95s;
+}
+/* Side padding only sets the narrowest column (a row that fits centres each label in its wider column). */
+.m-seg button {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  background: none;
+  padding: 12px 14px;
+  font-weight: 750;
+  font-size: 14px;
+  white-space: nowrap;
+  color: var(--on-obsidian-2);
+  cursor: pointer;
+  transition: color 0.3s;
+  -webkit-tap-highlight-color: transparent;
+}
+.m-seg button[aria-selected="true"] {
+  color: var(--ink);
+}
+.m-seg button:disabled {
+  cursor: default;
+}
+.m-seg-count {
+  display: inline-block;
+  margin-left: 2px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 206, 74, 0.18);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.m-seg button[aria-selected="true"] .m-seg-count {
+  background: rgba(26, 20, 10, 0.12);
+}
+/* The panel slides inside a clip; the 6 px padding (given back) keeps its content's focus rings visible. */
+.m-panels {
+  position: relative;
+  width: calc(100% + 12px);
+  overflow: hidden;
+  padding: 6px;
+  margin: -6px;
+}
+.m-tabpanel:focus-visible {
+  border-radius: 12px;
+}

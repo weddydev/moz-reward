@@ -1,32 +1,83 @@
 "use client";
 
-import { type ReactNode, useId, useRef } from "react";
+import { type ReactNode, useEffect, useId, useLayoutEffect, useRef } from "react";
 import { cx } from "@/lib/cx";
+import { anim } from "@/lib/motion/anim";
+import { TABS } from "@/lib/motion/controls";
 import { useHydrated } from "@/lib/use-hydrated";
 
 export type TabItem<T extends string> = { value: T; label: string; count?: number };
 
-/** WAI-ARIA tabs (manual activation on Enter/Space, arrows move focus+selection, Home/End). */
+// Layout effects only run in the browser; the server render places the pill with CSS alone.
+const useBrowserLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+/** The element's running animations ([] where Web Animations are missing, e.g. jsdom). */
+const animationsOf = (el: Element | null | undefined): Animation[] =>
+  el && typeof el.getAnimations === "function" ? el.getAnimations() : [];
+
+/**
+ * Tabs (PD-06; DESIGN §6.3, §7.4; reference `.seg` + "tabs"): WAI-ARIA tabs on an obsidian track. A metal pill
+ * springs to the chosen tab (.6 s) with a light trail behind it (.95 s); the panel slides in 32 px from the side
+ * you moved toward (380 ms). Numbers in a panel count up with `CountUp`. Arrows move focus and selection
+ * (wrapping), Home and End jump; activation is automatic. The pill sits by CSS alone (`--n` tabs, `--i` chosen),
+ * so the server render is right and rapid switching retargets the transitions instead of queueing; a new switch
+ * mid-slide restarts the slide. Columns are equal: the track fills its row, and when the labels don't fit it
+ * grows to the widest label × n and scrolls inside its own row, keeping the chosen tab in view. Reduced motion:
+ * the pill and panel move at once. Disabled until hydrated so an early press is never lost (C-20).
+ * `parity` marks the track for the parity harness.
+ */
 export function Tabs<T extends string>({
   label,
   items,
   value,
   onChange,
   children,
+  className,
+  parity,
 }: {
   label: string;
   items: ReadonlyArray<TabItem<T>>;
   value: T;
   onChange: (value: T) => void;
   children: ReactNode;
+  className?: string;
+  parity?: string;
 }): React.JSX.Element {
   const base = useId();
   const hydrated = useHydrated();
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
+  const scroller = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const index = Math.max(
     0,
     items.findIndex((t) => t.value === value),
   );
+  const shown = useRef(index);
+
+  // The motion follows the value, not the click: a parent that refuses a change gets none.
+  useBrowserLayoutEffect(() => {
+    const from = shown.current;
+    shown.current = index;
+    if (from === index) return;
+    const dir = index > from ? 1 : -1;
+    for (const a of animationsOf(panel.current)) a.cancel();
+    anim(
+      panel.current,
+      [
+        { opacity: 0, transform: `translateX(${String(dir * TABS.panelShiftPx)}px)` },
+        { opacity: 1, transform: "none" },
+      ],
+      { duration: TABS.panelMs, fill: "none" },
+    );
+    // Many tabs: bring the chosen one into the row's view (horizontally only; the page never scrolls).
+    const sc = scroller.current;
+    const tab = refs.current[index];
+    if (!sc || !tab || sc.scrollWidth <= sc.clientWidth) return;
+    const left = tab.offsetLeft;
+    const right = left + tab.offsetWidth;
+    if (left < sc.scrollLeft) sc.scrollLeft = left;
+    else if (right > sc.scrollLeft + sc.clientWidth) sc.scrollLeft = right - sc.clientWidth;
+  }, [index]);
 
   function onKeyDown(e: React.KeyboardEvent) {
     const last = items.length - 1;
@@ -49,60 +100,61 @@ export function Tabs<T extends string>({
   }
 
   return (
-    <div>
-      <div
-        role="tablist"
-        aria-label={label}
-        onKeyDown={onKeyDown}
-        className="border-line flex [scrollbar-width:none] gap-1 overflow-x-auto border-b"
-      >
-        {items.map((t, i) => {
-          const selected = t.value === value;
-          return (
-            <button
-              key={t.value}
-              ref={(el) => {
-                refs.current[i] = el;
-              }}
-              id={`${base}-tab-${t.value}`}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              aria-controls={`${base}-panel`}
-              tabIndex={selected ? 0 : -1}
-              // Disabled until hydrated so an early press is never lost (C-20).
-              disabled={!hydrated}
-              onClick={() => {
-                onChange(t.value);
-              }}
-              className={cx(
-                "text-small duration-fast relative h-11 min-w-11 shrink-0 px-3 font-semibold transition-colors",
-                selected ? "text-ink" : "text-ink-2 hover:text-ink",
-              )}
-            >
-              {t.label}
-              {t.count !== undefined ? (
-                <span className="rounded-pill bg-surface-2 text-caption tabular ml-1.5 px-1.5">
-                  {t.count}
-                </span>
-              ) : null}
-              <span
-                aria-hidden="true"
-                className="rounded-pill bg-gold-500 duration-base absolute inset-x-2 -bottom-px h-0.5 origin-center transition-transform ease-out"
-                style={{ transform: selected ? "scaleX(1)" : "scaleX(0)" }}
-              />
-            </button>
-          );
-        })}
+    <div className={cx("m-tabs", className)}>
+      <div ref={scroller} className="m-seg-scroll">
+        <div
+          role="tablist"
+          aria-label={label}
+          onKeyDown={onKeyDown}
+          data-parity={parity}
+          className="m-seg"
+          style={{ "--n": items.length, "--i": index } as React.CSSProperties}
+        >
+          <span aria-hidden="true" className="m-seg-trail" />
+          <span aria-hidden="true" className="m-seg-ind" />
+          {items.map((t, i) => {
+            const selected = t.value === value;
+            return (
+              <button
+                key={t.value}
+                ref={(el) => {
+                  refs.current[i] = el;
+                }}
+                id={`${base}-tab-${t.value}`}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls={`${base}-panel`}
+                tabIndex={selected ? 0 : -1}
+                // Disabled until hydrated so an early press is never lost (C-20).
+                disabled={!hydrated}
+                onClick={() => {
+                  if (!selected) onChange(t.value);
+                }}
+              >
+                {t.label}
+                {t.count !== undefined ? (
+                  <>
+                    {" "}
+                    <span className="m-seg-count">{t.count}</span>
+                  </>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
       </div>
-      <div
-        id={`${base}-panel`}
-        role="tabpanel"
-        aria-labelledby={`${base}-tab-${value}`}
-        tabIndex={0}
-        className="pt-4 focus-visible:rounded-sm"
-      >
-        {children}
+      <div className="m-panels">
+        <div
+          ref={panel}
+          id={`${base}-panel`}
+          role="tabpanel"
+          aria-labelledby={`${base}-tab-${value}`}
+          tabIndex={0}
+          className="m-tabpanel"
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

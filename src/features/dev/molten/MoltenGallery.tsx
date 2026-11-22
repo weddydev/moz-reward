@@ -12,7 +12,7 @@ import "./molten-page.css";
  * reference copy. Until its PD task builds it, a part is a labelled placeholder (`data-parity-status="pending"`)
  * that no parity spec compares. Built so far: the living background and the Language section (PD-02); the
  * Buttons tile, heart toggle, the vault's orbit and ghost buttons and the toast (PD-04); the Coin switch, Liquid
- * choice and Gold seal checkbox tiles (PD-05).
+ * choice and Gold seal checkbox tiles (PD-05); the Tabs tile (PD-06).
  */
 const SECTIONS: readonly { parts: readonly string[]; Section: () => React.JSX.Element }[] = [
   { parts: ["language"], Section: LanguageSection },
@@ -28,6 +28,8 @@ const SECTIONS: readonly { parts: readonly string[]; Section: () => React.JSX.El
       "seal-checkbox-tile",
       "seal-checkbox",
       "seal-checkbox-on",
+      "tabs-tile",
+      "tabs",
     ],
     Section: LabSection,
   },
