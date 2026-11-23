@@ -22,18 +22,18 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** **PD-C** (next: PD-07; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-23, talha.syed (PD-B closed: PD-06 + C-76 fix on main `d59a2eb`, CI green; next `/handoff`, then next session plain `/resume`, PD-07)
+- **Last updated:** 2026-11-23, talha.syed (PD-07 done on `wip/PD-07`, gate PASS `42e68ed`; HUMAN_TASKS split into open + `HUMAN_TASKS_DONE.md`)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-A closed 22 Nov; PD-04 on main 22 Nov; **PD-05 closed 22 Nov**; **PD-06 closed 23 Nov**; **PD-B closed 23 Nov** (main `d59a2eb`). Next PD-07 (PD-C).
+- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 done 23 Nov** on `wip/PD-07` (gate PASS on `42e68ed`; main push after its CI is green). Next PD-08 (PD-C).
 
 ## Next (top 3)
-1. `/handoff` (this session ends after the PD-B close; human 23 Nov).
-2. Next session (plain `/resume`): PD-07 (PD-C).
-3. Human any time: H-51 (b), H-48b, H-38, H-45, H-46.
+1. `wip/PD-07` CI + the full 5-project run (every-page change: global CSS, portal shell) green → push to main (hook re-gates the tree with the progress files).
+2. PD-08 · Wallet stack, gold wipe into the shop, shop photos (PD-C; CSP `img-src` check at its close).
+3. Human any time: H-45, H-48b (🟠), then H-12; H-49 at the PD-C close.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
@@ -84,10 +84,10 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (23 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- gate:task PD-06 one-run PASS on `eefce4e`, `dcf8ae3` and `d59a2eb` (unit 1954/0, int 1456/0, PD-06 E2E 68/0/4, changed specs 93/0/41, parity 60/0; no `page.goto` stall) → C-76 closed.
-- CI 45108161552 on `d59a2eb` GREEN (Chromium + WebKit, every spec: every-page change); full 5-project 45096809612 on `eefce4e` GREEN (covers /dev/molten, devices, cookie notice with the console + axe guard).
-- Staging (release before PD-B, `74fba5b`): `/api/health/live` 200 `{"status":"ok"}`, `/api/health/ready` 200, `/sign-in` + `/dev/molten` + `/dev/ui` 401 (basic auth). PD-B deploy: see SESSION_LOG.
-- C-76 repro: TCP pipe ~3,100 connects then 68 s hangs; pooled forwarder 629k requests over 12 host connections, 0 stalls.
+- gate:task PD-07 PASS on `42e68ed` (unit 1972/0, int 1456/0, PD-07 E2E Linux 13/0/20, changed specs Linux 54/0/40, parity PD-07 8/0 both engines); earlier PASS on `7d34e58` before the review fixes.
+- Host E2E `molten-dock` + `portal-shells` on pixel7 + desktop1440: 36/0/18; screens `.artifacts/screens/PD-07/` + `P0-12/*-320--pixel7.png` inspected (dock 320/412, rail 1440).
+- Full parity run (all PD parts, both engines) 163/1: WebKit liquid-choice frame 0 at 2.01% under load, 3/3 alone (watch; FOLLOWUPS).
+- Main CI 45112526437 + staging deploy of `d59a2eb` GREEN; staging health live/ready/worker 200 without password (23 Nov).
 
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).

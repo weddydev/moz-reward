@@ -907,3 +907,10 @@ Staging smoke (release `74fba5b`, before PD-B): health live/ready 200, `/sign-in
 Reviews: code-review MEDIUMs fixed (above); security review not needed. Close's own commits after `ec5d6cc` not reviewed (NOT VERIFIED; for the PD-C close). HUMAN_TASKS: H-13 lists the PD-B real-device checks; H-49 needed at the PD-C close. C-78 (WebKit slider track press) → PD-11.
 Handoff (talha.syed, 23 Nov): baton freed; autopilot off; next session plain `/resume` → PD-07. Main CI 45112526437 + staging deploy of `d59a2eb` not verified at handoff (check first).
 Handoff by talha.syed (04:52 UTC): baton free; KNOWN_ISSUES.md added; main CI 45112526437 running.
+
+## 2026-11-23 — PD — PD-07 floating dock (wip/PD-07 `42e68ed`)
+Built: `Dock` (reference `.dock/.dk/.scan` 1:1, reference icons, 1fr columns) on the customer/shop/admin bottom navs; shared `useLiquidPour` (LiquidChoice refactored, axis y for the rail); rail liquid gold + glass; keyboard hide; gold drains on Scan/non-dock pages; pours on the tap (`dockPlacement`); /dev/molten phone frame; dock parity part + spec row required. HUMAN_TASKS split (done → `HUMAN_TASKS_DONE.md`; H-31b, H-26b new); issue #2 closed (fixed by 22 Nov green runs).
+Parity: harness snapped inset parts with `top` (dock jumped to the phone's top) → snaps the part's frame; columns `minmax(0,1fr)` → reference `1fr`; Chromium label raster in the backdrop-filter layer 2.0% (0 with the filter off, WebKit 0) → documented tolerance 2.5% (DECISIONS).
+Design review: APPROVE WITH FIXES; MEDIUM (gold jumped to item 0 while draining) + 4 LOW all fixed test-first; the placement test also caught the customer dock treating Notifications as "More" (stale gold).
+Gates: `7d34e58` PASS; `42e68ed` PASS (unit 1972/0, int 1456/0, E2E Linux 13/0 + 54/0, parity 8/0). CI on the wip push + full 5-project run: pending at this commit.
+

@@ -81,7 +81,7 @@ Details: [`docs/phases/PD.md`](phases/PD.md) · Spec: [`design/reference/molten/
 
 **PD-C · Structure and signature moments**
 
-- [ ] PD-07 · Floating dock and Scan button
+- [x] PD-07 · Floating dock and Scan button
 - [ ] PD-08 · Wallet stack, gold wipe into the shop, shop photos
 - [ ] PD-09 · Gilded Gate 2.0
 - [ ] PD-10 · Vault pour, reward unlocked, redeem code
