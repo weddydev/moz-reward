@@ -1068,3 +1068,6 @@ Why: the difference is the compositor's, not the design's (the reference and the
 ## 2026-11-23 — Tailwind scans src/ only; registered properties are a reviewed list
 Decision: `@import "tailwindcss" source("..")` in `src/app/globals.css` (was: the whole repo), and `pnpm check:bundle` fails when the built CSS registers an `@property` not in `REGISTERED_PROPERTIES` (scripts/check-client-bundle.ts). Built CSS diff: only rules that prose alone produced go (`[gate:task]`, the backdrop-filter family, a dozen utilities named in AUDIT/FOLLOWUPS).
 Why: words in docs, progress notes and tests became CSS on every page; the backdrop family's nine registered properties cost the pixel7 FX stress 4–12 fps (KNOWN_ISSUES KI-42). A new property family now needs a deliberate list entry.
+
+## 2026-11-23 — pixel7 @fps quarantine (C-79, T-7)
+The pixel7 FX stress `@fps` case is `test.fixme` until the PD-C close: CI runners put main itself at 52–58.8 fps on one commit within 40 min, PD-07 45–54 after the KI-42 fix. The time-box (CLAUDE.md §4) was used; the 58 fps / p95 16.8 ms bounds are not loosened and desktop1440 still runs. PD-07 lands; the close finds the cause (runner noise vs. a real dock/FX frame cost) and un-quarantines.

@@ -61,7 +61,7 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 **KI-32 · Hard-coded colour passes lint** — the css-hex check catches hex only, not `rgba()`; reviewers must catch it; use tokens (ENGINEERING §9).
 
-**KI-42 · Frame rate drops on a page the change never touches (pixel7 `@fps` FX stress 46–57 fps vs main 59–60, no long tasks)** — Tailwind reads every word of every file it scans as a possible class: a note saying "backdrop-filter" (parity-parts.ts, DECISIONS.md) created that utility and registered nine `--tw-backdrop-*` `@property`s, which every element then carries on each style recalc (PD-07, CI 45148024961; bisect: CSS-only branch 57–60, code-only 46–56). Fix: Tailwind scans `src/` only (`source("..")` in globals.css); `pnpm check:bundle` fails on a registered property not on `REGISTERED_PROPERTIES`. Diagnose by diffing the built CSS rule sets of the two commits.
+**KI-42 · Frame rate drops on a page the change never touches (pixel7 `@fps` FX stress 46–57 fps vs main 59–60, no long tasks)** — Tailwind reads every word of every file it scans as a possible class: a note saying "backdrop-filter" (parity-parts.ts, DECISIONS.md) created that utility and registered nine `--tw-backdrop-*` `@property`s, which every element then carries on each style recalc (PD-07, CI 45148024961; bisect: CSS-only branch 57–60, code-only 46–56). Fix: Tailwind scans `src/` only (`source("..")` in globals.css); `pnpm check:bundle` fails on a registered property not on `REGISTERED_PROPERTIES`. Diagnose by diffing the built CSS rule sets of the two commits. Still under 58 on CI after the fix, and main itself now swings 52–58.8 fps on one commit: quarantined on pixel7 (C-79, T-7).
 
 ## Infra / backups
 
