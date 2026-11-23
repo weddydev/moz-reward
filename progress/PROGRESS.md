@@ -9,7 +9,7 @@ Baton: held by talha.syed since 2026-11-22 17:32 UTC
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **23 Nov 2026 (Mac), talha.syed holds the baton.** Human (23 Nov): close PD-B fast (less overhead, never a skipped check, review or criterion); this session ends after the PD-B close with `/handoff`. **Next session = normal mode, plain `/resume`** (autopilot ends with this session); PD-07 after the PD-B close.
 - **PD-B close part 1 done (wip/PD-06):** C-76 root-caused and fixed (`7893612`: Docker Desktop hangs new host connects ~68 s after ~3,100 in ~30 s; pooled HTTP forwarder `scripts/lib/e2e-forwarder.mjs`; flick spec bounded by attempts). PD-B code-review MEDIUMs fixed (`eefce4e`); 6 LOWs in FOLLOWUPS. **`gate:task PD-06` on `eefce4e` PASS in one run** → C-76 and T-6 closed. GooFilter (root layout) covered by the PD-05 full 5-project runs.
-- **Main:** `eefce4e` goes to main once CI 45096798286 on it is green (gate stamp: the hook skips the gate). If main is not yet `eefce4e` when you read this, check that run, then `git push origin eefce4e:main`. Full 5-project E2E 45096809612 on `eefce4e` (global CSS touched): result for the close.
+- **CI 45096798286 on `eefce4e` RED** (WebKit, flaky = failure): `molten-fields:806` rapid flips, ry 0.87° off 180. Root cause (host WebKit probe): a mouse resting on the card keeps the pointer lean a mid-turn move set (−0.72°…+0.24° seen; drawn ry = 180 + lean exactly), and a tap landing edge-on mid-turn misses the card (3 of 12 host runs). Fixed in the spec (`settledOn` compares with the card's own lean; taps counted by the card's received clicks). **Main:** the wip HEAD goes to main once its CI is green (the hook re-runs `gate:task` on the new tree). Full 5-project E2E 45096809612 on `eefce4e` (global CSS touched): result for the close.
 - **Continue here:** PD-B close part 2: CI + full 5-project green check, staging smoke, code review of PD-B commits after `ec5d6cc` (`7893612`, `eefce4e`), scoped QA (rating choices' new label at 320/390/1440), `pnpm docker:tidy --apply`, HUMAN_TASKS review; then `/handoff` and stop (human, 23 Nov). Next session plain `/resume`, PD-07 (PD-C, needs H-49).
 - **Not yet tested:** member card + slider on real devices (H-13: iOS tilt/sway now on, Android sway, Safari 3D flip, touch drag).
 - **Windows laptop (WSL):** local WebKit only with `--workers 1`; never push or run suites while a gate runs; on a wip branch update main with `git fetch`, not `git pull --rebase`.
@@ -29,7 +29,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-04 on main 22 Nov; **PD-05 closed 22 Nov**; **PD-06 closed 23 Nov** (wip/PD-06; main after its CI). PD-B close part 1 done (C-76 fix, review MEDIUMs); part 2 next.
 
 ## Next (top 3)
-1. CI 45096798286 on `eefce4e` green → `eefce4e` to main (if not already).
+1. CI on the wip HEAD green → push it to main (hook runs `gate:task`).
 2. PD-B close part 2 (`/subphase-complete` steps after the code review), then `/handoff` and stop: the last item of this session (human, 23 Nov; DECISIONS).
 3. Next session: PD-07 (PD-C). Human any time: H-51 (b), H-48b, H-38, H-45, H-46.
 
@@ -84,7 +84,7 @@ _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
 - C-76 repro (Node client in the Playwright container → host server): TCP pipe ~3,100 connects then all hang 68 s (twice in 4 min); direct to `host.docker.internal` the same (6,289 then hang); pooled HTTP forwarder 629,252 requests / 12 host connections / 3 min, 0 timeouts.
 - Unit: forwarder 5/0 (pooling test: ≤ 2 host connections for 60 one-shot clients), e2e-linux 4/0, ui 246/0 (Up/Down + wording + `back` required fail→pass); typecheck + eslint clean.
 - Rating choices at 320/340/390/1440 with the COMPLIANCE label: both 44 px, tile height unchanged; 320 and 390 screens inspected.
-- gate:task PD-06 on `eefce4e` PASS in one run: unit 1954/0, int 1456/0, build, bundle, sast, PD-06 E2E Linux Chromium 68/0 (4 skipped), perf 0/0, changed specs 93/0 (41 skipped; overlays flick passed pixel7 + desktop1440), parity 60/0. CI 45096798286 + full 5-project 45096809612 on `eefce4e`: running at this commit.
+- gate:task PD-06 on `eefce4e` PASS in one run: unit 1954/0, int 1456/0, build, bundle, sast, PD-06 E2E Linux Chromium 68/0 (4 skipped), perf 0/0, changed specs 93/0 (41 skipped; overlays flick passed pixel7 + desktop1440), parity 60/0. CI 45096798286 on `eefce4e` RED (1 WebKit flaky: rapid flips; 532 passed); fixed, see Handoff. Rapid flips: host webkit 12/12, member card Linux chromium/pixel7/desktop1440 17/0, host webkit/iphone14 11/0.
 
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).

@@ -743,9 +743,17 @@ const shownFace = (page: Page): Promise<{ hit: string; awayHidden: boolean }> =>
 async function settledOn(page: Page, face: "front" | "back"): Promise<void> {
   await expect(memberCard(page)).toHaveAttribute("data-face", face);
   await expect.poll(() => running(memberCard(page)), { timeout: 5_000 }).toBe(0);
+  // The turn plus the card's own lean: a mouse resting on the card keeps the lean its last move set, and a move
+  // the engine fires mid-turn (WebKit re-hit-tests as the card turns under a still pointer) measures the turning
+  // card's perspective-skewed box, so the lean can be a little off zero (CI 45096798286: 0.87°). The lean is the
+  // pointer-follow feature; what this checks is that the drawn turn is the one the side says, nothing queued.
+  const lean = (): Promise<number> =>
+    memberCard(page).evaluate((c) => parseFloat(c.style.getPropertyValue("--ry")) || 0);
   const target = face === "back" ? 180 : 0;
   await expect
-    .poll(async () => Math.abs((await cardAngles(page)).ry - target), { timeout: 5_000 })
+    .poll(async () => Math.abs((await cardAngles(page)).ry - target - (await lean())), {
+      timeout: 5_000,
+    })
     .toBeLessThan(0.5);
   await expect
     .poll(() => shownFace(page), { timeout: 5_000 })
@@ -810,11 +818,24 @@ test("[PD-06] member card rapid flips retarget, never queue: it ends on the side
   await open(page);
   await cardAtRest(page);
   const card = memberCard(page);
+  // Counted by the clicks the card itself received: a tap that lands while the card is edge-on mid-turn hits the
+  // tile behind it, as it would for a person (host WebKit under load: 3 of 12 runs lost one of five taps).
+  await card.evaluate((c) => {
+    c.dataset.clicks = "0";
+    c.addEventListener("click", () => {
+      c.dataset.clicks = String(Number(c.dataset.clicks) + 1);
+    });
+  });
   for (let i = 0; i < 5; i++) await tapCard(page, hasTouch);
-  await settledOn(page, "back");
+  const taps = await card.evaluate((c) => Number(c.dataset.clicks));
+  // At least one tap landed on a card still turning from the one before, so the turn had to retarget.
+  expect(taps).toBeGreaterThanOrEqual(2);
+  const side = taps % 2 === 1 ? "back" : "front";
+  await settledOn(page, side);
+  // Keys always reach the focused card: four turns end where they started.
   await card.focus();
   for (let i = 0; i < 4; i++) await page.keyboard.press("Enter", { delay: 0 });
-  await settledOn(page, "back");
+  await settledOn(page, side);
 });
 
 test("[PD-06] member card: a mouse tilts it and lights the glare; leaving fast springs it back upright", async ({
