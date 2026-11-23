@@ -85,3 +85,4 @@ _CLAUDE.md §4 findings policy: LOW findings and nits get one line here, are not
 - [PD-11, PD-B close code review LOW, 23 Nov] `tests/e2e/support/test.ts:100`: the axe guard's closing scan excludes `.m-toast` everywhere; check `overlays.spec` still scans the error toast itself (contrast, role).
 - [PD-11, PD-B close code review LOW, 23 Nov] `press.ts:122` comment wording does not match what the code does (re-word).
 - [P3 review-flow task, PD-B close code review LOW, 23 Nov] `StarRating` has no way to hide "Post on Google" when the shop has no Place ID (PRODUCT §109): add the option there, keeping the remaining choice's look and order (COMPLIANCE §1).
+- [P0-14 infra, PD-B close, 23 Nov] The main-push hook picked task ID PD-07 (next unticked) for `d59a2eb`, so the PD-06 gate stamp on the same tree didn't cover it and the hook re-ran `gate:task`: derive the IDs from the pushed commits (or accept any stamp on the same tree).

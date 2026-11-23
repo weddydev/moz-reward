@@ -8,30 +8,30 @@ Baton: held by talha.syed since 2026-11-22 17:32 UTC
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **23 Nov 2026 (Mac), talha.syed holds the baton.** Human (23 Nov): close PD-B fast (less overhead, never a skipped check, review or criterion); this session ends after the PD-B close with `/handoff`. **Next session = normal mode, plain `/resume`** (autopilot ends with this session); PD-07 after the PD-B close.
-- **PD-B close part 1 done (wip/PD-06):** C-76 root-caused and fixed (`7893612`: Docker Desktop hangs new host connects ~68 s after ~3,100 in ~30 s; pooled HTTP forwarder `scripts/lib/e2e-forwarder.mjs`; flick spec bounded by attempts). PD-B code-review MEDIUMs fixed (`eefce4e`); 6 LOWs in FOLLOWUPS. **`gate:task PD-06` on `eefce4e` PASS in one run** → C-76 and T-6 closed. GooFilter (root layout) covered by the PD-05 full 5-project runs.
-- **CI 45096798286 on `eefce4e` RED** (WebKit, flaky = failure): `molten-fields:806` rapid flips, ry 0.87° off 180. Root cause (host WebKit probe): a mouse resting on the card keeps the pointer lean a mid-turn move set (−0.72°…+0.24° seen; drawn ry = 180 + lean exactly), and a tap landing edge-on mid-turn misses the card (3 of 12 host runs). Fixed in the spec (`settledOn` compares with the card's own lean; taps counted by the card's received clicks). CI 45101535248 on `dcf8ae3` RED again on Linux WebKit: card click/Enter/Space flaky (an animation still running after 5 s: the pointer left on the turning card keeps feeding lean moves) → `tapCard` moves the mouse off after a click; slider track press 3/3 → that one WebKit assertion quarantined (C-78 → PD-11 / phase gate). **Main:** the wip HEAD goes to main once its CI is green (the hook re-runs `gate:task` on the new tree). Full 5-project E2E 45096809612 on `eefce4e` (global CSS touched): result for the close.
-- **Continue here:** PD-B close part 2: CI + full 5-project green check, staging smoke, code review of PD-B commits after `ec5d6cc` (`7893612`, `eefce4e`), scoped QA (rating choices' new label at 320/390/1440), `pnpm docker:tidy --apply`, HUMAN_TASKS review; then `/handoff` and stop (human, 23 Nov). Next session plain `/resume`, PD-07 (PD-C, needs H-49).
+- **PD-B closed 23 Nov** (main `d59a2eb`, CI 45108161552 green; main-push hook gate PASS). C-76 fixed at the root (Docker Desktop hangs new host connects after ~3,100 in ~30 s → pooled HTTP forwarder `scripts/lib/e2e-forwarder.mjs`), T-6 resolved; one-run gates PASS on `eefce4e`, `dcf8ae3`, `d59a2eb`. Code-review MEDIUMs fixed; Linux-WebKit CI flakes in PD-06 specs root-caused (card pointer lean / taps edge-on / touch front sways / shake read late) and fixed in the specs; WebKit slider track press quarantined (C-78 → PD-11).
+- **NOT VERIFIED:** code review of the close's own commits after `ec5d6cc` (`7893612` forwarder, `eefce4e` MEDIUMs, spec fixes `dcf8ae3`..`d59a2eb`): left for PD-C's close review (no server/auth/data code; security review not needed). Staging `/sign-in` and `/dev/*` answer 401 (basic auth) so "dev not exposed" behind the password is not re-checked.
+- **Continue here (next session, normal mode, plain `/resume`):** PD-07 (PD-C; H-49 needed at the PD-C close).
 - **Not yet tested:** member card + slider on real devices (H-13: iOS tilt/sway now on, Android sway, Safari 3D flip, touch drag).
 - **Windows laptop (WSL):** local WebKit only with `--workers 1`; never push or run suites while a gate runs; on a wip branch update main with `git fetch`, not `git pull --rebase`.
 - **Before work:** nothing new (no env vars, migrations or seeds).
 
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov). Then P1 resumes with the P1-B close. P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
-- **Current sub-phase:** **PD-B** Controls: ~~PD-04~~ → ~~PD-05~~ → ~~PD-06~~ → close; then PD-C (needs H-49). PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
+- **Current sub-phase:** **PD-C** (next: PD-07; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-23, talha.syed (PD-B close part 1 done: C-76 fixed + T-6 closed by a one-run gate on `eefce4e`; review MEDIUMs fixed; PD-06 to main after CI; next PD-B close part 2, then `/handoff`; next session plain `/resume`)
+- **Last updated:** 2026-11-23, talha.syed (PD-B closed: PD-06 + C-76 fix on main `d59a2eb`, CI green; next `/handoff`, then next session plain `/resume`, PD-07)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-A closed 22 Nov; PD-04 on main 22 Nov; **PD-05 closed 22 Nov**; **PD-06 closed 23 Nov** (wip/PD-06; main after its CI). PD-B close part 1 done (C-76 fix, review MEDIUMs); part 2 next.
+- **PD (Molten design):** PD-A closed 22 Nov; PD-04 on main 22 Nov; **PD-05 closed 22 Nov**; **PD-06 closed 23 Nov**; **PD-B closed 23 Nov** (main `d59a2eb`). Next PD-07 (PD-C).
 
 ## Next (top 3)
-1. CI on the wip HEAD green → push it to main (hook runs `gate:task`).
-2. PD-B close part 2 (`/subphase-complete` steps after the code review), then `/handoff` and stop: the last item of this session (human, 23 Nov; DECISIONS).
-3. Next session: PD-07 (PD-C). Human any time: H-51 (b), H-48b, H-38, H-45, H-46.
+1. `/handoff` (this session ends after the PD-B close; human 23 Nov).
+2. Next session (plain `/resume`): PD-07 (PD-C).
+3. Human any time: H-51 (b), H-48b, H-38, H-45, H-46.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
@@ -82,10 +82,10 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (23 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- C-76 repro (Node client in the Playwright container → host server): TCP pipe ~3,100 connects then all hang 68 s (twice in 4 min); direct to `host.docker.internal` the same (6,289 then hang); pooled HTTP forwarder 629,252 requests / 12 host connections / 3 min, 0 timeouts.
-- Unit: forwarder 5/0 (pooling test: ≤ 2 host connections for 60 one-shot clients), e2e-linux 4/0, ui 246/0 (Up/Down + wording + `back` required fail→pass); typecheck + eslint clean.
-- Rating choices at 320/340/390/1440 with the COMPLIANCE label: both 44 px, tile height unchanged; 320 and 390 screens inspected.
-- gate:task PD-06 on `eefce4e` PASS in one run: unit 1954/0, int 1456/0, build, bundle, sast, PD-06 E2E Linux Chromium 68/0 (4 skipped), perf 0/0, changed specs 93/0 (41 skipped; overlays flick passed pixel7 + desktop1440), parity 60/0. CI 45096798286 on `eefce4e` RED (1 WebKit flaky: rapid flips; 532 passed); fixed, see Handoff. Rapid flips: host webkit 12/12, member card Linux chromium/pixel7/desktop1440 17/0, host webkit/iphone14 11/0.
+- gate:task PD-06 one-run PASS on `eefce4e`, `dcf8ae3` and `d59a2eb` (unit 1954/0, int 1456/0, PD-06 E2E 68/0/4, changed specs 93/0/41, parity 60/0; no `page.goto` stall) → C-76 closed.
+- CI 45108161552 on `d59a2eb` GREEN (Chromium + WebKit, every spec: every-page change); full 5-project 45096809612 on `eefce4e` GREEN (covers /dev/molten, devices, cookie notice with the console + axe guard).
+- Staging (release before PD-B, `74fba5b`): `/api/health/live` 200 `{"status":"ok"}`, `/api/health/ready` 200, `/sign-in` + `/dev/molten` + `/dev/ui` 401 (basic auth). PD-B deploy: see SESSION_LOG.
+- C-76 repro: TCP pipe ~3,100 connects then 68 s hangs; pooled forwarder 629k requests over 12 host connections, 0 stalls.
 
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
