@@ -15,6 +15,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { LiquidChoice } from "@/components/ui/LiquidChoice";
 import { MilestoneTrack } from "@/components/ui/MilestoneTrack";
+import { OfferCard } from "@/components/ui/OfferCard";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { RadioGroup } from "@/components/ui/Radio";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -354,6 +355,19 @@ export function UiGallery(): React.JSX.Element {
               </li>
             ))}
           </ul>
+        </Demo>
+        <Demo
+          name="OfferCard"
+          note="An offer on the shop page (PD-08; reference .offer): photo, gold title, detail; two to a row. Without a photo the dark ground keeps the row even."
+        >
+          <div className="m-offer-row max-w-md">
+            <OfferCard
+              imageUrl="/demo/shops/brew-offer1.jpg"
+              title="2-for-1 flat white"
+              detail="Weekdays before 10am"
+            />
+            <OfferCard imageUrl={null} title="Free pastry" detail="With any large coffee" />
+          </div>
         </Demo>
       </Section>
 
