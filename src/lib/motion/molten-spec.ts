@@ -1,7 +1,6 @@
 import { RM_MAX_MS } from "./anim";
 import {
   BUTTON,
-  DOCK,
   FIELD,
   HEART,
   LIQUID,
@@ -736,37 +735,22 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "dock",
     element: "Dock",
     task: "PD-07",
-    status: "required",
+    status: "pending",
     values: [
       {
         name: "icon lift",
         value: ".45s var(--spring)",
         ref: css(".dk svg", "transition", "transform"),
-        prod: { file: MOLTEN_CSS, css: ".m-dk svg", prop: "transition", part: "transform" },
       },
       {
         name: "Scan halo",
         value: "2.6s linear infinite",
         ref: css(".scan::before", "animation", "spin"),
-        prod: { file: MOLTEN_CSS, css: ".m-scan::before", prop: "animation", part: "m-spin" },
       },
       {
         name: "Scan radar",
         value: "2.4s var(--ease-out) infinite",
         ref: css(".scan::after", "animation", "radar"),
-        prod: { file: MOLTEN_CSS, css: ".m-scan::after", prop: "animation", part: "m-radar" },
-      },
-      {
-        name: "Scan press",
-        value: "500",
-        ref: js("$('#scanBtn')", /duration: (\d+)/g),
-        prod: { value: () => DOCK.scanPressMs },
-      },
-      {
-        name: "Scan sparks",
-        value: "26",
-        ref: js("$('#scanBtn')", /count: (\d+)/g),
-        prod: { value: () => DOCK.scanSparks },
       },
     ],
   },

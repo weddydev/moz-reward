@@ -206,18 +206,6 @@
   /* Member card face (PD-06; reference `.mface`). */
   --mcard-face: linear-gradient(135deg, #fffdf7, #f5ead0 60%, #ebd8a9);
   --liquid-blob: linear-gradient(115deg, #c8922c, #ffe08a 40%, #e0ae3e 60%, #b9862a);
-  /* Floating dock (PD-07; reference `.dock .goo .blob`, `.scan::before`). */
-  --dock-blob: linear-gradient(115deg, #e0ae3e, #ffe08a 50%, #e0ae3e);
-  /* The demo phone frame on /dev/molten (reference `.phone`, `.screen::before`). */
-  --phone-frame: linear-gradient(145deg, #3a2e1c, #120d07 40%, #2a2014);
-  --phone-notch: #0b0804;
-  --scan-halo: conic-gradient(
-    from 0deg,
-    transparent 0 60%,
-    var(--gold-bright) 80%,
-    #fff 86%,
-    transparent 92%
-  );
   --molten-danger-flow: linear-gradient(
     115deg,
     #8f2f1f 0%,
@@ -230,11 +218,8 @@
   --rail-w: 72px;
   --rail-w-open: 220px;
   --sidebar-w: 248px;
-  --bottom-nav-h: 70px;
-  /* The Scan coin (62 px, margin-top −34 px, centred in the 70 px dock) rises 13 px above it (PD-07). */
-  --scan-rise: 13px;
-  /* The floating dock's gap to the bottom edge (or the home indicator, whichever is taller). */
-  --dock-bottom: 14px;
+  --bottom-nav-h: 64px;
+  --scan-rise: 20px;
   --content-max: 560px;
   --content-max-desktop: 1280px;
 }
