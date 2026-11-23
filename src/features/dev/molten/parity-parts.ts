@@ -229,7 +229,7 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     tolerance: {
       browser: "chromium",
       max: 0.025,
-      why: 'Chromium rasterises the labels inside the dock\'s backdrop-filter layer one device pixel apart on the two pages (same layout to 1/10,000 px; with the backdrop filter off the diff is 0; WebKit 0): 2.0% at 1440 and 390, labels only (DECISIONS 23 Nov "PD-07 dock parity tolerance")',
+      why: 'Chromium rasterises the labels inside the dock\'s backdrop blur layer one device pixel apart on the two pages (same layout to 1/10,000 px; with the backdrop filter off the diff is 0; WebKit 0): 2.0% at 1440 and 390, labels only (DECISIONS 23 Nov "PD-07 dock parity tolerance")',
     },
   },
   {
