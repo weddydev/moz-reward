@@ -1,5 +1,5 @@
 import { type APIRequestContext, type Page, type TestInfo } from "@playwright/test";
-import { throttleCpu, LONG_TASK_MS } from "./support/cpu-throttle";
+import { throttleCpu, LONG_TASK_MS, medianFrameRate } from "./support/cpu-throttle";
 import { expect, test, testApiHeaders } from "./support/test";
 
 // P1-08 on the production build: the Ingot (static + pour), the Gold Vault page, and the carried items — the
@@ -414,9 +414,10 @@ test("[P1-08] the pour holds 60 fps under 4× CPU throttling @fps", async ({
   browserName,
 }) => {
   test.skip(browserName !== "chromium", "CPU throttling is a Chromium DevTools feature");
-  const run = await pourRun(page, test.info(), signInAs);
-  expect(run.fps).toBeGreaterThanOrEqual(55);
-  expect(run.p95).toBeLessThanOrEqual(20);
+  // Median of 3 runs (process fix 3): the bounds are unchanged, one slow moment on a shared runner no longer decides.
+  const m = await medianFrameRate(test.info(), () => pourRun(page, test.info(), signInAs));
+  expect(m.fps).toBeGreaterThanOrEqual(55);
+  expect(m.p95).toBeLessThanOrEqual(20);
 });
 
 test("[P1-08] a progress change after load is announced in a polite live region", async ({

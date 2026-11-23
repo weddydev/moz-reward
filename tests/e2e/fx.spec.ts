@@ -1,5 +1,5 @@
 import { type Page, type TestInfo } from "@playwright/test";
-import { throttleCpu, LONG_TASK_MS } from "./support/cpu-throttle";
+import { throttleCpu, LONG_TASK_MS, medianFrameRate } from "./support/cpu-throttle";
 import { expect, test } from "./support/test";
 
 /**
@@ -424,10 +424,11 @@ test("[PD-03] 200-burst stress at 4× CPU: 60 fps, p95 ≤ 16.8 ms @fps", async 
     testInfo.project.name === "pixel7",
     "quarantined: pixel7 FX stress below 58 fps on CI runners, main included (C-79)",
   );
-  const run = await stressRun(page, test.info());
-  expect(run.fired).toBe(200);
-  expect(run.fps).toBeGreaterThanOrEqual(58);
-  expect(run.p95).toBeLessThanOrEqual(16.8);
+  // Median of 3 runs (process fix 3): the bounds are unchanged, one slow moment on a shared runner no longer decides.
+  const m = await medianFrameRate(testInfo, () => stressRun(page, testInfo));
+  for (const run of m.runs) expect(run.fired).toBe(200);
+  expect(m.fps).toBeGreaterThanOrEqual(58);
+  expect(m.p95).toBeLessThanOrEqual(16.8);
 });
 
 test("[PD-03] /dev/motion at 320, 390 and 1440: no horizontal scroll (screens for inspection, idle + mid-burst)", async ({

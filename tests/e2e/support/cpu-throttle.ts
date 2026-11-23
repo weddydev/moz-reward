@@ -30,6 +30,37 @@ export const CI_CPU_SCORE = 70_000;
  */
 export const LONG_TASK_MS = 65;
 
+/** How many times a frame-rate verdict (`@fps`) is measured; the median decides (process fix 3, human 23 Nov). */
+export const FPS_SAMPLES = 3;
+
+/** The middle value (the mean of the two middle ones for an even count). */
+export function median(xs: readonly number[]): number {
+  if (xs.length === 0) throw new Error("median of nothing");
+  const s = [...xs].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? (s[mid] ?? 0) : ((s[mid - 1] ?? 0) + (s[mid] ?? 0)) / 2;
+}
+
+/**
+ * A frame-rate verdict from `FPS_SAMPLES` runs of the same measurement: fps and p95 are each the median, so one
+ * slow moment on a shared CI runner no longer decides (the bounds themselves never move). Each run's numbers go
+ * on the test as an annotation.
+ */
+export async function medianFrameRate<T extends { fps: number; p95: number }>(
+  info: TestInfo,
+  once: () => Promise<T>,
+): Promise<{ fps: number; p95: number; runs: T[] }> {
+  const runs: T[] = [];
+  for (let i = 0; i < FPS_SAMPLES; i++) runs.push(await once());
+  const fps = median(runs.map((r) => r.fps));
+  const p95 = median(runs.map((r) => r.p95));
+  info.annotations.push({
+    type: "frame rate (median of 3)",
+    description: `${fps.toFixed(1)} fps, p95 ${p95.toFixed(1)} ms; runs ${runs.map((r) => `${r.fps.toFixed(1)}/${r.p95.toFixed(1)}`).join(", ")}`,
+  });
+  return { fps, p95, runs };
+}
+
 /** Iterations per second of a mixed string/array workload (higher = faster CPU); median of 5 runs. */
 async function benchmark(page: Page): Promise<number> {
   return page.evaluate(() => {
