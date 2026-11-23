@@ -40,6 +40,10 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 **KI-13 · WebKit-only flake that survives two fix attempts** — quarantine per TESTING §7 (`test.fixme("C-xx")` + CARRIED row targeting the phase gate / owner task), carry on. Open: **C-78** WebKit slider track press (CI only, → PD-11).
 
+**KI-43 · "Cannot take screenshot larger than 32767 pixels on any dimension" (WebKit, `shoot`)** — 23 Nov, CI 45155151040.
+- Cause: `/dev/ui` at 320 px grew past 32,767 **CSS** px (OfferCard added in PD-08), so the CSS-scale fallback for phones no longer fits.
+- Fix: `shoot` captures pages taller than the limit in 16,000 px clipped segments (`name--project.png`, `-part2.png`, …); inspect every part.
+
 **KI-14 · Pushing again cancels the previous CI run (concurrency), so no CI ever finishes**
 - Seen 22–23 Nov: 4 runs cancelled in a row. Fix: before the next push, let the previous run conclude (do other work meanwhile); push fixes in one batch.
 

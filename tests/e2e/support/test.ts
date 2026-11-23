@@ -209,6 +209,10 @@ type Fixtures = {
   >;
 };
 
+/** Browsers refuse a screenshot over 32,767 px on either side (WebKit, Chromium); see `shoot`. */
+const SCREENSHOT_MAX_PX = 32_767;
+/** Segment height (CSS px) when a page is taller than the limit even at CSS scale. */
+const SCREENSHOT_SEGMENT_PX = 16_000;
 const TASK_ID = /\[((?:P\d|PD|S)-\d{2}|J\d{1,2})\]/;
 
 export function taskIdFrom(info: Pick<TestInfo, "titlePath">): string {
@@ -345,20 +349,36 @@ export const test = base.extend<Fixtures & Options>({
       const fullPage = opts.fullPage ?? true;
       // WebKit on Windows refuses shots over 32767 device px ("Cannot take screenshot larger than 32767
       // pixels"): /dev/ui is ~22,000 CSS px tall, × DPR 2–3 on phones. Only those shots drop to CSS scale.
-      const tooTall =
-        fullPage &&
-        (await page.evaluate(
-          () => document.documentElement.scrollHeight * window.devicePixelRatio > 32767,
-        ));
+      const size = fullPage
+        ? await page.evaluate(() => ({
+            width: document.documentElement.scrollWidth,
+            height: document.documentElement.scrollHeight,
+            dpr: window.devicePixelRatio,
+          }))
+        : null;
+      const tooTall = size !== null && size.height * size.dpr > SCREENSHOT_MAX_PX;
       // caret "initial": hiding the caret writes inline styles onto inputs, which React reports as a hydration
       // mismatch when the shot is taken before the page segment has hydrated. Screenshots must not touch the DOM.
-      await page.screenshot({
-        path: file,
+      const base = {
         fullPage,
-        animations: "disabled",
-        caret: "initial",
+        animations: "disabled" as const,
+        caret: "initial" as const,
         ...(tooTall ? { scale: "css" as const } : {}),
-      });
+      };
+      // Taller than the limit even at CSS scale (/dev/ui at 320 px, ~33,000 CSS px, KI-43): the page is shot in
+      // clipped segments (file, file-part2, …), so every part of it is still captured and inspected.
+      if (size !== null && size.height > SCREENSHOT_MAX_PX) {
+        for (let y = 0, part = 1; y < size.height; y += SCREENSHOT_SEGMENT_PX, part++) {
+          const height = Math.min(SCREENSHOT_SEGMENT_PX, size.height - y);
+          await page.screenshot({
+            ...base,
+            path: part === 1 ? file : file.replace(/\.png$/, `-part${String(part)}.png`),
+            clip: { x: 0, y, width: size.width, height },
+          });
+        }
+        return file;
+      }
+      await page.screenshot({ ...base, path: file });
       return file;
     });
   },
