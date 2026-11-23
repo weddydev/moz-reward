@@ -29,7 +29,7 @@ export function isEditable(el: Element | null): boolean {
 /**
  * Whether the on-screen keyboard is open (PD-07: the dock hides so it never rides on top of the keyboard on
  * Android or covers the field being typed into). Judged from the visual viewport (`keyboardOpen`); re-checked on
- * its resize and on focus changes. Always false where `visualViewport` is missing.
+ * its resize, on focus changes and once on mount. Always false where `visualViewport` is missing.
  */
 export function useKeyboardOpen(): boolean {
   const [open, setOpen] = useState(false);
@@ -42,6 +42,8 @@ export function useKeyboardOpen(): boolean {
     vv.addEventListener("resize", check);
     document.addEventListener("focusin", check);
     document.addEventListener("focusout", check);
+    // Read once now too: a field focused (and the keyboard opened) before this hydrated sent no event we heard.
+    check();
     return () => {
       vv.removeEventListener("resize", check);
       document.removeEventListener("focusin", check);

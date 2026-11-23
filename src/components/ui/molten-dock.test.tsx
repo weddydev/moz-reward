@@ -221,6 +221,20 @@ describe("[PD-07] Dock", () => {
     expect(nav.dataset.keyboard).toBeUndefined();
   });
 
+  it("[PD-07] a keyboard already open when the dock mounts (a field focused before hydration) hides it at once", () => {
+    // CI 45128513936 (Linux WebKit): the field was focused and the keyboard opened before the shell hydrated, so
+    // both events were missed and the dock stayed up.
+    const vv = Object.assign(new EventTarget(), { height: 480 });
+    vi.stubGlobal("visualViewport", vv);
+    vi.stubGlobal("innerHeight", 844);
+    const field = document.createElement("input");
+    document.body.append(field);
+    field.focus();
+    render(<FiveDock active={0} column={0} />);
+    expect(screen.getByRole("navigation").dataset.keyboard).toBe("");
+    field.remove();
+  });
+
   it("[PD-07] Scan presses (500 ms) and bursts 26 sparks from its centre; reduced motion: no sparks", () => {
     const animate = vi.fn(() => null);
     const el = document.createElement("button");
