@@ -68,7 +68,7 @@ This file is loaded every session, so it stays short and points to the single so
 - **Carried work is tracked, not remembered:** CARRIED table in PROGRESS.md; a task can't be ticked with an open incoming carry.
 
 ### Debugging: root cause before fixes
-Reproduce, read the actual error and code path, form one hypothesis, confirm it with a quick check or a failing test, then fix. No speculative edits. After two failed attempts, stop, write down what you know, re-examine assumptions.
+**Known issues first (human, 23 Nov 2026):** before debugging any test, gate, CI or tooling failure, search `progress/KNOWN_ISSUES.md` for the symptom; when such a problem is root-caused or quarantined, add or update its entry in the same commit as the fix. Then: reproduce, read the actual error and code path, form one hypothesis, confirm it with a quick check or a failing test, then fix. No speculative edits. After two failed attempts, stop, write down what you know, re-examine assumptions.
 
 ### Verification before "done"
 Never report done without evidence from this session (command + result, screenshot inspected, curl). Anything unverified is said plainly and written in PROGRESS.md as NOT VERIFIED.
@@ -174,6 +174,7 @@ Until P0-14 lands `gate:task`/`gate:phase` and the production-build `pnpm e2e`, 
 |---|---|
 | `progress/PROGRESS.md` | Start of every session (state, handoff, CARRIED table) |
 | `progress/MAP.md` | Locating code (instead of scanning the repo) |
+| `progress/KNOWN_ISSUES.md` | First, whenever a test, gate, CI or tool fails (symptom → cause → fix) |
 | `progress/TEMPORARY.md` | Before any stopgap/workaround; every phase close; P5 |
 | `progress/FOLLOWUPS.md` | When a follow-up's owner task starts; every sub-phase close |
 | `progress/HUMAN_TASKS.md` | Start of session (🔴 items), every close, whenever a new human dependency appears |
