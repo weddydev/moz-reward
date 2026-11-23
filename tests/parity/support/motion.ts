@@ -79,6 +79,8 @@ export const TRIGGERS: Record<string, Trigger> = {
   slider: { target: "input", values: ["250", "480"], events: [] },
   // A tap: the card turns over to the QR side (.7 s spring).
   "member-card": { events: ["click"] },
+  // Offers in the dock: the gold pours one column right (the liquid choice's pour, beats included).
+  dock: { target: "[data-liq]:nth-of-type(2)", events: ["click"], beats: [0.42, 0.76] },
 };
 
 /** Fires a part's trigger and pauses every time-based animation at once (see `Trigger`). */

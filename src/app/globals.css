@@ -260,9 +260,12 @@
  */
 :root {
   --fixed-bottom: max(12px, env(safe-area-inset-bottom, 0px));
-  --bottom-bar-clear: calc(
-    var(--bottom-nav-h) + var(--scan-rise) + env(safe-area-inset-bottom, 0px) + 12px
+  /* The floating dock (PD-07): its gap to the edge (or the home indicator), its height and the Scan coin. */
+  --dock-top: calc(
+    max(var(--dock-bottom), env(safe-area-inset-bottom, 0px)) + var(--bottom-nav-h) +
+      var(--scan-rise)
   );
+  --bottom-bar-clear: calc(var(--dock-top) + 12px);
 }
 @media (max-width: 1023.98px) {
   :root:has([data-portal-nav="bottom"][data-until="lg"]) {
@@ -676,7 +679,10 @@
     gap: 16px;
     width: var(--rail-w-open);
     padding-block: 16px;
-    background: var(--surface);
+    /* Molten (PD-07): the dock's glass. */
+    background: rgba(255, 252, 245, 0.82);
+    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    backdrop-filter: blur(16px) saturate(1.5);
     clip-path: inset(0 calc(var(--rail-w-open) - var(--rail-w)) 0 0);
     transition: clip-path var(--dur-base) var(--ease-out);
   }
@@ -689,6 +695,11 @@
     box-shadow: var(--shadow-2);
     opacity: 0;
     transition: opacity var(--dur-base) var(--ease-out);
+  }
+  .lite .rail {
+    background: rgba(255, 252, 245, 0.97);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
   .rail-edge {
     position: absolute;
@@ -706,6 +717,33 @@
   .rail .rail-item {
     width: 56px;
     transition: width var(--dur-instant) linear var(--dur-base);
+  }
+  /*
+   * Molten (PD-07): items sit over the current page's liquid gold (its rules are in molten.css, next to the
+   * dock's); the icon lifts on hover and when current.
+   */
+  .rail .rail-item {
+    position: relative;
+    z-index: 1;
+  }
+  .rail .rail-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .rail .rail-item > svg {
+    transition: transform 0.45s var(--spring);
+  }
+  .rail .rail-item:is([aria-current="page"], :hover) > svg {
+    transform: scale(1.08);
+  }
+  .rail .rail-item:hover {
+    color: var(--ink);
   }
   .rail .rail-label {
     opacity: 0;
@@ -749,19 +787,5 @@
       width: auto;
       transition-delay: var(--delay-intent);
     }
-  }
-
-  /* The bottom nav's raised Scan button: 56px gold circle lifted above the bar (DESIGN §5). */
-  .scan-raised {
-    display: grid;
-    place-items: center;
-    width: 56px;
-    height: 56px;
-    /* Takes the 32px of an icon pill in the row, so its label lines up; the rest rises above the bar. */
-    margin-block: calc(32px - 56px) 0;
-    border-radius: var(--r-pill);
-    background-image: var(--gold-gradient);
-    box-shadow: var(--shadow-gold);
-    color: var(--ink);
   }
 }

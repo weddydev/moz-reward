@@ -1,15 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLiquidPour } from "@/components/motion/useLiquidPour";
 import { cx } from "@/lib/cx";
-import { anim, reducedMotionNow } from "@/lib/motion/anim";
-import {
-  blobKeyframes,
-  dropKeyframes,
-  LIQUID,
-  nextEnabled,
-  type Slot,
-} from "@/lib/motion/controls";
+import { reducedMotionNow } from "@/lib/motion/anim";
+import { LIQUID, nextEnabled } from "@/lib/motion/controls";
 import { burst } from "@/lib/motion/fx";
 import { useHydrated } from "@/lib/use-hydrated";
 
@@ -20,20 +15,6 @@ export type LiquidOption<T extends string> = {
   detail?: string;
   disabled?: boolean;
 };
-
-// Layout effects only run in the browser; the server render places the blob with CSS alone.
-const useBrowserLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
-
-/** The element's running animations ([] where Web Animations are missing, e.g. jsdom). */
-const animationsOf = (el: Element | null | undefined): Animation[] =>
-  el && typeof el.getAnimations === "function" ? el.getAnimations() : [];
-
-/** An option's slot from its layout box (offsets from the group's padding box, like the reference's `geom`). */
-const slotOf = (o: HTMLElement): Slot => ({
-  x: o.offsetLeft,
-  w: o.offsetWidth,
-  c: o.offsetLeft + o.offsetWidth / 2,
-});
 
 /**
  * Liquid choice (PD-05; DESIGN §6.3, §7.4; reference `.liquid` + `liquid()`): a radio group whose selection is a
@@ -98,102 +79,15 @@ export function LiquidChoice<T extends string>({
   const blob = useRef<HTMLSpanElement>(null);
   const drops = useRef<Array<HTMLSpanElement | null>>([]);
   const items = useRef<Array<HTMLButtonElement | null>>([]);
-  const placed = useRef<number | null>(null);
-  const width = useRef(0);
   const sparkTimer = useRef<number | null>(null);
 
-  /** Puts the gold on option `i` with no motion (pixel geometry from here on, like the reference). */
-  const place = useCallback((i: number): void => {
-    const o = items.current[i];
-    const b = blob.current;
-    if (!o || !b) return;
-    const s = slotOf(o);
-    b.style.width = `${String(s.w)}px`;
-    b.style.transform = `translateX(${String(s.x)}px)`;
-    for (const d of drops.current) {
-      if (!d) continue;
-      d.style.left = "0";
-      d.style.transform = `translateX(${String(s.c - LIQUID.dropSize / 2)}px)`;
-    }
-  }, []);
-
-  /** Pours the gold from option `from` (or from where it is, mid-pour) to option `to`. */
-  const pour = useCallback(
-    (from: number, to: number): void => {
-      const b = blob.current;
-      const target = items.current[to];
-      const origin = items.current[from];
-      if (!b || !target || !origin) return;
-      const bSlot = slotOf(target);
-      let aSlot = slotOf(origin);
-      const running = animationsOf(b);
-      let shape: string | undefined;
-      if (running.length > 0) {
-        // Retarget: carry on from the gold's current position and shape (stretch included), not from the old
-        // choice. Its layout width (offsetWidth) is unscaled, so the droplets' start centre is right too.
-        shape = getComputedStyle(b).transform;
-        const x = new DOMMatrixReadOnly(shape).m41;
-        const w = b.offsetWidth;
-        aSlot = { x, w, c: x + w / 2 };
-      }
-      for (const a of running) a.cancel();
-      b.style.width = `${String(bSlot.w)}px`;
-      b.style.transform = `translateX(${String(bSlot.x)}px)`;
-      if (reducedMotionNow()) {
-        place(to);
-        return;
-      }
-      anim(b, blobKeyframes(aSlot, bSlot, shape), {
-        duration: LIQUID.blobMs,
-        easing: LIQUID.easing,
-        fill: "none",
-      });
-      drops.current.forEach((d, k) => {
-        if (!d) return;
-        const flying = animationsOf(d);
-        // A droplet still in flight carries on from where it is.
-        const dropFrom = flying.length > 0 ? getComputedStyle(d).transform : undefined;
-        for (const a of flying) a.cancel();
-        d.style.left = "0";
-        d.style.transform = `translateX(${String(bSlot.c - LIQUID.dropSize / 2)}px)`;
-        anim(d, dropKeyframes(aSlot, bSlot, k, dropFrom), {
-          duration: LIQUID.dropsMs,
-          delay: LIQUID.dropDelayMs + k * LIQUID.dropStaggerMs,
-          easing: LIQUID.easing,
-          fill: "none",
-        });
-      });
-    },
-    [place],
-  );
-
-  // First paint (and every later change of the choice): place, or pour from the last placed option.
-  useBrowserLayoutEffect(() => {
-    const prev = placed.current;
-    placed.current = index;
-    if (index < 0) return;
-    if (prev === null || prev < 0 || prev === index || prev >= n) place(index);
-    else pour(prev, index);
-  }, [index, n, place, pour]);
-
-  // A resized group (rotation, a sidebar opening) snaps the gold to the choice's new box.
-  useEffect(() => {
-    const el = root.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    width.current = el.offsetWidth;
-    const ro = new ResizeObserver(() => {
-      if (el.offsetWidth === width.current) return;
-      width.current = el.offsetWidth;
-      for (const a of animationsOf(blob.current)) a.cancel();
-      for (const d of drops.current) for (const a of animationsOf(d)) a.cancel();
-      const at = placed.current ?? -1;
-      if (at >= 0) place(at);
-    });
-    ro.observe(el);
-    return () => {
-      ro.disconnect();
-    };
-  }, [place]);
+  useLiquidPour({
+    rootRef: root,
+    blobRef: blob,
+    dropsRef: drops,
+    items: () => items.current,
+    index,
+  });
 
   useEffect(
     () => () => {
