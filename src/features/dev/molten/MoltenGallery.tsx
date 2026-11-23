@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/Toast";
 import { LabSection } from "./LabSection";
 import { LanguageSection } from "./LanguageSection";
 import { PARITY_PARTS } from "./parity-parts";
+import { PhoneSection } from "./PhoneSection";
 import { VaultButtons } from "./VaultButtons";
 import "./molten-page.css";
 
@@ -13,7 +14,7 @@ import "./molten-page.css";
  * that no parity spec compares. Built so far: the living background and the Language section (PD-02); the
  * Buttons tile, heart toggle, the vault's orbit and ghost buttons and the toast (PD-04); the Coin switch, Liquid
  * choice and Gold seal checkbox tiles (PD-05); the Tabs, Rate your visit, Molten slider, Input and Member card tiles
- * (PD-06).
+ * (PD-06); the phone frame and its floating dock (PD-07).
  */
 const SECTIONS: readonly { parts: readonly string[]; Section: () => React.JSX.Element }[] = [
   { parts: ["language"], Section: LanguageSection },
@@ -43,6 +44,7 @@ const SECTIONS: readonly { parts: readonly string[]; Section: () => React.JSX.El
     Section: LabSection,
   },
   { parts: ["orbit-button", "ghost-button"], Section: VaultButtons },
+  { parts: ["dock"], Section: PhoneSection },
 ];
 
 export function MoltenGallery(): React.JSX.Element {

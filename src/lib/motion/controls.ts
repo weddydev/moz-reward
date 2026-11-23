@@ -87,38 +87,53 @@ export const SEAL = {
 /** An option's place inside a liquid group: left edge, width and centre, in px from the group's padding box. */
 export type Slot = { x: number; w: number; c: number };
 
+/** Which way a liquid group runs: a row (liquid choice, dock) or a column (the desktop rail, PD-07). */
+export type LiquidAxis = "x" | "y";
+
+const along = (axis: LiquidAxis, px: number): string =>
+  `${axis === "x" ? "translateX" : "translateY"}(${String(px)}px)`;
+/** `scale(sx, sy)` with the two factors swapped for a column, so a column stretches along its own run. */
+const stretch = (axis: LiquidAxis, run: string, cross: string): string =>
+  axis === "x" ? `scale(${run},${cross})` : `scale(${cross},${run})`;
+
 /**
  * Pure: the blob's pour from slot `a` to slot `b` (reference `select()`): stretch, overshoot, settle. `from` is
  * the blob's current computed transform when a pour is interrupted, so it carries on from the shape it is in
- * (the reference restarts from a round blob on the old choice; design review 22 Nov).
+ * (the reference restarts from a round blob on the old choice; design review 22 Nov). A column (`axis` "y")
+ * pours the same way turned 90°: slots are then top, height and middle.
  */
-export function blobKeyframes(a: Slot, b: Slot, from?: string): Keyframe[] {
+export function blobKeyframes(a: Slot, b: Slot, from?: string, axis: LiquidAxis = "x"): Keyframe[] {
   const mid = (a.x + b.x) / 2;
   const dir = b.x > a.x ? 1 : -1;
   return [
-    { transform: from ?? `translateX(${String(a.x)}px) scale(1,1)` },
-    { transform: `translateX(${String(mid)}px) scale(1.3,.76)`, offset: LIQUID.stretchAt },
+    { transform: from ?? `${along(axis, a.x)} ${stretch(axis, "1", "1")}` },
+    { transform: `${along(axis, mid)} ${stretch(axis, "1.3", ".76")}`, offset: LIQUID.stretchAt },
     {
-      transform: `translateX(${String(b.x + dir * LIQUID.overshootPx)}px) scale(.92,1.1)`,
+      transform: `${along(axis, b.x + dir * LIQUID.overshootPx)} ${stretch(axis, ".92", "1.1")}`,
       offset: LIQUID.overshootAt,
     },
-    { transform: `translateX(${String(b.x)}px) scale(1,1)` },
+    { transform: `${along(axis, b.x)} ${stretch(axis, "1", "1")}` },
   ];
 }
 
 /**
  * Pure: droplet `k`'s arc from slot `a` to slot `b` (the first rises 12 px, the second dips 14 px); `from` is its
- * current computed transform when a pour is interrupted mid-flight.
+ * current computed transform when a pour is interrupted mid-flight. In a column the arc bows sideways.
  */
-export function dropKeyframes(a: Slot, b: Slot, k: number, from?: string): Keyframe[] {
+export function dropKeyframes(
+  a: Slot,
+  b: Slot,
+  k: number,
+  from?: string,
+  axis: LiquidAxis = "x",
+): Keyframe[] {
   const r = LIQUID.dropSize / 2;
+  const bow = `${axis === "x" ? "translateY" : "translateX"}(${k ? "14" : "-12"}px)`;
+  const rest = axis === "x" ? "translateY(0)" : "translateX(0)";
   return [
-    { transform: from ?? `translateX(${String(a.c - r)}px) translateY(0) scale(.7)` },
-    {
-      transform: `translateX(${String((a.c + b.c) / 2 - r)}px) translateY(${k ? "14" : "-12"}px) scale(1)`,
-      offset: 0.5,
-    },
-    { transform: `translateX(${String(b.c - r)}px) translateY(0) scale(.6)` },
+    { transform: from ?? `${along(axis, a.c - r)} ${rest} scale(.7)` },
+    { transform: `${along(axis, (a.c + b.c) / 2 - r)} ${bow} scale(1)`, offset: 0.5 },
+    { transform: `${along(axis, b.c - r)} ${rest} scale(.6)` },
   ];
 }
 
@@ -130,6 +145,38 @@ export function nextEnabled(disabled: readonly boolean[], from: number, dir: 1 |
     if (!disabled[j]) return j;
   }
   return from;
+}
+
+/**
+ * Floating dock (PD-07; reference `.dock`, `.dk`, `.scan` + "phone"). The indicator is the liquid choice's pour
+ * (`LIQUID`); the icon lift, the Scan halo and radar loops are CSS.
+ */
+export const DOCK = {
+  /** Scan press (reference `#scanBtn` click): scale 1 → .86 (30%) → 1.08 (70%) → 1. */
+  scanPressMs: 500,
+  scanPressKeyframes: [
+    { transform: "scale(1)" },
+    { transform: "scale(.86)", offset: 0.3 },
+    { transform: "scale(1.08)", offset: 0.7 },
+    { transform: "scale(1)" },
+  ] satisfies Keyframe[],
+  scanSparks: 26,
+  scanSparkSpeed: [160, 400] as const,
+  /** The on-screen keyboard counts as open when the visual viewport is at least this much shorter. */
+  keyboardMinPx: 150,
+} as const;
+
+/**
+ * Pure: is the on-screen keyboard open? Browsers keep the layout viewport and shrink the visual one when it
+ * opens (iOS Safari; Android Chrome since 108), so a big gap while an editable element has focus means a
+ * keyboard. A gap with no editable focus is pinch zoom; a small gap is the iOS toolbar.
+ */
+export function keyboardOpen(
+  layoutHeight: number,
+  visualHeight: number,
+  editing: boolean,
+): boolean {
+  return editing && layoutHeight - visualHeight >= DOCK.keyboardMinPx;
 }
 
 /** Tabs (PD-06; reference `.seg*`, `.panel` + "tabs"). The pill and its trail are CSS transitions. */

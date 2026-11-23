@@ -163,9 +163,25 @@ export async function capture(page: Page, part: string): Promise<Buffer> {
         const fx = (r0.left + window.scrollX) % 1;
         const fy = (r0.top + window.scrollY) % 1;
         if (fx || fy) {
-          if (getComputedStyle(el).position === "static") el.style.position = "relative";
-          el.style.left = `${String(-fx)}px`;
-          el.style.top = `${String(-fy)}px`;
+          const position = getComputedStyle(el).position;
+          const frame = el.offsetParent;
+          const framePos = frame instanceof HTMLElement ? getComputedStyle(frame).position : "";
+          if (
+            position === "absolute" &&
+            frame instanceof HTMLElement &&
+            (framePos === "relative" || framePos === "static")
+          ) {
+            // An inset-placed part (the dock: `bottom: 14px` in the phone's screen) can't take a `top` offset (it
+            // would win over its `bottom`), and its text snaps to pixels in its frame's layer anyway (the screen:
+            // overflow, radius, isolation). Snap the frame, which moves the part with it (PD-07).
+            if (framePos === "static") frame.style.position = "relative";
+            frame.style.left = `${String(-fx)}px`;
+            frame.style.top = `${String(-fy)}px`;
+          } else {
+            if (position === "static") el.style.position = "relative";
+            el.style.left = `${String(-fx)}px`;
+            el.style.top = `${String(-fy)}px`;
+          }
         }
         el.dataset.parityAligned = "";
       }

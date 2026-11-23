@@ -41,11 +41,11 @@ export function PortalShell({
       )}
       <div className="relative flex min-w-0 flex-1 flex-col">
         <PortalHeader chrome={chrome} />
-        {/* Bottom padding below the bar's breakpoint: bar + raised Scan + home indicator, so nothing hides under it. */}
+        {/* Bottom padding below the dock's breakpoint: its gap, height and Scan coin (`--dock-top`), so nothing hides under it. */}
         <main
           id="main"
           className={cx(
-            "min-w-0 flex-1 pb-[calc(var(--bottom-nav-h)+var(--scan-rise)+env(safe-area-inset-bottom,0px)+16px)]",
+            "min-w-0 flex-1 pb-[calc(var(--dock-top)+16px)]",
             customer ? "md:pb-0" : "lg:pb-0",
           )}
         >

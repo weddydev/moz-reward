@@ -2,8 +2,10 @@
 
 import { LogIn, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { TransitionLink } from "@/components/motion";
+import { useLiquidPour } from "@/components/motion/useLiquidPour";
+import { DOCK_ICONS } from "@/components/ui/dock-icons";
 import { Icon } from "@/components/ui/Icon";
 import { cx } from "@/lib/cx";
 import { navIcon } from "../nav-icons";
@@ -15,8 +17,8 @@ import type { ShellProps } from "./types";
 
 const itemClass = (active: boolean): string =>
   cx(
-    "rail-item pressable text-small flex min-h-11 items-center gap-4 rounded-md px-[18px] font-semibold",
-    active ? "bg-gold-100 text-ink" : "text-ink-2 hover:bg-surface-2",
+    "rail-item text-small flex min-h-11 items-center gap-4 rounded-md px-[18px] font-semibold",
+    active ? "text-ink" : "text-ink-2",
   );
 
 /**
@@ -26,6 +28,10 @@ const itemClass = (active: boolean): string =>
  * pushing it. Logo, Wallet, Offers, Market, Notifications, Me; Install at the bottom (P5-03 fills the slot).
  * Touch screens and tablets can't hover: the "Show labels" toggle opens it (Esc or choosing a page closes it).
  * Below 768px the bottom nav takes over.
+ *
+ * Molten (PD-07, extended from the reference's dock): the current page sits on the dock's liquid gold, poured
+ * down the column as the route changes (`useLiquidPour`, axis "y"); icons are the dock's own where it draws
+ * them; hover lifts the icon like the dock's current item.
  */
 export function CustomerRail({
   items,
@@ -36,6 +42,19 @@ export function CustomerRail({
 }): React.JSX.Element {
   const active = activeRoute(usePathname())?.path ?? null;
   const [open, setOpen] = useState(false);
+  const shown = items.filter((r) => r.nav !== "mobile-only");
+  const index = shown.findIndex((r) => r.path === active);
+  const list = useRef<HTMLUListElement>(null);
+  const blob = useRef<HTMLSpanElement>(null);
+  const drops = useRef<Array<HTMLSpanElement | null>>([]);
+  useLiquidPour({
+    rootRef: list,
+    blobRef: blob,
+    dropsRef: drops,
+    items: () => [...(list.current?.querySelectorAll<HTMLElement>(":scope > li > a") ?? [])],
+    index,
+    axis: "y",
+  });
   const id = useId();
   // Esc closes the labels wherever focus is (Safari doesn't focus a pressed button).
   useEffect(() => {
@@ -67,21 +86,41 @@ export function CustomerRail({
         >
           <Wordmark labelClassName="rail-label" />
         </TransitionLink>
-        <ul className="flex flex-1 flex-col gap-1 px-2">
-          {items
-            .filter((r) => r.nav !== "mobile-only")
-            .map((r) => (
+        <ul
+          ref={list}
+          data-empty={index < 0 ? "" : undefined}
+          className="relative flex flex-1 flex-col gap-1 px-2"
+        >
+          <li className="m-goo" aria-hidden="true">
+            <span
+              ref={blob}
+              className="m-blob"
+              style={{
+                transform: `translateY(calc(${String(Math.max(0, index))} * (100% + 4px)))`,
+              }}
+            />
+            <span
+              ref={(el) => {
+                drops.current[0] = el;
+              }}
+              className="m-drop"
+            />
+          </li>
+          {shown.map((r) => {
+            const Molten = DOCK_ICONS[r.icon];
+            return (
               <li key={r.path}>
                 <TransitionLink
                   href={r.path}
                   aria-current={r.path === active ? "page" : undefined}
                   className={itemClass(r.path === active)}
                 >
-                  <Icon icon={navIcon(r.icon)} />
+                  {Molten ? <Molten className="rail-icon" /> : <Icon icon={navIcon(r.icon)} />}
                   <span className="rail-label">{r.label}</span>
                 </TransitionLink>
               </li>
-            ))}
+            );
+          })}
         </ul>
         <div className="flex flex-col gap-1 px-2">
           <div data-slot="install-chip" />

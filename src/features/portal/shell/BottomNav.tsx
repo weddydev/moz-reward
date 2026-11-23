@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { TransitionLink } from "@/components/motion";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Dock, DOCK_ITEM, DOCK_SCAN, scanPress } from "@/components/ui/Dock";
+import { DOCK_ICONS } from "@/components/ui/dock-icons";
 import { Icon } from "@/components/ui/Icon";
 import { cx } from "@/lib/cx";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -15,39 +17,23 @@ import { PortalSwitchList } from "./PortalSwitcher";
 import { ShopSwitchList } from "./ShopSwitcher";
 import type { ShellProps } from "./types";
 
-/**
- * Labels never truncate: a slot is 64px at 320px and "Customers" needs about that much (more with Linux font
- * rendering), so a label may spill a few pixels into its neighbours' space, centred; the bar itself never
- * scrolls sideways (E2E at 320px).
- */
-const slotClass =
-  "text-caption flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 font-semibold";
-
-/** Icon in a pill that turns gold-tinted when active (reference: mobile dashboards). */
-function Pill({
-  active,
-  children,
-}: {
-  active: boolean;
-  children: React.ReactNode;
-}): React.JSX.Element {
-  return (
-    <span
-      className={cx(
-        "rounded-pill duration-fast grid h-8 w-14 place-items-center transition-colors",
-        active && "bg-gold-100",
-      )}
-    >
-      {children}
-    </span>
-  );
+/** A dock icon: the reference's own drawing where it has one (customer items), else the Lucide icon. */
+function DockGlyph({ name }: { name: string }): React.JSX.Element {
+  const Molten = DOCK_ICONS[name];
+  return Molten ? <Molten /> : <Icon icon={navIcon(name)} />;
 }
 
 /**
- * The mobile bottom nav (DESIGN §5): customer Wallet, Offers, raised Scan, Market, Me (below 768px); shop
- * Home, Requests, Scan, Customers, More and admin Overview, Applications, Shops, Moderation, More (below
- * 1024px). `position: fixed` and safe-area aware, so the shell keeps it outside `RouteTransition`. "More"
- * opens a sheet with the rest of the role's pages, the shop switcher and the role switcher.
+ * The mobile bottom nav (DESIGN §5, PD-07): the floating dock. Customer Wallet, Offers, raised Scan, Market, Me
+ * (below 768px); shop Home, Requests, Scan, Customers, More and admin Overview, Applications, Shops, Moderation,
+ * More (below 1024px). The current page sits on the dock's liquid gold, which pours to the next one as the
+ * route changes; Scan is the raised coin (its name is read out, not shown). `position: fixed` and safe-area
+ * aware, so the shell keeps it outside `RouteTransition`. "More" opens a sheet with the rest of the role's
+ * pages, the shop switcher and the role switcher.
+ *
+ * Labels never truncate: at 320px a column is 56px and "Customers" needs about that much, so a label may spill a
+ * few pixels into its neighbour's space, centred (its neighbour is the label-less Scan coin or "More"); the dock
+ * never scrolls sideways (E2E at 320px).
  */
 export function BottomNav({
   items,
@@ -70,68 +56,73 @@ export function BottomNav({
   const hasMore = chrome.portal !== "customer";
   const current = bar.findIndex((r) => r.path === active);
   const moreActive = rest.some((r) => r.path === active);
+  // Where the gold sits: the current column (More counts when one of its pages is open; Scan never holds it).
+  const columns = bar.length + (hasMore ? 1 : 0);
+  const column = moreActive ? bar.length : bar[current]?.raised ? -1 : current;
+  const liquid = column < 0 ? -1 : bar.slice(0, column).filter((r) => !r.raised).length;
   return (
     <>
-      <nav
-        aria-label={NAV_LABEL[chrome.portal]}
+      <Dock
+        label={NAV_LABEL[chrome.portal]}
+        active={liquid}
+        column={column}
+        columns={columns}
+        hideFrom={chrome.portal === "customer" ? "md" : "lg"}
         data-portal-nav="bottom"
         data-until={chrome.portal === "customer" ? "md" : "lg"}
-        className={cx(
-          "border-line bg-surface pb-safe pl-safe pr-safe fixed inset-x-0 bottom-0 z-30 border-t",
-          chrome.portal === "customer" ? "md:hidden" : "lg:hidden",
-        )}
       >
-        <ul className="mx-auto flex h-(--bottom-nav-h) max-w-xl items-stretch">
-          {bar.map((r, i) => {
-            const isActive = r.path === active;
-            const label = r.mobileLabel ?? r.label;
-            return (
-              <li key={r.path} className="flex min-w-0 flex-1">
-                <TransitionLink
-                  href={r.path}
-                  {...(current >= 0 ? { tab: { from: current, to: i } } : {})}
-                  aria-current={isActive ? "page" : undefined}
-                  className={cx(slotClass, "pressable", isActive ? "text-ink" : "text-ink-2")}
-                >
-                  {r.raised ? (
-                    <span className="scan-raised" data-raised>
-                      <Icon icon={navIcon(r.icon)} size={24} />
-                    </span>
-                  ) : (
-                    <Pill active={isActive}>
-                      <Icon icon={navIcon(r.icon)} />
-                    </Pill>
-                  )}
-                  <span data-nav-label className="tracking-tight whitespace-nowrap">
-                    {label}
-                  </span>
-                </TransitionLink>
-              </li>
-            );
-          })}
-          {hasMore ? (
-            <li className="flex min-w-0 flex-1">
-              <button
-                type="button"
-                disabled={!hydrated}
-                aria-haspopup="dialog"
-                aria-expanded={moreOpen}
-                onClick={() => {
-                  setMoreOpen(true);
-                }}
-                className={cx(slotClass, "pressable", moreActive ? "text-ink" : "text-ink-2")}
-              >
-                <Pill active={moreActive}>
-                  <Icon icon={Ellipsis} />
-                </Pill>
-                <span data-nav-label className="tracking-tight">
-                  More
-                </span>
-              </button>
-            </li>
-          ) : null}
-        </ul>
-      </nav>
+        {bar.map((r, i) => {
+          const isActive = r.path === active;
+          const label = r.mobileLabel ?? r.label;
+          const tab = current >= 0 ? { tab: { from: current, to: i } } : {};
+          return r.raised ? (
+            <TransitionLink
+              key={r.path}
+              href={r.path}
+              {...tab}
+              aria-current={isActive ? "page" : undefined}
+              data-raised
+              className={DOCK_SCAN}
+              onClick={(e) => {
+                scanPress(e.currentTarget);
+              }}
+            >
+              <DockGlyph name={r.icon} />
+              <span className="sr-only">{label}</span>
+            </TransitionLink>
+          ) : (
+            <TransitionLink
+              key={r.path}
+              href={r.path}
+              {...tab}
+              aria-current={isActive ? "page" : undefined}
+              data-liq
+              className={DOCK_ITEM}
+            >
+              <DockGlyph name={r.icon} />
+              <span data-nav-label>{label}</span>
+            </TransitionLink>
+          );
+        })}
+        {hasMore ? (
+          <button
+            type="button"
+            disabled={!hydrated}
+            aria-haspopup="dialog"
+            aria-expanded={moreOpen}
+            data-liq
+            // The gold marks "one of More's pages is open" (the item is a button, so not aria-current).
+            data-current={moreActive ? "" : undefined}
+            onClick={() => {
+              setMoreOpen(true);
+            }}
+            className={DOCK_ITEM}
+          >
+            <Icon icon={Ellipsis} />
+            <span data-nav-label>More</span>
+          </button>
+        ) : null}
+      </Dock>
       {hasMore ? (
         <BottomSheet
           open={moreOpen}

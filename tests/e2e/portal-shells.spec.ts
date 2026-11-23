@@ -34,7 +34,8 @@ test.describe("[P0-12] portal shells", () => {
       const bar = page.locator('[data-portal-nav="bottom"]');
       await expect(bar).toBeVisible();
       await expect(bar.getByRole("link")).toHaveText([/Wallet/, /Offers/, /Scan/, /Market/, /Me/]);
-      await expect(bar.locator("[data-raised]")).toHaveCSS("width", "56px");
+      // The floating dock's raised Scan coin (PD-07; reference `.scan`).
+      await expect(bar.locator("[data-raised]")).toHaveCSS("width", "62px");
       await expect(bar.getByRole("link", { name: "Wallet" })).toHaveAttribute(
         "aria-current",
         "page",
@@ -129,7 +130,8 @@ test.describe("[P0-12] portal shells", () => {
       await sheet.getByRole("link", { name: "Feedback" }).click();
       await expect(page).toHaveURL(/\/dashboard\/feedback$/);
       await expect(sheet).toBeHidden();
-      await expect(bar.getByRole("button", { name: "More" })).toHaveClass(/text-ink(?!-)/);
+      // One of More's pages is open: More holds the dock's gold (PD-07).
+      await expect(bar.getByRole("button", { name: "More" })).toHaveAttribute("data-current", "");
     } else {
       const side = page.locator('[data-portal-nav="side"]');
       await expect(side.locator("[data-shop-switcher]")).toBeVisible();
