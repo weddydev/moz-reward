@@ -6,9 +6,9 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { ShopCard } from "@/components/ui/ShopCard";
-import { initialsOf } from "@/lib/initials";
 import { PullToRefresh } from "./PullToRefresh";
 import { AVAILABILITY_TEXT, type WalletCard, type WalletView, goldText, ingotsText } from "./view";
+import { WalletStack } from "./WalletStack";
 
 /**
  * The Wallet (P1-07, DESIGN §15 screen 3). Mobile: greeting, summary strip, the shop cards list (pull to
@@ -71,16 +71,12 @@ export function WalletPage({
                 <h2 id="wallet-shops" className="text-h2">
                   Your shops ({cards.length})
                 </h2>
-                <ul
-                  className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:gap-4 xl:grid-cols-3"
-                  data-testid="wallet-cards"
-                >
-                  {cards.map((card) => (
-                    <li key={card.membershipId} className="min-w-0">
-                      <WalletShopCard card={card} />
-                    </li>
-                  ))}
-                </ul>
+                <WalletStack
+                  cards={cards.map((card) => ({
+                    key: card.membershipId,
+                    card: <WalletShopCard card={card} />,
+                  }))}
+                />
               </section>
             )}
           </div>
@@ -168,50 +164,40 @@ function WalletShopCard({ card }: { card: WalletCard }): React.JSX.Element {
   ) : null;
   const gold = card.ingotSize ? goldText(card.progressGold, card.ingotSize) : null;
   return (
-    <TransitionLink
-      href={`/shops/${card.shopId}`}
-      direction="forward"
-      hero={{ id: card.shopId, name: card.name, imageUrl: card.logoUrl }}
-      className="pressable block h-full rounded-md"
-      data-testid="wallet-card"
-      data-availability={card.availability}
-      aria-label={[
-        card.name,
-        unavailable ? AVAILABILITY_TEXT[card.availability as "suspended" | "closed"] : null,
-        card.open?.text ?? null,
-        gold,
-        card.label,
-        card.ingotsCompleted ? ingotsText(card.ingotsCompleted) : null,
-      ]
-        .filter(Boolean)
-        .join(", ")}
-    >
-      <ShopCard
-        name={card.name}
-        address={card.address}
-        sharedId={card.shopId}
-        dimmed={unavailable}
-        progress={card.progress}
-        progressLabel={card.label}
-        badges={badges}
-        className="hover:shadow-2 h-full transition-shadow"
-        photo={
-          card.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={card.logoUrl}
-              alt=""
-              width={64}
-              height={64}
-              className="size-full object-cover"
-            />
-          ) : (
-            <span className="bg-gold-100 text-h3 text-ink grid size-full place-items-center">
-              {initialsOf(card.name)}
-            </span>
-          )
-        }
-      />
-    </TransitionLink>
+    <ShopCard
+      name={card.name}
+      address={card.address}
+      logoUrl={card.logoUrl}
+      coverUrl={card.coverUrl}
+      gold={card.ingotSize ? card.progressGold.toLocaleString("en-GB") : null}
+      sharedId={card.shopId}
+      dimmed={unavailable}
+      progress={card.progress}
+      progressLabel={card.label}
+      badges={badges}
+      render={({ className, children, ...data }) => (
+        <TransitionLink
+          href={`/shops/${card.shopId}`}
+          direction="forward"
+          hero={{ id: card.shopId, name: card.name, imageUrl: card.logoUrl }}
+          className={className}
+          {...data}
+          data-testid="wallet-card"
+          data-availability={card.availability}
+          aria-label={[
+            card.name,
+            unavailable ? AVAILABILITY_TEXT[card.availability as "suspended" | "closed"] : null,
+            card.open?.text ?? null,
+            gold,
+            card.label,
+            card.ingotsCompleted ? ingotsText(card.ingotsCompleted) : null,
+          ]
+            .filter(Boolean)
+            .join(", ")}
+        >
+          {children}
+        </TransitionLink>
+      )}
+    />
   );
 }

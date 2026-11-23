@@ -115,7 +115,7 @@ test("[P1-07] wallet: memberships in order with progress, summary, a suspended s
   // PRODUCT §4: purchase count desc → current points desc → last visit desc.
   await expect(cards(page)).toHaveCount(4);
   const names = await cards(page).evaluateAll((els) =>
-    els.map((el) => el.querySelector("p")?.textContent ?? ""),
+    els.map((el) => el.querySelector(".m-wc-name")?.textContent ?? ""),
   );
   expect(names).toEqual(["Brew & Bloom Café", LONG_NAME, "Corner Grocer", "Paused Barber"]);
 
@@ -137,8 +137,8 @@ test("[P1-07] wallet: memberships in order with progress, summary, a suspended s
   for (const width of [390, 320, 1440]) {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
     await noHorizontalScroll(page);
-    // The long name stays within its card (clamped to two lines with an ellipsis).
-    const nameBox = await cards(page).nth(1).locator("p").first().boundingBox();
+    // The long name stays within its card (one line with an ellipsis, PD-08).
+    const nameBox = await cards(page).nth(1).locator(".m-wc-name").boundingBox();
     const cardBox = await cards(page).nth(1).boundingBox();
     expect(nameBox && cardBox && nameBox.x + nameBox.width <= cardBox.x + cardBox.width + 0.5).toBe(
       true,
@@ -167,7 +167,8 @@ test("[P1-07] wallet: memberships in order with progress, summary, a suspended s
   });
   const morphs = await typedVt(page);
   if (morphs) await recordVtGroups(page);
-  await first.click();
+  // On a phone the first card is at the back of its stack: tap its header strip (PD-08), as a thumb would.
+  await first.click({ position: { x: 60, y: 24 } });
   await expect(page.getByTestId("member-shop-name-loading")).toHaveText("Brew & Bloom Café");
   await expect(page).toHaveURL(`/shops/${brew.shopId}`);
   await expect(page.getByTestId("member-shop-name")).toHaveText("Brew & Bloom Café");
@@ -178,6 +179,62 @@ test("[P1-07] wallet: memberships in order with progress, summary, a suspended s
     const shopGroups = (await vtGroups(page)).filter((n) => /^vt-shop(logo|name)-/.test(n));
     expect(shopGroups.sort()).toEqual([...pair].sort());
   }
+});
+
+test("[PD-08] wallet stack: phones stack cards in threes with their header strips in view; Show all opens the rest; the grid from 768px", async ({
+  page,
+  signInAs,
+  shoot,
+}) => {
+  const me = await signInAs("customer");
+  for (const [i, name] of [
+    "Alpha Café",
+    "Bravo Bakes",
+    "Charlie Cycles",
+    "Delta Deli",
+    "Echo Eats",
+  ].entries())
+    await seedMembership(page.request, me.userId, {
+      name,
+      programme: true,
+      member: { purchaseCount: 10 - i, progressGold: 100 * (i + 1) },
+    });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/wallet");
+  await expect(cards(page)).toHaveCount(5);
+  const visible = page.locator('[data-testid="wallet-card"]:visible');
+  await expect(visible).toHaveCount(3);
+  // Each card overlaps the one before, leaving its 58 px header strip in view (150 px card, −92 px).
+  const tops = await visible.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+  expect(tops.slice(1).map((t, i) => Math.round(t - (tops[i] ?? 0)))).toEqual([58, 58]);
+  // The strip is the card's own: a tap on it lands on that card, not the one in front.
+  const strip = await visible.first().evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return document.elementFromPoint(r.left + 60, r.top + 24)?.closest("a") === el;
+  });
+  expect(strip).toBe(true);
+  await noHorizontalScroll(page);
+  await shoot("wallet-stack-390");
+  const more = page.getByTestId("wallet-show-all");
+  await expect(more).toHaveText("Show all 5 shops");
+  await more.click();
+  await expect(visible).toHaveCount(5);
+  await expect(more).toHaveAttribute("aria-expanded", "true");
+  await shoot("wallet-stack-390-all", { fullPage: true });
+  await more.click();
+  await expect(visible).toHaveCount(3);
+  await page.setViewportSize({ width: 320, height: 720 });
+  await noHorizontalScroll(page);
+  await shoot("wallet-stack-320");
+  // From 768px: all five in the grid, side by side, no overlap and no Show all.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(visible).toHaveCount(5);
+  await expect(more).toBeHidden();
+  const row = await cards(page).evaluateAll((els) =>
+    els.slice(0, 3).map((el) => Math.round(el.getBoundingClientRect().top)),
+  );
+  expect(new Set(row).size).toBe(1);
+  await shoot("wallet-stack-1440");
 });
 
 test("[P1-07] wallet: no memberships shows the empty state with scan guidance", async ({

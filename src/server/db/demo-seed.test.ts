@@ -1,3 +1,5 @@
+import { existsSync, statSync } from "node:fs";
+import path from "node:path";
 import { Secret, TOTP } from "otpauth";
 import { describe, expect, it } from "vitest";
 import {
@@ -15,15 +17,36 @@ const BASE = "demo@mozrewards.test";
 const CODE = /^[2-9A-HJKMNP-TV-Z]{6}$/;
 
 describe("[P0-16] demo dataset plan", () => {
-  it("has the three demo shops of TESTING §6 with valid, distinct codes, slugs and ids", () => {
+  it("has the five demo shops of TESTING §6 with valid, distinct codes, slugs and ids", () => {
     expect(DEMO_SHOPS.map((s) => `${s.name} — ${s.town}`)).toEqual([
       "Brew & Bloom Café — Camden",
       "Patel's Corner Store — Leicester",
       "Glow Studio — Manchester",
+      "Camden Bakehouse — Camden",
+      "Pedal & Co. — Kentish Town",
     ]);
     for (const shop of DEMO_SHOPS) expect(shop.shopCode).toMatch(CODE);
     for (const field of ["id", "slug", "shopCode"] as const) {
-      expect(new Set(DEMO_SHOPS.map((s) => s[field])).size).toBe(3);
+      expect(new Set(DEMO_SHOPS.map((s) => s[field])).size).toBe(5);
+    }
+  });
+
+  it("[PD-08] the Molten reference shops carry its photos (self-hosted, cover ≤ 120 KB); the others have none (fallback coin)", () => {
+    const photos = DEMO_SHOPS.map((s) => [s.name, s.logoUrl, s.coverUrl]);
+    expect(photos).toEqual([
+      ["Brew & Bloom Café", "/demo/shops/brew-logo.jpg", "/demo/shops/brew-cover.jpg"],
+      ["Patel's Corner Store", null, null],
+      ["Glow Studio", null, null],
+      ["Camden Bakehouse", "/demo/shops/bake-logo.jpg", "/demo/shops/bake-cover.jpg"],
+      ["Pedal & Co.", "/demo/shops/pedal-logo.jpg", "/demo/shops/pedal-cover.jpg"],
+    ]);
+    for (const shop of DEMO_SHOPS) {
+      for (const url of [shop.logoUrl, shop.coverUrl]) {
+        if (url === null) continue;
+        const file = path.join(process.cwd(), "public", url);
+        expect(existsSync(file), url).toBe(true);
+        if (url.endsWith("-cover.jpg")) expect(statSync(file).size).toBeLessThanOrEqual(120 * 1024);
+      }
     }
   });
 
