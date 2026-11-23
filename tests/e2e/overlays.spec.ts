@@ -1,5 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { AXE_TAGS, expect, test } from "./support/test";
+import {
+  CLOSE_VELOCITY,
+  releaseVelocity,
+  type DragSample,
+} from "../../src/components/ui/sheet-gesture";
 import type { Locator, Page } from "@playwright/test";
 
 /**
@@ -334,8 +339,39 @@ test.describe("[P0-09] bottom sheet drag", () => {
   test("[P0-09] a fast short flick closes", async ({ page }) => {
     await open(page, "sheet");
     const h = await sheetHeight(page);
-    await drag(page, Math.min(60, h * 0.2), 3, 0);
-    await expect(page.locator("dialog")).toHaveCount(0);
+    // The sheet judges a flick by the release velocity it measures from the pointer events' own timestamps, so
+    // on a loaded machine the same three quick steps can arrive spread out and read as a slow drag (C-76 runs).
+    // Bounded by attempts and pointer steps, not wall-clock time: the page's own samples say what it saw; a
+    // flick it measured as slow must spring back (that is the rule too), one it measured as fast must close.
+    await page.evaluate(() => {
+      const w = window as unknown as { __flick: { y: number; t: number }[] };
+      w.__flick = [];
+      const grip = document.querySelector('dialog [data-part="grip"]');
+      for (const type of ["pointerdown", "pointermove"])
+        grip?.addEventListener(type, (e) => {
+          const p = e as PointerEvent;
+          if (type === "pointerdown") w.__flick = [];
+          w.__flick.push({ y: p.clientY, t: p.timeStamp });
+        });
+    });
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await drag(page, Math.min(60, h * 0.2), 3, 0);
+      const samples = await page.evaluate(
+        () => (window as unknown as { __flick: DragSample[] }).__flick,
+      );
+      expect(samples.length).toBeGreaterThanOrEqual(2);
+      if (releaseVelocity(samples) > CLOSE_VELOCITY) {
+        await expect(page.locator("dialog")).toHaveCount(0);
+        return;
+      }
+      await expect(topDialog(page)).toHaveAttribute("data-state", "open");
+      await expect
+        .poll(() => panelOf(page).evaluate((el) => getComputedStyle(el).transform))
+        .toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
+    }
+    throw new Error(
+      "3 flicks in a row arrived too slowly to measure as a flick: the machine is overloaded",
+    );
   });
 
   test("[P0-09] wheel at the sheet's scroll end leaves the page where it was", async ({

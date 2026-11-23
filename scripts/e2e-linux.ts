@@ -5,8 +5,10 @@
  * lite tier, fonts, rendering) show up before a push instead of in CI.
  *
  * - The test runner and `next start` stay on this machine; the container runs `playwright run-server` and a
- *   tiny TCP forwarder so the browser reaches the app as http://localhost:3100 (a non-localhost origin would
- *   trip COOP and `upgrade-insecure-requests`, unlike CI).
+ *   small HTTP forwarder (`lib/e2e-forwarder.mjs`) so the browser reaches the app as http://localhost:3100 (a
+ *   non-localhost origin would trip COOP and `upgrade-insecure-requests`, unlike CI). The forwarder reuses a few
+ *   keep-alive connections to the host: Docker Desktop stalls new host connections for ~68 s after a few
+ *   thousand, which a plain TCP pipe hit every couple of minutes in a gate (C-76).
  * - The container is removed afterwards, also on failure or Ctrl+C.
  * - Example: `pnpm e2e:linux tests/e2e/molten.spec.ts --project desktop1440 --project pixel7`.
  */
@@ -30,10 +32,19 @@ export function playwrightVersion(): string {
   return pkg.version;
 }
 
+/** The forwarder module's source plus the call that starts it (C-76), for `node --input-type=module -e`. */
+export function forwarderScript(appPort: number = E2E_PORT): string {
+  const source = readFileSync(new URL("./lib/e2e-forwarder.mjs", import.meta.url), "utf8");
+  return `${source}\nawait startForwarder({ listenPort: ${String(appPort)}, upstreamHost: "host.docker.internal", upstreamPort: ${String(appPort)} });\n`;
+}
+
 /** Pure: the container command (forwarder + run-server). Only constants and the pinned version go in. */
-export function containerArgs(version: string, appPort: number = E2E_PORT): string[] {
+export function containerArgs(
+  version: string,
+  appPort: number = E2E_PORT,
+  forward: string = forwarderScript(appPort),
+): string[] {
   if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error(`unexpected Playwright version ${version}`);
-  const forward = `require("net").createServer((c)=>{const u=require("net").connect(${String(appPort)},"host.docker.internal");c.pipe(u);u.pipe(c);u.on("error",()=>c.destroy());c.on("error",()=>u.destroy());}).listen(${String(appPort)},"127.0.0.1")`;
   return [
     "run",
     "-d",
@@ -51,7 +62,7 @@ export function containerArgs(version: string, appPort: number = E2E_PORT): stri
     `mcr.microsoft.com/playwright:v${version}-noble`,
     "/bin/sh",
     "-c",
-    `node -e "$FWD" & exec npx -y playwright@${version} run-server --port ${String(WS_PORT)} --host 0.0.0.0`,
+    `node --input-type=module -e "$FWD" & exec npx -y playwright@${version} run-server --port ${String(WS_PORT)} --host 0.0.0.0`,
   ];
 }
 
