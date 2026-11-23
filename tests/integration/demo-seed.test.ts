@@ -73,16 +73,16 @@ const hasSession = (res: Response): boolean =>
   res.headers.getSetCookie().some((c) => /session_token=[^;]/.test(c) && !/max-age=0/i.test(c));
 
 describe("[P0-16] demo seed is idempotent and consistent", () => {
-  it("creates the three shops and one account per role; a second run inserts nothing and counts stay identical", async () => {
+  it("creates the five shops and one account per role; a second run inserts nothing and counts stay identical", async () => {
     await resetDemo(dbAs("system"));
     const first = await seed();
     expect(first).toEqual({
       users: 7,
-      shops: 3,
+      shops: 5,
       staff: 2,
       admins: 4,
-      memberships: 3,
-      programmes: 1,
+      memberships: 5,
+      programmes: 3,
     });
     const after1 = await counts();
     expect(after1).toMatchObject({
@@ -90,11 +90,11 @@ describe("[P0-16] demo seed is idempotent and consistent", () => {
       accounts: 6,
       two_factors: 6,
       customer_profiles: 1,
-      shops: 3,
+      shops: 5,
       shop_staff: 2,
       admin_members: 4,
-      memberships: 3,
-      loyalty_programs: 1,
+      memberships: 5,
+      loyalty_programs: 3,
     });
     expect(await seed()).toEqual({
       users: 0,
@@ -149,7 +149,7 @@ describe("[P0-16] demo seed is idempotent and consistent", () => {
     const other = await makeUser();
     const otherShop = await makeShop();
     const removed = await resetDemo(dbAs("system"));
-    expect(removed).toEqual({ users: 7, shops: 3 });
+    expect(removed).toEqual({ users: 7, shops: 5 });
     expect(await db().select().from(users).where(eq(users.id, other.id))).toHaveLength(1);
     expect(await db().select().from(shops).where(eq(shops.id, otherShop.id))).toHaveLength(1);
     expect(

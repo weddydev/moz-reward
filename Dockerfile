@@ -50,6 +50,8 @@ WORKDIR /app
 # Non-root (SECURITY §11). Files stay root-owned and read-only to the app user.
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
+# Static files (demo shop photos, PD-08): standalone output leaves public/ out; server.js serves it from here.
+COPY --from=build /app/public ./public
 # The bundles resolve their externals (native @node-rs/argon2) from the standalone node_modules beside them.
 COPY --from=build /app/dist/cli ./cli
 # Migrations for the release step (`node cli/migrate.mjs`, run from /app: it reads ./drizzle).

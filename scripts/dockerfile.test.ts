@@ -23,3 +23,9 @@ describe("[P0-15] Dockerfile runtime environment", () => {
     expect(runtime).toMatch(/^ENV APP_ENV=\$APP_ENV\b/m);
   });
 });
+
+describe("[PD-08] Dockerfile static files", () => {
+  it("[PD-08] the runtime stage ships public/ beside server.js (standalone output leaves it out; demo shop photos)", () => {
+    expect(stage("runtime")).toMatch(/^COPY --from=build \/app\/public \.\/public$/m);
+  });
+});

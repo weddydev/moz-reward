@@ -15,6 +15,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { LiquidChoice } from "@/components/ui/LiquidChoice";
 import { MilestoneTrack } from "@/components/ui/MilestoneTrack";
+import { OfferCard } from "@/components/ui/OfferCard";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { RadioGroup } from "@/components/ui/Radio";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -81,11 +82,52 @@ const openRow = (r: Member): void => {
 };
 const rowLabel = (r: Member): string => `Open ${r.name}`;
 
-const shopPhoto = (
-  <div className="bg-gold-100 text-gold-700 grid size-full place-items-center">
-    <Coffee aria-hidden="true" strokeWidth={1.5} />
-  </div>
-);
+const GALLERY_CARDS = [
+  {
+    name: "Brew & Bloom Café",
+    address: "14 Parkway, Camden, London NW1 7AA",
+    logoUrl: "/demo/shops/brew-logo.jpg",
+    coverUrl: "/demo/shops/brew-cover.jpg",
+    gold: "720",
+    progress: 0.72,
+    progressLabel: "72% · 1 more visit",
+    badges: <Badge tone="open">Open now</Badge>,
+  },
+  {
+    name: LONG_NAME,
+    address: "221 Narborough Road, Leicester LE3 0PE, United Kingdom",
+    logoUrl: null,
+    coverUrl: null,
+    gold: "250",
+    progress: 0.25,
+    progressLabel: "25%",
+    badges: (
+      <Badge tone="happy-hour" icon={<Sparkles aria-hidden="true" size={12} strokeWidth={1.5} />}>
+        Happy hour
+      </Badge>
+    ),
+  },
+  {
+    name: LONG_WORD,
+    address: "Anglesey LL61 5UJ",
+    logoUrl: null,
+    coverUrl: "/demo/shops/pedal-cover.jpg",
+    gold: null,
+    progress: 0,
+    progressLabel: "Rewards not set up yet",
+  },
+  {
+    name: "Camden Bakehouse",
+    address: "3 Ferry Lane, Camden NW1 8AB",
+    logoUrl: "/demo/shops/bake-logo.jpg",
+    coverUrl: "/demo/shops/bake-cover.jpg",
+    gold: "600",
+    progress: 1,
+    progressLabel: "Reward ready",
+    badges: <Badge tone="closed">Taking a break</Badge>,
+    dimmed: true,
+  },
+];
 
 const MANY_TABS = [
   { value: "all", label: "All", count: 128 },
@@ -292,47 +334,39 @@ export function UiGallery(): React.JSX.Element {
         </Demo>
         <Demo
           name="ShopCard"
-          note="Names wrap on word boundaries, up to two lines; an unbroken word longer than the line breaks anywhere."
+          note="The wallet card (PD-08): cover photo under a shade, logo in a gold ring (or the metal coin), one-line name with an ellipsis, gold count, progress. Phones stack them; this demo shows them side by side."
         >
-          <div className="grid gap-3 md:grid-cols-2">
-            <ShopCard
-              name="Brew & Bloom Café"
-              address="14 Parkway, Camden, London NW1 7AA"
-              photo={shopPhoto}
-              progress={0.72}
-              progressLabel="72% · 1 more visit"
-              badges={<Badge tone="open">Open now</Badge>}
+          <ul className="grid gap-3 md:grid-cols-2">
+            {GALLERY_CARDS.map((c) => (
+              <li key={c.name} className="min-w-0">
+                <ShopCard
+                  {...c}
+                  render={({ className, children, ...data }) => (
+                    <button
+                      type="button"
+                      className={`${className} w-full`}
+                      {...data}
+                      onClick={() => toast(`Open ${c.name}`)}
+                    >
+                      {children}
+                    </button>
+                  )}
+                />
+              </li>
+            ))}
+          </ul>
+        </Demo>
+        <Demo
+          name="OfferCard"
+          note="An offer on the shop page (PD-08; reference .offer): photo, gold title, detail; two to a row. Without a photo the dark ground keeps the row even."
+        >
+          <div className="m-offer-row max-w-md">
+            <OfferCard
+              imageUrl="/demo/shops/brew-offer1.jpg"
+              title="2-for-1 flat white"
+              detail="Weekdays before 10am"
             />
-            <ShopCard
-              name={LONG_NAME}
-              address="221 Narborough Road, Leicester LE3 0PE, United Kingdom"
-              photo={<div className="bg-surface-2 size-full" />}
-              progress={0.25}
-              progressLabel="25% · 250 / 1,000 gold"
-              badges={
-                <Badge
-                  tone="happy-hour"
-                  icon={<Sparkles aria-hidden="true" size={12} strokeWidth={1.5} />}
-                >
-                  Happy hour
-                </Badge>
-              }
-            />
-            <ShopCard
-              name={LONG_WORD}
-              address="Anglesey LL61 5UJ"
-              photo={<div className="bg-surface-2 size-full" />}
-              progress={0}
-              progressLabel="0% · Start collecting"
-            />
-            <ShopCard
-              name="Nan's Bakery"
-              address="3 High Street, York YO1 8BN"
-              photo={shopPhoto}
-              progress={1}
-              progressLabel="Reward ready"
-              badges={<Badge tone="closed">Closed</Badge>}
-            />
+            <OfferCard imageUrl={null} title="Free pastry" detail="With any large coffee" />
           </div>
         </Demo>
       </Section>

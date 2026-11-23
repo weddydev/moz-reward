@@ -26,7 +26,7 @@ import { londonDate } from "@/lib/time";
 import type { ShopLandingData } from "@/server/repos/shops";
 import { MemberIdCard } from "./MemberIdCard";
 import { MembershipControls } from "./MembershipControls";
-import { SHOP_PAGE_CLASS, ShopCover, ShopPageHeader } from "./ShopPageHeader";
+import { SHOP_PAGE_CLASS, ShopPageHeader } from "./ShopPageHeader";
 import { leaveRestoreBy, upcomingClosures, vaultCardText } from "./view";
 
 type Live = Extract<ShopLandingData, { kind: "live" }>;
@@ -69,14 +69,14 @@ export function MemberShopPage({
   return (
     <div className={SHOP_PAGE_CLASS} data-page="member-shop">
       <div className="flex flex-col">
-        <ShopCover coverUrl={details?.shop.coverUrl ?? null} />
-        <ShopPageHeader shopId={shop.shopId} name={shop.name} logoUrl={shop.logoUrl} />
-        <div className="mt-3 flex flex-col gap-3">
-          {details ? (
-            <p className="text-body text-ink-2">
-              {areaLine(details.shop.category, details.shop.town)}
-            </p>
-          ) : null}
+        <ShopPageHeader
+          name={shop.name}
+          logoUrl={shop.logoUrl}
+          coverUrl={details?.shop.coverUrl ?? null}
+          meta={details ? areaLine(details.shop.category, details.shop.town) : null}
+          rise
+        />
+        <div className="mt-4 flex flex-col gap-3" data-rise={3}>
           {status ? (
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={status.tone}>
@@ -113,7 +113,12 @@ export function MemberShopPage({
       </div>
 
       {welcome && member ? (
-        <Card className="flex items-start gap-3 p-5" role="status" data-testid="join-welcome">
+        <Card
+          className="flex items-start gap-3 p-5"
+          role="status"
+          data-testid="join-welcome"
+          data-rise={4}
+        >
           <Icon icon={PartyPopper} className="text-gold-700 mt-1 shrink-0" />
           <div className="flex flex-col gap-1">
             <p className="text-h2">Welcome to {shop.name}</p>
@@ -124,7 +129,7 @@ export function MemberShopPage({
         </Card>
       ) : null}
 
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start">
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start" data-rise={5}>
         <div className="flex flex-col gap-6">
           {member ? (
             <>

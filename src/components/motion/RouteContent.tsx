@@ -9,6 +9,7 @@ import {
   FADE_IN_PLACE_QUERY,
   viewTransitionActive,
 } from "@/lib/motion/route-transitions";
+import { openWipe, returnWipe, settleWipe } from "@/lib/motion/wipe-stage";
 
 /** Lets a nested `RouteContent` tell its parent it animated this navigation (the innermost one wins). */
 const Claim = createContext<((pathname: string) => void) | null>(null);
@@ -23,7 +24,8 @@ const Claim = createContext<((pathname: string) => void) | null>(null);
  * view transition's update when a morph runs), so nothing paints at rest first, and the "is a morph running"
  * check is reliable; React may defer passive effects past the end of the transition (measured under load).
  * The content only fades, in place, during a card → page morph (`viewTransitionActive`) and from 1024px up
- * (`FADE_IN_PLACE_QUERY`, DESIGN §7 "Desktop").
+ * (`FADE_IN_PLACE_QUERY`, DESIGN §7 "Desktop"). A Wallet card → shop navigation plays the gold wipe instead
+ * (`wipe-stage.ts`: the content opens in the circle from the tap), and back from it returns the Wallet.
  */
 export function RouteContent({
   children,
@@ -50,6 +52,15 @@ export function RouteContent({
     const type = takeNavIntent(pathname);
     const el = ref.current;
     if (!el || typeof el.animate !== "function") return;
+    // A Wallet card's gold wipe (or its way back) waiting for this page plays instead of the slide (PD-08).
+    const wiped = openWipe(el, pathname) ?? returnWipe(el, pathname);
+    if (wiped) {
+      return () => {
+        wiped.cancel();
+      };
+    }
+    // Any other page: a wipe still showing (it pointed elsewhere, or the user left mid-way) goes now.
+    settleWipe();
     const root = getComputedStyle(document.documentElement);
     const duration = cssTimeMs(root.getPropertyValue("--dur-slow"));
     if (duration <= 0) return;

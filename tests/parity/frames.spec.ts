@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
 import { diffRatio } from "./support/diff";
 import { fire, openForMotion, referenceUrl, seekFraction, TRIGGERS } from "./support/motion";
-import { capture, edgeCycleAt, openStill, REFERENCE_PATH } from "./support/reference";
+import { capture, edgeCycleAt, freezeAt, openStill, REFERENCE_PATH } from "./support/reference";
 import { PARITY_PARTS, parityLimit } from "../../src/features/dev/molten/parity-parts";
 
 /**
@@ -18,12 +18,24 @@ const fractionsOf = (part: string): number[] =>
   [...new Set([...FRACTIONS, ...(TRIGGERS[part]?.beats ?? [])])].sort((x, y) => x - y);
 const VP = { width: 390, height: 844 };
 
+/** What each captured frame of `part` is called: ms after the trigger (`atMs`) or a fraction. */
+const stopsOf = (part: string): string[] =>
+  TRIGGERS[part]?.atMs?.map((ms) => `${String(ms)}ms`) ?? fractionsOf(part).map(String);
+
 async function frames(page: Page, part: string): Promise<Buffer[]> {
   // Scrolls it into view the same way on both pages; a part that appears only when triggered (the toast) is
   // fixed on screen and has nothing to scroll to yet.
   if (!TRIGGERS[part]?.waitFor) await capture(page, part);
   await fire(page, part);
   const out: Buffer[] = [];
+  const atMs = TRIGGERS[part]?.atMs;
+  if (atMs) {
+    for (const ms of atMs) {
+      await freezeAt(page, ms);
+      out.push(await capture(page, part));
+    }
+    return out;
+  }
   for (const f of fractionsOf(part)) {
     await seekFraction(page, f);
     out.push(await capture(page, part));
@@ -97,13 +109,11 @@ test.describe("[PD-01] frame parity", () => {
       const max = parityLimit(part, page.context().browser()?.browserType().name() ?? "", MAX_DIFF);
       const a = await frames(ref, part.name);
       const b = await frames(page, part.name);
-      const at = fractionsOf(part.name);
+      const at = stopsOf(part.name);
       for (const [i, shot] of a.entries()) {
         const d = diffRatio(shot, b[i] ?? Buffer.alloc(0));
-        if (d.ratio > max) await attachPair(`${part.name}-${String(at[i])}`, shot, b[i]);
-        expect(d.ratio, `${part.name} at ${String(at[i])}: ${d.why ?? ""}`).toBeLessThanOrEqual(
-          max,
-        );
+        if (d.ratio > max) await attachPair(`${part.name}-${at[i] ?? ""}`, shot, b[i]);
+        expect(d.ratio, `${part.name} at ${at[i] ?? ""}: ${d.why ?? ""}`).toBeLessThanOrEqual(max);
       }
     });
   }

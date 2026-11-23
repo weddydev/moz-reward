@@ -1,4 +1,5 @@
 [
+  "card-to-shop",
   "coin-switch",
   "dock",
   "fx-engine",
@@ -17,5 +18,6 @@
   "stars",
   "tabs",
   "text-field",
-  "toast"
+  "toast",
+  "wallet-stack"
 ]

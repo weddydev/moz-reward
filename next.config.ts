@@ -20,6 +20,16 @@ const nextConfig: NextConfig = {
   // Do not advertise the framework (SECURITY §5 baseline).
   poweredByHeader: false,
   experimental: { authInterrupts: true },
+  // next/image (PD-08, DESIGN §12 "AVIF/WebP via next/image"): set explicitly, never library defaults (ENGINEERING
+  // §14). Only the demo shop photos are optimised (uploaded images are sized variants on the CDN, P2-05); any
+  // other local path or a query string is refused (400), so the optimiser can't be used to enumerate files.
+  images: {
+    formats: ["image/avif", "image/webp"],
+    qualities: [75],
+    localPatterns: [{ pathname: "/demo/shops/**", search: "" }],
+    remotePatterns: [],
+    dangerouslyAllowSVG: false,
+  },
   // SEC-10: prefetch responses still carry HSTS, nosniff, Referrer-Policy, Permissions-Policy, COOP and
   // X-Frame-Options (SECURITY §5). Two rules because `has` entries must all match.
   headers: () =>

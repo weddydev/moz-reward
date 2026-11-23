@@ -15,6 +15,7 @@ export { KpiCard } from "./KpiCard";
 export { LiquidChoice, type LiquidOption } from "./LiquidChoice";
 export { MilestoneTrack, type Milestone } from "./MilestoneTrack";
 export { Modal } from "./Modal";
+export { OfferCard } from "./OfferCard";
 export type { OverlayProps } from "./Overlay";
 export { ProgressBar } from "./ProgressBar";
 export { RadioGroup, type RadioOption } from "./Radio";

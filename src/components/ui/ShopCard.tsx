@@ -1,86 +1,108 @@
-import { MapPin } from "lucide-react";
-import { SharedElement } from "@/components/motion/SharedElement";
-import { cx } from "@/lib/cx";
-import { Card } from "./Card";
-import { ProgressBar } from "./ProgressBar";
+import { ShopCoin, ShopImage } from "./ShopImage";
 import type { ReactNode } from "react";
 
+/** Widths a wallet card is shown at: full width on phones, two columns from 768px, three from 1280px. */
+export const WALLET_CARD_SIZES = "(min-width: 1280px) 400px, (min-width: 768px) 50vw, 100vw";
+
 /**
- * Wallet shop card (DESIGN §6): 64px photo, name (up to two lines, wrapping on word boundaries; a single
- * word too long for the line breaks inside it), 1-line address, 4px gold progress, then the progress label
- * with the badges beside it on the last row. The label is ink-2: gold text is for large text only (§3).
- * `sharedId` names the photo and name as shared elements (P1-07): they morph into the shop page's logo and
- * title on navigation. `dimmed` greys a shop that is suspended or closed (its badge says which).
+ * The wallet card (PD-08, DESIGN §6.4; reference `.wcard`): the shop's cover photo under a dark shade, its logo
+ * in a gold ring (or the metal coin), the name (one line, ellipsis) over the address, the gold count, a gold
+ * progress bar and the progress label with the badges beside it (PRODUCT §4). A shine sweeps across every 5 s
+ * (staggered 0.5 s down a stack by its slot's `--i`). The card's outer element is the caller's (`as`: a link in the
+ * Wallet, a button on /dev/molten), so the stack's sibling rules see the cards. `dimmed` greys a suspended or closed
+ * shop (its badge says which).
  */
 export function ShopCard({
   name,
   address,
-  photo,
+  logoUrl,
+  coverUrl,
+  gold,
   progress,
   progressLabel,
+  progressName,
   badges,
-  sharedId,
   dimmed = false,
-  className,
+  unoptimized = false,
+  eager = false,
+  render,
 }: {
   name: string;
-  address: string | null;
-  photo: ReactNode;
+  address?: string | null;
+  logoUrl: string | null;
+  coverUrl: string | null;
+  /** The gold count in the corner ("720"); omitted for a shop without a programme. */
+  gold?: string | null;
   /** 0–1 */
   progress: number;
   progressLabel: string;
+  /** The progress bar's accessible name; defaults to "<name> progress". */
+  progressName?: string;
   badges?: ReactNode;
-  sharedId?: string;
   dimmed?: boolean;
-  className?: string;
+  unoptimized?: boolean;
+  /** Load the photos at once (cards in the first screenful). */
+  eager?: boolean;
+  /** Renders the card element with the given class, data and children (a link or a button). */
+  render: (card: {
+    className: string;
+    "data-dimmed"?: "";
+    children: ReactNode;
+  }) => React.JSX.Element;
 }): React.JSX.Element {
-  const photoBox = (
-    <div
-      className={cx(
-        "bg-surface-2 size-16 shrink-0 overflow-hidden rounded-md",
-        dimmed && "opacity-60 grayscale",
-      )}
-    >
-      {photo}
-    </div>
-  );
-  const title = <p className="text-h3 line-clamp-2 [overflow-wrap:break-word]">{name}</p>;
-  return (
-    <Card
-      className={cx("flex w-full min-w-0 gap-3 p-3", className)}
-      data-dimmed={dimmed || undefined}
-    >
-      {sharedId ? (
-        <SharedElement kind="shoplogo" id={sharedId} fit="cover">
-          {photoBox}
-        </SharedElement>
+  const pct = Math.round(Math.min(1, Math.max(0, progress)) * 100);
+  const logo = (
+    <span className="m-wc-logo">
+      {logoUrl ? (
+        <ShopImage src={logoUrl} size={36} unoptimized={unoptimized} eager={eager} />
       ) : (
-        photoBox
+        <ShopCoin name={name} size={36} />
       )}
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        {sharedId ? (
-          <SharedElement kind="shopname" id={sharedId}>
-            {title}
-          </SharedElement>
-        ) : (
-          title
-        )}
-        {address ? (
-          <p className="text-small text-ink-2 flex items-center gap-1 truncate">
-            <MapPin aria-hidden="true" size={14} strokeWidth={1.5} className="shrink-0" />
-            <span className="truncate">{address}</span>
-          </p>
-        ) : null}
-        <ProgressBar
-          value={progress}
-          label={`${name} progress`}
-          className={cx(dimmed && "opacity-60 grayscale")}
-        />
-        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-          <p className="text-caption text-ink-2 tabular min-w-0 font-semibold">{progressLabel}</p>
-          {badges ? <div className="flex shrink-0 flex-wrap gap-1">{badges}</div> : null}
-        </div>
-      </div>
-    </Card>
+    </span>
   );
+  const title = <span className="m-wc-name block">{name}</span>;
+  return render({
+    className: "m-wcard",
+    ...(dimmed ? { "data-dimmed": "" as const } : {}),
+    children: (
+      <>
+        {coverUrl ? (
+          <ShopImage
+            src={coverUrl}
+            sizes={WALLET_CARD_SIZES}
+            unoptimized={unoptimized}
+            eager={eager}
+            className="m-wc-photo"
+          />
+        ) : (
+          <span className="m-photo-fallback" aria-hidden="true" />
+        )}
+        <span className="m-wc-shade" aria-hidden="true" />
+        <span className="m-wc-top">
+          {logo}
+          <span className="m-wc-id">
+            {title}
+            {address ? <span className="m-wc-addr">{address}</span> : null}
+          </span>
+          {gold ? <span className="m-wc-gold">{gold}</span> : null}
+        </span>
+        <span className="m-wc-foot block">
+          <span
+            className="m-wc-bar block"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={pct}
+            aria-label={progressName ?? `${name} progress`}
+          >
+            <i style={{ "--p": `${String(pct)}%` } as React.CSSProperties} />
+          </span>
+          <span className="m-wc-metarow">
+            <span className="m-wc-meta">{progressLabel}</span>
+            {badges ? <span className="flex shrink-0 flex-wrap gap-1">{badges}</span> : null}
+          </span>
+        </span>
+      </>
+    ),
+  });
 }

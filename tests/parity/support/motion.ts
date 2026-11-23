@@ -42,6 +42,18 @@ export type Trigger = {
    */
   runFor?: number;
   until?: string;
+  /**
+   * Frames captured at these ms after the trigger (every animation set to that time) instead of fractions of
+   * each animation's own length: for a moment whose animations have different lengths and delays that must line
+   * up (the gold wipe: 0, 260, 620 and 730 ms, PD-08).
+   */
+  atMs?: readonly number[];
+  /**
+   * The curve spec compares elements in document order; a part whose app markup can't keep the reference's
+   * element structure (the shop view: `next/image`, the cover's text wrapper, the molten button's label spans)
+   * skips it, and its motion is judged by the `atMs` frames instead (DECISIONS 23 Nov "PD-08 wipe parity").
+   */
+  curves?: false;
 };
 
 /** Triggers by part name. Each PD task adds the triggers of the parts it builds. Hover-driven rows (orbit and
@@ -81,6 +93,14 @@ export const TRIGGERS: Record<string, Trigger> = {
   "member-card": { events: ["click"] },
   // Offers in the dock: the gold pours one column right (the liquid choice's pour, beats included).
   dock: { target: "[data-liq]:nth-of-type(2)", events: ["click"], beats: [0.42, 0.76] },
+  // A tap on the Brew & Bloom card: the gold wipe into its shop (both pages mark the cards `data-id`).
+  shop: {
+    from: '[data-id="brew"]',
+    events: ["click"],
+    waitFor: '[data-parity="shop"]:not([hidden])',
+    atMs: [0, 260, 620, 730],
+    curves: false,
+  },
 };
 
 /** Fires a part's trigger and pauses every time-based animation at once (see `Trigger`). */
