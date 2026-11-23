@@ -174,7 +174,11 @@ test.describe("[PD-07] floating dock", () => {
     await expect(field).toBeVisible();
     const bar = dock(page);
     await expect(bar).toBeVisible();
+    // The fieldset is disabled until hydration (C-20), and `focus()` on a disabled field is a silent no-op: on a
+    // slow runner it focused nothing, so the "keyboard" opened over no field (CI 45136257889, KI-20).
+    await expect(field).toBeEnabled();
     await field.focus();
+    await expect(field).toBeFocused();
     await page.evaluate(() => {
       (window as unknown as { __keyboard: (px: number) => void }).__keyboard(320);
     });
