@@ -99,12 +99,15 @@ export function StarRating({
         ),
       );
     }
+    // Reduced motion: the word fades in, no rise (DESIGN §7.2).
     anim(
       word.current,
-      [
-        { opacity: 0, transform: "translateY(8px)" },
-        { opacity: 1, transform: "none" },
-      ],
+      reduced
+        ? [{ opacity: 0 }, { opacity: 1 }]
+        : [
+            { opacity: 0, transform: "translateY(8px)" },
+            { opacity: 1, transform: "none" },
+          ],
       { duration: STARS.labelMs, delay: value * STARS.staggerMs, fill: "backwards" },
     );
     // The two choices pop in again for every new rating (the same CSS animation, restarted).

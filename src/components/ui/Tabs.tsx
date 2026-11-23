@@ -2,7 +2,7 @@
 
 import { type ReactNode, useEffect, useId, useLayoutEffect, useRef } from "react";
 import { cx } from "@/lib/cx";
-import { anim } from "@/lib/motion/anim";
+import { anim, reducedMotionNow } from "@/lib/motion/anim";
 import { TABS } from "@/lib/motion/controls";
 import { useHydrated } from "@/lib/use-hydrated";
 
@@ -61,12 +61,15 @@ export function Tabs<T extends string>({
     if (from === index) return;
     const dir = index > from ? 1 : -1;
     for (const a of animationsOf(panel.current)) a.cancel();
+    // Reduced motion: a fade only, no slide (DESIGN §7.2).
     anim(
       panel.current,
-      [
-        { opacity: 0, transform: `translateX(${String(dir * TABS.panelShiftPx)}px)` },
-        { opacity: 1, transform: "none" },
-      ],
+      reducedMotionNow()
+        ? [{ opacity: 0 }, { opacity: 1 }]
+        : [
+            { opacity: 0, transform: `translateX(${String(dir * TABS.panelShiftPx)}px)` },
+            { opacity: 1, transform: "none" },
+          ],
       { duration: TABS.panelMs, fill: "none" },
     );
     // Many tabs: bring the chosen one into the row's view (horizontally only; the page never scrolls).

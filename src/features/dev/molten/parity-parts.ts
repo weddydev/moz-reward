@@ -260,7 +260,7 @@ export function addParityHooks(html: string, parts: readonly ParityPart[] = PARI
  * DECISIONS line; the original is never touched). Each `from` must appear exactly once.
  * - The phone's back button rule `.back{position:absolute;top:50px;left:14px;width:40px;height:40px;
  *   border-radius:50%;…}` also matches the member card's `.mface.back`, so in the reference the card's back face
- *   is a 40 px blurred circle and a flip shows an empty card (DECISIONS 23 Nov "PD-06 member card back"). Scoped
+ *   is a 40 px blurred circle and a flip shows an empty card (DECISIONS 23 Nov "Member card back face"). Scoped
  *   to the phone's button, the back face is the whole card with the QR code, as the tile's copy says.
  */
 export const REFERENCE_FIXES: readonly { why: string; from: string; to: string }[] = [

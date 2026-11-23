@@ -16,7 +16,6 @@ import {
   cardPointer,
   cardTilt,
   holoShift,
-  isIOSDevice,
   MEMBER_CARD,
   memberCardMotion,
   qrPlaceholderCells,
@@ -24,14 +23,11 @@ import {
 import { useHydrated } from "@/lib/use-hydrated";
 import { frauncesItalic } from "@/styles/fonts-italic";
 
-type Env = { ios: boolean; fine: boolean };
+type Env = { fine: boolean };
 
 /** What this device allows, read once in the browser (reference: `fine` is read once at load). */
 function readEnv(): Env {
-  return {
-    ios: isIOSDevice(navigator),
-    fine: window.matchMedia("(hover: hover) and (pointer: fine)").matches,
-  };
+  return { fine: window.matchMedia("(hover: hover) and (pointer: fine)").matches };
 }
 
 /**
@@ -39,8 +35,9 @@ function readEnv(): Env {
  * `.m-*`, `.qr` + "member card"). A gold-rimmed card in 3D: the holographic foil and the glare follow the pointer,
  * the card leans towards it (±11° / ±13°, tracking in .12 s) and springs back upright (.7 s) when it leaves; a
  * tap, Enter or Space turns it over (.7 s spring) to the QR side. On touch-only screens it sways gently while
- * untouched (7 s). Reduced motion: nothing follows or sways (the flip still turns, in .12 s). iOS: no tilt and no
- * sway (DESIGN §6: motion there needs a permission the card never asks for); the foil still follows the finger.
+ * untouched (7 s), iOS included (DESIGN §6 gates only a device-orientation tilt, which the card doesn't have).
+ * Reduced motion: nothing follows or sways; the flip still turns over, instantly (the globals.css net lets no
+ * transform transition run).
  *
  * Frame budget: pointer moves are coalesced to one write per animation frame; the writes are CSS variables that
  * only feed transforms (the card's rotation; the foil and the glare are layers moved by `translate`/`scale`, not
@@ -92,7 +89,7 @@ export function MemberCard({
   const [mode, setMode] = useState<"rest" | "live" | "idle">("rest");
   const card = useRef<HTMLDivElement>(null);
   const glare = useRef<HTMLSpanElement>(null);
-  const env = useRef<Env>({ ios: false, fine: true });
+  const env = useRef<Env>({ fine: true });
   const pending = useRef<{ px: number; py: number } | null>(null);
   const frame = useRef(0);
   const flippedNow = useRef(false);

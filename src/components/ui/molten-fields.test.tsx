@@ -107,6 +107,15 @@ describe("[PD-06] Tabs", () => {
     expect(screen.getByRole("tabpanel")).toHaveTextContent("panel wallet");
   });
 
+  it("[PD-06] reduced motion: the panel fades in, no slide (DESIGN §7.2)", () => {
+    document.documentElement.classList.add("rm");
+    render(<TabsHarness />);
+    fireEvent.click(screen.getByRole("tab", { name: "Market" }));
+    expect(animate).toHaveBeenCalledTimes(1);
+    const frames = (animate.mock.calls[0] as unknown as [Keyframe[]])[0];
+    expect(frames).toEqual([{ opacity: 0 }, { opacity: 1 }]);
+  });
+
   it("[PD-06] a parent that refuses the change gets no slide (the motion follows the value)", () => {
     render(<TabsHarness refuse />);
     fireEvent.click(screen.getByRole("tab", { name: "Offers" }));
@@ -423,6 +432,13 @@ describe("[PD-06] StarRating", () => {
       expect(lit()).toBe(5);
       expect(pops()).toHaveLength(0);
       expect(fx.burst).not.toHaveBeenCalled();
+      // The word fades in without rising (DESIGN §7.2): no call moves anything.
+      expect(
+        animate.mock.calls.filter((call) =>
+          (call as unknown as [Keyframe[]])[0].some((k) => "transform" in k),
+        ),
+      ).toHaveLength(0);
+      expect(animate).toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }

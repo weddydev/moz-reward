@@ -326,31 +326,19 @@ export function cardGlare(
 }
 
 /**
- * Pure: is this an iPhone, iPad or iPod (iPadOS reports a Mac, so a "Mac" with a touch screen counts)? DESIGN §6:
- * the card never tilts there, since iOS only allows motion after a permission prompt the card never shows.
- */
-export function isIOSDevice(nav: {
-  userAgent: string;
-  platform?: string;
-  maxTouchPoints?: number;
-}): boolean {
-  if (/\b(iPhone|iPad|iPod)\b/.test(nav.userAgent)) return true;
-  return nav.platform === "MacIntel" && (nav.maxTouchPoints ?? 0) > 1;
-}
-
-/**
  * Pure: what the member card does on this device. Reduced motion: nothing follows the pointer and nothing sways
- * (the flip still turns, in .12 s). iOS: no tilt and no sway; the foil and glare still follow the finger. A fine
- * pointer (mouse, trackpad) never sways: the card waits for the pointer. A touch-only screen sways when untouched.
+ * (the flip still turns over, instantly: no transform transition runs under reduced motion). A fine pointer
+ * (mouse, trackpad) never sways: the card waits for the pointer. A touch-only screen, iOS included, tilts from the
+ * finger and sways when untouched, like the reference. DESIGN §6 gates only a device-orientation (gyroscope) tilt
+ * behind iOS's permission; the card has none (DECISIONS 23 Nov).
  */
-export function memberCardMotion(env: { reduced: boolean; ios: boolean; fine: boolean }): {
+export function memberCardMotion(env: { reduced: boolean; fine: boolean }): {
   follow: boolean;
   tilt: boolean;
   sway: boolean;
 } {
   const follow = !env.reduced;
-  const tilt = follow && !env.ios;
-  return { follow, tilt, sway: tilt && !env.fine };
+  return { follow, tilt: follow, sway: follow && !env.fine };
 }
 
 /**

@@ -882,3 +882,9 @@ Done: CI 45068046655 (`4177678`) RED on WebKit E2E only → `9bcd719`: rating ch
 Root causes (Linux container WebKit probes): ~1 frame/s, so an animation reports done while the computed style holds the last frame, and no frame runs in the slider's drag + 90 ms settle (lean read 0); first mouse event after `scrollIntoViewIfNeeded` scrolls the page back 39 px (press hit the wrapper, value stayed 240, 2/6). Host macOS WebKit draws the lean 12/12 under 3 workers: not a Safari bug.
 Tests: Linux container webkit/iphone14/chromium changed specs 34/0 (drag + tilt 6×: 24/0); host molten-fields 3 projects 69/0; parity member card 12/0; WebKit card screens 320/390 front + back inspected; unit 1947/0; pre-push check + sast PASS.
 Left off: CI on `9bcd719` not yet seen; PD-06 close part B (review findings, DECISIONS batch, FOLLOWUPS, gate:task, tick, main).
+
+## 2026-11-23 — PD — PD-06 close part B: design-review batch, DECISIONS, close (wip/PD-06)
+Done: M4 card tilts + sways on iOS like any touch screen (DESIGN §6 gates only gyroscope tilt; `isIOSDevice` removed); M5 RM: Tabs panel + stars word fade only, slider glint `animation: none`; RM flip comments say "instantly"; rated-stars screen waits for the ignite; DECISIONS batch (7 entries) + citation fix in parity-parts; FOLLOWUPS: TextArea/Select → PD-11, LiquidChoice/Checkbox lines → PD-11, countUp aria-live line closed; main merged in (`15e3bf5`); PROGRESS trimmed (old evidence is in the SESSION_LOG entries above).
+Tests: unit card + fields fail→pass (2 new RM cases, iOS case rewritten); unit ui/motion/dev 397/0; parity `--grep PD-06` 60/0 (Chromium + host WebKit); Linux container `molten-fields` chromium 24/0; host webkit/iphone14/pixel7 sway + RM + screens 16/0 (2 skipped by design); rated 320 screen inspected (4 lit, both choices).
+Gate + CI: see the PROGRESS "Last verified" lines (gate:task PD-06 runs on this commit's exact tree).
+Left off: PD-B close (`/subphase-complete`, C-76 first).

@@ -8,7 +8,6 @@ import {
   cardPointer,
   cardTilt,
   holoShift,
-  isIOSDevice,
   MEMBER_CARD,
   memberCardMotion,
   qrPlaceholderCells,
@@ -20,8 +19,6 @@ vi.mock("@/styles/fonts-italic", () => ({ frauncesItalic: { variable: "font-ital
 
 const IPHONE =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
-const MAC =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15";
 const PIXEL =
   "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36";
 
@@ -89,41 +86,26 @@ describe("[PD-06] member card logic", () => {
     expect(cardGlare(0.5, 0.5, 0, 0, false)).toEqual({ x: 0, y: 0, size: 0, scale: 1 });
   });
 
-  it("[PD-06] isIOSDevice: iPhone, iPad and iPadOS (a Mac with touch) are iOS; a Mac or Android is not", () => {
-    expect(isIOSDevice({ userAgent: IPHONE })).toBe(true);
-    expect(isIOSDevice({ userAgent: IPHONE.replace("iPhone;", "iPad;") })).toBe(true);
-    expect(isIOSDevice({ userAgent: MAC, platform: "MacIntel", maxTouchPoints: 5 })).toBe(true);
-    expect(isIOSDevice({ userAgent: MAC, platform: "MacIntel", maxTouchPoints: 0 })).toBe(false);
-    expect(isIOSDevice({ userAgent: PIXEL, platform: "Linux armv81", maxTouchPoints: 5 })).toBe(
-      false,
-    );
-  });
-
-  it("[PD-06] memberCardMotion: no tilt under reduced motion or on iOS; sway only on touch-only screens", () => {
-    expect(memberCardMotion({ reduced: false, ios: false, fine: true })).toEqual({
+  it("[PD-06] memberCardMotion: no tilt or sway under reduced motion; sway only on touch-only screens (iOS too)", () => {
+    expect(memberCardMotion({ reduced: false, fine: true })).toEqual({
       follow: true,
       tilt: true,
       sway: false,
     });
-    expect(memberCardMotion({ reduced: false, ios: false, fine: false })).toEqual({
+    // Touch-only screens, iOS included (DESIGN §6 gates only device-orientation tilt; the reference tilts from
+    // touch and sways on any touch screen).
+    expect(memberCardMotion({ reduced: false, fine: false })).toEqual({
       follow: true,
       tilt: true,
       sway: true,
     });
-    // iOS: the foil and glare follow the finger; the card never tilts or sways.
-    expect(memberCardMotion({ reduced: false, ios: true, fine: false })).toEqual({
-      follow: true,
-      tilt: false,
-      sway: false,
-    });
     // Reduced motion: nothing follows, tilts or sways, on any device.
-    for (const ios of [false, true])
-      for (const fine of [false, true])
-        expect(memberCardMotion({ reduced: true, ios, fine })).toEqual({
-          follow: false,
-          tilt: false,
-          sway: false,
-        });
+    for (const fine of [false, true])
+      expect(memberCardMotion({ reduced: true, fine })).toEqual({
+        follow: false,
+        tilt: false,
+        sway: false,
+      });
   });
 
   it("[PD-06] qrPlaceholderCells draws the reference's pattern: seed 42, three finder squares", () => {
@@ -319,18 +301,19 @@ describe("[PD-06] MemberCard", () => {
     expect(el).toHaveAttribute("data-face", "back");
   });
 
-  it("[PD-06] iOS: no tilt, no sway; the foil still follows the finger", () => {
+  it("[PD-06] iOS: it tilts from the finger and sways while untouched, like any touch screen", () => {
     pointer(false);
     vi.spyOn(navigator, "userAgent", "get").mockReturnValue(IPHONE);
     render(<Demo />);
     const el = card();
-    expect(el).not.toHaveClass("idle");
+    expect(el).toHaveClass("idle");
     fireEvent.pointerMove(el, { clientX: 400, clientY: 0 });
     flush();
-    expect(el.style.getPropertyValue("--rx")).toBe("");
+    expect(el.style.getPropertyValue("--rx")).not.toBe("");
     expect(el.style.getPropertyValue("--holo-x")).toBe("-61.538%");
-    fireEvent.pointerLeave(el);
     expect(el).not.toHaveClass("idle");
+    fireEvent.pointerLeave(el);
+    expect(el).toHaveClass("idle");
   });
 
   it("[PD-06] touch-only screens: it sways while untouched, never while flipped, and stops when touched", () => {

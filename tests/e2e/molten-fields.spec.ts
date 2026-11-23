@@ -122,14 +122,39 @@ test("[PD-06] many tabs scroll inside their own row and keep the chosen one in v
   ).toBeLessThanOrEqual(0);
 });
 
+/**
+ * Records every script animation started from now on that moves something (its keyframes set `transform`), by
+ * the element's class; reduced motion allows fades only (DESIGN §7.2), so the list must stay empty.
+ */
+async function recordMoves(page: Page): Promise<() => Promise<string[]>> {
+  await page.evaluate(() => {
+    const w = window as unknown as { __moves: string[] };
+    w.__moves = [];
+    const real = Object.getOwnPropertyDescriptor(Element.prototype, "animate")?.value as (
+      this: Element,
+      ...args: Parameters<Element["animate"]>
+    ) => Animation;
+    Element.prototype.animate = function (this: Element, frames, options) {
+      const list = Array.isArray(frames) ? frames : frames ? [frames] : [];
+      if (list.some((k) => "transform" in k))
+        w.__moves.push(this.getAttribute("class") ?? this.tagName);
+      return real.call(this, frames, options);
+    };
+  });
+  return () => page.evaluate(() => (window as unknown as { __moves: string[] }).__moves);
+}
+
 test("[PD-06] tabs under reduced motion: no slide, the number shows at once", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await open(page);
   await expect(page.locator("html")).toHaveClass(/(^|\s)rm(\s|$)/);
+  const moves = await recordMoves(page);
   const list = sections(page);
   await list.getByRole("tab", { name: "Market" }).click();
   const panel = page.getByRole("tabpanel").filter({ hasText: "new listings this week" });
   await expect(panel.locator('[aria-hidden="true"]')).toHaveText("48");
+  // The panel fades in; nothing slides.
+  expect(await moves()).toEqual([]);
 });
 
 const emailField = (page: Page): Locator =>
@@ -342,11 +367,14 @@ test("[PD-06] star rating under reduced motion: every star lights at once, no po
   await page.emulateMedia({ reducedMotion: "reduce" });
   await open(page);
   await expect(page.locator("html")).toHaveClass(/(^|\s)rm(\s|$)/);
+  const moves = await recordMoves(page);
   const group = rating(page);
   await group.getByRole("radio", { name: "5 stars" }).click();
   // All five at once (no 70 ms stagger), with no pop running on any star.
   await expect.poll(() => litCount(group), { timeout: 500 }).toBe(5);
   for (const s of await group.locator(".m-star").all()) expect(await running(s)).toBe(0);
+  // The word fades in without rising; nothing moves.
+  expect(await moves()).toEqual([]);
   await expect(rateTile(page).getByRole("button", { name: "Post on Google" })).toBeVisible();
   await expect(rateTile(page).getByRole("button", { name: "Send privately" })).toBeVisible();
 });
@@ -609,7 +637,12 @@ test("[PD-06] slider under reduced motion: the value moves, the bubble never lea
       .evaluate((b) => b.style.getPropertyValue("--tilt")),
   ).toBe("");
   expect(Math.abs(await lean(page))).toBeLessThan(0.01);
-  // The glint runs once to its end and stops (no endless loop).
+  // The glint never plays (not even once) and nothing on the fill runs.
+  expect(
+    await sliderTile(page)
+      .locator(".m-sl-fill")
+      .evaluate((f) => getComputedStyle(f, "::after").animationName),
+  ).toBe("none");
   await expect
     .poll(() =>
       sliderTile(page)
@@ -831,16 +864,15 @@ test("[PD-06] member card: a mouse tilts it and lights the glare; leaving fast s
   await expect(memberCard(page)).not.toHaveClass(/\bidle\b/);
 });
 
-test("[PD-06] member card idle sway: only on touch-only screens, never on iOS, never while turned over", async ({
+test("[PD-06] member card idle sway: only on touch-only screens (iOS too), never while turned over", async ({
   page,
   hasTouch,
 }) => {
   await open(page);
   await cardAtRest(page);
   const fine = await page.evaluate(() => matchMedia("(hover: hover) and (pointer: fine)").matches);
-  // iOS (the iphone14 project, an iPhone user agent): no tilt and no sway (DESIGN §6).
-  const ios = /\b(iPhone|iPad|iPod)\b/.test(await page.evaluate(() => navigator.userAgent));
-  const sways = !fine && !ios;
+  // iOS (the iphone14 project) sways like any touch screen: DESIGN §6 gates only a device-orientation tilt.
+  const sways = !fine;
   const card = memberCard(page);
   await expect(card).toHaveClass(sways ? /\bidle\b/ : /^(?!.*\bidle\b)/);
   if (sways) {
@@ -943,6 +975,9 @@ test("[PD-06] /dev/molten PD-06 tiles at 320, 390 and 1440: no horizontal scroll
   for (const width of [320, 390, 1440]) {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
     await rateTile(page).scrollIntoViewIfNeeded();
+    // The ignite has settled too (all four lit, no star popping), not only the choices.
+    await expect.poll(() => litCount(rating(page)), { timeout: 5_000 }).toBe(4);
+    await expect.poll(() => runningWithin(rating(page)), { timeout: 5_000 }).toBe(0);
     await expect
       .poll(() => runningWithin(rateTile(page).locator(".m-rate-actions")), { timeout: 5_000 })
       .toBe(0);

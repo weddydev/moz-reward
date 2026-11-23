@@ -1012,3 +1012,35 @@ Also: the face turned away is hidden by `visibility` (driven by `data-face`), no
 
 ## 2026-11-23 — Linux WebKit E2E: read animated values until settled, judge drawn motion by frames (PD-06, C-77)
 Decision: Linux WebKit (CI, container) runs ~1 frame a second: an animation's state says finished while the computed style still holds the last frame drawn, and a 90 ms window can pass with no frame at all. So E2E reads of settled animated values (choice opacity, card angles) are polled to their end state, never read once after `running == 0`; the slider drag asserts the lean the slider asks for (`--tilt` writes) everywhere and the drawn lean wherever frames ran across ≥ 32 ms (always on Chromium). Linux WebKit also scrolls the page back (39 px) at the first mouse event after `scrollIntoViewIfNeeded`: the drag re-measures until the pointer is over the input. Not a Safari bug: host (macOS) WebKit draws the lean 12/12 under 3 workers.
+
+## 2026-11-23 — Member card tilts and sways on iOS too (PD-06 design review M4)
+Decision: the card tilts from the pointer or finger and sways when untouched on every touch-only screen, iOS included (`memberCardMotion`: `tilt = follow`, `sway = follow && !fine`; `isIOSDevice` removed). Reduced motion still stops tilt and sway; the flip turns over instantly there (the globals.css net lets no transform transition run).
+Why: DESIGN §6 gates only a device-orientation (gyroscope) tilt behind iOS's permission ("default off on iOS"); the reference tilts from touch and sways on any touch screen. The card has no gyroscope tilt; a future one is iOS/permission-gated and off by default. Supersedes the PD-06 step e "iOS: no tilt, no sway" note. PD-06 AC "tilt off … on iOS without permission" is met: no orientation tilt runs without a permission.
+
+## 2026-11-23 — PD-06 Tabs, CountUp and reduced motion (PD-06)
+Decision: under reduced motion the Tabs panel and the star rating's word fade in (opacity only); the 32 px / 8 px slide stays for full motion. The slider's glint (`.m-sl-fill::after`) joins the `animation: none` list (it no longer plays once). Tab pill position is checked to ≤ 1.5 px in E2E (WebKit pixel-snaps the promoted layer).
+Also: `countUp` writes nothing before its first frame, like the reference (the old text never shows; a paused parity clock keeps the end value on both pages). Tabs scroll the chosen tab into view in the scroller's own coordinates (`offsetLeft` missed the 6 px padding; CI 45061015313).
+Why: DESIGN §7.2 (fades only under reduced motion); parity and WebKit CI evidence.
+
+## 2026-11-23 — PD-06 text field: focus ring, error position, label colour (PD-06)
+Decision: the field keeps the app's focus halo: `.m-field input:focus-visible` restates it, since `.m-field input`'s box-shadow outranked the global `:focus-visible` (both unlayered; CI 45057026965); the parity focus capture pins the unfocused shadow on both pages. The error message sits under the field (DESIGN §6 "errors below in danger"), linked by `aria-describedby`. The resting label is ink-2, not the reference's ink-3 (below AA at 16 px; DECISIONS 22 Nov "PD-05 secondary text"): `text-field-tile` parity tolerance 3% (measured 1.2–1.8% static, 2.6% at the first frame).
+Why: WCAG focus visibility and contrast outrank the reference's look (source-of-truth order: COMPLIANCE/DESIGN accessibility rules).
+
+## 2026-11-23 — PD-06 star rating: inline svg, choices at rest (PD-06)
+Decision: `.m-star svg { display: inline }` (Tailwind preflight makes svg block: stars were 46 px vs the reference's 52 px). The two equal choices rest at opacity 1 once shown, and E2E polls them to their settled look (Linux WebKit left "Send privately" at 0 when read once). `/dev/molten` marks `data-hydrating` while the gallery hydrates, so E2E waits for it like every page.
+Why: parity (PD-06 36/0 both engines after the fix); COMPLIANCE §1 tests must see both choices identical; Linux WebKit flakes.
+
+## 2026-11-23 — PD-06 slider: deliberate differences from the reference (PD-06)
+Decision: (1) the notch sparks burst at the notch crossed, not at the coin's pre-move position (the reference reads the thumb's rect before `render()`, so on a fast drag or a keyboard End its sparks fly from where the coin was; DESIGN §7.4 "sparks at each reward notch crossed"); (2) the native range thumb is the coin's size (36 px), so a press lands on the value under the coin and iOS, which drags only from the thumb, picks the coin up; (3) the bubble's lean is scaled to the range (`sliderTilt` on the fraction moved, `tiltPerSpeed = 60 × 720`), identical to the reference on its 0–720 range and the same feel on any other range; (4) the coin is placed by container units (`translateX(p × (100cqw − 36px))`, `left` fallback without `cqw`), not measured from script; (5) tick labels are ink-2 (ink-3 below AA at 12 px, DECISIONS 22 Nov "PD-05 secondary text").
+Why: correctness on other ranges and inputs, touch and accessibility; parity on the reference's own range is unchanged (PD-06 parity green).
+
+## 2026-11-23 — PD-06 member card: build choices (PD-06)
+Decision: the card is a `role="button"` div like the reference (a `<button>` may hold only phrasing content; the card holds two block faces), Enter/Space, `aria-disabled` until hydrated (C-20). The foil and glare are pseudo layers moved by `translate`/`scale` (composite only, promoted while the pointer is on the card), not repainted gradients; the glare is one square light scaled to the reference's farthest-corner ray. Pointer moves are coalesced to one write per frame; leaving cancels a pending frame (a fast exit never tilts afterwards). Below 300 px container width the face tightens its type ("extended from the reference"; 390/1440 parity unchanged); the name ends in an ellipsis.
+Why: frame budget (DESIGN §12), valid HTML and keyboard access, 320 px phones.
+
+## 2026-11-23 — Parity harness additions for PD-06
+Decision: triggers gain `values` (set through the prototype's value setter so React sees them; the slider), `runFor` + `until` (run the page clock for timer-started motion, e.g. the stars' 70 ms stagger, then wait for a selector and pause again), and a ResizeObserver wait after a resize (an observer registered last is notified in the same delivery, after the page's own), so the gilded edge redraw has landed before capture. `ownHeight` was removed from every part.
+Why: deterministic captures of timer- and input-driven motion on both pages, in both engines.
+
+## 2026-11-23 — This session ends after the PD-B close (human; session-scoped)
+Decision: 23 Nov 2026 (human): this session ends after the PD-B close with `/handoff` and stops; PD-07 starts in the next session, not this one. Session-scoped, not a standing rule.

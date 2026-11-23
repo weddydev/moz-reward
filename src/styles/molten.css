@@ -247,17 +247,19 @@ svg.m-seam {
   min-width: 0;
 }
 
-/* Reduced motion: the gilded edge and the glows hold still (DESIGN §7.2). */
+/* Reduced motion: the gilded edge, the glows and the slider's glint hold still (DESIGN §7.2). */
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-reduce-motion="false"]) .m-aurora i,
   :root:not([data-reduce-motion="false"]) .m-seam *,
-  :root:not([data-reduce-motion="false"]) .m-sec em {
+  :root:not([data-reduce-motion="false"]) .m-sec em,
+  :root:not([data-reduce-motion="false"]) .m-sl-fill::after {
     animation: none !important;
   }
 }
 :root[data-reduce-motion="true"] .m-aurora i,
 :root[data-reduce-motion="true"] .m-seam *,
-:root[data-reduce-motion="true"] .m-sec em {
+:root[data-reduce-motion="true"] .m-sec em,
+:root[data-reduce-motion="true"] .m-sl-fill::after {
   animation: none !important;
 }
 
