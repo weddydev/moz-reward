@@ -7,28 +7,30 @@ Baton: held by talha.syed since 2026-11-23 05:52 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 23 Nov 2026 ~16:10 UTC (Mac); baton held by talha.syed. Autopilot is OFF.**
-- **PD-08 done on `wip/PD-08-b`** (local branch `wip/PD-08-b`; HEAD = this closing commit, on top of code `b60e238`): gate:task PASS on `b60e238` (unit 2013/0, int 1456/0, task E2E 24/0, perf 3/0, changed specs 560/0/114, parity 10/0). Built since the last checkpoint: the app's gold wipe (`WipeStage` + `wipe-stage.ts`, `TransitionLink wipe`, RouteContent takes it), design review APPROVE WITH FIXES with every HIGH/MEDIUM fixed (the wipe replaces the card → shop morph: no shared names on cards or covers; settles when another page commits; Wallet inert under the metal; 44 px back target), C-80 → PD-11 (mini vault + offers on the shop page). **Check first:** CI on the closing push of `wip/PD-08-b`; green → push it to main (hook: CI-green check; a merge of main's progress commits needs no new run). Then delete `wip/PD-08`, `wip/PD-08-ff`, and the PD-07 leftovers (Next 2).
-- **Next task: PD-09 · Gilded Gate 2.0** (PD-C; `docs/phases/PD.md`). PD-08 follow-ups for PD-11 are in FOLLOWUPS (navigation commit 178 ms at 4×, landing JS 156.5 KB, reduced motion mid-wipe).
+- **Checkpoint by talha.syed, 23 Nov 2026 ~18:00 UTC (Mac); baton held by talha.syed. Autopilot is OFF.**
+- **PD-08 is on main** (merge of main's progress commits onto `c41a066`; CI 45211398059 on `c41a066` GREEN, every spec incl. WebKit). PD-C: PD-07 + PD-08 done; next **PD-09 · Gilded Gate 2.0**.
+- **Process fixes on `wip/process-fixes`** (worktree `../moz-process`, from main `942674b`; pushed HEAD `2b28869` = fixes 1–2, CI 45216853194 was green on every job but WebKit at this checkpoint; local commits `a50c1bd` fix 3, `e1c0aa2` fix 4, `89361a6`… see `git log`). **First step:** CI 45216853194 green → push the branch's remaining commits (`git -C ../moz-process push origin HEAD:wip/process-fixes`), let that run go green (it is the first run of the new parallel layout + flake confirmation on a real push), then `git -C ../moz-process merge origin/main` and push it to main. Then delete the worktree. Contents: parallel CI jobs, `pnpm e2e:confirm-flakes`, @fps median of 3, hook allows `--force-with-lease` on `wip/*` + skips the gate for main once CI passed (`onlyMainUpdates`), gate:task without the local changed-spec run, CLAUDE.md rules (branching, early checkpoint push, Linux check debug-only, /clear at task end, one backup per day) + TESTING §4 + PD.md header; DECISIONS 23 Nov ("Process fixes 1–2/3/4/5 applied", "Process speed").
+- **Still to do with the human's review (before PD-09 or beside it):** the CLAUDE.md tidy-up (merge duplicated wording, move situational rules into TESTING/ENGINEERING behind one-line pointers, never drop or weaken a rule; backup first; show the human the diff before committing) and moving P2–P5 CARRIED rows out of PROGRESS into a file read at phase closes.
+- PD-08 follow-ups for PD-11 in FOLLOWUPS (nav commit 178 ms at 4×, landing JS 156.5 KB, reduced motion mid-wipe); C-80 → PD-11.
 - Headless Linux Chromium has no hyphenation dictionaries. Laptop Linux WebKit stalls (~1.7 min per parity test): WebKit evidence is CI only.
 
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov). Then P1 resumes with the P1-B close. P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
-- **Current sub-phase:** **PD-C** (PD-07 on main 23 Nov; PD-08 done 23 Nov on `wip/PD-08-b`, main after its CI; next PD-09; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
+- **Current sub-phase:** **PD-C** (PD-07 + PD-08 on main 23 Nov; next PD-09; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-23, talha.syed (PD-08 done on `wip/PD-08-b`, gate PASS; CI then main)
+- **Last updated:** 2026-11-23, talha.syed (PD-08 on main; process fixes on `wip/process-fixes` awaiting CI)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 done 23 Nov** (`wip/PD-08-b`, gate PASS; main after CI). Next PD-09 (PD-C).
+- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). Next PD-09 (PD-C).
 
 ## Next (top 3)
-1. CI on the PD-08 closing push (`wip/PD-08-b`) green → push to main; then PD-09 · Gilded Gate 2.0.
-2. Cleanup: remote `wip/PD-07`, `wip/PD-07-b`, `wip/PD-07-bisect-*`, `wip/PD-08`; local `wip/PD-08-ff`; worktrees `../moz-bisect`, `../moz-PD-07`.
-3. Human any time: H-51 (b), H-48b, H-38, H-45, H-46; H-49 at the PD-C close.
+1. `wip/process-fixes`: CI green → push the rest → green → main (handoff). Then the CLAUDE.md tidy-up with the human's review of the diff.
+2. PD-09 · Gilded Gate 2.0 (first: an early checkpoint push at its first working step, process fix 5).
+3. Cleanup: remote `wip/PD-07`, `wip/PD-07-b`, `wip/PD-07-bisect-*`, `wip/PD-08`, `wip/PD-08-b`; local `wip/PD-08-ff`; worktrees `../moz-bisect`, `../moz-PD-07`. Human any time: H-51 (b), H-48b, H-38, H-45, H-46; H-49 at the PD-C close.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
