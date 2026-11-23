@@ -30,12 +30,13 @@ describe("[P0-14] CI runs the task's and the changed specs on WebKit for every p
     expect(webkitBase({ ref: "refs/heads/wip/PD-04", before: "" }, () => "m")).toBe("m");
   });
 
-  it("[P0-14] two runs, both on webkit + iphone14, flaky = failure: the task's tagged specs, then the changed specs", () => {
+  it("[P0-14] two runs, both on webkit + iphone14 (flakes confirmed afterwards): the task's tagged specs, then the changed specs", () => {
     const runs = ciWebkitRuns(["PD-03", "P0-17"], "abc123");
     expect(runs).toHaveLength(2);
     for (const r of runs) {
       expect(projectsIn(r)).toEqual(["webkit", "iphone14"]);
-      expect(r).toContain("--fail-on-flaky-tests");
+      // A flaky test is confirmed by `e2e:confirm-flakes` (re-run alone 5×), not failed outright.
+      expect(r).not.toContain("--fail-on-flaky-tests");
       expect(r).toContain("--pass-with-no-tests");
     }
     const grep = new RegExp(runs[0]?.[runs[0].indexOf("--grep") + 1] ?? "");

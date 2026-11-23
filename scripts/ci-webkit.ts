@@ -43,7 +43,7 @@ export const touchesEveryPage = (files: string[]): boolean =>
 export function ciWebkitRuns(ids: string[], base: string, everyPage = false): string[][] {
   const common = [
     ...CI_WEBKIT_PROJECTS.flatMap((p) => ["--project", p]),
-    "--fail-on-flaky-tests",
+    // Flaky tests are confirmed afterwards (`pnpm e2e:confirm-flakes`): re-run alone 5×, red if any fails.
     "--pass-with-no-tests",
   ];
   if (everyPage) return [common];
@@ -72,8 +72,11 @@ function main(): void {
   console.warn(
     `[e2e:ci-webkit] base ${base.slice(0, 7)}, tasks ${ids.join(", ") || "(none)"}${everyPage ? "; every-page change or no range: every spec" : ""}`,
   );
-  for (const args of ciWebkitRuns(ids, base, everyPage)) {
-    const r = spawnSync("pnpm", ["e2e", ...args], { stdio: "inherit" });
+  for (const [i, args] of ciWebkitRuns(ids, base, everyPage).entries()) {
+    const r = spawnSync("pnpm", ["e2e", ...args], {
+      stdio: "inherit",
+      env: { ...process.env, PW_JSON_OUT: `.artifacts/e2e/results-webkit-${String(i)}.json` },
+    });
     if (r.status !== 0) process.exit(r.status ?? 1);
   }
 }

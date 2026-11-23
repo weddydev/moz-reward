@@ -40,7 +40,15 @@ export default defineConfig({
   })(),
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
+  // CI also writes a JSON report (`PW_JSON_OUT`): `pnpm e2e:confirm-flakes` re-runs each flaky test alone before a
+  // run may go green (process fix 2, human 23 Nov 2026).
+  reporter: process.env.CI
+    ? [
+        ["github"],
+        ["html", { open: "never" }],
+        ["json", { outputFile: process.env.PW_JSON_OUT ?? ".artifacts/e2e/results.json" }],
+      ]
+    : "list",
   use: {
     baseURL,
     trace: "on-first-retry",

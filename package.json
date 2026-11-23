@@ -24,6 +24,7 @@
     "e2e:dev": "tsx scripts/e2e.ts --dev",
     "e2e:linux": "tsx scripts/e2e-linux.ts",
     "e2e:ci-webkit": "tsx scripts/ci-webkit.ts",
+    "e2e:confirm-flakes": "tsx scripts/e2e-flakes.ts",
     "e2e:visual": "tsx scripts/e2e.ts --visual",
     "test:lighthouse": "tsx scripts/e2e.ts --lighthouse",
     "test:parity": "tsx scripts/e2e.ts --parity",

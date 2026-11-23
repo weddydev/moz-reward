@@ -1,6 +1,6 @@
-# CI on every push and PR (P0-14, TESTING §4). Budget: GitHub Free Actions credit (ENGINEERING §16) —
-# one main job (single install), a 1-core job for gitleaks, the image job on main only, cancel-in-progress,
-# docs-only pushes skipped. Every check has a local twin: pnpm check / gate:task / e2e / docker build.
+# CI on every push and PR (P0-14, TESTING §4). Budget: GitHub Free Actions credit (ENGINEERING §16); the repo is
+# public, so minutes are free: parallel jobs since 23 Nov (process fix 1; revisit before it goes private, C-43),
+# a 1-core job for gitleaks, the image job on main only, cancel-in-progress, docs-only pushes skipped. Every check has a local twin: pnpm check / gate:task / e2e / docker build.
 # Actions and downloaded tools pinned by SHA or checksum (ENGINEERING §14).
 name: CI
 
@@ -46,14 +46,18 @@ jobs:
           tar -xzf gl.tgz gitleaks && rm gl.tgz
           ./gitleaks git . --redact --no-banner --exit-code 1
 
-  ci:
-    name: check, integration, build, E2E (production build)
+  # The former single serial job, split into parallel jobs (process fix 1, human 23 Nov 2026): the same steps
+  # and commands, each job on its own runner, so a push's verdict comes in ~15–20 min instead of ~50. One
+  # workflow, so its single conclusion is still what the pre-push hook reads. A test that passes only on retry is
+  # re-run alone 5× (`pnpm e2e:confirm-flakes`): red if it fails again, else a warning to log in FOLLOWUPS.
+  checks:
+    name: check, lint, unit, dependency and SAST scans
     runs-on: ubuntu-latest
-    timeout-minutes: 60 # an every-page push also runs every spec on WebKit (~19 min more; DECISIONS 22 Nov)
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0 # origin/main for the Molten spec ratchet (molten-spec.lock.json only grows)
+          fetch-depth: 0 # origin/main: the Molten spec ratchet, the WebKit changed specs
           persist-credentials: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -81,37 +85,202 @@ jobs:
       - name: Semgrep (SAST — default + OWASP Top 10 + secrets rules, SECURITY §10)
         # Same command as the local twin in gate:task (scripts/sast.ts holds the pinned image and rules).
         run: pnpm sast
+
+  tests:
+    name: migrations, unit + integration + authz (coverage)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # origin/main: the Molten spec ratchet, the WebKit changed specs
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: local env (generated test-only secrets, never real ones)
+        run: pnpm setup:env
       - name: services (Postgres+PostGIS, Redis, Mailpit, MinIO; health waits)
         run: pnpm services:up
       - name: migration test (all migrations on an empty database)
         run: pnpm db:migrate
       - name: unit + integration + authz with coverage thresholds
         run: pnpm test:coverage
+
+  e2e:
+    name: E2E Chromium (pixel7 + desktop1440), shard ${{ matrix.shard }}/2
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # origin/main: the Molten spec ratchet, the WebKit changed specs
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: local env (generated test-only secrets, never real ones)
+        run: pnpm setup:env
+      - name: services (Postgres+PostGIS, Redis, Mailpit, MinIO; health waits)
+        run: pnpm services:up
       - name: production build (.next-e2e) + client bundle check
         run: pnpm e2e --build-only && pnpm check:bundle .next-e2e
       - name: Playwright browser cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: pw-cw-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      - run: pnpm exec playwright install --with-deps chromium webkit
-      - name: E2E on the production build (pixel7 + desktop1440; flaky = failure)
-        run: pnpm e2e --project pixel7 --project desktop1440 --fail-on-flaky-tests
-      # The WebKit half of gate:task (DECISIONS 22 Nov): the pushed commits' task specs + the changed specs on
-      # webkit + iphone14. With the step above, every commit main takes has passed all five projects here.
-      - name: E2E on WebKit (webkit + iphone14; task + changed specs; flaky = failure)
+          key: pw-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: E2E on the production build (pixel7 + desktop1440)
         env:
-          PUSH_BEFORE: ${{ github.event.before }}
-        run: pnpm e2e:ci-webkit
-      - name: Perf-budget specs alone (@perf, one worker; process audit 21 Nov)
-        run: PERF=1 pnpm e2e --project pixel7 --project desktop1440 --grep @perf --workers 1 --fail-on-flaky-tests
-      - name: Molten parity, Chromium (PD-01; WebKit in the twice-weekly run)
-        run: pnpm test:parity --project parity-chromium --fail-on-flaky-tests
+          PW_JSON_OUT: .artifacts/e2e/results-chromium.json
+        run: pnpm e2e --project pixel7 --project desktop1440 --shard ${{ matrix.shard }}/2
+      - name: confirm flaky tests (each re-run alone 5×; red if any fails again — process fix 2)
+        run: pnpm e2e:confirm-flakes
       - name: artefacts on failure (small, 7 days)
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: e2e-${{ github.sha }}
+          name: e2e-chromium-${{ matrix.shard }}-${{ github.sha }}
+          path: |
+            playwright-report/
+            .artifacts/e2e/build.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  webkit:
+    # The WebKit half of gate:task (DECISIONS 22 Nov): the pushed commits' task specs + the changed specs on
+    # webkit + iphone14 (every spec after an every-page change). With the Chromium job, every commit main takes
+    # has passed all five projects here.
+    name: E2E WebKit (webkit + iphone14; task + changed specs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45 # an every-page push runs every spec on WebKit (DECISIONS 22 Nov)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # origin/main: the Molten spec ratchet, the WebKit changed specs
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: local env (generated test-only secrets, never real ones)
+        run: pnpm setup:env
+      - name: services (Postgres+PostGIS, Redis, Mailpit, MinIO; health waits)
+        run: pnpm services:up
+      - name: Playwright browser cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-webkit-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps webkit
+      - name: E2E on WebKit (task + changed specs)
+        env:
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: pnpm e2e:ci-webkit
+      - name: confirm flaky tests (each re-run alone 5×; red if any fails again — process fix 2)
+        run: pnpm e2e:confirm-flakes
+      - name: artefacts on failure (small, 7 days)
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-webkit-${{ github.sha }}
+          path: |
+            playwright-report/
+            .artifacts/e2e/build.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  perf:
+    name: perf-budget specs alone (@perf, one worker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # origin/main: the Molten spec ratchet, the WebKit changed specs
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: local env (generated test-only secrets, never real ones)
+        run: pnpm setup:env
+      - name: services (Postgres+PostGIS, Redis, Mailpit, MinIO; health waits)
+        run: pnpm services:up
+      - name: Playwright browser cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Perf-budget specs alone (@perf, one worker; process audit 21 Nov; alone on its runner)
+        env:
+          PW_JSON_OUT: .artifacts/e2e/results-perf.json
+        run: PERF=1 pnpm e2e --project pixel7 --project desktop1440 --grep @perf --workers 1
+      - name: confirm flaky tests (each re-run alone 5×; red if any fails again — process fix 2)
+        run: pnpm e2e:confirm-flakes
+      - name: artefacts on failure (small, 7 days)
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-perf-${{ github.sha }}
+          path: |
+            playwright-report/
+            .artifacts/e2e/build.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  parity:
+    name: Molten parity, Chromium (PD-01; WebKit in the twice-weekly run)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # origin/main: the Molten spec ratchet, the WebKit changed specs
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: local env (generated test-only secrets, never real ones)
+        run: pnpm setup:env
+      - name: services (Postgres+PostGIS, Redis, Mailpit, MinIO; health waits)
+        run: pnpm services:up
+      - name: Playwright browser cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Molten parity, Chromium
+        env:
+          PW_JSON_OUT: .artifacts/e2e/results-parity.json
+        run: pnpm test:parity --project parity-chromium
+      - name: confirm flaky tests (each re-run alone 5×; red if any fails again — process fix 2)
+        run: pnpm e2e:confirm-flakes
+      - name: artefacts on failure (small, 7 days)
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-parity-${{ github.sha }}
           path: |
             playwright-report/
             .artifacts/e2e/build.log

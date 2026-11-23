@@ -30,7 +30,8 @@ describe("[P0-14] gate:task E2E runs where CI runs it (process change, 22 Nov)",
     );
     const ci = readFileSync(".github/workflows/ci.yml", "utf8");
     expect(ci).toMatch(/pnpm e2e:ci-webkit/);
-    expect(ci).toMatch(/playwright install --with-deps chromium webkit/);
+    // The WebKit job installs WebKit (parallel jobs since 23 Nov, process fix 1).
+    expect(ci).toMatch(/playwright install --with-deps webkit/);
   });
 
   it("[P0-14] native Windows gets a pointer to WSL2, the one Windows setup whose results match CI", () => {
