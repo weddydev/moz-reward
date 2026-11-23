@@ -316,7 +316,7 @@ test("[P1-04] back after joining shows the member landing, never the stale sheet
   await expect(joinSheet(page, shopName)).toHaveCount(0);
 });
 
-test("[P1-04] an 80-character shop name wraps; the logo on the shop page stays square (P1-A QA-MAJ2)", async ({
+test("[P1-04] an 80-character shop name wraps; the logo on the shop page stays square (P1-A QA-MAJ2; PD-08 cover)", async ({
   page,
   signInAs,
   shoot,
@@ -337,8 +337,21 @@ test("[P1-04] an 80-character shop name wraps; the logo on the shop page stays s
     await expect(logo).toBeVisible();
     const box = await logo.boundingBox();
     expect(box, `logo at ${String(width)}`).not.toBeNull();
-    expect(box!.width, `logo width at ${String(width)}`).toBe(80);
-    expect(box!.height, `logo height at ${String(width)}`).toBe(80);
+    // The cover's corner logo (PD-08, reference `.s-logo`: 60 px).
+    expect(box!.width, `logo width at ${String(width)}`).toBe(60);
+    expect(box!.height, `logo height at ${String(width)}`).toBe(60);
+    // The name wraps inside the cover (which grows for it), below the back button and clear of the logo.
+    const name = await page.getByTestId("member-shop-name").boundingBox();
+    const cover = await page.getByTestId("shop-cover").boundingBox();
+    const back = await page.getByTestId("shop-back").boundingBox();
+    expect(name && cover && back, `boxes at ${String(width)}`).toBeTruthy();
+    expect(name!.y, `name below the back button at ${String(width)}`).toBeGreaterThanOrEqual(
+      back!.y + back!.height,
+    );
+    expect(name!.y + name!.height).toBeLessThanOrEqual(cover!.y + cover!.height);
+    expect(name!.x + name!.width, `name clear of the logo at ${String(width)}`).toBeLessThanOrEqual(
+      box!.x,
+    );
     await shoot(`shop-page-long-name-${String(width)}`, { fullPage: false });
   }
 });
