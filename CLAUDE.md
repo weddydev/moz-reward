@@ -67,7 +67,7 @@ This file is loaded every session, so it stays short and points to the single so
 - **Do it yourself (human's standing rule, 12 Nov 2026):** every command, script, CLI, SSH or config step Claude can run, Claude runs itself (key generation, `ssh` to the VPS, `gh secret set` piped from a local file without displaying it, installs via `winget`/`brew`). Ask the human only for what needs them: account sign-ups, payments, identity verification, browser dashboards Claude can't reach, typing a passphrase into a prompt, copying a secret that exists only in a provider dashboard into the password manager, approval prompts and decisions. Write HUMAN_TASKS steps that way: the human's part only, with Claude's part named as Claude's.
 - **Don't invent scope.** If PRODUCT.md is silent, choose the simplest sensible behaviour, record it in DECISIONS.md, move on.
 - **Temporary choices are tracked (human's standing rule, 14 Nov 2026):** whenever we do something "for now" that production must not keep (a provider swapped, a security control replaced by a weaker equivalent, a setting relaxed), add a line to `progress/TEMPORARY.md` in the same commit (what we did, why, the real fix, by when), plus a DECISIONS entry and a CARRIED row to the resolving task. P5-14 can't be ticked while a line is open; every `/phase-complete` reply lists the open lines.
-- **Carried work is tracked, not remembered:** CARRIED table in PROGRESS.md; a task can't be ticked with an open incoming carry.
+- **Carried work is tracked, not remembered:** CARRIED table in PROGRESS.md (rows that target P2–P5 in `progress/CARRIED_LATER.md`, read at every phase close and when a P2–P5 task starts); a task can't be ticked with an open incoming carry.
 
 **Small overshoots don't block (human, 23 Nov 2026):** a timing or perf check a little over its limit (a 58 ms long task, a few ms or a fraction of a percent) is not a reason to stall a task or burn CI rounds. Be smart: if it's noise, widen that limit a little with a DECISIONS line; if a check flakes, fix the flake's cause (or the process that lets it block) and move on. Real regressions (well over a limit, or getting worse) are still fixed.
 
@@ -172,6 +172,7 @@ Until P0-14 lands `gate:task`/`gate:phase` and the production-build `pnpm e2e`, 
 | File | Read when |
 |---|---|
 | `progress/PROGRESS.md` | Start of every session (state, handoff, CARRIED table) |
+| `progress/CARRIED_LATER.md` | Every phase close; when a P2–P5 task starts (CARRIED rows for later phases) |
 | `progress/MAP.md` | Locating code (instead of scanning the repo) |
 | `progress/KNOWN_ISSUES.md` | First, whenever a test, gate, CI or tool fails (symptom → cause → fix) |
 | `progress/TEMPORARY.md` | Before any stopgap/workaround; every phase close; P5 |

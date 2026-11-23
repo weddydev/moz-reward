@@ -7,19 +7,17 @@ Baton: held by talha.syed since 2026-11-23 05:52 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 23 Nov 2026 ~18:00 UTC (Mac); baton held by talha.syed. Autopilot is OFF.**
-- **PD-08 is on main** (merge of main's progress commits onto `c41a066`; CI 45211398059 on `c41a066` GREEN, every spec incl. WebKit). PD-C: PD-07 + PD-08 done; next **PD-09 · Gilded Gate 2.0**.
-- **Process fixes on `wip/process-fixes`** (worktree `../moz-process`, from main `942674b`; pushed HEAD `2b28869` = fixes 1–2, CI 45216853194 was green on every job but WebKit at this checkpoint; local commits `a50c1bd` fix 3, `e1c0aa2` fix 4, `89361a6`… see `git log`). **First step:** CI 45216853194 green → push the branch's remaining commits (`git -C ../moz-process push origin HEAD:wip/process-fixes`), let that run go green (it is the first run of the new parallel layout + flake confirmation on a real push), then `git -C ../moz-process merge origin/main` and push it to main. Then delete the worktree. Contents: parallel CI jobs, `pnpm e2e:confirm-flakes`, @fps median of 3, hook allows `--force-with-lease` on `wip/*` + skips the gate for main once CI passed (`onlyMainUpdates`), gate:task without the local changed-spec run, CLAUDE.md rules (branching, early checkpoint push, Linux check debug-only, /clear at task end, one backup per day) + TESTING §4 + PD.md header; DECISIONS 23 Nov ("Process fixes 1–2/3/4/5 applied", "Process speed").
-- **Still to do with the human's review (before PD-09 or beside it):** the CLAUDE.md tidy-up (merge duplicated wording, move situational rules into TESTING/ENGINEERING behind one-line pointers, never drop or weaken a rule; backup first; show the human the diff before committing) and moving P2–P5 CARRIED rows out of PROGRESS into a file read at phase closes.
-- PD-08 follow-ups for PD-11 in FOLLOWUPS (nav commit 178 ms at 4×, landing JS 156.5 KB, reduced motion mid-wipe); C-80 → PD-11.
-- Headless Linux Chromium has no hyphenation dictionaries. Laptop Linux WebKit stalls (~1.7 min per parity test): WebKit evidence is CI only.
+- **Checkpoint by talha.syed, 23 Nov 2026 ~19:00 UTC (Mac); baton held by talha.syed. Autopilot is OFF.**
+- **PD-07 and PD-08 are on main** (PD-08: `3257eaf`, CI 45211398059 green, gate PASS on the push). Next task: **PD-09 · Gilded Gate 2.0** (start with an early checkpoint push at its first working step).
+- **Process changes on `wip/process-fixes`** (worktree `../moz-process`; it includes main `3257eaf`): fixes 1–5 (parallel CI jobs, `pnpm e2e:confirm-flakes`, @fps median of 3, branching + `--force-with-lease` on `wip/*`, early checkpoint push), the speed changes (no local changed-spec run in `gate:task`; the hook skips the gate for main once CI passed it; `e2e:linux` debug-only; /clear at each task end; one CLAUDE.md backup per day), the CLAUDE.md tidy-up (9 situational rules moved word for word to TESTING §10) and the CARRIED split (`progress/CARRIED_LATER.md`). First CI of the new layout (45216853194) found one real gap (the WebKit job lacked Chromium), fixed in `52b6795`. **First step:** CI on this branch's HEAD green → `git -C ../moz-process push origin HEAD:main` (the new hook: CI verdict for main, no gate re-run). Red → fix on the branch (a confirmed flake is a warning, not red). Then `git worktree remove ../moz-process`.
+- PD-08 follow-ups for PD-11 in FOLLOWUPS; C-80 → PD-11. Headless Linux Chromium has no hyphenation dictionaries; laptop Linux WebKit stalls (WebKit evidence is CI only).
 
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov). Then P1 resumes with the P1-B close. P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **PD-C** (PD-07 + PD-08 on main 23 Nov; next PD-09; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-23, talha.syed (PD-08 on main; process fixes on `wip/process-fixes` awaiting CI)
+- **Last updated:** 2026-11-23, talha.syed (PD-08 on main; process changes on `wip/process-fixes`, CI then main)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -28,45 +26,30 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). Next PD-09 (PD-C).
 
 ## Next (top 3)
-1. `wip/process-fixes`: CI green → push the rest → green → main (handoff). Then the CLAUDE.md tidy-up with the human's review of the diff.
-2. PD-09 · Gilded Gate 2.0 (first: an early checkpoint push at its first working step, process fix 5).
-3. Cleanup: remote `wip/PD-07`, `wip/PD-07-b`, `wip/PD-07-bisect-*`, `wip/PD-08`, `wip/PD-08-b`; local `wip/PD-08-ff`; worktrees `../moz-bisect`, `../moz-PD-07`. Human any time: H-51 (b), H-48b, H-38, H-45, H-46; H-49 at the PD-C close.
+1. `wip/process-fixes` CI green → push to main (handoff).
+2. PD-09 · Gilded Gate 2.0.
+3. Cleanup: remote `wip/PD-07`, `wip/PD-07-b`, `wip/PD-07-bisect-*`, `wip/PD-08`, `wip/PD-08-b`, `wip/process-fixes` (after main); local `wip/PD-08-ff`; worktrees `../moz-bisect`, `../moz-PD-07`, `../moz-process`. Human any time: H-51 (b), H-48b, H-38, H-45, H-46; H-49 at the PD-C close.
 
 ## CARRIED (a task can't be ticked while a row targets it)
+Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026, human-approved, to keep this file light): read it at every phase close and when a P2–P5 task starts, and move a phase's rows back here when that phase starts. The same rule applies there: a task can't be ticked while a row targets it.
 | ID | From | To | Criterion | Proof |
 |---|---|---|---|---|
-| C-07 | B-SEC-2 | P2-04 (invites) | No staff TOTP enrolment with the password alone (invite token). P0-16 part done: demo staff/admins are pre-enrolled; the staging seed check must then exempt only accounts with an open invite | integration |
 | C-16 | B-CR-12 | passkey UI task | Passkey re-sign-in over a stale session | E2E |
-| C-25 | B-SEC-9 (P0-19) | P2-04 | Creating a password credential for an existing user (staff invite) revokes that user's existing sessions, like trigger 0006 does on role changes | integration |
 | C-28 | P0-18 | P1-10 | SSE streams get a jittered `retry:` before close on shutdown | integration |
 | C-35 | P0-13 | P1-18 (human 17 Nov) | Backup jobs write `backup:dump`/`backup:wal`/`backup:restore-drill` heartbeats + `BACKUPS_ENABLED=true` on staging; per-route request rate/p95/error on the System page from host logs Backup half done 16 Nov (D4); left: health snapshot after deploy + request logs (E). | staging health snapshot + screenshot |
 | C-39 | P0-10 review | first P1 task that puts a menu, select or popover inside a Modal/SidePanel/BottomSheet | `Popover` portals to `<body>`, so inside a `showModal()` dialog it renders under the top layer and is inert: portal into the open dialog (or the top layer) and re-check placement | E2E: popover opened inside a modal is visible and clickable |
 | C-40 | P0-C flaky (CI 43206412851) | P1-18 (human 17 Nov) | Pixel 7 "[P0-09] motion" quarantined (`test.fixme` on pixel7): closing a panel once recorded two `transform` transitionstarts; find the cause, fix, remove the fixme | 5-project run with the test active, 0 flaky |
-| C-41 | H-08 (13 Nov) | P5 launch readiness | Backups leave Backblaze B2 for R2, or Backblaze is added to the processor register / ROPA and reviewed by the solicitor (H-23) before any real customer data is backed up; DPA with UK addendum; COMPLIANCE processor table still says R2; total retention ≤ 35 d (design check) | DECISIONS + processor register |
-| C-43 | Repo public (human, 14 Nov) | P5 launch readiness | `weddydev/moz-reward` back to private before launch; Actions minutes planned for a private repo (GitHub Pro or trimmed CI) | `gh repo view --json visibility` = PRIVATE + DECISIONS |
-| C-44 | T-5 (human, 14 Nov) | P5-12 | Origin lock back on Cloudflare Tunnel (Zero Trust Free, card on file) for staging + production, Umami dashboard behind Access — or the proxy design accepted in DECISIONS + SECURITY §11 with a zone-level origin-pull certificate | outside check: VPS IP 443/80 refused + DECISIONS |
-| C-45 | P0-15 D3 review | P5 launch readiness | ROPA/DPIA list `pnpm backup:verify --env production` (developer laptop decrypts a copy of customer data into a tmpfs container; encrypted disk enforced on macOS/Linux, asserted on Windows; nothing kept); with C-41/H-23 | ROPA + DPIA lines |
-| C-46 | P0-15 D4 | P5-12 | Production backups on: `moz-backup wal-on production`, first dump + `backup:verify --env production` (dump + `--wal`) PASS, then `BACKUPS_ENABLED=true` in `infra/deploy/production.env` | SESSION_LOG + production health snapshot |
-| C-47 | P0-15 (human 16 Nov) | P5-12 | Production stack set up before go-live (DECISIONS 16 Nov): secrets, Tunnel/origin lock (C-44), `init-env production`, maintenance-only deploy, then backups (C-46) and UptimeRobot production monitors; P0-15 AC7 re-checked with both stacks running | deploy log + `docker stats` + SESSION_LOG |
-| C-51 | P1-02 | P5-05 | Landing footer "Terms" / "Privacy" links (`/terms`, `/privacy`, plain `<a>`) resolve to the legal pages | E2E: links 200 |
-| C-55 | P1-04 security review LOW 4 | P5-01 | Customers can withdraw (and give) per-shop marketing consent themselves through `recordConsentChange` (source `settings`) before any real customer joins; the join sheet's wording ("change this any time in the shop's settings") names where it really is | E2E: toggle off → consent row false + membership false |
 | C-53 | P1-02 gate (gpg 2.5) | P1-18 | backup-pitr "WAL object without integrity protection" fixture is unprotected on every gpg (hand-built SED packet), so the case runs on developer laptops (gpg 2.5 writes AEAD even with `--rfc2440`) as well as CI | integration passes on Mac gpg 2.5 without the skip |
-| C-57 | P1-A close CR-M2 | P2-13 | "Has a profile" = "profile complete" (DECISIONS 18 Nov): an erasure or edit that clears the phone or the 13+ declaration but keeps the profile row must make the next join ask again (`isProfileComplete`), or delete the row | integration |
 | C-58 | P1-05 | P1-10 | Programme-change notice: a save whose rewards/milestones change writes a `loyalty-change-notice` outbox row in the save transaction; the handler sends each current member one in-app transactional notice with the effective date (keyset-paged, idempotent per version, none for left members, none on rollback) | integration |
 | C-60 | P1-05 | P1-12 | Membership stores its current ingot's start; approval uses `ingotTerms(versions, ingotStartedAt)` and `versionActiveAt(versions, requestedAt)`; a programme save mid-progress leaves ledger and unlocked rewards untouched | integration |
-| C-61 | P1-05 | P2-05 | Loyalty main reward optional image (PRODUCT §6) via the upload pipeline (`main_reward.imageKey`); changing it is a rewards change (14 days' notice) | E2E + integration |
 | C-62 | P1-07 | P1-12 | Approvals write `progress_gold` / `ingots_completed`; the Wallet reads rewards-ready count, recent activity, and the last 10 awards for "N more visits"; Wallet statement count unchanged | integration |
-| C-63 | P1-07 | P4-06 | Wallet daily game card (hidden until P4) | E2E |
 | C-66 | P1-08 | P1-12 | Gold Vault streak chip shows the member's current streak from the ledger; tier never goes down when an owner raises a threshold (membership stores the highest tier reached) | integration + E2E |
 | C-67 | P1-08 | P1-16 | Gold Vault "Rewards ready" lists that shop's unredeemed, unexpired rewards with Redeem | E2E 390 + 1440 |
 | C-65 | P1-07 | P1-16 | Wallet right column: rewards list with Redeem | E2E |
 | C-68 | P1-09 | P1-11 | Leaving cancels the member's open points requests in `leaveShop`'s transaction; a left member can't request; the shop page's Request points button and pending state | integration + E2E |
 | C-69 | P1-09 | P1-12 | Approvals refuse a left membership (progress frozen); the shop page's Recent receipts card lists the last receipts (empty state today) | integration + E2E |
 | C-70 | P1-09 | P1-16 | Leaving voids live redeem codes in `leaveShop`'s transaction (staff confirm then fails); unredeemed rewards stay with their own validity and reappear on rejoin | integration |
-| C-71 | P1-09 | P3-06 | Leaving voids the member's live offer claim codes for that shop in `leaveShop`'s transaction | integration |
-| C-72 | P1-09 | P3-11 | Referral bonuses are never re-earned after leaving and rejoining | integration |
 | C-73 | P1-09 | P1-13 | A rejoin after the 30-day window gets no frozen progress back even if the forfeit job hasn't run yet (forfeit at rejoin, or the join refuses to restore) | integration |
-| C-74 | P1-09 | P3-05 | Shop page offers carousel (screen 4 slot; hidden until offers exist) | E2E 390 + 1440 |
 | C-78 | CI 45101535248 (PD-B close) | PD phase gate (PD-11) | Linux WebKit: `molten-fields` slider drag's final track press keeps 720 (3/3 there; passed in CI 45090767908 + 45096798286, host WebKit 6/6): root-caused and the WebKit assertion un-quarantined | CI WebKit run + SESSION_LOG |
 | C-79 | PD-07 CI (perf 45153452036, main 45153456299) | PD-11 (PD-C close) | pixel7 `@fps` FX stress (≥ 58 fps, p95 ≤ 16.8 ms at 4× CPU) un-quarantined: cause found (runner variance vs. a dock/FX frame cost), fixed if real; TEMPORARY T-7 closed | nightly perf run green on pixel7 + SESSION_LOG |
 | C-80 | PD-08 design review M4 | PD-11 (restyle sweep) | The app's shop page shows the reference's compact Gold Vault line (`MiniVault`, `data-wipe-bar` + a `data-rise` slot, so the wipe fills it 420 / 900 ms) beside or instead of the P1-08 vault card, decided with the page restyle; the offers row (`OfferCard`) comes with P3-05 | E2E: the bar fills during the wipe + screenshots 390/1440 |
