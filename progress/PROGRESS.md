@@ -8,9 +8,9 @@ Baton: held by talha.syed since 2026-11-22 17:32 UTC
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **23 Nov 2026 (Mac), talha.syed holds the baton.** Human (23 Nov): close PD-B fast (less overhead, never a skipped check, review or criterion); this session ends after the PD-B close with `/handoff`. **Next session = normal mode, plain `/resume`** (autopilot ends with this session); PD-07 after the PD-B close.
-- **PD-B close part 1 (this commit's wip/PD-06 tip):** C-76 root cause found and fixed: Docker Desktop hangs new host connects ~68 s after ~3,100 in ~30 s; the container forwarder now pools keep-alive host connections (`scripts/lib/e2e-forwarder.mjs`; DECISIONS 23 Nov). `overlays.spec` flick bounded by attempts + page-measured velocity. PD-B code-review MEDIUMs fixed (rating wording per COMPLIANCE, Up/Down keys, MemberCard `back` required, Switch shadows in tokens, no wall-clock poll); 6 LOWs in FOLLOWUPS. GooFilter (root layout, PD-05): full 5-project runs on `1177632` and 45042543781 (`9ec3855`) green.
-- **C-76 / T-6 close on evidence:** `gate:task PD-06` on this tree passing in one run closes C-76 and T-6 (recorded in the next progress commit). Then PD-06 goes to main (hook skips the gate on the stamped tree; CI on the same commit green first).
-- **Continue here:** PD-B close part 2: CI green check, staging smoke, code review of unreviewed PD-B commits (only commits after `ec5d6cc`), scoped QA, `pnpm docker:tidy --apply`, HUMAN_TASKS review; then `/handoff` and stop (human, 23 Nov). Next session plain `/resume`, PD-07 (PD-C, needs H-49).
+- **PD-B close part 1 done (wip/PD-06):** C-76 root-caused and fixed (`7893612`: Docker Desktop hangs new host connects ~68 s after ~3,100 in ~30 s; pooled HTTP forwarder `scripts/lib/e2e-forwarder.mjs`; flick spec bounded by attempts). PD-B code-review MEDIUMs fixed (`eefce4e`); 6 LOWs in FOLLOWUPS. **`gate:task PD-06` on `eefce4e` PASS in one run** → C-76 and T-6 closed. GooFilter (root layout) covered by the PD-05 full 5-project runs.
+- **Main:** `eefce4e` goes to main once CI 45096798286 on it is green (gate stamp: the hook skips the gate). If main is not yet `eefce4e` when you read this, check that run, then `git push origin eefce4e:main`. Full 5-project E2E 45096809612 on `eefce4e` (global CSS touched): result for the close.
+- **Continue here:** PD-B close part 2: CI + full 5-project green check, staging smoke, code review of PD-B commits after `ec5d6cc` (`7893612`, `eefce4e`), scoped QA (rating choices' new label at 320/390/1440), `pnpm docker:tidy --apply`, HUMAN_TASKS review; then `/handoff` and stop (human, 23 Nov). Next session plain `/resume`, PD-07 (PD-C, needs H-49).
 - **Not yet tested:** member card + slider on real devices (H-13: iOS tilt/sway now on, Android sway, Safari 3D flip, touch drag).
 - **Windows laptop (WSL):** local WebKit only with `--workers 1`; never push or run suites while a gate runs; on a wip branch update main with `git fetch`, not `git pull --rebase`.
 - **Before work:** nothing new (no env vars, migrations or seeds).
@@ -20,7 +20,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** **PD-B** Controls: ~~PD-04~~ → ~~PD-05~~ → ~~PD-06~~ → close; then PD-C (needs H-49). PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-23, talha.syed (PD-B close part 1: C-76 root-caused and fixed, review MEDIUMs fixed on wip/PD-06; gate:task + CI on the tip, then PD-06 to main; next PD-B close part 2, then `/handoff`; next session plain `/resume`)
+- **Last updated:** 2026-11-23, talha.syed (PD-B close part 1 done: C-76 fixed + T-6 closed by a one-run gate on `eefce4e`; review MEDIUMs fixed; PD-06 to main after CI; next PD-B close part 2, then `/handoff`; next session plain `/resume`)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -29,7 +29,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-04 on main 22 Nov; **PD-05 closed 22 Nov**; **PD-06 closed 23 Nov** (wip/PD-06; main after its CI). PD-B close part 1 done (C-76 fix, review MEDIUMs); part 2 next.
 
 ## Next (top 3)
-1. gate:task PD-06 on the wip tip in one run (closes C-76, T-6) + CI green → PD-06 to main.
+1. CI 45096798286 on `eefce4e` green → `eefce4e` to main (if not already).
 2. PD-B close part 2 (`/subphase-complete` steps after the code review), then `/handoff` and stop: the last item of this session (human, 23 Nov; DECISIONS).
 3. Next session: PD-07 (PD-C). Human any time: H-51 (b), H-48b, H-38, H-45, H-46.
 
@@ -68,7 +68,6 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-72 | P1-09 | P3-11 | Referral bonuses are never re-earned after leaving and rejoining | integration |
 | C-73 | P1-09 | P1-13 | A rejoin after the 30-day window gets no frozen progress back even if the forfeit job hasn't run yet (forfeit at rejoin, or the join refuses to restore) | integration |
 | C-74 | P1-09 | P3-05 | Shop page offers carousel (screen 4 slot; hidden until offers exist) | E2E 390 + 1440 |
-| C-76 | PD-05 gate (T-6) | PD-B close | Mac Linux-container E2E `page.goto` stall (30–60 s windows every 1.5–2.5 min) found and fixed, T-6 closed; PD-06 and the PD-B close pass `gate:task` in one run. **Root cause + fix done 23 Nov** (Docker Desktop host-connect limit; pooled forwarder); open until the one-run gate | gate:task summary + SESSION_LOG |
 | C-17 | Stryker | P1-18 (human 17 Nov) | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 | C-48 | P0-15 E (human 17 Nov) | P1-18 | P0-15 leftovers: health.backup shows no alert on staging with `BACKUPS_ENABLED=true` (health snapshot); UptimeRobot staging monitors (H-45) + alert on both phones when staging is stopped (AC8); ZAP baseline (weekly) + k6 smoke (twice weekly) wired against staging, zero failed requests during a deploy under k6 (AC2) and rollback under load (AC3); B2 overwrite leaves the locked version (D design HIGH 1); two workers run each scheduled job once (AC6) if not already proven | staging snapshots + workflow runs + SESSION_LOG |
 | C-49 | P0 close (human 17 Nov) | P1-18 + P1 `/phase-complete` | P0's heavy gate and definition of done: `gate:phase` covers P0 + P1; code/security/design reviews of P0-E commits not yet reviewed (at the P1-A close); P0 DoD bullets checked; client demo covers P0 + P1 together (`docs/DEMO_GUIDE.md` + Demo 2). (P0 close lines in PHASES ticked 17 Nov by the human's decision.) | gate:phase summary + SESSION_LOG + DEMO_NOTES |
@@ -85,7 +84,7 @@ _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
 - C-76 repro (Node client in the Playwright container → host server): TCP pipe ~3,100 connects then all hang 68 s (twice in 4 min); direct to `host.docker.internal` the same (6,289 then hang); pooled HTTP forwarder 629,252 requests / 12 host connections / 3 min, 0 timeouts.
 - Unit: forwarder 5/0 (pooling test: ≤ 2 host connections for 60 one-shot clients), e2e-linux 4/0, ui 246/0 (Up/Down + wording + `back` required fail→pass); typecheck + eslint clean.
 - Rating choices at 320/340/390/1440 with the COMPLIANCE label: both 44 px, tile height unchanged; 320 and 390 screens inspected.
-- gate:task PD-06 on the tip + CI: NOT VERIFIED yet (next progress commit).
+- gate:task PD-06 on `eefce4e` PASS in one run: unit 1954/0, int 1456/0, build, bundle, sast, PD-06 E2E Linux Chromium 68/0 (4 skipped), perf 0/0, changed specs 93/0 (41 skipped; overlays flick passed pixel7 + desktop1440), parity 60/0. CI 45096798286 + full 5-project 45096809612 on `eefce4e`: running at this commit.
 
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).

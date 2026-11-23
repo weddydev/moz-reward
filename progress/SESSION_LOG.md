@@ -895,3 +895,4 @@ Done: C-76 root cause: Docker Desktop hangs new connects to `host.docker.interna
 PD-B close code-review done: e8e9eae..ec5d6cc APPROVE WITH FIXES (5 MEDIUM fixed, 6 LOW → FOLLOWUPS); security review not needed (no server/auth/data code). GooFilter every-page change covered by the PD-05 full 5-project runs (`1177632` 1264/0; 45042543781 green).
 Tests: unit forwarder 5/0, ui 246/0 (new cases fail→pass), typecheck + eslint clean; rating tile 320/340/390/1440 measured + screens inspected.
 Left off: gate:task PD-06 on the tip (one run = C-76 proof), CI, main push; then PD-B close part 2.
+Gate `eefce4e` PASS in one run (unit 1954/0, int 1456/0, PD-06 E2E 68/0/4, changed specs 93/0/41 incl. the flick on pixel7 + desktop1440, parity 60/0, no goto stall) → C-76 closed, T-6 resolved. CI 45096798286 + full 5-project 45096809612 on `eefce4e` dispatched.
