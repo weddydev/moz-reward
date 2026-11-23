@@ -886,5 +886,6 @@ Left off: CI on `9bcd719` not yet seen; PD-06 close part B (review findings, DEC
 ## 2026-11-23 — PD — PD-06 close part B: design-review batch, DECISIONS, close (wip/PD-06)
 Done: M4 card tilts + sways on iOS like any touch screen (DESIGN §6 gates only gyroscope tilt; `isIOSDevice` removed); M5 RM: Tabs panel + stars word fade only, slider glint `animation: none`; RM flip comments say "instantly"; rated-stars screen waits for the ignite; DECISIONS batch (7 entries) + citation fix in parity-parts; FOLLOWUPS: TextArea/Select → PD-11, LiquidChoice/Checkbox lines → PD-11, countUp aria-live line closed; main merged in (`15e3bf5`); PROGRESS trimmed (old evidence is in the SESSION_LOG entries above).
 Tests: unit card + fields fail→pass (2 new RM cases, iOS case rewritten); unit ui/motion/dev 397/0; parity `--grep PD-06` 60/0 (Chromium + host WebKit); Linux container `molten-fields` chromium 24/0; host webkit/iphone14/pixel7 sway + RM + screens 16/0 (2 skipped by design); rated 320 screen inspected (4 lit, both choices).
-Gate + CI: see the PROGRESS "Last verified" lines (gate:task PD-06 runs on this commit's exact tree).
-Left off: PD-B close (`/subphase-complete`, C-76 first).
+Gate `09e9078`: all steps PASS except changed specs 58/4 (4 × C-76 goto stall in `open()`, 01:03–01:05 UTC, molten-fields:313 + :945 on pixel7/desktop1440); rerun alone 2/0 (+2 skipped by design). C-76 evidence for the PD-B close.
+CI 45090767908 (`9bcd719`) GREEN: WebKit E2E 533/0, 0 flaky, slider drag active → C-77 closed.
+Left off: PD-B close (`/subphase-complete`, C-76 first), then `/handoff`; next session plain `/resume`.

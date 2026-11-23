@@ -7,9 +7,9 @@ Baton: held by talha.syed since 2026-11-22 17:32 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **23 Nov 2026 (Mac), talha.syed holds the baton. Human: autopilot ON; close PD-B fast: less overhead, never a skipped check, review or criterion.**
-- **PD-06 closed on `wip/PD-06`** (closing commit `feat(PD-06): close …`; steps a–e + CI fixes are in SESSION_LOG 23 Nov). Design-review batch done (M3 DECISIONS ×7, M4 iOS tilt/sway follows DESIGN §6, M5 reduced-motion fades + glint off). `gate:task PD-06` runs on the closing commit's exact tree; its result, the wip CI result and the main push are recorded by the next progress commit. Until then: **NOT VERIFIED** (gate + CI on the closing commit).
-- **Main push:** only once CI on the closing commit is green, push that same commit to main (the gate stamp lets the hook skip a byte-identical tree); then any progress-only commit on top.
+- **23 Nov 2026 (Mac), talha.syed holds the baton.** Human (23 Nov): close PD-B fast (less overhead, never a skipped check, review or criterion); this session ends after the PD-B close with `/handoff`. **Next session = normal mode, plain `/resume`** (autopilot ends with this session); PD-07 after the PD-B close.
+- **PD-06 closed on `wip/PD-06`** (`09e9078` `feat(PD-06): close …`; steps a–e + CI fixes in SESSION_LOG 23 Nov). Design-review batch done (M3 DECISIONS ×7, M4 iOS tilt/sway follows DESIGN §6, M5 reduced-motion fades + glint off). `gate:task PD-06` on `09e9078`: every step PASS except changed specs 58/4 (4 × C-76 `page.goto` stall in `open()`, 01:03–01:05 UTC; rerun alone 2/0 + 2 skipped by design), so no stamp: the main push hook re-runs the gate. CI on `09e9078`: NOT VERIFIED yet. C-77 closed by CI 45090767908 (WebKit 533/0, drag test active, 0 flaky).
+- **Main push:** once CI on the wip tip is green, push it to main through the hook (it re-runs `gate:task`; a C-76 stall there is the PD-B close's C-76 work, never `--no-verify` without the human).
 - **Continue here:** PD-B close: `/subphase-complete` with **C-76 first** (Mac Linux-container `page.goto` stall: root cause, T-6), then `/handoff` and stop (human, 23 Nov: this session ends there). PD-07 (PD-C, needs H-49) starts in the next session.
 - **Not yet tested:** member card + slider on real devices (H-13: iOS tilt/sway now on, Android sway, Safari 3D flip, touch drag).
 - **Windows laptop (WSL):** local WebKit only with `--workers 1`; never push or run suites while a gate runs; on a wip branch update main with `git fetch`, not `git pull --rebase`.
@@ -20,7 +20,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** **PD-B** Controls: ~~PD-04~~ → ~~PD-05~~ → ~~PD-06~~ → close; then PD-C (needs H-49). PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-23, talha.syed (PD-06 closed on wip/PD-06; gate + CI on the closing commit pending; next PD-B close, C-76 first; autopilot on)
+- **Last updated:** 2026-11-23, talha.syed (PD-06 closed on wip/PD-06; gate + CI on the closing commit pending; gate on `09e9078` C-76 stalls only; next PD-B close, C-76 first, then `/handoff`; next session plain `/resume`)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -69,7 +69,6 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 | C-73 | P1-09 | P1-13 | A rejoin after the 30-day window gets no frozen progress back even if the forfeit job hasn't run yet (forfeit at rejoin, or the join refuses to restore) | integration |
 | C-74 | P1-09 | P3-05 | Shop page offers carousel (screen 4 slot; hidden until offers exist) | E2E 390 + 1440 |
 | C-76 | PD-05 gate (T-6) | PD-B close | Mac Linux-container E2E `page.goto` stall (30–60 s windows every 1.5–2.5 min; FOLLOWUPS [P0-14 infra]) found and fixed, T-6 closed; PD-06 and the PD-B close pass `gate:task` in one run | gate:task summary + SESSION_LOG |
-| C-77 | PD-06 (CI 45061015313) | PD-06 close | WebKit slider mouse-drag E2E active again (root causes + fix `9bcd719`, DECISIONS 23 Nov "Linux WebKit E2E") | CI WebKit run on `9bcd719` or later with the test active, 0 flaky |
 | C-17 | Stryker | P1-18 (human 17 Nov) | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 | C-48 | P0-15 E (human 17 Nov) | P1-18 | P0-15 leftovers: health.backup shows no alert on staging with `BACKUPS_ENABLED=true` (health snapshot); UptimeRobot staging monitors (H-45) + alert on both phones when staging is stopped (AC8); ZAP baseline (weekly) + k6 smoke (twice weekly) wired against staging, zero failed requests during a deploy under k6 (AC2) and rollback under load (AC3); B2 overwrite leaves the locked version (D design HIGH 1); two workers run each scheduled job once (AC6) if not already proven | staging snapshots + workflow runs + SESSION_LOG |
 | C-49 | P0 close (human 17 Nov) | P1-18 + P1 `/phase-complete` | P0's heavy gate and definition of done: `gate:phase` covers P0 + P1; code/security/design reviews of P0-E commits not yet reviewed (at the P1-A close); P0 DoD bullets checked; client demo covers P0 + P1 together (`docs/DEMO_GUIDE.md` + Demo 2). (P0 close lines in PHASES ticked 17 Nov by the human's decision.) | gate:phase summary + SESSION_LOG + DEMO_NOTES |
@@ -85,7 +84,8 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
 - PD-06 close batch: unit ui/motion/dev 397/0 (new RM + iOS cases fail→pass); parity `--grep PD-06` 60/0 (Chromium + host WebKit); Linux container `molten-fields` chromium 24/0; host webkit/iphone14/pixel7 sway + RM + screens 16/0; rated-stars 320 screen inspected.
 - PD-06 `9bcd719`: Linux container webkit/iphone14/chromium slider + rating + card 34/0; host `molten-fields` 3 projects 69/0; parity member card 12/0.
-- CI 45090767908 (`9bcd719`, C-77 evidence): running at the closing commit; NOT VERIFIED. gate:task PD-06 on the closing commit: NOT VERIFIED yet.
+- gate:task PD-06 on `09e9078` (01:05 UTC): typecheck, lint, format, titles, unit 1947/0, int 1456/0, build, bundle, sast, lint:sh, PD-06 E2E Linux Chromium 68/0 (4 skipped), perf 0/0 PASS; changed specs FAIL 58/4 = 4 C-76 goto stalls; rerun alone 2/0.
+- CI 45090767908 (`9bcd719`): GREEN; WebKit E2E (webkit + iphone14, flaky = failure) 533 passed / 0 flaky / 105 skipped with the slider drag test active → **C-77 closed**. CI on the wip tip (`09e9078` + progress): NOT VERIFIED (running).
 
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).

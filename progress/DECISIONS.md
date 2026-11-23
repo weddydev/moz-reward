@@ -1043,4 +1043,4 @@ Decision: triggers gain `values` (set through the prototype's value setter so Re
 Why: deterministic captures of timer- and input-driven motion on both pages, in both engines.
 
 ## 2026-11-23 — This session ends after the PD-B close (human; session-scoped)
-Decision: 23 Nov 2026 (human): this session ends after the PD-B close with `/handoff` and stops; PD-07 starts in the next session, not this one. Session-scoped, not a standing rule.
+Decision: 23 Nov 2026 (human): this session ends after the PD-B close with `/handoff` and stops; PD-07 starts in the next session, not this one; and autopilot ends with this session: the next session resumes in normal mode with plain `/resume` (not `/resume autopilot`). Session-scoped, not a standing rule.
