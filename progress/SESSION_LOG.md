@@ -913,3 +913,9 @@ CI on `92886e5` RED: WebKit iphone14 keyboard-hides-dock (hook missed pre-hydrat
 PD-08 (a): wallet card + stack + coin + demo photos (+2 demo shops, human) + next/image config + public/ in image. `pnpm check` 1985/0, seed int 15/0, wallet unit 7/0. E2E not run (NOT VERIFIED).
 Next: CI on `76ed690`; bisect the fps regression via CI dispatches; then PD-07 to main, PD-08 (b)–(d).
 
+## 2026-11-23 ~16:30 UTC — talha.syed (checkpoint, human paused)
+- PD-07 keyboard flake: focus() on a hydration-disabled field; test waits enabled+focused (`9ff35f8`).
+- PD-07 @fps root cause by CI bisect (CSS-only 57–60 pass, code-only 46–56 fail): prose word made Tailwind register 9 `--tw-backdrop-*` @property; fix `e612df5` (Tailwind source src/, check:bundle registered-property list; fails on the old build, OK on the new).
+- PD-08: stack/hover fixes, CI 45146484659 on `8430efc` GREEN; cover header + OfferCard `13e39ad` (e2e:linux 38/0 + 16/0; screenshots 320/390/1440 inspected).
+- NOT VERIFIED at checkpoint: CI 45153441770 (`e612df5`), perf 45153452036 vs 45153456299, CI on `13e39ad`.
+
