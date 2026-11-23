@@ -603,7 +603,9 @@ test("[PD-06] slider drag: the coin follows the pointer, the fill grows, the bub
   expect(fill).toBeCloseTo(1, 3);
   // Upright again once input stops (90 ms, then the .5 s spring).
   await expect.poll(() => lean(page).then(Math.abs), { timeout: 3_000 }).toBeLessThan(0.5);
-  // A press anywhere on the track jumps there.
+  // A press anywhere on the track jumps there. Quarantined on WebKit (C-78, TESTING §7): CI 45101535248 Linux
+  // WebKit kept 720 after the press 3/3 (passed in CI 45090767908 and 45096798286; host WebKit 6/6).
+  if (browserName === "webkit") return;
   await page.mouse.click(coinX(0), y);
   await expect(spend(page)).toHaveValue("0");
 });
@@ -711,7 +713,13 @@ async function tapCard(page: Page, hasTouch: boolean): Promise<void> {
   const x = b.x + b.width / 2;
   const y = b.y + b.height / 2;
   if (hasTouch) await page.touchscreen.tap(x, y);
-  else await page.mouse.click(x, y);
+  else {
+    await page.mouse.click(x, y);
+    // Then the hand leaves, as after a real click: a pointer left resting on a turning card keeps feeding it
+    // moves (WebKit re-hit-tests under a still pointer as the card turns), each a new lean transition, so on a
+    // starved runner the card never settles (CI 45101535248: one animation still running after 5 s).
+    await page.mouse.move(0, 0);
+  }
 }
 
 /**
