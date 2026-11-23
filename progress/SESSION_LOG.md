@@ -858,3 +858,27 @@ Main push: hook gate (ids PD-06) changed specs 488/3 (2 container stalls, overla
 Done: a Tabs (`31347b1`); b TextField + Input tile; c StarRating + Rate tile (parity not yet green). Harness: focus trigger, ResizeObserver wait after ownHeight, runFor/until.
 Tests: unit molten-fields 24/0 (+ spec/parts/ui/press 75/0); parity a 12/0; full parity 120/0 (before c); Linux E2E b 53 pass / 4 fail (1 test bug fixed, 3 C-76 goto stalls).
 Left off: re-run PD-06 parity for stars after the svg-height fix; then Slider (d).
+
+## 2026-11-23 — PD — PD-06 step c (StarRating) finished on wip/PD-06 `413acf8`
+Stars 46 vs 52 px: Tailwind preflight makes svg block; `.m-star svg { display:inline }` → parity PD-06 36/0 Chromium + WebKit.
+E2E added: star keyboard, rapid taps, COMPLIANCE §1 identical choices after every rating, reduced motion, 44 px targets, rated/unrated screens 320/390/1440 (inspected).
+Linux flakes (tabs keyboard, pasted email, beam click): /dev/molten never marked data-hydrating → LabSection marks it; beam test clicks via locator. Linux `molten-fields` 13/0, 39/0 ×3; ui-states pass.
+Left off: step d Slider.
+
+## 2026-11-23 01:30 — PD — PD-06 red CI fixed + step d Slider (wip/PD-06 ec033ae)
+Done: CI 45057026965 root cause: `.m-field input` box-shadow outranked the global `:focus-visible` halo (specificity, both unlayered); halo restated, parity focus capture pins the unfocused shadow (`379213e`). Step d Slider + tile, parity parts/spec row required, ownHeight off tabs/stars tiles (`ec033ae`).
+Tests: Linux tokens.spec desktop1440 fail→10/0; parity 144/0 both engines; Linux molten-fields 18/0; unit slider 13/0 + spec 23/0; screens 320/390/1440 inspected; pre-push check + sast PASS.
+Left off: step e MemberCard; CI on ec033ae not yet seen.
+
+## 2026-11-23 — PD — PD-06 step e MemberCard + WebKit CI fixes (wip/PD-06 4177678)
+Done: `MemberCard` (holo, glare, tilt, flip to labelled QR placeholder, touch-only sway; RM/iOS no tilt) + tile on /dev/molten, parts + spec row required, `ownHeight` off text-field-tile.
+Root causes: reference's phone `.back` rule leaks onto the card's back face (40 px circle; flip shows nothing) → scoped in the parity copy (`REFERENCE_FIXES`); headless WebKit renders no 3D (minimal flip card shows the back) → both pages flattened alike; gallery rendered pending placeholders for the new parts (strict-mode E2E) → parts registered.
+Tests: parity full 156/0 (both engines); Linux Chromium + Pixel 7 molten-fields 45/0; unit molten-card 20/0; screens 320/390/1440 front/back inspected. CI 45061015313 (`ec033ae`) RED on WebKit E2E only → `49a55cd` (tabs scroll coords, pill ≤ 1.5 px, choices opacity 1, slider lean per frame, WebKit drag quarantined C-77); CI 45068046655 pending.
+Left off: PD-06 close (gate:task PD-06, design-reviewer + review-animations, DECISIONS batch, FOLLOWUPS, tick).
+
+
+## 2026-11-23 — PD — PD-06 close part A: CI 45068046655 red fixed, C-77 root-caused (wip/PD-06 9bcd719)
+Done: CI 45068046655 (`4177678`) RED on WebKit E2E only → `9bcd719`: rating choices (COMPLIANCE §1) and card angles polled to their settled look; card hides the face turned away (`visibility` swap with the turn at 9.6%; design-review HIGH: WebKit painted the back over the front, mirrored) + same rule in the parity copy; C-77 slider drag active on WebKit again.
+Root causes (Linux container WebKit probes): ~1 frame/s, so an animation reports done while the computed style holds the last frame, and no frame runs in the slider's drag + 90 ms settle (lean read 0); first mouse event after `scrollIntoViewIfNeeded` scrolls the page back 39 px (press hit the wrapper, value stayed 240, 2/6). Host macOS WebKit draws the lean 12/12 under 3 workers: not a Safari bug.
+Tests: Linux container webkit/iphone14/chromium changed specs 34/0 (drag + tilt 6×: 24/0); host molten-fields 3 projects 69/0; parity member card 12/0; WebKit card screens 320/390 front + back inspected; unit 1947/0; pre-push check + sast PASS.
+Left off: CI on `9bcd719` not yet seen; PD-06 close part B (review findings, DECISIONS batch, FOLLOWUPS, gate:task, tick, main).
