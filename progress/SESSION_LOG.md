@@ -907,3 +907,9 @@ Staging smoke (release `74fba5b`, before PD-B): health live/ready 200, `/sign-in
 Reviews: code-review MEDIUMs fixed (above); security review not needed. Close's own commits after `ec5d6cc` not reviewed (NOT VERIFIED; for the PD-C close). HUMAN_TASKS: H-13 lists the PD-B real-device checks; H-49 needed at the PD-C close. C-78 (WebKit slider track press) → PD-11.
 Handoff (talha.syed, 23 Nov): baton freed; autopilot off; next session plain `/resume` → PD-07. Main CI 45112526437 + staging deploy of `d59a2eb` not verified at handoff (check first).
 Handoff by talha.syed (04:52 UTC): baton free; KNOWN_ISSUES.md added; main CI 45112526437 running.
+
+## 2026-11-23 — PD — PD-07 CI red; PD-08 step (a) (wip/PD-08 `543fe86`)
+CI on `92886e5` RED: WebKit iphone14 keyboard-hides-dock (hook missed pre-hydration focus/resize; fixed `76ed690`, unit test fails without it, KI-20) and pixel7 @fps FX stress (CI A/B: main 58.8–60 fps, PD-07 54–57.7 fps p95 33 ms; local Mac gives no verdict; cause not found yet).
+PD-08 (a): wallet card + stack + coin + demo photos (+2 demo shops, human) + next/image config + public/ in image. `pnpm check` 1985/0, seed int 15/0, wallet unit 7/0. E2E not run (NOT VERIFIED).
+Next: CI on `76ed690`; bisect the fps regression via CI dispatches; then PD-07 to main, PD-08 (b)–(d).
+
