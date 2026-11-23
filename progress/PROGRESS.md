@@ -7,9 +7,10 @@ Baton: held by talha.syed since 2026-11-23 05:52 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 23 Nov 2026 ~19:00 UTC (Mac); baton held by talha.syed. Autopilot is OFF.**
-- **PD-07 and PD-08 are on main** (PD-08: `3257eaf`, CI 45211398059 green, gate PASS on the push). Next task: **PD-09 · Gilded Gate 2.0** (start with an early checkpoint push at its first working step).
-- **Process changes on `wip/process-fixes`** (worktree `../moz-process`; it includes main `3257eaf`): fixes 1–5 (parallel CI jobs, `pnpm e2e:confirm-flakes`, @fps median of 3, branching + `--force-with-lease` on `wip/*`, early checkpoint push), the speed changes (no local changed-spec run in `gate:task`; the hook skips the gate for main once CI passed it; `e2e:linux` debug-only; /clear at each task end; one CLAUDE.md backup per day), the CLAUDE.md tidy-up (9 situational rules moved word for word to TESTING §10) and the CARRIED split (`progress/CARRIED_LATER.md`). First CI of the new layout (45216853194) found one real gap (the WebKit job lacked Chromium), fixed in `52b6795`. **First step:** CI on this branch's HEAD green → `git -C ../moz-process push origin HEAD:main` (the new hook: CI verdict for main, no gate re-run). Red → fix on the branch (a confirmed flake is a warning, not red). Then `git worktree remove ../moz-process`.
+- **Checkpoint by talha.syed, 23 Nov 2026 ~17:45 UTC (Mac); baton held by talha.syed. Autopilot is OFF. Everything is on main; nothing half-done.**
+- **PD-07 and PD-08 are on main.** Next task: **PD-09 · Gilded Gate 2.0** (PD-C): read its section in `docs/phases/PD.md`; push its `wip/PD-09` branch once at the first working step (early checkpoint push).
+- **The approved process changes are on main** (`a7fdbef`; CI 45223748873 green on every job, the first full run of the new layout; the new hook pushed it on CI's verdict without re-running the gate): parallel CI jobs (~10 min except an every-page WebKit run), `pnpm e2e:confirm-flakes` (a "Confirmed flake" warning → a FOLLOWUPS line, fixed or quarantined before the sub-phase close), @fps median of 3, branching from main + `--force-with-lease` on `wip/*`, early checkpoint push, `gate:task` without the local changed-spec run, `e2e:linux` debug-only, /clear at each task end, one CLAUDE.md backup per day, CLAUDE.md tidy-up (situational rules in TESTING §10), CARRIED rows for P2–P5 in `progress/CARRIED_LATER.md`. DECISIONS 23 Nov has each.
+- **Leftover branches (deleting them needs the human's OK; harmless):** remote `wip/PD-07`, `wip/PD-07-b`, `wip/PD-07-bisect-css`, `wip/PD-07-bisect-code`, `wip/PD-08`, `wip/PD-08-b`, `wip/process-fixes`; local `wip/PD-08-ff`, `wip/PD-08-b`, `wip/PD-07`, `wip/process-fixes`; worktree `../moz-main` (branch `ckpt-main`). All merged into main or superseded.
 - PD-08 follow-ups for PD-11 in FOLLOWUPS; C-80 → PD-11. Headless Linux Chromium has no hyphenation dictionaries; laptop Linux WebKit stalls (WebKit evidence is CI only).
 
 ## Status
@@ -17,7 +18,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** **PD-C** (PD-07 + PD-08 on main 23 Nov; next PD-09; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-23, talha.syed (PD-08 on main; process changes on `wip/process-fixes`, CI then main)
+- **Last updated:** 2026-11-23, talha.syed (PD-08 + approved process changes on main; next PD-09)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -26,9 +27,9 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). Next PD-09 (PD-C).
 
 ## Next (top 3)
-1. `wip/process-fixes` CI green → push to main (handoff).
-2. PD-09 · Gilded Gate 2.0.
-3. Cleanup: remote `wip/PD-07`, `wip/PD-07-b`, `wip/PD-07-bisect-*`, `wip/PD-08`, `wip/PD-08-b`, `wip/process-fixes` (after main); local `wip/PD-08-ff`; worktrees `../moz-bisect`, `../moz-PD-07`, `../moz-process`. Human any time: H-51 (b), H-48b, H-38, H-45, H-46; H-49 at the PD-C close.
+1. PD-09 · Gilded Gate 2.0 (PD-C).
+2. With the human's OK: delete the leftover branches and the `../moz-main` worktree (handoff).
+3. Human any time: H-51 (b), H-48b, H-38, H-45, H-46; H-49 at the PD-C close.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026, human-approved, to keep this file light): read it at every phase close and when a P2–P5 task starts, and move a phase's rows back here when that phase starts. The same rule applies there: a task can't be ticked while a row targets it.
