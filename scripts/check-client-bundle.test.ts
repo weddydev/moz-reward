@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { containsWord, findHits, serverVariableNames } from "./check-client-bundle";
+import {
+  containsWord,
+  findHits,
+  REGISTERED_PROPERTIES,
+  serverVariableNames,
+  unexpectedRegistrations,
+} from "./check-client-bundle";
 
 describe("[P0-02] client bundle check", () => {
   it("collects server variable names (including commented examples) and skips NEXT_PUBLIC_*", () => {
@@ -30,5 +36,20 @@ describe("[P0-02] client bundle check", () => {
     expect(findHits([{ file: "shim.js", content: shim }], ["AUTH_SECRET"])).toEqual([]);
     const leak = `${shim};console.log(process.env.AUTH_SECRET)`;
     expect(findHits([{ file: "leak.js", content: leak }], ["AUTH_SECRET"])).toHaveLength(1);
+  });
+});
+
+describe("[PD-07] registered custom properties in the built CSS", () => {
+  it("[PD-07] flags an @property the CSS registers that isn't on the reviewed list, once per name", () => {
+    const css =
+      '@property --tw-blur{syntax:"*";inherits:false}@property --tw-backdrop-blur{syntax:"*";inherits:false}' +
+      '@property --tw-backdrop-blur{syntax:"*";inherits:false}.x{--tw-backdrop-sepia:1}';
+    expect(unexpectedRegistrations(css, ["--tw-blur"])).toEqual(["--tw-backdrop-blur"]);
+    expect(unexpectedRegistrations(css, ["--tw-blur", "--tw-backdrop-blur"])).toEqual([]);
+  });
+
+  it("[PD-07] the reviewed list has no backdrop-filter family (a stray word in a source file registered nine, CI 45148036170)", () => {
+    expect(REGISTERED_PROPERTIES.filter((n) => n.startsWith("--tw-backdrop-"))).toEqual([]);
+    expect(new Set(REGISTERED_PROPERTIES).size).toBe(REGISTERED_PROPERTIES.length);
   });
 });
