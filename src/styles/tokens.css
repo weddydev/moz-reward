@@ -235,8 +235,8 @@
   );
   --cover-logo-ring: #ffe08a;
   /* The fallback coin (no photo yet; DESIGN §6.4 "never bare initials"): struck metal with a darker rim. */
-  --coin-face: radial-gradient(circle at 35% 30%, #fff6d6, #f2c14e 45%, #c8922c 75%, #8e6417);
-  --coin-ink: #5a3d0c;
+  --monogram-face: radial-gradient(circle at 35% 30%, #fff6d6, #f2c14e 45%, #c8922c 75%, #8e6417);
+  --monogram-ink: #5a3d0c;
   --molten-danger-flow: linear-gradient(
     115deg,
     #8f2f1f 0%,
