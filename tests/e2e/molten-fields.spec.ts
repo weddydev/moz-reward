@@ -174,9 +174,21 @@ test("[PD-06] text field: an empty submit shakes, turns the beam red, explains a
   );
   await expect(fieldBox(input)).toHaveAttribute("data-state", "bad");
   await expect(input).toBeFocused();
-  // The same error again (a second failed submit) shakes again.
+  // The same error again (a second failed submit) shakes again: counted as the shake starts, not read from the
+  // running animations afterwards, which a loaded runner's round trip can outlast (gate 23 Nov: 0 after 420 ms).
+  await fieldBox(input).evaluate((el) => {
+    const box = el as HTMLElement & { shakes?: number };
+    const animate = box.animate.bind(box);
+    box.shakes = 0;
+    box.animate = (...args: Parameters<HTMLElement["animate"]>) => {
+      box.shakes = (box.shakes ?? 0) + 1;
+      return animate(...args);
+    };
+  });
   await send.click();
-  expect(await running(fieldBox(input))).toBeGreaterThanOrEqual(1);
+  await expect
+    .poll(() => fieldBox(input).evaluate((el) => (el as HTMLElement & { shakes?: number }).shakes))
+    .toBe(1);
   // Typing clears the error.
   await input.fill("a");
   await expect(input).not.toHaveAttribute("aria-invalid", "true");
