@@ -108,24 +108,24 @@ describe("[PD-08] wallet stack", () => {
         s.style.getPropertyValue("--i"),
       ),
     ).toEqual(["0", "1", "2", "0", "1"]);
-    expect(stacks[0]).not.toHaveClass("max-md:hidden");
-    expect(stacks[1]).toHaveClass("max-md:hidden");
+    expect(stacks[0]).not.toHaveAttribute("data-folded");
+    expect(stacks[1]).toHaveAttribute("data-folded");
     const more = screen.getByTestId("wallet-show-all");
     expect(more).toHaveTextContent("Show all 5 shops");
     expect(more).toHaveAttribute("aria-expanded", "false");
     expect(more).toHaveAttribute("aria-controls", "wallet-stacks");
     fireEvent.click(more);
-    expect(stacks[1]).not.toHaveClass("max-md:hidden");
+    expect(stacks[1]).not.toHaveAttribute("data-folded");
     expect(more).toHaveAttribute("aria-expanded", "true");
     expect(more).toHaveTextContent("Show fewer");
     fireEvent.click(more);
-    expect(stacks[1]).toHaveClass("max-md:hidden");
+    expect(stacks[1]).toHaveAttribute("data-folded");
   });
 
   it("[PD-08] thirty shops: ten stacks of three, all in the DOM (the grid shows them from 768px)", () => {
     const { container } = render(<WalletStack cards={cards(30)} />);
     expect(container.querySelectorAll(".m-stack")).toHaveLength(10);
     expect(container.querySelectorAll(".m-wcard")).toHaveLength(30);
-    expect(container.querySelectorAll(".m-stack.max-md\\:hidden")).toHaveLength(9);
+    expect(container.querySelectorAll(".m-stack[data-folded]")).toHaveLength(9);
   });
 });

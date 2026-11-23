@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { usePauseOffscreen } from "@/components/motion/usePauseOffscreen";
-import { cx } from "@/lib/cx";
 import { STACK_SIZE, stackGroups } from "./view";
 
 /**
@@ -34,8 +33,11 @@ export function WalletStack({
         {groups.map((group, g) => (
           <ul
             key={group[0]?.key}
-            className={cx("m-stack", g > 0 && !all && "max-md:hidden")}
+            className="m-stack"
             data-stack={g}
+            // Folded stacks hide below 768px in molten.css: a Tailwind `max-md:hidden` would lose to `.m-stack`'s
+            // own (unlayered) `display`.
+            data-folded={g > 0 && !all ? "" : undefined}
           >
             {group.map((card, i) => (
               <li
