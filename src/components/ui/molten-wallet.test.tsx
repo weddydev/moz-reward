@@ -48,6 +48,21 @@ describe("[PD-08] wallet card (DESIGN §6.4)", () => {
     expect(within(card).getByText("12 Lockside Walk, Camden")).toHaveClass("m-wc-addr");
     expect(within(card).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "72");
     expect(card.querySelector(".m-wc-bar > i")?.getAttribute("style")).toContain("--p: 72%");
+    for (const img of imgs) expect(img).toHaveAttribute("loading", "lazy");
+  });
+
+  it("[PD-08] eager (cards in the first screenful): both photos load at once", () => {
+    const { container } = render(
+      <Card
+        name="Brew & Bloom Café"
+        logoUrl="/demo/shops/brew-logo.jpg"
+        coverUrl="/demo/shops/brew-cover.jpg"
+        eager
+      />,
+    );
+    const imgs = [...container.querySelectorAll("img")];
+    expect(imgs).toHaveLength(2);
+    for (const img of imgs) expect(img).toHaveAttribute("loading", "eager");
   });
 
   it("[PD-08] no photos: the metal monogram coin and the obsidian ground, never bare initials on a flat fill", () => {

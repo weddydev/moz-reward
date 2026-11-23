@@ -775,22 +775,25 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "wallet-stack",
     element: "Wallet stack",
     task: "PD-08",
-    status: "pending",
+    status: "required",
     values: [
       {
         name: "fan-out",
         value: ".6s var(--spring)",
         ref: css(".wcard", "transition", "transform"),
+        prod: { file: MOLTEN_CSS, css: ".m-wslot", prop: "transition", part: "transform" },
       },
       {
         name: "fan-out offset (24 px × index)",
         value: "translateY(calc(var(--i) * 24px))",
         ref: css(".stack:hover .wcard", "transform"),
+        prod: { file: MOLTEN_CSS, css: ".m-stack:hover .m-wslot", prop: "transform" },
       },
       {
         name: "shine loop",
         value: "5s var(--ease-io) infinite",
         ref: css(".wcard::after", "animation", "cardshine"),
+        prod: { file: MOLTEN_CSS, css: ".m-wcard::after", prop: "animation", part: "m-cardshine" },
       },
     ],
   },
