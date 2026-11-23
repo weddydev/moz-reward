@@ -26,7 +26,7 @@ import { londonDate } from "@/lib/time";
 import type { ShopLandingData } from "@/server/repos/shops";
 import { MemberIdCard } from "./MemberIdCard";
 import { MembershipControls } from "./MembershipControls";
-import { SHOP_PAGE_CLASS, ShopCover, ShopPageHeader } from "./ShopPageHeader";
+import { SHOP_PAGE_CLASS, ShopPageHeader } from "./ShopPageHeader";
 import { leaveRestoreBy, upcomingClosures, vaultCardText } from "./view";
 
 type Live = Extract<ShopLandingData, { kind: "live" }>;
@@ -69,14 +69,14 @@ export function MemberShopPage({
   return (
     <div className={SHOP_PAGE_CLASS} data-page="member-shop">
       <div className="flex flex-col">
-        <ShopCover coverUrl={details?.shop.coverUrl ?? null} />
-        <ShopPageHeader shopId={shop.shopId} name={shop.name} logoUrl={shop.logoUrl} />
-        <div className="mt-3 flex flex-col gap-3">
-          {details ? (
-            <p className="text-body text-ink-2">
-              {areaLine(details.shop.category, details.shop.town)}
-            </p>
-          ) : null}
+        <ShopPageHeader
+          shopId={shop.shopId}
+          name={shop.name}
+          logoUrl={shop.logoUrl}
+          coverUrl={details?.shop.coverUrl ?? null}
+          meta={details ? areaLine(details.shop.category, details.shop.town) : null}
+        />
+        <div className="mt-4 flex flex-col gap-3">
           {status ? (
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={status.tone}>
