@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { type APIRequestContext, type Page } from "@playwright/test";
-import { throttleCpu } from "./support/cpu-throttle";
+import { throttleCpu, LONG_TASK_MS } from "./support/cpu-throttle";
 import { expect, test, testApiHeaders } from "./support/test";
 
 /**
@@ -431,8 +431,8 @@ test("[P1-03] adds no long task while it plays, 4× CPU throttle (Chromium) @per
   const report = JSON.stringify({ during, gateCode: [...gateCode] });
   for (const f of during) {
     for (const x of f.scripts) {
-      if (gateCode.has(x.url)) expect(x.duration, report).toBeLessThan(50);
-      if (x.duration >= 50) expect(plain.scripts, report).toContain(x.url);
+      if (gateCode.has(x.url)) expect(x.duration, report).toBeLessThanOrEqual(LONG_TASK_MS);
+      if (x.duration > LONG_TASK_MS) expect(plain.scripts, report).toContain(x.url);
     }
     if (f.scripts.length === 0) expect(f.start, report).toBeLessThanOrEqual(scanned.paint);
   }

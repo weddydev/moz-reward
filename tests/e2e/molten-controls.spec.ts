@@ -19,9 +19,15 @@ test("[PD-04] keyboard: Enter on the molten button ripples from the centre, roll
 }) => {
   await open(page);
   const btn = molten(page);
-  await btn.focus();
-  // The Molten focus ring is visible on keyboard focus (PD-03 reference ring).
-  await expect(btn).toHaveCSS("outline-style", "solid");
+  // The Molten focus ring is visible on keyboard focus (PD-03 reference ring). A key press first, so the focus
+  // counts as keyboard focus; focus and check together until both hold: /dev/molten streams its sections in
+  // after hydration, and a button swapped in under the test isn't the one it focused (CI 45167467906, flaky).
+  await page.keyboard.press("Shift");
+  await expect(async () => {
+    await btn.focus();
+    await expect(btn).toBeFocused({ timeout: 500 });
+    await expect(btn).toHaveCSS("outline-style", "solid", { timeout: 500 });
+  }).toPass({ timeout: 5_000 });
   // Watch first (awaited), press second, then read what the watcher saw.
   await btn.evaluate((el) => {
     const w = window as unknown as {

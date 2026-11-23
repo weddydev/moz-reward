@@ -1,5 +1,5 @@
 import { type Page, type TestInfo } from "@playwright/test";
-import { throttleCpu } from "./support/cpu-throttle";
+import { throttleCpu, LONG_TASK_MS } from "./support/cpu-throttle";
 import { expect, test } from "./support/test";
 
 /**
@@ -399,7 +399,7 @@ async function stressRun(page: Page, info: TestInfo) {
   return { ...run, fps, p95, longest };
 }
 
-test("[PD-03] 200-burst stress at 4× CPU: engine holds its 420 cap, no long task over 50 ms @perf", async ({
+test("[PD-03] 200-burst stress at 4× CPU: engine holds its 420 cap, no long task over 65 ms @perf", async ({
   page,
   browserName,
 }) => {
@@ -409,7 +409,7 @@ test("[PD-03] 200-burst stress at 4× CPU: engine holds its 420 cap, no long tas
   expect(run.fired).toBe(200);
   expect(run.peak).toBe(420);
   expect(run.times.length).toBeGreaterThan(60);
-  expect(run.longest).toBeLessThanOrEqual(50);
+  expect(run.longest).toBeLessThanOrEqual(LONG_TASK_MS);
 });
 
 test("[PD-03] 200-burst stress at 4× CPU: 60 fps, p95 ≤ 16.8 ms @fps", async ({

@@ -23,6 +23,13 @@ import { type CDPSession, type Page, type TestInfo } from "@playwright/test";
 // with the full suite on 2 workers beside it, so a laptop then ran these specs ~2.5× harder than CI (DECISIONS 21 Nov).
 export const CI_CPU_SCORE = 70_000;
 
+/**
+ * Longest main-thread task the throttled animation specs allow (human, 23 Nov 2026: 50 → 65 ms). DESIGN §12's
+ * 50 ms stays the design target; under 4× CPU emulation a single 51–65 ms task is runner noise (58 ms on CI
+ * 45153441770, main failing the same way), not a regression, and must not block a push. Over 65 ms fails.
+ */
+export const LONG_TASK_MS = 65;
+
 /** Iterations per second of a mixed string/array workload (higher = faster CPU); median of 5 runs. */
 async function benchmark(page: Page): Promise<number> {
   return page.evaluate(() => {

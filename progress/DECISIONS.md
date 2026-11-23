@@ -1071,3 +1071,8 @@ Why: words in docs, progress notes and tests became CSS on every page; the backd
 
 ## 2026-11-23 — pixel7 @fps quarantine (C-79, T-7)
 The pixel7 FX stress `@fps` case is `test.fixme` until the PD-C close: CI runners put main itself at 52–58.8 fps on one commit within 40 min, PD-07 45–54 after the KI-42 fix. The time-box (CLAUDE.md §4) was used; the 58 fps / p95 16.8 ms bounds are not loosened and desktop1440 still runs. PD-07 lands; the close finds the cause (runner noise vs. a real dock/FX frame cost) and un-quarantines.
+
+## 2026-11-23 — Long-task limit in the throttled specs: 65 ms (human)
+Decision: the `@perf` specs (fx stress, vault pour, Gilded Gate) fail on a main-thread task over 65 ms (`LONG_TASK_MS` in `tests/e2e/support/cpu-throttle.ts`), not 50 ms; DESIGN §12's 50 ms stays the design target. The PD-04 keyboard spec focuses and checks the ring together until both hold (a key press first), so a section streamed in after hydration can't leave it checking an unfocused button.
+Why: the human (23 Nov): a 58 ms task under 4× CPU emulation on a CI runner is noise, not a regression (main fails the same way); PD-07 sat for two sessions on such overshoots and an unrelated flake (CI 45167467906: focus ring `none` once, passed on retry). CLAUDE.md "Small overshoots don't block".
+Consequence / revisit when: a task over 65 ms, or the typical longest task creeping up, is a real regression and is fixed.
