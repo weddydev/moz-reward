@@ -155,10 +155,10 @@ test("[P1-07] wallet: memberships in order with progress, summary, a suspended s
   );
   expect(new Set(tops).size).toBe(1);
 
-  // A card opens the shop page; with typed View Transitions its logo and name morph into the page's
-  // (shared-element pairs keyed by shop id), and no other card's names form a pair. The page's data is held
-  // back 800 ms, as on a phone network: the loading state commits first and must already carry the card's
-  // logo and name (hero handoff), else the pair can't form (CI 44349714314 era: WebKit never morphed).
+  // A card opens the shop page. The page's data is held back 800 ms, as on a phone network: the loading state
+  // commits first and already carries the card's logo and name (hero handoff), so the gold wipe opens onto them.
+  // No shared-element morph forms (PD-08: the wipe replaces it; a morph layer would paint over the metal and the
+  // dock outside the circle): no shop logo/name view-transition group at all.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.route(`**/shops/${brew.shopId}*`, async (route) => {
     const headers = route.request().headers();
@@ -174,10 +174,8 @@ test("[P1-07] wallet: memberships in order with progress, summary, a suspended s
   await expect(page.getByTestId("member-shop-name")).toHaveText("Brew & Bloom Café");
   await expect(page.getByTestId("member-shop-name-loading")).toHaveCount(0);
   if (morphs) {
-    const pair = [vtName("shoplogo", brew.shopId), vtName("shopname", brew.shopId)];
-    await expect.poll(() => vtGroups(page)).toEqual(expect.arrayContaining(pair));
     const shopGroups = (await vtGroups(page)).filter((n) => /^vt-shop(logo|name)-/.test(n));
-    expect(shopGroups.sort()).toEqual([...pair].sort());
+    expect(shopGroups, `no morph pair for ${vtName("shopname", brew.shopId)}`).toEqual([]);
   }
 });
 

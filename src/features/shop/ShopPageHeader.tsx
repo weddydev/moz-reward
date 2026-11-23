@@ -45,8 +45,7 @@ export function ShopPageHeader({
   meta?: string | null;
   loading?: boolean;
   onBack?: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  /** Mark the parts that rise in the gold wipe: all three (the phone), or the area line only (the app, where the
-   *  logo and name ride the card's morph instead). */
+  /** Mark the parts that rise in the gold wipe: logo, name and area line (data-rise 0/1/2), or the area line only. */
   rise?: boolean | "meta";
   titleAs?: "h1" | "h3";
   unoptimized?: boolean;

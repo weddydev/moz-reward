@@ -68,11 +68,12 @@ async function settled(page: Page): Promise<void> {
           c.style.background,
           c.style.opacity,
           c.style.minHeight,
+          c.inert,
           c.getAnimations().length,
         ].join("|");
       }),
     )
-    .toBe("none|none|1|||||0");
+    .toBe("none|none|1|||||false|0");
 }
 
 const card = (page: Page) => page.getByTestId("wallet-card").first();
@@ -131,6 +132,35 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
     await page.goBack();
     await expect(page).toHaveURL("/wallet");
     await expect(card(page)).toBeVisible();
+    await settled(page);
+  });
+
+  test("[PD-08] leaving for another page mid-wipe (a dock tab while the shop is slow): the metal goes at once, nothing stays sunk", async ({
+    page,
+    signInAs,
+  }) => {
+    const me = await signInAs("customer");
+    const shopId = await seedShop(page, me.userId);
+    await page.route(`**/shops/${shopId}*`, async (route) => {
+      await new Promise((r) => setTimeout(r, 4000));
+      await route.continue().catch(() => undefined);
+    });
+    await page.goto("/wallet");
+    await expect(card(page)).toBeVisible();
+    await card(page).click({ position: { x: 60, y: 24 } });
+    await expect(page.getByTestId("wipe-stage")).toBeVisible();
+    // Under the metal the Wallet takes no taps; the dock does.
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => [...document.querySelectorAll<HTMLElement>("[data-route-content]")].pop()?.inert,
+        ),
+      )
+      .toBe(true);
+    await page.getByRole("link", { name: "Me" }).click();
+    await expect(page).toHaveURL("/me");
+    // Well inside the 5 s timeout: the page that committed settled it.
+    await expect(page.getByTestId("wipe-stage")).toBeHidden({ timeout: 1_000 });
     await settled(page);
   });
 
@@ -204,6 +234,8 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
     const shopId = await seedShop(page, me.userId);
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+      // Warm the shop route, so it commits right after the tap and the frames show the reference's +110 ms.
+      await page.goto(`/shops/${shopId}`);
       await page.goto("/wallet");
       await expect(card(page)).toBeVisible();
       // Every animation at a tenth of its speed, so the page commits while the wipe is still early.

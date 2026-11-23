@@ -178,7 +178,8 @@ function WalletShopCard({ card, eager }: { card: WalletCard; eager: boolean }): 
       logoUrl={card.logoUrl}
       coverUrl={card.coverUrl}
       gold={card.ingotSize ? card.progressGold.toLocaleString("en-GB") : null}
-      sharedId={card.shopId}
+      // No shared-element morph: the gold wipe carries the card into the shop, and a morph's layer would paint
+      // over the metal and the dock outside the circle (DECISIONS 23 Nov "PD-08 wipe replaces the morph").
       dimmed={unavailable}
       eager={eager}
       progress={card.progress}

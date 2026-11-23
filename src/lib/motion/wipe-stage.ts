@@ -95,10 +95,14 @@ function hideStage(): void {
 function unsink(content: HTMLElement | null): void {
   sinking?.cancel();
   sinking = null;
-  if (content) content.style.transformOrigin = "";
+  if (content) {
+    content.style.transformOrigin = "";
+    content.inert = false;
+  }
 }
 
 function abandon(): void {
+  clearTimeout(abandonTimer);
   clearWipe();
   const content = contentEl();
   if (content) content.style.opacity = "";
@@ -108,6 +112,15 @@ function abandon(): void {
   const fade = anim(s, [{ opacity: 1 }, { opacity: 0 }], { duration: WIPE.reducedFadeMs });
   if (fade) fade.onfinish = hideStage;
   else hideStage();
+}
+
+/**
+ * A page committed that no wipe was waiting for (a dock tab or browser back before the shop arrived, or back to
+ * somewhere other than the Wallet): whatever is on screen of a wipe goes at once, the page un-sinks, nothing waits
+ * for the 5 s timeout. Harmless when no wipe is running (`RouteContent` calls it on every other navigation).
+ */
+export function settleWipe(): void {
+  abandon();
 }
 
 /**
@@ -146,6 +159,9 @@ export function startWipe(
       ],
       { duration: WIPE.walletMs },
     );
+    // Under the metal the Wallet is invisible: a tap on the gold must not reach its cards (the reference's `open`
+    // guard). The dock and rail stay live.
+    content.inert = true;
   }
   const at = { x: p.x + box.left, y: p.y + box.top };
   setTimeout(() => {

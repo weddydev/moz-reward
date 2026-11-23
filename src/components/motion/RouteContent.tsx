@@ -9,7 +9,7 @@ import {
   FADE_IN_PLACE_QUERY,
   viewTransitionActive,
 } from "@/lib/motion/route-transitions";
-import { openWipe, returnWipe } from "@/lib/motion/wipe-stage";
+import { openWipe, returnWipe, settleWipe } from "@/lib/motion/wipe-stage";
 
 /** Lets a nested `RouteContent` tell its parent it animated this navigation (the innermost one wins). */
 const Claim = createContext<((pathname: string) => void) | null>(null);
@@ -59,6 +59,8 @@ export function RouteContent({
         wiped.cancel();
       };
     }
+    // Any other page: a wipe still showing (it pointed elsewhere, or the user left mid-way) goes now.
+    settleWipe();
     const root = getComputedStyle(document.documentElement);
     const duration = cssTimeMs(root.getPropertyValue("--dur-slow"));
     if (duration <= 0) return;

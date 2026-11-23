@@ -75,7 +75,7 @@ export function MemberShopPage({
           logoUrl={shop.logoUrl}
           coverUrl={details?.shop.coverUrl ?? null}
           meta={details ? areaLine(details.shop.category, details.shop.town) : null}
-          rise="meta"
+          rise
         />
         <div className="mt-4 flex flex-col gap-3" data-rise={3}>
           {status ? (
