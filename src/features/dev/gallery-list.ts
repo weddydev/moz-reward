@@ -22,6 +22,7 @@ export const GALLERY_PRIMITIVES = [
   "LiquidChoice",
   "MilestoneTrack",
   "Modal",
+  "OfferCard",
   "ProgressBar",
   "RadioGroup",
   "SegmentedControl",
