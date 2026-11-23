@@ -834,16 +834,21 @@ test("[PD-06] member card rapid flips retarget, never queue: it ends on the side
       c.dataset.clicks = String(Number(c.dataset.clicks) + 1);
     });
   });
+  const received = (): Promise<number> => card.evaluate((c) => Number(c.dataset.clicks));
   for (let i = 0; i < 5; i++) await tapCard(page, hasTouch);
-  const taps = await card.evaluate((c) => Number(c.dataset.clicks));
+  // End on the back (on touch screens the front sways without end, so it never settles): a lost tap gets one
+  // more, at most three, each still landing on a card turning from the one before.
+  for (let extra = 0; extra < 3 && (await received()) % 2 === 0; extra++)
+    await tapCard(page, hasTouch);
+  const taps = await received();
   // At least one tap landed on a card still turning from the one before, so the turn had to retarget.
   expect(taps).toBeGreaterThanOrEqual(2);
-  const side = taps % 2 === 1 ? "back" : "front";
-  await settledOn(page, side);
+  expect(taps % 2, `${String(taps)} taps reached the card`).toBe(1);
+  await settledOn(page, "back");
   // Keys always reach the focused card: four turns end where they started.
   await card.focus();
   for (let i = 0; i < 4; i++) await page.keyboard.press("Enter", { delay: 0 });
-  await settledOn(page, side);
+  await settledOn(page, "back");
 });
 
 test("[PD-06] member card: a mouse tilts it and lights the glare; leaving fast springs it back upright", async ({
