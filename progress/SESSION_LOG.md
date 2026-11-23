@@ -906,3 +906,4 @@ CI 45108161552 (`d59a2eb`, every spec Chromium + WebKit) GREEN → main via the 
 Staging smoke (release `74fba5b`, before PD-B): health live/ready 200, `/sign-in` + `/dev/molten` + `/dev/ui` 401 (basic auth). Docker tidy: 10 anonymous volumes removed, build cache 5.6 GB (≤ 5 GB LRU rule applied).
 Reviews: code-review MEDIUMs fixed (above); security review not needed. Close's own commits after `ec5d6cc` not reviewed (NOT VERIFIED; for the PD-C close). HUMAN_TASKS: H-13 lists the PD-B real-device checks; H-49 needed at the PD-C close. C-78 (WebKit slider track press) → PD-11.
 Handoff (talha.syed, 23 Nov): baton freed; autopilot off; next session plain `/resume` → PD-07. Main CI 45112526437 + staging deploy of `d59a2eb` not verified at handoff (check first).
+Handoff by talha.syed (04:52 UTC): baton free; KNOWN_ISSUES.md added; main CI 45112526437 running.
