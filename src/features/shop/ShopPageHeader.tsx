@@ -1,5 +1,4 @@
 import { ChevronLeft } from "lucide-react";
-import { SharedElement } from "@/components/motion/SharedElement";
 import { TransitionLink } from "@/components/motion/TransitionLink";
 import { ShopCoin, ShopImage } from "@/components/ui/ShopImage";
 
@@ -16,8 +15,8 @@ const COVER_SIZES = "(min-width: 1024px) 1056px, (min-width: 592px) 560px, 100vw
 /**
  * The shop page's cover (PD-08; reference `.cover`, `.s-logo`, `.back`): the shop's photo under a dark-to-clear
  * gradient (or the dark metal surface when it has none), the name and area line on it, the logo in a gold ring
- * in the corner and a glass back button to the Wallet. Logo and name are the shared elements a Wallet card
- * morphs into (P1-07). The page renders the name as its `h1`; the loading state renders the same cover from the
+ * in the corner and a glass back button to the Wallet. No shared-element morph: the gold wipe carries a Wallet
+ * card into it (PD-08; DECISIONS "wipe replaces the morph"). The page renders the name as its `h1`; the loading state renders the same cover from the
  * tapped card (`hero-handoff`) with `loading`: no photo yet (a shimmer in its place), and the name is a hidden
  * `p`, so it isn't a second heading or announced twice. The back button works in both.
  *
@@ -26,7 +25,6 @@ const COVER_SIZES = "(min-width: 1024px) 1056px, (min-width: 592px) 560px, 100vw
  * (an `h3` inside the gallery's section) and `unoptimized` (the reference's own JPEGs, compared pixel for pixel).
  */
 export function ShopPageHeader({
-  shopId,
   name,
   logoUrl,
   coverUrl = null,
@@ -37,7 +35,6 @@ export function ShopPageHeader({
   titleAs = "h1",
   unoptimized = false,
 }: {
-  shopId: string;
   name: string;
   logoUrl: string | null;
   coverUrl?: string | null;
@@ -94,35 +91,31 @@ export function ShopPageHeader({
         </TransitionLink>
       )}
       <div className="m-cover-text" aria-hidden={loading || undefined}>
-        <SharedElement kind="shopname" id={shopId}>
-          <Title
-            className="m-cover-title"
-            data-testid={loading ? "member-shop-name-loading" : "member-shop-name"}
-            {...at(1)}
-          >
-            {name}
-          </Title>
-        </SharedElement>
+        <Title
+          className="m-cover-title"
+          data-testid={loading ? "member-shop-name-loading" : "member-shop-name"}
+          {...at(1)}
+        >
+          {name}
+        </Title>
         {meta ? (
           <p className="m-cover-meta" {...at(2)}>
             {meta}
           </p>
         ) : null}
       </div>
-      <SharedElement kind="shoplogo" id={shopId} fit="cover">
-        <span
-          className="m-cover-logo"
-          aria-hidden="true"
-          data-testid={loading ? undefined : "shop-logo"}
-          {...at(0)}
-        >
-          {logoUrl ? (
-            <ShopImage src={logoUrl} size={LOGO} eager unoptimized={unoptimized} />
-          ) : (
-            <ShopCoin name={name} size={LOGO} />
-          )}
-        </span>
-      </SharedElement>
+      <span
+        className="m-cover-logo"
+        aria-hidden="true"
+        data-testid={loading ? undefined : "shop-logo"}
+        {...at(0)}
+      >
+        {logoUrl ? (
+          <ShopImage src={logoUrl} size={LOGO} eager unoptimized={unoptimized} />
+        ) : (
+          <ShopCoin name={name} size={LOGO} />
+        )}
+      </span>
     </header>
   );
 }

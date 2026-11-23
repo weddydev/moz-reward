@@ -1,4 +1,3 @@
-import { SharedElement } from "@/components/motion/SharedElement";
 import { ShopCoin, ShopImage } from "./ShopImage";
 import type { ReactNode } from "react";
 
@@ -10,8 +9,7 @@ export const WALLET_CARD_SIZES = "(min-width: 1280px) 400px, (min-width: 768px) 
  * in a gold ring (or the metal coin), the name (one line, ellipsis) over the address, the gold count, a gold
  * progress bar and the progress label with the badges beside it (PRODUCT §4). A shine sweeps across every 5 s
  * (staggered 0.5 s down a stack by its slot's `--i`). The card's outer element is the caller's (`as`: a link in the
- * Wallet, a button on /dev/molten), so the stack's sibling rules see the cards. `sharedId` names the logo and
- * name as the shared elements that morph into the shop page header (P1-07). `dimmed` greys a suspended or closed
+ * Wallet, a button on /dev/molten), so the stack's sibling rules see the cards. `dimmed` greys a suspended or closed
  * shop (its badge says which).
  */
 export function ShopCard({
@@ -24,7 +22,6 @@ export function ShopCard({
   progressLabel,
   progressName,
   badges,
-  sharedId,
   dimmed = false,
   unoptimized = false,
   eager = false,
@@ -42,7 +39,6 @@ export function ShopCard({
   /** The progress bar's accessible name; defaults to "<name> progress". */
   progressName?: string;
   badges?: ReactNode;
-  sharedId?: string;
   dimmed?: boolean;
   unoptimized?: boolean;
   /** Load the photos at once (cards in the first screenful). */
@@ -83,21 +79,9 @@ export function ShopCard({
         )}
         <span className="m-wc-shade" aria-hidden="true" />
         <span className="m-wc-top">
-          {sharedId ? (
-            <SharedElement kind="shoplogo" id={sharedId} fit="cover">
-              {logo}
-            </SharedElement>
-          ) : (
-            logo
-          )}
+          {logo}
           <span className="m-wc-id">
-            {sharedId ? (
-              <SharedElement kind="shopname" id={sharedId}>
-                {title}
-              </SharedElement>
-            ) : (
-              title
-            )}
+            {title}
             {address ? <span className="m-wc-addr">{address}</span> : null}
           </span>
           {gold ? <span className="m-wc-gold">{gold}</span> : null}

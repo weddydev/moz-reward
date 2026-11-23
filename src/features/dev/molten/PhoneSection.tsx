@@ -265,7 +265,6 @@ export function PhoneSection(): React.JSX.Element {
             <div className="m-wipe" ref={wipe} hidden />
             <div className="m-view m-view-shop" ref={shopView} hidden data-parity="shop">
               <ShopPageHeader
-                shopId="phone"
                 name={shop.name}
                 meta={shop.meta}
                 logoUrl={photo(`${shop.id}-logo`)}

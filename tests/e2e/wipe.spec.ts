@@ -170,9 +170,10 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
   }) => {
     const me = await signInAs("customer");
     const shopId = await seedShop(page, me.userId);
-    // Everything for the shop page is slow, the prefetch too, so nothing can commit early.
+    // Everything for the shop page is slow, the prefetch too, so nothing can commit early (1.8 s: past the
+    // circle's 620 ms, well inside the 5 s after which an untaken wipe is abandoned).
     await page.route(`**/shops/${shopId}*`, async (route) => {
-      await new Promise((r) => setTimeout(r, 2500));
+      await new Promise((r) => setTimeout(r, 1800));
       await route.continue();
     });
     await page.goto("/wallet");
@@ -243,18 +244,20 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
       await cdp.send("Animation.enable");
       await cdp.send("Animation.setPlaybackRate", { playbackRate: 0.1 });
       await card(page).click({ position: { x: 60, y: 24 } });
-      // The shop content's circle exists once the page committed; then every animation is put on the tap's clock
-      // (the metal circle started at the tap) and frozen at each instant.
+      // The shop content's circle exists once the page committed (not the Wallet's sink, which starts at the
+      // tap); then every animation is put on the tap's clock (the metal started at the tap) and frozen.
       await expect
         .poll(() =>
           page.evaluate(
             () =>
               [...document.querySelectorAll<HTMLElement>("[data-route-content]")]
                 .pop()
-                ?.getAnimations().length ?? 0,
+                ?.getAnimations()
+                .some((a) => (a.effect as KeyframeEffect | null)?.getKeyframes()[0]?.clipPath) ??
+              false,
           ),
         )
-        .toBeGreaterThan(0);
+        .toBe(true);
       for (const ms of [300, 500, 800]) {
         await page.evaluate((t) => {
           const metal = document.querySelector(".m-wipe-stage > .m-wipe")?.getAnimations()[0];

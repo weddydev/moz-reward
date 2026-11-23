@@ -3,13 +3,10 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ShopPageHeader } from "./ShopPageHeader";
 
-const SHOP = "8f0d6c1e-0000-4000-8000-000000000001";
-
 describe("[PD-08] shop page cover", () => {
   it("[PD-08] the page's cover: photo under the shade, name as the h1 with its area line, logo in the corner, back to the Wallet", () => {
     const { container } = render(
       <ShopPageHeader
-        shopId={SHOP}
         name="Brew & Bloom Café"
         logoUrl="/demo/shops/brew-logo.jpg"
         coverUrl="/demo/shops/brew-cover.jpg"
@@ -35,7 +32,6 @@ describe("[PD-08] shop page cover", () => {
     const onBack = vi.fn();
     const { container } = render(
       <ShopPageHeader
-        shopId="phone"
         name="Brew & Bloom Café"
         logoUrl="/demo/shops/brew-logo.jpg"
         coverUrl="/demo/shops/brew-cover.jpg"
@@ -71,7 +67,7 @@ describe("[PD-08] shop page cover", () => {
 
   it("[PD-08] no photos: the metal ground under the shade and the monogram coin, never bare initials on a flat fill", () => {
     const { container } = render(
-      <ShopPageHeader shopId={SHOP} name="Pedal & Co." logoUrl={null} coverUrl={null} />,
+      <ShopPageHeader name="Pedal & Co." logoUrl={null} coverUrl={null} />,
     );
     expect(container.querySelector("img")).toBeNull();
     expect(container.querySelector("span.m-cover-photo")).toHaveAttribute("aria-hidden", "true");
@@ -82,7 +78,6 @@ describe("[PD-08] shop page cover", () => {
   it("[PD-08] loading (from a tapped card): the same cover with the card's logo and name, hidden from the a11y tree; the photo shimmers; back still works", () => {
     const { container } = render(
       <ShopPageHeader
-        shopId={SHOP}
         name="Brew & Bloom Café"
         logoUrl="/demo/shops/brew-logo.jpg"
         coverUrl="/demo/shops/brew-cover.jpg"

@@ -235,7 +235,7 @@ export function openWipe(
     );
     if (a) parts.push(a);
   }
-  const done = (): void => {
+  const reset = (): void => {
     el.style.position = "";
     el.style.zIndex = "";
     el.style.background = "";
@@ -243,9 +243,19 @@ export function openWipe(
     hideStage();
   };
   if (!open) {
-    done();
+    reset();
     return null;
   }
+  // A safety net: if the circle's `finished` never settles (a frozen or throttled timeline), the page still
+  // leaves the wipe once its time is up (and a second).
+  const guard = setTimeout(
+    reset,
+    remainingDelay(WIPE.shopDelayMs, w.elapsed) + WIPE.durationMs + 1000,
+  );
+  const done = (): void => {
+    clearTimeout(guard);
+    reset();
+  };
   // Every part lands with the circle's end or later: if the circle is cancelled (another navigation), they go too.
   open.finished.then(done, () => {
     for (const a of parts) a.cancel();

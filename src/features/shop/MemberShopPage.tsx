@@ -70,7 +70,6 @@ export function MemberShopPage({
     <div className={SHOP_PAGE_CLASS} data-page="member-shop">
       <div className="flex flex-col">
         <ShopPageHeader
-          shopId={shop.shopId}
           name={shop.name}
           logoUrl={shop.logoUrl}
           coverUrl={details?.shop.coverUrl ?? null}

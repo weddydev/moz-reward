@@ -21,7 +21,7 @@ export function ShopPageLoading(): React.JSX.Element {
     <div role="status" data-page="loading" className={SHOP_PAGE_CLASS}>
       <span className="sr-only">Loading</span>
       {hero ? (
-        <ShopPageHeader shopId={hero.id} name={hero.name} logoUrl={hero.imageUrl} loading rise />
+        <ShopPageHeader name={hero.name} logoUrl={hero.imageUrl} loading rise />
       ) : (
         <Skeleton className="m-cover" rounded="lg" />
       )}
