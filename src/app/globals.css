@@ -1,4 +1,8 @@
-@import "tailwindcss";
+/* Tailwind scans src/ only, where class names live: it reads every word of every file it scans as a possible
+   class, so prose in docs, progress notes and tests created utilities, and a note naming the backdrop filter property registered
+   nine custom properties carried by every element (PD-07: −4 to −12 fps on the pixel7 FX stress; KNOWN_ISSUES
+   KI-21). `pnpm check:bundle` fails on a registered property not on its reviewed list. */
+@import "tailwindcss" source("..");
 @import "../styles/tokens.css";
 @import "../styles/molten.css";
 @import "../styles/font-fallbacks.css";
