@@ -184,8 +184,8 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: pw-webkit-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      - run: pnpm exec playwright install --with-deps webkit
+          key: pw-chromium-webkit-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium webkit # motion.spec's frame screenshots launch Chromium from WebKit projects
       - name: E2E on WebKit (task + changed specs)
         env:
           PUSH_BEFORE: ${{ github.event.before }}
