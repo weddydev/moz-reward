@@ -2364,12 +2364,12 @@ html:root.rm .m-wcard {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: var(--coin-face);
+  background: var(--monogram-face);
   box-shadow:
     inset 0 0 0 2px rgba(142, 100, 23, 0.55),
     inset 0 2px 3px rgba(255, 246, 214, 0.8),
     inset 0 -3px 5px rgba(90, 61, 12, 0.35);
-  color: var(--coin-ink);
+  color: var(--monogram-ink);
   font:
     600 calc(var(--coin-size, 36px) * 0.44) / 1 var(--font-fraunces),
     "Fraunces Fallback Liberation",
