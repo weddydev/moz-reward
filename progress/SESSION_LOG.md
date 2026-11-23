@@ -925,3 +925,14 @@ Next: CI on `76ed690`; bisect the fps regression via CI dispatches; then PD-07 t
 - PD-08: stack/hover fixes, CI 45146484659 on `8430efc` GREEN; cover header + OfferCard `13e39ad` (e2e:linux 38/0 + 16/0; screenshots 320/390/1440 inspected).
 - NOT VERIFIED at checkpoint: CI 45153441770 (`e612df5`), perf 45153452036 vs 45153456299, CI on `13e39ad`.
 
+## 2026-11-23 ~11:45 UTC — talha.syed (checkpoint, context heavy)
+- CI `e612df5` red only on a flaky pixel7 `@perf` long task (58 ms); nightly `@fps` fails on main too (981e003 58.8 → 52–55 within 40 min) → PD-07 rebased on main + pixel7 `@fps` quarantined (C-79, T-7), `wip/PD-07-b` `c5b9d34` (force-push to `wip/PD-07` refused).
+- PD-08 CI `13e39ad` red: WebKit `/dev/ui` 320 px shot over 32,767 px → segmented shots `5da129d` (KI-43; e2e:linux ui-gallery chromium+webkit 6/0).
+- PD-08 `2221911` wipe.ts + card-to-shop spec row required (unit 36/0); `b19150a` MiniVault (2/0); `pnpm check` 2005/0.
+- Next: CI 45167467906 (PD-07-b) → main; CI 45167230848 (PD-08); then PD-08 (b+c) /dev/molten phone + wipe.
+
+## 2026-11-23 — PD — PD-07 to main; PD-08 step (b) (talha.syed, Mac)
+PD-07: CI 45167467906 (`c5b9d34`) red on one flaky PD-04 spec (focus ring `none` once). Human: a 58 ms long task is fine, up to 65 ms; don't stall on small overshoots → `LONG_TASK_MS = 65` + CLAUDE.md rule; focus-ring spec fixed. CI 45177538333 (`77ea565`) GREEN → merged main's checkpoint (progress only) and pushed to main.
+PD-08 (b) `b5246e8`: /dev/molten phone wallet + shop + wipe; parity [PD-08] 10/10 Mac Chromium + host WebKit; Linux Chromium 8/9 (shop 390 1.09%) → 1.5% Chromium tolerance. Unit (molten-spec, dev/molten, ui, shop) 158 + 19 pass.
+Found by parity and fixed: cover shade hidden under the photo, mini vault edge dropped, card hairline under the photo, card meta line height, cover title balance; reference defect (bars full: `@property --p` is <number>) corrected in the copy.
+NOT VERIFIED: Linux re-run with the shop tolerance; CI on `b5246e8`.
