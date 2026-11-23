@@ -1,0 +1,192 @@
+# Moz Rewards — Instructions for Claude Code
+
+@AGENTS.md
+
+You are building **Moz Rewards**, a UK loyalty and engagement web app (PWA + Android app on Google Play), built to agency standard on a minimal budget: one VPS and free tiers (DECISIONS "Plan v5"), with a documented path to scale. You work on autopilot, task by task, and must leave the project resumable at any moment.
+
+This file is loaded every session, so it stays short and points to the single sources. Detailed specs live in `docs/` — read only the section the task needs.
+
+## 1. Session protocol (always)
+
+**Two developers, one at a time.** They take turns from different machines (never simultaneously). The Git repo is the only shared memory. The **Baton** line in PROGRESS.md shows who is working.
+
+**Start of every session (including after `/clear`):** use `/resume`. If not used: `git pull --rebase origin main`, read `progress/PROGRESS.md` (stop and ask if the other developer holds the baton), find the next unticked task in `docs/PHASES.md`, open **that task's section** in `docs/phases/<phase>.md` plus the phase header, and read exactly the doc sections its **Read** list names. Don't scan the repo to "get oriented".
+
+**Phase start:** before the first task of a phase, run one brief review of that phase file: every task gets measurable Acceptance criteria, Edge cases, Tests and Verify. Commit the improved brief.
+
+**Each task:**
+1. Test first for logic (TESTING §7). Build.
+2. `pnpm gate:task` (TESTING §4 is the single source for every gate). Security-relevant tasks also run `security-reviewer` on the task diff.
+3. Walk the Acceptance criteria and incoming CARRIED rows one by one with evidence. Unmet → keep working, or move it to a CARRIED row **and** the target task's criteria.
+4. **One commit per task:** code + tests + progress files (PROGRESS Now/Next, PHASES tick, ≤ 5 evidence lines in SESSION_LOG). Conventional Commit message. Merge per the **GitHub mode** in PROGRESS (`GITHUB_MODE`): `pro` → branch `t/<task-id>`, PR, `gh pr merge --auto --squash` (branch protection requires CI); `free` → push the task's `wip/` branch, and once that push's CI is green push the same commit to `main` through the committed pre-push hook (it runs `pnpm gate:task`, refuses force-pushes, and refuses a main commit CI hasn't passed; DECISIONS 22 Nov); CI runs on every push either way. Pushes only to `wip/*` checkpoint branches run the fast `pnpm check` in the hook instead; CI still runs the full set on them, and the task-closing push keeps the full gate (DECISIONS 14 Nov).
+5. Sound: `node .claude/hooks/notify.mjs task "<task ID> done: <name>" < /dev/null`
+6. Start the next task. Check the previous push's CI result before the next push; red CI is fixed first. **Never wait idle for CI** (human, 14 Nov): no `sleep`/`until`/`gh run watch` loops; push, carry on, and look at the result before the next push (or let a background command notify you). **The same for local background jobs (human, 20 Nov 2026):** while a gate, E2E run or CI run is going, keep working on whatever does not depend on its result (the next task on its own `wip/` branch, docs, reading the next brief); never end a turn just to wait. Wait only when nothing left can move without that result.
+
+**Autopilot mode (human's standing rule, 14 Nov 2026) — off by default.** The default protocol above is the normal way of working. Autopilot switches on only when the human says "switch to autopilot" or runs `/autopilot` (or `/resume autopilot`), and off when they say "autopilot off" or the session ends. Rules: `.claude/commands/autopilot.md`. In short: the main session only orchestrates and every task step runs in a fresh subagent that returns a short summary, so the main context stays small and the 5-hour limit isn't burned on re-reading; same gates, reviews, progress files and commits as the default protocol; it keeps going through the Cadence review stops but stops for a 🔴 blocker with nothing else to do, a decision only the human can make, an open HIGH/BLOCK finding it can't fix, or main context ≥ ~150k (then `/checkpoint` and "Run `/clear`, then `/resume autopilot`").
+
+**Standing rules from the human apply on both laptops.** When the human gives a rule meant to last ("from now on", "always", "never", "every time"), write it into this file (or the doc it belongs to) in the same session, commit and push it — never only into Claude's local memory or local settings, which exist on one laptop only. On `/resume`, rules in this file are the full set; if the human mentions a rule that isn't here, add it.
+
+**CLAUDE.md is backed up before every change (human, 23 Nov 2026):** before editing this file, copy the current version to `docs/backup/CLAUDE.md.<YYYY-MM-DD>.bak` (add `-2`, `-3` for a second edit that day) and commit the backup with the edit. A tidy-up only merges duplicated wording, never drops or weakens a rule; its diff is shown to the human before it is committed. When something starts going wrong after a CLAUDE.md change, diff against the latest backup first to see whether the change caused it.
+
+**Cadence (human's standing rule):** stop at sub-phase/task-group granularity, not after every single task: after 3–5 tasks (fewer if large), and always at phase end, stop for review: everything pushed, then `node .claude/hooks/notify.mjs review "<what was done>" < /dev/null` and a short summary (done, verified, next, open 🔴/🟠 human tasks). Stop early if blocked on a 🔴 human task with nothing else to do, or when context is heavy (`/checkpoint` first).
+
+**Every stop says what to do with the context (human's standing rule, 10 Nov 2026):** whenever Claude stops working for any reason (task or step checkpoint, review stop, blocked on a human task, handoff, a question), the last line of the reply tells the human plainly what to do next with the session: "Now run `/clear` (or open a new chat), then `/resume`." when the work is saved and pushed, or "Don't clear yet: <what is still unsaved or needed>" when it is not. Never leave the human guessing whether clearing is safe.
+
+**Prove it before saying "clear" (human's standing rule, 11 Nov 2026):** the "Run `/clear`" line may only follow a passing `pnpm clear:check` run in the same reply, after the last commit and push (quote its verdict line). It fails on: uncommitted or stashed work; the current branch or main not pushed; PROGRESS "Last updated" or a SESSION_LOG entry on origin/main not dated today; work on a wip branch whose pushed HEAD and name aren't in PROGRESS. Before running it, also make sure by reading that the handoff names the exact next step, what is half-done, what is untested (incl. CI still running), and that finished tasks are ticked. A failing check → fix and re-run, or say "Don't clear yet: <reason>".
+
+**Pace (human's standing rule, 20 Nov 2026; replaces the 10 Nov "done by 10 Dec" target):** there is **no deadline**. Don't follow, track or report target dates, per-phase dates, projections or slips; we move at our own pace. Work fast and efficiently, but never by cutting scope: every acceptance criterion, edge case, security measure and test stays. Speed comes from less overhead (fewer re-reads, no repeated green suites, batched progress updates), never from lower quality.
+
+**Design first (human's standing rule, 20 Nov 2026):** the Molten redesign (phase PD, `docs/phases/PD.md`) runs before every other open task. Work resumes with the P1-B close only after PD-C is closed.
+
+**Molten is the visual spec (human's standing rule, 20 Nov 2026):** the app must look, move and feel exactly like the approved demo in `design/reference/molten/` (same design, same animations, same quality), proven by the parity harness (PD-01), never by eye alone.
+
+**Sub-phase close:** `/subphase-complete` (light: CI green, staging smoke, Sentry, reviews of unreviewed commits, scoped QA if screens changed). **Phase close:** `/phase-complete` (the one heavy gate + demo). **Handover:** `/handoff`. **Context heavy:** `/checkpoint`.
+
+**Decisions:** any choice a future session might question goes in `progress/DECISIONS.md` (2–4 lines; plays a sound).
+
+## 2. Source-of-truth order
+
+1. Explicit instruction from the human in the current session
+2. `docs/COMPLIANCE.md` and `docs/SECURITY.md` (never traded away)
+3. `docs/PRODUCT.md` (what to build)
+4. `design/reference/molten/` (the approved Molten demo: exact visual and motion spec for everything it shows)
+5. `docs/DESIGN.md` (how it looks and moves; v2 quotes the Molten reference)
+6. `design/reference/` images (layout guide for screens Molten doesn't show; DESIGN.md wins)
+7. `docs/ARCHITECTURE.md` (how it is built)
+
+## 3. Working principles
+
+- **Agency-grade quality, built to run at scale.** ENGINEERING.md §1 is the definition of done; §17 lists forbidden shortcuts. Speed comes from structure, never from skipping criteria, edge cases or tests.
+- **Production parity.** Evidence comes from a production build (`pnpm e2e`), never from `next dev` alone. Every value SECURITY.md specifies is set explicitly in config — never left to a library default (ENGINEERING §14).
+- **Every CI check has a local twin** (`pnpm check`, `pnpm gate:task`). No gate is ever "pending": if infrastructure is missing, the infrastructure task moves earlier.
+- **Free-tier discipline.** Every free quota (Actions credit, R2, Resend/Brevo, Sentry, UptimeRobot) has a 70% alert and a documented degradation (ARCHITECTURE §10). Never add a paid service without a DECISIONS entry and the human's approval.
+- **Secrets:** laptops hold dev-only keys. Staging and production secrets live only in GitHub secrets, root-only files the deploy job writes on the host, and the developers' password manager. Never ask the human to paste a secret into chat; never read one.
+- **Right-sized verification.** Heavy suites run once per level (TESTING §4): fast checks per task, CI on every push, a light sub-phase close, one heavy phase gate. Never re-run a green suite "to be sure"; `--repeat-each` only to diagnose a flake.
+- **Judgment over rigid budgets.** Bundle/Lighthouse/coverage targets: ≤ 15% over for clear user value is accepted with a one-line DECISIONS entry; more → optimise first. Don't spend > ~30 min shaving a few KB. **Animation (human, 20 Nov 2026):** budgets may grow slightly when it clearly buys the approved Molten look (DESIGN §12 judgment bands), each with a DECISIONS line; the frame budget (60 fps, INP ≤ 200 ms) never moves; long tasks aim for ≤ 50 ms, and the throttled specs fail only above 65 ms (`LONG_TASK_MS`; human, 23 Nov 2026).
+- **Minimise human work; track the rest in `progress/HUMAN_TASKS.md`** (ID, 🔴/🟠/🟢, needed by, why, time, exact steps). Finished tasks move to `progress/HUMAN_TASKS_DONE.md` (index + log + steps as followed; human, 23 Nov 2026), so the open list stays current. Add tasks as early as you can foresee them. Review the list at every sub-phase and phase close.
+- **Do it yourself (human's standing rule, 12 Nov 2026):** every command, script, CLI, SSH or config step Claude can run, Claude runs itself (key generation, `ssh` to the VPS, `gh secret set` piped from a local file without displaying it, installs via `winget`/`brew`). Ask the human only for what needs them: account sign-ups, payments, identity verification, browser dashboards Claude can't reach, typing a passphrase into a prompt, copying a secret that exists only in a provider dashboard into the password manager, approval prompts and decisions. Write HUMAN_TASKS steps that way: the human's part only, with Claude's part named as Claude's.
+- **Don't invent scope.** If PRODUCT.md is silent, choose the simplest sensible behaviour, record it in DECISIONS.md, move on.
+- **Temporary choices are tracked (human's standing rule, 14 Nov 2026):** whenever we do something "for now" that production must not keep (a provider swapped, a security control replaced by a weaker equivalent, a setting relaxed), add a line to `progress/TEMPORARY.md` in the same commit (what we did, why, the real fix, by when), plus a DECISIONS entry and a CARRIED row to the resolving task. P5-14 can't be ticked while a line is open; every `/phase-complete` reply lists the open lines.
+- **Carried work is tracked, not remembered:** CARRIED table in PROGRESS.md; a task can't be ticked with an open incoming carry.
+
+**Small overshoots don't block (human, 23 Nov 2026):** a timing or perf check a little over its limit (a 58 ms long task, a few ms or a fraction of a percent) is not a reason to stall a task or burn CI rounds. Be smart: if it's noise, widen that limit a little with a DECISIONS line; if a check flakes, fix the flake's cause (or the process that lets it block) and move on. Real regressions (well over a limit, or getting worse) are still fixed.
+
+### Debugging: root cause before fixes
+**Known issues first (human, 23 Nov 2026):** before debugging any test, gate, CI or tooling failure, search `progress/KNOWN_ISSUES.md` for the symptom; when such a problem is root-caused or quarantined, add or update its entry in the same commit as the fix. Then: reproduce, read the actual error and code path, form one hypothesis, confirm it with a quick check or a failing test, then fix. No speculative edits. After two failed attempts, stop, write down what you know, re-examine assumptions.
+
+### Verification before "done"
+Never report done without evidence from this session (command + result, screenshot inspected, curl). Anything unverified is said plainly and written in PROGRESS.md as NOT VERIFIED.
+
+## 4. Token economy (without lowering quality)
+
+- Read by section, not whole files; grep/glob before opening. Don't re-read a file you just wrote.
+- Long suites (sub-phase QA, phase gate) run in a background subagent that returns a compact summary; pipe command output through `tail`/`grep`.
+- Gate scripts print per-suite counts only. Don't paste logs.
+- PROGRESS.md ≤ 120 lines (~12 KB) of current state — the map lives in `progress/MAP.md`, LOW follow-ups in `progress/FOLLOWUPS.md`, old evidence in SESSION_LOG; SESSION_LOG ≤ 5 evidence lines per task; AUDIT.md is frozen history.
+- Reviews at sub-phase close cover only commits not already reviewed at task level.
+- Skills are loaded only when they add something (§6).
+
+**Speed and token rules (human's standing rule, 10 Nov 2026). None of these removes a check, criterion, review or test.**
+- Tasks stay as defined in the phase files (not split); a session works through them as before.
+- **No duplicate gate:** `gate:task` stamps the exact tree it passed (`scripts/lib/gate-stamp.ts`); the pre-push hook skips re-running it only for byte-identical code with the same task IDs (≤ 12 h old). Any change re-runs it; CI runs on every push.
+- **Quiet hooks:** lefthook prints failures only.
+- **`pnpm fix:changed` before checks (human, 21 Nov 2026; was `pnpm fix`):** ESLint autofix + Prettier on the changed and untracked files only (`--base origin/main` for a whole wip branch), before `typecheck`/`gate:task`, so import-order and format nits don't cost a round trip. The full `pnpm fix` only after an ESLint/Prettier config change. Nothing is checked less: `pnpm check`, `gate:task` and CI still lint and format-check the whole repo.
+
+**Gate speed rules (human's standing rule, 21 Nov 2026). Same steps, same checks; only waiting is removed.**
+- **Every gate step has a time limit** (`STEP_LIMITS` in `scripts/lib/gate.ts`, about 3× a normal run; `watchdog.mjs` kills the whole process tree). A step that hits it fails as **TIMED OUT**, which means a hung process, not a slow machine: read the step log (Vitest steps carry the hanging-process report), fix the cause at the root, then re-run. Never raise a limit just to get past a hang; a limit grows only when a suite really grew, with a DECISIONS line. `GATE_TIMEOUT_SCALE=2` is for a one-off run on a loaded machine, never a default.
+- **Don't wait blind on a background gate:** while it runs, glance at `.artifacts/gate/` step timestamps when you check in; a step whose log hasn't moved for longer than its limit means something is wrong, so look then, not an hour later.
+- **Docker stays tidy (human, 21 Nov 2026):** `pnpm docker:tidy --apply` at every `/subphase-complete` (step 7), never while a gate, E2E run or test container is running. It only removes what nothing uses (anonymous volumes, dangling images, unreferenced `moz-*` images, build cache older than 7 days and then down to 5 GB, least recently used first), so no build or test gets slower. Leave `.artifacts/screens/` alone (human: not worth it).
+- **Semgrep runs over a tar stream, not a bind mount (21 Nov 2026):** the same files CI scans; it was 20+ min on Windows through the mount, ~1.5 min now. Don't switch `pnpm sast` back to `-v`.
+- **Work beside a gate, not on its tree:** while a gate runs on a checkout, write the next task in a separate git worktree (`git worktree add ../moz-<task> -b wip/<task>`); run nothing CPU-heavy (typecheck, lint, builds, test suites) during a gate's E2E, parity or perf steps, since throttled timing specs then flake.
+- **Security design check first:** for a security-relevant task, `security-reviewer` checks the plan (data flows, limits, defaults, failure modes) before building; the full review of the final diff stays, and so does a re-review after any HIGH.
+- **Process audit rules (human, 21 Nov 2026; no check removed).** The week's logs showed main red on 5 of 7 days, almost all from local evidence that CI judges differently. So: (1) `gate:task` runs the task's E2E on the three Chromium projects in the Linux container plus the changed specs, and CI runs the task's and the changed specs on WebKit for every push (TESTING §4; no laptop WebKit is evidence: Linux WebKit in a laptop's Docker VM stalls at ~1 fps, 21 Nov; Windows WebKit, 12 Nov; DECISIONS 22 Nov); (2) `wip/*` pushes run `pnpm check` **and** `pnpm sast`; (3) **perf-budget specs** carry `@perf` and run only alone on one worker (`PERF=1 … --grep @perf --workers 1`; gate:task, gate:phase, CI, nightly); **frame-rate assertions** (fps, p95) carry `@fps` and run only on CI's runners nightly and in gate:phase (`FPS=1`; human, 22 Nov), since they measure the machine as much as the code, and the median of 3 runs decides, with the bounds unchanged (process fix 3, human 23 Nov 2026); a host too slow to emulate the reference device gives no verdict (skips locally, fails on CI); **timing specs** bound frames or animation time, never wall-clock time alone (a slow runner may be slow; a stuck loop must fail by frame count), and a perf-budget failure seen only on the Windows laptop or under a parallel local run is confirmed with `pnpm e2e:linux <spec> --project chromium` before it is treated as real or drives a redesign; (4) **hand over only at a clean boundary:** CI green on the last code push, or the handoff names the one failing item with its cause; never hand over a fix nobody has verified.
+- **Linux check for motion and visual specs (14 Nov):** a change to a motion, overlay or `@visual` spec (or the CSS/components they cover) runs those specs in `mcr.microsoft.com/playwright:v<installed version>-noble` against the production build before pushing (`pnpm e2e:linux <specs> --project chromium`; WebKit: CI on that push, plus the Mac's host WebKit while iterating, never as evidence); Linux-only flakes otherwise surface only in CI.
+- **Full 5-project E2E** at sub-phase close and in nightly CI, as TESTING §4 says — **plus immediately** for any change that affects every page (root layout, global CSS, `tests/e2e/support` fixtures, proxy/headers). Per task otherwise: `gate:task` only.
+- **Screenshots:** customer screens at 320, 390 (iPhone) and 1440, all inspected; admin and developer pages at 320 and 1440.
+- **Windows laptop works inside WSL2 (human, 22 Nov 2026).** Native Windows caused a class of failures the Mac and CI never see (Docker bind mounts, cmd.exe/`pnpm.cmd` spawns, process trees that can't be killed, Git Bash path rewriting, suites skipped there, Windows WebKit not being evidence, a slower CPU deciding perf verdicts). On the Windows laptop the repo lives on WSL2's Linux filesystem (`~/…`, never `/mnt/c`), and node, pnpm, Docker (Desktop's WSL integration), git, gh, ssh and Claude Code all run inside WSL2 (VS Code "WSL" window). Same gates, same checks, same evidence as the Mac. `gate:task` warns on native Windows; setup: HUMAN_TASKS H-51. No new Windows-only workaround code: a Windows-only failure is fixed by moving that work into WSL2.
+- **Time-box infrastructure problems (human, 22 Nov 2026).** A tooling, gate, CI or environment problem (not a product bug) gets about one hour of root-cause work. Not solved by then: write down what is known, quarantine that one item with a CARRIED row (plus a TEMPORARY line if it relaxes a check), and go back to product work. A check is never removed to get past it.
+- **QA agent stays on Opus, high effort** (`.claude/agents/qa-engineer.md`), never a cheaper model.
+
+**Token rules, round 2 (human's standing rule, 10 Nov 2026, after the plan audit). No acceptance criterion, edge case or test is removed.**
+- **Fresh context per task.** Most of a session's usage is the conversation being re-read on every step, so keep it short. After every task, and at a real stop (blocked, context heavy ≥ ~150k, handoff): `/checkpoint`, play the `task` sound, and stop with one line: "Checkpoint saved. Run `/clear`, then `/resume`." Not at every lettered step of a task (human, 22 Nov: progress-only commits were 9 of 22 on 21 Nov); a long task's lettered steps get one commit each, with the progress lines batched into the task's closing commit. The review stop every 3–5 tasks (Cadence, §1) is unchanged. After a `/clear`, `/resume` takes its light path (baton already yours, nothing new pulled).
+- **Security-relevant task = a task on this list** (this replaces the "touches auth, authz, sessions, rate limits, payments, uploads, crypto or PII" wording wherever it appears): P0-12, P0-15 · P1-04, P1-10, P1-12, P1-14, P1-16 · P2-03, P2-04, P2-05, P2-09, P2-12, P2-13, P2-15 · P3-02, P3-06, P3-07 · P4-03, P4-07, P4-08 · P5-01, P5-02, P5-07. Only these get the `security-reviewer` design check and the task-level review. Every other task's diff is reviewed once, at the sub-phase close, with the other unreviewed commits (`/subphase-complete` step 4). A re-review after a HIGH checks the fix's diff only; it is not a fresh full review.
+- **No full E2E at task level** beyond the every-page exception above: not after review fixes and not "before the tick". CI's full run on the push is the evidence. **Flake limit:** a failure that passes when its spec is re-run alone gets 20 minutes of root-cause work; if the cause isn't found, quarantine it (TESTING §7: PROGRESS note + CARRIED row; it blocks the phase gate) and carry on. **On CI (process fix 2, human 23 Nov 2026):** a test that passes only on retry is re-run alone 5× by `pnpm e2e:confirm-flakes`: fails again → the run is red (a real intermittent failure, fixed first); 5/5 → the run is green with a "Confirmed flake" warning, and the session that reads it adds a FOLLOWUPS line (test, run id, owning task); it is fixed or quarantined before the sub-phase close. gate:phase and the nightly/twice-weekly full runs still fail on any flaky test.
+- **Findings policy:** BLOCK/HIGH → fixed before the tick, test first. MEDIUM / should-fix → collected and fixed together in one batch before the sub-phase closes (one commit, one gate run), not one by one. LOW / nits → one line each in `progress/FOLLOWUPS.md`, not fixed, unless the line is already being changed.
+
+## 5. Non-negotiables
+
+- **Never** build review gating: every star rating gets identical "Post on Google" and "Send privately" options. No rewards for reviews, no offers triggered by feedback. (COMPLIANCE §1.)
+- **Never** commit secrets. `.env*` is git-ignored; only `.env.example` is committed.
+- **Every** data access is authorised and scoped (customer → own data; staff → own shop; admin → by role), with Row-Level Security as the second wall. Cross-shop tests are mandatory.
+- **Every** animation respects `prefers-reduced-motion` and never blocks interaction or navigation.
+- **No iOS App Store work.** iOS = Safari + installable PWA. Android ships to Google Play as a Trusted Web Activity.
+- Customer-facing copy is UK English, GBP (£), dates `7 Nov 2026`, times 24h or `5pm`.
+
+## 6. Skills (Emil Kowalski design engineering, in `.claude/skills/`)
+
+Load a skill only when it applies; DESIGN.md wins on any conflict:
+- `emil-design-eng`: a **new** interactive pattern or a signature moment (DESIGN §8). Not for routine screens built from existing primitives.
+- `mobile-native`: a **new** customer mobile screen or gesture.
+- `animation-performance`: only when an animation misses its frame budget.
+- `review-animations`: run by `design-reviewer` on diffs that add or change motion; fix what it blocks.
+Motion follows the three tiers in DESIGN §7.1 (human, 20 Nov 2026; replaces "everyday UI motion under 300 ms"): quiet < 300 ms, expressive 300–760 ms, signature 0.9–2.6 s, with the exact values of the Molten reference (DESIGN §7.4). Where a skill's guidance (e.g. "UI animations stay under 300ms") conflicts with the reference or DESIGN.md, the reference wins; the skills still apply on interruptibility, skip-on-tap, reduced motion and performance.
+
+## 7. Commands
+
+```
+pnpm dev               # local app (next dev)
+pnpm worker            # background jobs (validates env at start)
+pnpm relay --replay-since <ISO time with zone>   # after a restore: re-dispatch outbox rows (RUNBOOK)
+pnpm build / start     # production build / serve
+pnpm check             # typecheck + lint (incl. authz coverage, migrations, css-hex) + format:check + test:titles:strict + unit — no Docker
+pnpm gate:task         # task gate: check + test:int + build + task E2E on the production build (TESTING §4)  [built in P0-14]
+pnpm gate:phase        # the one heavy gate (TESTING §4)  [built in P0-14]
+pnpm test:unit         # vitest unit project
+pnpm test:int          # integration + authz (per-worker DBs; needs services:up)
+pnpm e2e               # Playwright against a PRODUCTION build (APP_ENV=test) — the evidence run
+pnpm e2e:dev           # Playwright against next dev — fast inner loop only, never evidence
+pnpm e2e:linux         # same production-build E2E, browsers in the Linux Playwright container (CLAUDE.md "Linux check")
+pnpm e2e:visual        # only the @visual snapshot tests (per-OS baselines; --update-snapshots accepts a new look); also part of gate:phase
+pnpm test:lighthouse   # Lighthouse CI (tests/perf, mobile throttled, DESIGN §12 budgets) on the production build; also part of gate:phase
+pnpm test:titles       # warn on tests without [Pn-nn]/[Jn]; --strict exits 1
+pnpm clear:check       # safe to /clear? clean tree, branch + main pushed, handoff on origin/main current (§1)
+pnpm test:mutation     # stryker on rules modules (phase gate, changed modules)
+pnpm test:parity       # Molten parity: reference vs /dev/molten (static, frames, curves, spec table)  [built in PD-01]
+pnpm test:load:smoke   # k6 smoke (BASE_URL/VUS/DURATION)
+pnpm test:live         # real-provider smoke; --require-all at phase gate (missing keys = NOT VERIFIED)
+pnpm db:migrate | db:generate | db:seed | db:reset   # drizzle migrations / generate / idempotent seed (baseline + demo data) / LOCAL reset
+pnpm db:seed --reset   # delete and re-create the demo shops and accounts (staging: weekly and before a demo)
+pnpm demo:credentials  # print this environment's demo sign-in details (derived, never stored); --codes = current TOTP codes
+pnpm format | format:check
+pnpm fix:changed       # eslint --fix + prettier --write on changed files only (run before typecheck / gate:task)
+pnpm fix               # the same on the whole repo (after an ESLint/Prettier config change)
+pnpm services:up | services:down   # Docker: Postgres+PostGIS, Redis, Mailpit, MinIO
+pnpm setup:env         # create .env.local with generated local secrets (never overwrites)
+pnpm check:bundle      # after build: fail if server-only env names appear in .next/static
+pnpm sast              # Semgrep SAST in Docker (same command as CI; part of gate:task; files sent as a tar stream)
+pnpm docker:tidy       # dry run of the Docker cleanup; --apply removes (sub-phase close; never during a gate)
+```
+Until P0-14 lands `gate:task`/`gate:phase` and the production-build `pnpm e2e`, run their steps by hand (TESTING §4). Update this list when scripts change.
+
+## 8. Slash commands
+
+`/resume` (pull, baton, verify, continue) · `/checkpoint` (save + push) · `/handoff` (verify, handoff note, free baton, push) · `/subphase-complete` (light close) · `/phase-complete` (heavy gate, demo, client notes) · `/security-review` · `/demo`
+
+## 9. Doc index
+
+| File | Read when |
+|---|---|
+| `progress/PROGRESS.md` | Start of every session (state, handoff, CARRIED table) |
+| `progress/MAP.md` | Locating code (instead of scanning the repo) |
+| `progress/KNOWN_ISSUES.md` | First, whenever a test, gate, CI or tool fails (symptom → cause → fix) |
+| `progress/TEMPORARY.md` | Before any stopgap/workaround; every phase close; P5 |
+| `progress/FOLLOWUPS.md` | When a follow-up's owner task starts; every sub-phase close |
+| `progress/HUMAN_TASKS.md` | Start of session (🔴 items), every close, whenever a new human dependency appears |
+| `progress/HUMAN_TASKS_DONE.md` | Looking up how a finished human task was done (index by ID) |
+| `docs/PHASES.md` | Finding the next task; ticking finished ones |
+| `docs/phases/<phase>.md` | The current task's section + phase header |
+| `docs/ENGINEERING.md` | §1 every session; other sections per the task's Read list |
+| `docs/TESTING.md` | §4 (gates) and §7–8 (rules, self-verification) for every task |
+| `docs/PRODUCT.md`, `DESIGN.md`, `ARCHITECTURE.md`, `SECURITY.md`, `COMPLIANCE.md` | The sections the task's Read list names |
+| `progress/DECISIONS.md` | Before changing an established pattern |
+| `design/reference/molten/` | Any visual or motion work: the exact spec (open `index.html`; values quoted in DESIGN §3, §6, §7.4, §8) |

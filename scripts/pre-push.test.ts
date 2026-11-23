@@ -33,9 +33,16 @@ describe("[P0-14] pre-push guard", () => {
     expect(refusal(line(A, Z, "refs/heads/t/P0-14"), () => false)).toBeNull();
   });
 
-  it("refuses a force (non-fast-forward) push, on main or any branch", () => {
+  it("refuses a force (non-fast-forward) push on main and on task branches", () => {
     expect(refusal(line(A, B), () => false)).toMatch(/non-fast-forward/);
     expect(refusal(line(A, B, "refs/heads/t/P0-14"), () => false)).toMatch(/non-fast-forward/);
+  });
+
+  it("allows a rewritten wip/* checkpoint branch (rebased onto main with --force-with-lease; process fix 4)", () => {
+    expect(refusal(line(A, B, "refs/heads/wip/PD-09"), () => false)).toBeNull();
+    // Only the wip/ prefix itself: a look-alike name is still refused.
+    expect(refusal(line(A, B, "refs/heads/wipx/PD-09"), () => false)).toMatch(/non-fast-forward/);
+    expect(refusal(line(A, B, "refs/heads/main-wip/x"), () => false)).toMatch(/non-fast-forward/);
   });
 
   it("refuses deleting main but not a task branch", () => {

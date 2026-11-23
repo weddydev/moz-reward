@@ -1,7 +1,8 @@
 /**
  * Committed pre-push hook (P0-14, ENGINEERING §16; lefthook.yml → `pre-push`). Git passes one line per ref on
  * stdin: `<local ref> <local sha> <remote ref> <remote sha>`.
- *   - Refuses deleting `main` and any non-fast-forward (force) push, to any branch.
+ *   - Refuses deleting `main` and any non-fast-forward (force) push, except to `wip/*` checkpoint branches (a
+ *     rebase onto main, pushed with --force-with-lease: process fix 4, human 23 Nov 2026).
  *   - Pushes only to `wip/*` checkpoint branches run the fast `pnpm check`; CI runs the full set on that push and
  *     the task-closing push (main or `t/*`) runs the full gate (DECISIONS 14 Nov 2026, `gateFor`).
  *   - Runs `pnpm gate:task` unless every changed file is docs/progress-only (the same paths CI's path filter
@@ -48,6 +49,9 @@ export function refusal(
     return line.remoteRef === "refs/heads/main" ? "deleting main is refused" : null;
   }
   if (ZERO.test(line.remoteSha)) return null; // a new branch
+  // A wip/* checkpoint branch may be rewritten (rebased onto main once the task below it lands), always with
+  // --force-with-lease (CLAUDE.md, process fix 4, human 23 Nov 2026); main and t/* never.
+  if (line.remoteRef.startsWith("refs/heads/wip/")) return null;
   if (!isAncestor(line.remoteSha, line.localSha)) {
     return `non-fast-forward push to ${line.remoteRef} is refused (no force-pushes; pull --rebase first)`;
   }
