@@ -2001,6 +2001,14 @@ html:root.rm .m-tile {
 .m-scan:active {
   transform: scale(0.9);
 }
+/* The global ring's halo is a box-shadow and would replace the coin's own (both unlayered; the global rule
+   comes later): keyboard focus keeps the coin's drop shadow and rim, under the ring's halo. */
+.m-scan:focus-visible {
+  box-shadow:
+    0 0 0 5px var(--focus-ring),
+    0 14px 26px -8px rgba(178, 120, 20, 0.8),
+    inset 0 0 0 2px rgba(255, 246, 214, 0.7);
+}
 .m-scan::before {
   content: "";
   position: absolute;
@@ -2100,9 +2108,19 @@ html:root.rm .m-tile {
 .rail .rail-item > svg {
   transition: transform 0.45s var(--spring);
 }
-.rail .rail-item:is([aria-current="page"], :hover) > svg {
+.rail .rail-item[aria-current="page"] > svg {
   transform: scale(1.08);
 }
-.rail .rail-item:hover {
-  color: var(--ink);
+/* Hover only where a pointer really hovers (a tap on a touch tablet would leave it stuck). */
+@media (hover: hover) and (pointer: fine) {
+  .rail .rail-item:hover > svg {
+    transform: scale(1.08);
+  }
+  .rail .rail-item:hover {
+    color: var(--ink);
+  }
+}
+/* Reduced motion: the items' width jumps (auto can't animate), so the gold's width jumps with them. */
+html:root.rm .rail .m-blob {
+  transition: none !important;
 }

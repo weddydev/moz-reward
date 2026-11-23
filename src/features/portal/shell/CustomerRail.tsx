@@ -10,6 +10,7 @@ import { Icon } from "@/components/ui/Icon";
 import { cx } from "@/lib/cx";
 import { navIcon } from "../nav-icons";
 import { activeRoute, type PortalRoute } from "../routes";
+import { plainClick } from "./dock-placement";
 import { NAV_LABEL } from "./labels";
 import { PortalSwitcher } from "./PortalSwitcher";
 import { Wordmark } from "./Wordmark";
@@ -40,10 +41,18 @@ export function CustomerRail({
   items: readonly PortalRoute[];
   chrome: ShellProps;
 }): React.JSX.Element {
-  const active = activeRoute(usePathname())?.path ?? null;
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const active = activeRoute(pathname)?.path ?? null;
   const shown = items.filter((r) => r.nav !== "mobile-only");
-  const index = shown.findIndex((r) => r.path === active);
+  // A tap pours the gold at once; the committed route takes over when the URL changes (as the dock).
+  const [pending, setPending] = useState<{ from: string; index: number } | null>(null);
+  const index =
+    pending && pending.from === pathname
+      ? pending.index
+      : shown.findIndex((r) => r.path === active);
+  // The CSS-only first-paint placement, frozen so later renders never overwrite the hook's (as the dock).
+  const [ssrIndex] = useState(() => Math.max(0, index));
   const list = useRef<HTMLUListElement>(null);
   const blob = useRef<HTMLSpanElement>(null);
   const drops = useRef<Array<HTMLSpanElement | null>>([]);
@@ -96,7 +105,7 @@ export function CustomerRail({
               ref={blob}
               className="m-blob"
               style={{
-                transform: `translateY(calc(${String(Math.max(0, index))} * (100% + 4px)))`,
+                transform: `translateY(calc(${String(ssrIndex)} * (100% + 4px)))`,
               }}
             />
             <span
@@ -106,7 +115,7 @@ export function CustomerRail({
               className="m-drop"
             />
           </li>
-          {shown.map((r) => {
+          {shown.map((r, i) => {
             const Molten = DOCK_ICONS[r.icon];
             return (
               <li key={r.path}>
@@ -114,6 +123,9 @@ export function CustomerRail({
                   href={r.path}
                   aria-current={r.path === active ? "page" : undefined}
                   className={itemClass(r.path === active)}
+                  onClick={(e) => {
+                    if (plainClick(e)) setPending({ from: pathname, index: i });
+                  }}
                 >
                   {Molten ? <Molten className="rail-icon" /> : <Icon icon={navIcon(r.icon)} />}
                   <span className="rail-label">{r.label}</span>
