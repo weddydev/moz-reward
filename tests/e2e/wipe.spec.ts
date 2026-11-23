@@ -1,4 +1,5 @@
 import { type Page } from "@playwright/test";
+import { LONG_TASK_MS, throttleCpu } from "./support/cpu-throttle";
 import { expect, test, testApiHeaders } from "./support/test";
 
 /**
@@ -253,5 +254,64 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
       await expect(page).toHaveURL(`/shops/${shopId}`);
       await settled(page);
     }
+  });
+
+  test("[PD-08] the wipe in and back under 4× CPU throttling: no long task over 65 ms while it plays @perf", async ({
+    page,
+    signInAs,
+    browserName,
+  }) => {
+    test.skip(browserName !== "chromium", "CPU throttling is a Chromium DevTools feature");
+    const me = await signInAs("customer");
+    const shopId = await seedShop(page, me.userId);
+    await page.goto("/wallet");
+    await expect(card(page)).toBeVisible();
+    // Warm the shop route first (its code and data), so the trace measures the wipe, not a first compile.
+    await page.goto(`/shops/${shopId}`);
+    await page.goto("/wallet");
+    await expect(card(page)).toBeVisible();
+    await throttleCpu(page, test.info());
+    await page.evaluate(() => {
+      const w = window as unknown as { __long: number[] };
+      w.__long = [];
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries()) w.__long.push(e.duration);
+      }).observe({ type: "longtask", buffered: false });
+    });
+    await card(page).click({ position: { x: 60, y: 24 } });
+    // The navigation's own commit (React rendering the shop page: 178 ms at 4× without any wipe, 22 Nov
+    // baseline; FOLLOWUPS) is one long task the wipe can't avoid; it is recorded, and the trace judges the wipe
+    // from the moment the shop content took it until the way back has landed.
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            [...document.querySelectorAll<HTMLElement>("[data-route-content]")]
+              .pop()
+              ?.getAnimations()
+              .some((a) => (a.effect as KeyframeEffect | null)?.getKeyframes()[0]?.clipPath) ??
+            false,
+        ),
+      )
+      .toBe(true);
+    const commit = await page.evaluate(() => {
+      const w = window as unknown as { __long: number[] };
+      const before = [...w.__long];
+      w.__long = [];
+      return before;
+    });
+    await expect(page.getByTestId("member-shop-name")).toHaveText("Brew & Bloom Café", {
+      timeout: 15_000,
+    });
+    await settled(page);
+    await page.getByTestId("shop-back").click();
+    await expect(card(page)).toBeVisible({ timeout: 15_000 });
+    await settled(page);
+    const long = await page.evaluate(() => (window as unknown as { __long: number[] }).__long);
+    test.info().annotations.push({
+      type: "wipe trace",
+      description: `navigation commit ${JSON.stringify(commit.map(Math.round))} ms; during the wipe: long tasks ${String(long.length)} (max ${String(Math.round(Math.max(0, ...long)))} ms)`,
+    });
+    expect(Math.max(0, ...long)).toBeLessThanOrEqual(LONG_TASK_MS);
   });
 });
