@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useLiquidPour } from "@/components/motion/useLiquidPour";
+import { usePauseOffscreen } from "@/components/motion/usePauseOffscreen";
 import { cx } from "@/lib/cx";
 import { anim, reducedMotionNow } from "@/lib/motion/anim";
 import { DOCK, LIQUID } from "@/lib/motion/controls";
@@ -80,27 +81,7 @@ export function Dock({
 
   // The halo and radar loop forever: they sleep off screen (or under `display: none` at desktop widths) and
   // while the tab is hidden, like the reference's phone.
-  useEffect(() => {
-    const el = root.current;
-    if (!el) return;
-    let seen = true;
-    const sync = (): void => {
-      el.classList.toggle("m-paused", !seen || document.hidden);
-    };
-    const io =
-      typeof IntersectionObserver === "undefined"
-        ? null
-        : new IntersectionObserver((entries) => {
-            for (const e of entries) seen = e.isIntersecting;
-            sync();
-          });
-    io?.observe(el);
-    document.addEventListener("visibilitychange", sync);
-    return () => {
-      io?.disconnect();
-      document.removeEventListener("visibilitychange", sync);
-    };
-  }, []);
+  usePauseOffscreen(root);
 
   // The CSS-only placement is for the first paint (before hydration): frozen after it, so a later render never
   // writes it over the hook's pixel placement (the gold jumped to the first item while draining on Scan).

@@ -12,6 +12,8 @@ import {
   ingotsText,
   progressLabel,
   sortWallet,
+  STACK_SIZE,
+  stackGroups,
   walletCard,
   walletView,
 } from "./view";
@@ -241,5 +243,32 @@ describe("[P1-07] wallet pull-to-refresh distance", () => {
     expect(pullDistance(Number.NaN)).toBe(0);
     expect(pullDistance(10_000)).toBe(PULL_MAX);
     expect(pullDistance(PULL_THRESHOLD * 2)).toBe(PULL_THRESHOLD);
+  });
+});
+
+describe("[PD-08] wallet stack groups (DESIGN §6.4)", () => {
+  const ids = (n: number): number[] => Array.from({ length: n }, (_, i) => i);
+
+  it("[PD-08] no shops: no stack; one shop: a single card, no stack behind it", () => {
+    expect(stackGroups([])).toEqual([]);
+    expect(stackGroups(ids(1))).toEqual([[0]]);
+  });
+
+  it("[PD-08] long lists stack in groups of three, in Wallet order; the last group holds the rest", () => {
+    expect(STACK_SIZE).toBe(3);
+    expect(stackGroups(ids(3))).toEqual([[0, 1, 2]]);
+    expect(stackGroups(ids(4))).toEqual([[0, 1, 2], [3]]);
+    expect(stackGroups(ids(5))).toEqual([
+      [0, 1, 2],
+      [3, 4],
+    ]);
+    const thirty = stackGroups(ids(30));
+    expect(thirty).toHaveLength(10);
+    expect(thirty.every((g) => g.length === 3)).toBe(true);
+    expect(thirty.flat()).toEqual(ids(30));
+  });
+
+  it("[PD-08] a group size below one is refused (it would loop forever or drop cards)", () => {
+    expect(() => stackGroups(ids(3), 0)).toThrow(/size/);
   });
 });

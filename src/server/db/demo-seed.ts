@@ -59,7 +59,16 @@ export type DemoShop = {
   town: string;
   postcode: string;
   location: LngLat;
+  /** Self-hosted demo photos (`public/demo/shops/`, the Molten reference's; PD-08) or none (the fallback coin). */
+  logoUrl: string | null;
+  coverUrl: string | null;
 };
+
+const photos = (key: string): { logoUrl: string; coverUrl: string } => ({
+  logoUrl: `/demo/shops/${key}-logo.jpg`,
+  coverUrl: `/demo/shops/${key}-cover.jpg`,
+});
+const NO_PHOTOS = { logoUrl: null, coverUrl: null };
 
 /** Invented addresses in real towns (never a real business's details). */
 export const DEMO_SHOPS = [
@@ -74,6 +83,7 @@ export const DEMO_SHOPS = [
     town: "Camden",
     postcode: "NW1 8AA",
     location: { lng: -0.1426, lat: 51.539 },
+    ...photos("brew"),
   },
   {
     id: fixedShopId("0199d3e0-0000-7000-8000-000000000012"),
@@ -86,6 +96,7 @@ export const DEMO_SHOPS = [
     town: "Leicester",
     postcode: "LE1 6AA",
     location: { lng: -1.1332, lat: 52.6344 },
+    ...NO_PHOTOS,
   },
   {
     id: fixedShopId("0199d3e0-0000-7000-8000-000000000013"),
@@ -98,6 +109,35 @@ export const DEMO_SHOPS = [
     town: "Manchester",
     postcode: "M4 1AA",
     location: { lng: -2.2361, lat: 53.4839 },
+    ...NO_PHOTOS,
+  },
+  // The Molten reference's other two shops, with its photos (human, 23 Nov 2026; DECISIONS "PD-08 demo shops"):
+  // the demo Wallet shows the photo cards, the fallback coin (Patel's, Glow) and "Show all" (five shops).
+  {
+    id: fixedShopId("0199d3e0-0000-7000-8000-000000000014"),
+    slug: "camden-bakehouse",
+    shopCode: fixedShopCode("BAKE22"),
+    name: "Camden Bakehouse",
+    category: "bakery",
+    description: "Sourdough, pastries and cupcakes baked every morning.",
+    addressLine1: "3 Ferry Lane",
+    town: "Camden",
+    postcode: "NW1 8AB",
+    location: { lng: -0.1531, lat: 51.5421 },
+    ...photos("bake"),
+  },
+  {
+    id: fixedShopId("0199d3e0-0000-7000-8000-000000000015"),
+    slug: "pedal-and-co",
+    shopCode: fixedShopCode("PEDA22"),
+    name: "Pedal & Co.",
+    category: "retail",
+    description: "Bike repairs, servicing and commuter bikes.",
+    addressLine1: "21 Spoke Yard",
+    town: "Kentish Town",
+    postcode: "NW5 2AA",
+    location: { lng: -0.1415, lat: 51.5502 },
+    ...photos("pedal"),
   },
 ] as const satisfies readonly DemoShop[];
 
@@ -113,6 +153,8 @@ type DemoAccount = {
 };
 
 const BREW = DEMO_SHOPS[0].id;
+const BAKE = DEMO_SHOPS[3].id;
+const PEDAL = DEMO_SHOPS[4].id;
 /** Brew & Bloom's demo owner (Maya Bloom in DEMO_ACCOUNTS). */
 const DEMO_OWNER = "0199d3e0-0000-7000-8000-000000000003";
 /** The demo customer's progress at Brew & Bloom (P1-07 Wallet; DESIGN §15 sample data). */
@@ -121,6 +163,22 @@ const DEMO_BREW_PROGRESS = {
   progressGold: 720,
   ingotsCompleted: 3,
   lastVisitAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+};
+/** The Molten reference's numbers at the other two photo shops (360 of 600, 1,400 of 2,000; PD-08). */
+const DEMO_PROGRESS: Readonly<Record<string, typeof DEMO_BREW_PROGRESS>> = {
+  [BREW]: DEMO_BREW_PROGRESS,
+  [BAKE]: {
+    purchaseCount: 6,
+    progressGold: 360,
+    ingotsCompleted: 1,
+    lastVisitAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+  },
+  [PEDAL]: {
+    purchaseCount: 4,
+    progressGold: 1_400,
+    ingotsCompleted: 0,
+    lastVisitAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000),
+  },
 };
 /** The demo customer's mobile (E.164), from Ofcom's drama range 07700 900000–900999: never a real number. */
 const DEMO_PHONE = "+447700900123";
@@ -403,16 +461,17 @@ export async function runDemoSeed(
         result.admins += rows.length;
       }
       if (account.memberId) {
-        // The customer is a member of all three shops; marketing consent stays "not asked" (PECR). At Brew &
-        // Bloom they hold the DESIGN §15 sample progress (720 of 1,000 gold, 3 ingots filled) so the Wallet has
-        // something to show; P1-12 replaces this with real ledger history.
+        // The customer is a member of every demo shop; marketing consent stays "not asked" (PECR). At Brew &
+        // Bloom they hold the DESIGN §15 sample progress (720 of 1,000 gold, 3 ingots filled), at the bakehouse
+        // and Pedal & Co. the Molten reference's, so the Wallet has something to show; P1-12 replaces this with
+        // real ledger history.
         const rows = await tx
           .insert(memberships)
           .values(
             DEMO_SHOPS.map((shop) => ({
               userId: account.id,
               shopId: shop.id,
-              ...(shop.id === BREW ? DEMO_BREW_PROGRESS : {}),
+              ...DEMO_PROGRESS[shop.id],
             })),
           )
           .onConflictDoNothing()
@@ -421,17 +480,40 @@ export async function runDemoSeed(
       }
     }
     // P1-05: Brew & Bloom starts on the Café classic template, saved by its demo owner (the shop the demo
-    // walks through). The other demo shops have no owner account and stay "not set up yet".
+    // walks through). The bakehouse and Pedal & Co. carry the Molten reference's ingots and rewards (PD-08; no
+    // owner account of their own: `created_by` has no FK, so the demo owner stands in). Patel's and Glow stay
+    // "not set up yet".
     const programmes = await tx
       .insert(loyaltyPrograms)
-      .values({
-        shopId: BREW,
-        version: 1,
-        ...TEMPLATES.cafe.rules,
-        activeFrom: new Date(),
-        rewardsFrom: new Date(),
-        createdBy: DEMO_OWNER,
-      })
+      .values(
+        [
+          { shopId: BREW, rules: TEMPLATES.cafe.rules },
+          {
+            shopId: BAKE,
+            rules: {
+              ...TEMPLATES.cafe.rules,
+              ingotSize: 600,
+              mainReward: { text: "Free pastry" },
+              milestones: [],
+            },
+          },
+          {
+            shopId: PEDAL,
+            rules: {
+              ...TEMPLATES.retail.rules,
+              ingotSize: 2_000,
+              mainReward: { text: "Free service" },
+            },
+          },
+        ].map(({ shopId, rules }) => ({
+          shopId,
+          version: 1,
+          ...rules,
+          activeFrom: new Date(),
+          rewardsFrom: new Date(),
+          createdBy: DEMO_OWNER,
+        })),
+      )
       .onConflictDoNothing()
       .returning({ id: loyaltyPrograms.id });
     result.programmes = programmes.length;

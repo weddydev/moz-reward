@@ -561,51 +561,38 @@ test.describe("[P0-09] UI gallery states", () => {
     await expect(notes.getByText("Open Aisha Khan")).toHaveCount(2);
   });
 
-  test("[P0-09] C-13 (AC12): 320px — ShopCard names wrap on words (≤ 2 lines); table scroll hint follows the content; Spinner holds still under reduced motion", async ({
+  test("[P0-09] C-13 (AC12) + [PD-08]: 320px — ShopCard names stay on one line with an ellipsis, inside the card; table scroll hint follows the content; Spinner holds still under reduced motion", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 320, height: 720 });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await gallery(page);
+    // PD-08: the wallet card's name is the reference's `.wc-name` (one line, ellipsis); it replaced the two-line
+    // wrap (DECISIONS 23 Nov "PD-08 card names"). The full name is the card's accessible name and the shop page's.
     const names = await block(page, "ShopCard")
-      .locator("p.text-h3")
+      .locator(".m-wc-name")
       .evaluateAll((els) =>
         els.map((el) => {
-          const text = el.textContent;
-          const node = el.firstChild;
-          const lineStarts: number[] = [];
-          let lastTop = Number.NEGATIVE_INFINITY;
-          if (node?.nodeType === Node.TEXT_NODE) {
-            const range = document.createRange();
-            for (let i = 0; i < text.length; i++) {
-              range.setStart(node, i);
-              range.setEnd(node, i + 1);
-              const rect = [...range.getClientRects()].find((r) => r.width > 0);
-              if (!rect) continue;
-              if (rect.top > lastTop + 2) {
-                if (lastTop !== Number.NEGATIVE_INFINITY) lineStarts.push(i);
-                lastTop = rect.top;
-              }
-            }
-          }
-          const lh = Number.parseFloat(getComputedStyle(el).lineHeight);
-          const visibleLines = Math.round(el.getBoundingClientRect().height / lh);
+          const card = el.closest(".m-wcard")?.getBoundingClientRect();
+          const r = el.getBoundingClientRect();
+          const cs = getComputedStyle(el);
           return {
-            text,
-            visibleLines,
-            clipped: el.scrollHeight > el.clientHeight + 1,
-            midWordBreaks: lineStarts.filter((i) => !/\s/.test(text[i - 1] ?? " ")).length,
-            longestWord: Math.max(...text.split(/\s+/).map((w) => w.length)),
+            text: el.textContent,
+            lines: Math.round(r.height / Number.parseFloat(cs.lineHeight)),
+            ellipsis: cs.textOverflow === "ellipsis" && cs.whiteSpace === "nowrap",
+            clipped: el.scrollWidth > el.clientWidth + 1,
+            inside: card !== undefined && r.right <= card.right + 0.5 && r.left >= card.left - 0.5,
           };
         }),
       );
+    expect(names).toHaveLength(4);
     for (const n of names) {
-      expect(n.visibleLines, n.text).toBeLessThanOrEqual(2);
-      // Ordinary names break only between words; only a word longer than the line may break inside.
-      if (n.longestWord < 25) expect(n.midWordBreaks, n.text).toBe(0);
+      expect(n.lines, n.text).toBe(1);
+      expect(n.ellipsis, n.text).toBe(true);
+      expect(n.inside, n.text).toBe(true);
     }
-    const short = names.find((n) => n.text === "Brew & Bloom Café");
-    expect(short?.clipped).toBe(false);
+    expect(names.find((n) => n.text === "Brew & Bloom Café")?.clipped).toBe(false);
+    expect(names.find((n) => n.text.startsWith("Llanfair"))?.clipped).toBe(true);
 
     const region = block(page, "Table").getByRole("region", { name: "Customers", exact: true });
     await expect(region).toHaveAttribute("data-overflow", "end");

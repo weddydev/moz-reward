@@ -195,3 +195,15 @@ export const ingotsText = (n: number): string =>
 /** "720 / 1,000 gold". */
 export const goldText = (gold: number, size: number): string =>
   `${gold.toLocaleString("en-GB")} / ${size.toLocaleString("en-GB")} gold`;
+
+/** Cards per stack on phones (DESIGN §6.4: long lists stack in groups of three, with "Show all"). */
+export const STACK_SIZE = 3;
+
+/** The Wallet's cards cut into stacks of `size`, in order; the last stack holds what is left. */
+export function stackGroups<T>(cards: readonly T[], size: number = STACK_SIZE): T[][] {
+  if (!(size >= 1) || !Number.isInteger(size))
+    throw new Error(`stackGroups: size must be ≥ 1, got ${String(size)}`);
+  const out: T[][] = [];
+  for (let i = 0; i < cards.length; i += size) out.push(cards.slice(i, i + size));
+  return out;
+}
