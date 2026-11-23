@@ -2379,6 +2379,23 @@ html:root.rm .m-wcard {
   transition: none;
 }
 
+/* ---------- card → shop gold wipe (PD-08; reference `.wipe`; wipe-stage.ts) ---------- */
+/* The app's stage: fixed over the content area (top/left set from <main> when it plays), under the dock and the
+   rail (20); the opening shop content sits at 16, above it. Never takes a tap. */
+.m-wipe-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  overflow: hidden;
+  pointer-events: none;
+}
+.m-wipe {
+  position: absolute;
+  inset: 0;
+  background: var(--metal);
+  pointer-events: none;
+}
+
 /* ---------- shop cover (PD-08; reference `.cover`, `.s-logo`, `.back`) ---------- */
 /* The photo is an <img> (next/image), so the reference's background layers become elements: photo, then the
    shade and the warm glow (::before, ::after), then the text, logo and back button. Inside the page column the

@@ -45,12 +45,15 @@ export function ShopPageHeader({
   meta?: string | null;
   loading?: boolean;
   onBack?: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  rise?: boolean;
+  /** Mark the parts that rise in the gold wipe: all three (the phone), or the area line only (the app, where the
+   *  logo and name ride the card's morph instead). */
+  rise?: boolean | "meta";
   titleAs?: "h1" | "h3";
   unoptimized?: boolean;
 }): React.JSX.Element {
   const Title = loading ? "p" : titleAs;
-  const at = (k: number): { "data-rise"?: number } => (rise ? { "data-rise": k } : {});
+  const at = (k: number): { "data-rise"?: number } =>
+    rise === true || (rise === "meta" && k === 2) ? { "data-rise": k } : {};
   const backIcon = <ChevronLeft aria-hidden="true" strokeWidth={2.2} />;
   return (
     <header className="m-cover" data-testid={loading ? undefined : "shop-cover"}>
@@ -83,6 +86,7 @@ export function ShopPageHeader({
         <TransitionLink
           href="/wallet"
           direction="back"
+          wipe="back"
           className="m-cover-back"
           aria-label="Back to wallet"
           data-testid="shop-back"

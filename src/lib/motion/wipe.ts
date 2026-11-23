@@ -66,29 +66,53 @@ export function wipePoint(
   };
 }
 
-let pending: { path: string; point: Point; at: number } | null = null;
+let pending: { kind: "open" | "back"; path: string; point: Point; at: number } | null = null;
 
-/** Record a tap that started a wipe towards `href` (`at` on the `performance.now()` clock). */
-export function setWipe(href: string, point: Point, at: number, base = window.location.href): void {
+function record(kind: "open" | "back", href: string, point: Point, at: number, base: string): void {
   try {
     const url = new URL(href, base);
-    pending = url.origin === new URL(base).origin ? { path: url.pathname, point, at } : null;
+    pending = url.origin === new URL(base).origin ? { kind, path: url.pathname, point, at } : null;
   } catch {
     pending = null;
   }
 }
 
+/** Record a tap that started a wipe towards `href` (`at` on the `performance.now()` clock). */
+export function setWipe(href: string, point: Point, at: number, base = window.location.href): void {
+  record("open", href, point, at, base);
+}
+
+/** Record a back tap whose closing circle plays over the page, so `href` (the Wallet) returns instead of sliding. */
+export function setWipeBack(href: string, at: number, base = window.location.href): void {
+  record("back", href, { x: 0, y: 0 }, at, base);
+}
+
 /** The tap for `pathname`, if it is recent, with the ms already spent since it; doesn't clear it. */
 export function peekWipe(pathname: string, now: number): (Point & { elapsed: number }) | null {
-  if (!pending || pending.path !== pathname || now - pending.at > WIPE.ttlMs) return null;
+  if (
+    !pending ||
+    pending.kind !== "open" ||
+    pending.path !== pathname ||
+    now - pending.at > WIPE.ttlMs
+  )
+    return null;
   return { ...pending.point, elapsed: now - pending.at };
 }
 
-/** As `peekWipe`, and always clears it. */
+/** As `peekWipe`, and clears an open tap (a back token waits for `takeWipeBack`). */
 export function takeWipe(pathname: string, now: number): (Point & { elapsed: number }) | null {
   const found = peekWipe(pathname, now);
-  pending = null;
+  if (pending?.kind === "open") pending = null;
   return found;
+}
+
+/** The back token for `pathname`, if recent (ms since the tap); clears any token only when it matches. */
+export function takeWipeBack(pathname: string, now: number): { elapsed: number } | null {
+  if (!pending || pending.kind !== "back") return null;
+  const ok = pending.path === pathname && now - pending.at <= WIPE.ttlMs;
+  const elapsed = now - pending.at;
+  pending = null;
+  return ok ? { elapsed } : null;
 }
 
 export function clearWipe(): void {

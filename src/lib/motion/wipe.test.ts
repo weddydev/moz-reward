@@ -7,7 +7,9 @@ import {
   remainingDelay,
   riseDelay,
   setWipe,
+  setWipeBack,
   takeWipe,
+  takeWipeBack,
   wipePoint,
   wipeRadius,
 } from "./wipe";
@@ -96,6 +98,21 @@ describe("[PD-08] wipe handoff (card tap → arriving page)", () => {
     expect(takeWipe("/shops/a", 10)).toBeNull();
     setWipe("/shops/a", { x: 1, y: 1 }, 0, BASE);
     expect(takeWipe("/shops/a", WIPE.ttlMs + 1)).toBeNull();
+  });
+  it("[PD-08] back: the wallet takes a back token once (its elapsed time); an open token isn't a back one, nor the reverse", () => {
+    setWipeBack("/wallet", 1000, BASE);
+    // The arriving page asks for an open wipe first: that must not throw the back token away.
+    expect(takeWipe("/wallet", 1010)).toBeNull();
+    expect(takeWipeBack("/wallet", 1020)).toEqual({ elapsed: 20 });
+    setWipeBack("/wallet", 1000, BASE);
+    expect(takeWipeBack("/shops/a", 1010)).toBeNull();
+    setWipeBack("/wallet", 1000, BASE);
+    expect(takeWipeBack("/wallet", 1030)).toEqual({ elapsed: 30 });
+    expect(takeWipeBack("/wallet", 1030)).toBeNull();
+    setWipe("/wallet", { x: 1, y: 1 }, 0, BASE);
+    expect(takeWipeBack("/wallet", 10)).toBeNull();
+    setWipeBack("/wallet", 0, BASE);
+    expect(takeWipeBack("/wallet", WIPE.ttlMs + 1)).toBeNull();
   });
   it("[PD-08] a malformed href records nothing", () => {
     setWipe("http://[bad", { x: 1, y: 1 }, 0, BASE);

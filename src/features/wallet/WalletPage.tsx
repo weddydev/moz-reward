@@ -7,7 +7,14 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { ShopCard } from "@/components/ui/ShopCard";
 import { PullToRefresh } from "./PullToRefresh";
-import { AVAILABILITY_TEXT, type WalletCard, type WalletView, goldText, ingotsText } from "./view";
+import {
+  AVAILABILITY_TEXT,
+  STACK_SIZE,
+  type WalletCard,
+  type WalletView,
+  goldText,
+  ingotsText,
+} from "./view";
 import { WalletStack } from "./WalletStack";
 
 /**
@@ -72,9 +79,9 @@ export function WalletPage({
                   Your shops ({cards.length})
                 </h2>
                 <WalletStack
-                  cards={cards.map((card) => ({
+                  cards={cards.map((card, i) => ({
                     key: card.membershipId,
-                    card: <WalletShopCard card={card} />,
+                    card: <WalletShopCard card={card} eager={i < STACK_SIZE} />,
                   }))}
                 />
               </section>
@@ -155,7 +162,8 @@ function IngotIcon(): React.JSX.Element {
   );
 }
 
-function WalletShopCard({ card }: { card: WalletCard }): React.JSX.Element {
+/** `eager`: the first stack's cards are the first screenful (their photos are the page's largest paint). */
+function WalletShopCard({ card, eager }: { card: WalletCard; eager: boolean }): React.JSX.Element {
   const unavailable = card.availability !== "live";
   const badges = unavailable ? (
     <Badge tone="closed">{AVAILABILITY_TEXT[card.availability as "suspended" | "closed"]}</Badge>
@@ -172,6 +180,7 @@ function WalletShopCard({ card }: { card: WalletCard }): React.JSX.Element {
       gold={card.ingotSize ? card.progressGold.toLocaleString("en-GB") : null}
       sharedId={card.shopId}
       dimmed={unavailable}
+      eager={eager}
       progress={card.progress}
       progressLabel={card.label}
       badges={badges}
@@ -180,6 +189,7 @@ function WalletShopCard({ card }: { card: WalletCard }): React.JSX.Element {
           href={`/shops/${card.shopId}`}
           direction="forward"
           hero={{ id: card.shopId, name: card.name, imageUrl: card.logoUrl }}
+          wipe="open"
           className={className}
           {...data}
           data-testid="wallet-card"

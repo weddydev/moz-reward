@@ -4,6 +4,7 @@ import Link from "next/link";
 import { type Hero, setHero } from "@/lib/motion/hero-handoff";
 import { setNavIntent } from "@/lib/motion/nav-intent";
 import { NAV, type NavType, tabTransitionTypes } from "@/lib/motion/route-transitions";
+import { startWipe, wipeBack } from "@/lib/motion/wipe-stage";
 
 type LinkProps = React.ComponentProps<typeof Link>;
 
@@ -13,18 +14,21 @@ type LinkProps = React.ComponentProps<typeof Link>;
  * direction it is a plain Link (the page only fades in). Only a plain left click records it: a modified
  * click opens a new tab and must not tag a later navigation. `hero` hands the card's identity (id, name, image:
  * what the card already shows) to the destination's loading state, so a card → page morph still forms when the
- * page commits its loading fallback first (`hero-handoff`).
+ * page commits its loading fallback first (`hero-handoff`). `wipe` plays the gold wipe (PD-08, `wipe-stage.ts`):
+ * "open" on a Wallet card (the shop opens in a metal circle from the tap), "back" on the shop's back link.
  */
 export function TransitionLink({
   direction,
   tab,
   hero,
+  wipe,
   onClick,
   ...props
 }: LinkProps & {
   direction?: "forward" | "back";
   tab?: { from: number; to: number };
   hero?: Hero;
+  wipe?: "open" | "back";
 }): React.JSX.Element {
   const type: NavType | undefined = tab
     ? tabTransitionTypes(tab.from, tab.to)[0]
@@ -42,6 +46,8 @@ export function TransitionLink({
         if (!plain || e.defaultPrevented) return;
         if (type) setNavIntent(e.currentTarget.href, type);
         if (hero) setHero(e.currentTarget.href, hero);
+        if (wipe === "open") startWipe(e.currentTarget.href, e, e.currentTarget);
+        if (wipe === "back") wipeBack(e.currentTarget.href, e, e.currentTarget);
       }}
     />
   );

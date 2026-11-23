@@ -615,12 +615,9 @@ body:has(.m-page) {
 .m-drop-chip b {
   color: var(--ember);
 }
-.m-wipe {
-  position: absolute;
-  inset: 0;
+/* The phone's metal layer (molten.css `.m-wipe`) sits between the wallet and the shop views. */
+.m-screen > .m-wipe {
   z-index: 4;
-  background: var(--metal);
-  pointer-events: none;
 }
 .m-view.m-view-shop {
   background: var(--pearl);

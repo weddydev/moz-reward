@@ -1,4 +1,4 @@
-import { RouteTransition } from "@/components/motion";
+import { RouteTransition, WipeStage } from "@/components/motion";
 import { Toaster } from "@/components/ui/Toast";
 import { cx } from "@/lib/cx";
 import { ActiveShopSync } from "./shell/ActiveShopSync";
@@ -52,6 +52,8 @@ export function PortalShell({
           <RouteTransition>{children}</RouteTransition>
         </main>
       </div>
+      {/* The card → shop gold wipe's layer (PD-08): over the content, under the dock and the rail. */}
+      {customer ? <WipeStage /> : null}
       <BottomNav items={nav} chrome={chrome} />
       {chrome.portal === "shop" ? <ActiveShopSync /> : null}
       <Toaster />
