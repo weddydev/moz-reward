@@ -12,6 +12,7 @@ import { cx } from "@/lib/cx";
 import { useHydrated } from "@/lib/use-hydrated";
 import { navIcon } from "../nav-icons";
 import { activeRoute, type PortalRoute } from "../routes";
+import { dockPlacement, plainClick, type PendingTap } from "./dock-placement";
 import { NAV_LABEL } from "./labels";
 import { PortalSwitchList } from "./PortalSwitcher";
 import { ShopSwitchList } from "./ShopSwitcher";
@@ -54,12 +55,20 @@ export function BottomNav({
   const bar = items.filter((r) => r.mobile);
   const rest = items.filter((r) => !r.mobile);
   const hasMore = chrome.portal !== "customer";
-  const current = bar.findIndex((r) => r.path === active);
   const moreActive = rest.some((r) => r.path === active);
-  // Where the gold sits: the current column (More counts when one of its pages is open; Scan never holds it).
-  const columns = bar.length + (hasMore ? 1 : 0);
-  const column = moreActive ? bar.length : bar[current]?.raised ? -1 : current;
-  const liquid = column < 0 ? -1 : bar.slice(0, column).filter((r) => !r.raised).length;
+  // A tap pours the gold at once; the committed route takes over when the URL changes (dockPlacement).
+  const [pending, setPending] = useState<PendingTap | null>(null);
+  const { current, columns, column, liquid } = dockPlacement({
+    bar,
+    rest,
+    activePath: active,
+    hasMore,
+    pathname,
+    pending,
+  });
+  const tapped = (e: React.MouseEvent, col: number): void => {
+    if (plainClick(e)) setPending({ from: pathname, column: col });
+  };
   return (
     <>
       <Dock
@@ -85,6 +94,7 @@ export function BottomNav({
               className={DOCK_SCAN}
               onClick={(e) => {
                 scanPress(e.currentTarget);
+                tapped(e, -1);
               }}
             >
               <DockGlyph name={r.icon} />
@@ -98,6 +108,9 @@ export function BottomNav({
               aria-current={isActive ? "page" : undefined}
               data-liq
               className={DOCK_ITEM}
+              onClick={(e) => {
+                tapped(e, i);
+              }}
             >
               <DockGlyph name={r.icon} />
               <span data-nav-label>{label}</span>

@@ -143,6 +143,17 @@ describe("[PD-07] Dock", () => {
     expect(screen.getByRole("navigation").dataset.empty).toBe("");
   });
 
+  it("[PD-07] draining on the Scan page leaves the gold where it was (no jump to the first item)", () => {
+    const { rerender } = render(<FiveDock active={2} column={3} />);
+    const nav = screen.getByRole("navigation");
+    const blob = nav.querySelector<HTMLElement>(".m-blob");
+    const drop = nav.querySelector<HTMLElement>(".m-drop");
+    const before = [blob?.style.transform, drop?.style.left, drop?.style.transform];
+    rerender(<FiveDock active={-1} column={-1} />);
+    expect(nav.dataset.empty).toBe("");
+    expect([blob?.style.transform, drop?.style.left, drop?.style.transform]).toEqual(before);
+  });
+
   it("[PD-07] a new current item pours the gold: blob and droplet animate, nothing queues", () => {
     const animate = vi.fn(() => ({ cancel: vi.fn() }) as unknown as Animation);
     // jsdom has no Web Animations: the pour goes through `el.animate` when it exists.

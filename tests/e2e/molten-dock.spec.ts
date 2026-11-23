@@ -109,6 +109,10 @@ test.describe("[PD-07] floating dock", () => {
     await expect(bar.getByRole("link", { name: "Scan" })).toHaveAttribute("aria-current", "page");
     await expect(bar).toHaveAttribute("data-empty", "");
     await expect(bar.locator(".m-goo")).toHaveCSS("opacity", "0");
+    // A page with no dock item (Notifications, from the header) drains it too; the customer dock has no More.
+    await page.goto("/notifications");
+    await expect(dock(page)).toHaveAttribute("data-empty", "");
+    await expect(dock(page).locator("[aria-current]")).toHaveCount(0);
   });
 
   test("[PD-07] nothing hides behind the dock: the page ends above the Scan coin", async ({

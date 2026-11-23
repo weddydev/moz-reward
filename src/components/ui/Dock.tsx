@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLiquidPour } from "@/components/motion/useLiquidPour";
 import { cx } from "@/lib/cx";
 import { anim, reducedMotionNow } from "@/lib/motion/anim";
@@ -40,7 +40,7 @@ export function scanPress(el: HTMLElement): void {
  *
  * Children are the items in order: links or buttons with `DOCK_ITEM` (and `data-liq`) or `DOCK_SCAN`. `active`
  * counts only the `data-liq` items (-1: none is current, e.g. on the Scan page, and the gold hides); `column`
- * and `columns` place the gold before hydration, when only CSS can.
+ * and `columns` place the gold before hydration, when only CSS can (read on the first render only).
  */
 export function Dock({
   label,
@@ -102,7 +102,9 @@ export function Dock({
     };
   }, []);
 
-  const at = Math.max(0, column);
+  // The CSS-only placement is for the first paint (before hydration): frozen after it, so a later render never
+  // writes it over the hook's pixel placement (the gold jumped to the first item while draining on Scan).
+  const [ssr] = useState(() => ({ at: Math.max(0, column), columns }));
   return (
     <nav
       ref={root}
@@ -120,8 +122,8 @@ export function Dock({
           ref={blob}
           className="m-blob"
           style={{
-            width: `calc((100% - 12px) / ${String(columns)})`,
-            transform: `translateX(calc(6px + ${String(at)} * 100%))`,
+            width: `calc((100% - 12px) / ${String(ssr.columns)})`,
+            transform: `translateX(calc(6px + ${String(ssr.at)} * 100%))`,
           }}
         />
         <span
@@ -130,7 +132,7 @@ export function Dock({
           }}
           className="m-drop"
           style={{
-            left: `calc(6px + (${String(at)} + .5) * (100% - 12px) / ${String(columns)} - ${String(LIQUID.dropSize / 2)}px)`,
+            left: `calc(6px + (${String(ssr.at)} + .5) * (100% - 12px) / ${String(ssr.columns)} - ${String(LIQUID.dropSize / 2)}px)`,
           }}
         />
       </div>
