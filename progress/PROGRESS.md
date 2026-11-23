@@ -7,13 +7,12 @@ Baton: held by talha.syed since 2026-11-23 05:52 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handoff by talha.syed, 23 Nov 2026 (Mac); baton free. Autopilot is OFF.** **First thing next session:** check main CI 45112526437 on `d59a2eb` (running at handoff) and the staging deploy that follows it (`gh run list --limit 5`; red → fix first), then Sentry for the new release. Human (23 Nov): close PD-B fast (less overhead, never a skipped check, review or criterion); this session ends after the PD-B close with `/handoff`. **Next session = normal mode, plain `/resume`** (autopilot ends with this session); PD-07 after the PD-B close.
-- **PD-B closed 23 Nov** (main `d59a2eb`, wip CI 45108161552 green; main-push hook gate PASS; main CI 45112526437 + staging deploy NOT VERIFIED at handoff). C-76 fixed at the root (Docker Desktop hangs new host connects after ~3,100 in ~30 s → pooled HTTP forwarder `scripts/lib/e2e-forwarder.mjs`), T-6 resolved; one-run gates PASS on `eefce4e`, `dcf8ae3`, `d59a2eb`. Code-review MEDIUMs fixed; Linux-WebKit CI flakes in PD-06 specs root-caused (card pointer lean / taps edge-on / touch front sways / shake read late) and fixed in the specs; WebKit slider track press quarantined (C-78 → PD-11).
-- **Tested (23 Nov):** wip CI 45108161552 on `d59a2eb` GREEN (every spec, Chromium + WebKit); full 5-project 45096809612 on `eefce4e` GREEN; `gate:task PD-06` PASS in one run on `eefce4e`, `dcf8ae3`, `d59a2eb` (C-76 proof) + main-push hook gate PASS; parity PD-06 60/0 both engines; staging smoke on `74fba5b` (health 200). New playbook `progress/KNOWN_ISSUES.md`: check it first on any failure (CLAUDE.md rule).
-- **Last CI at handoff:** main CI 45112526437 on `d59a2eb` in progress (not verified); later pushes were docs-only.
-- **NOT VERIFIED:** code review of the close's own commits after `ec5d6cc` (`7893612` forwarder, `eefce4e` MEDIUMs, spec fixes `dcf8ae3`..`d59a2eb`): left for PD-C's close review (no server/auth/data code; security review not needed). Staging `/sign-in` and `/dev/*` answer 401 (basic auth) so "dev not exposed" behind the password is not re-checked.
-- **Continue here (next session, normal mode, plain `/resume`):** PD-07 (PD-C; H-49 needed at the PD-C close).
-- **Not yet tested:** member card + slider on real devices (H-13: iOS tilt/sway now on, Android sway, Safari 3D flip, touch drag).
+- **Checkpoint by talha.syed, 23 Nov 2026 (Mac); baton held by talha.syed. Autopilot is OFF.**
+- **PD-07 (floating dock) is done on `wip/PD-07`, HEAD `92886e5`** (ticked there; task progress, evidence and follow-ups are in that branch's PROGRESS/SESSION_LOG/FOLLOWUPS, not yet on main). gate:task PD-07 PASS on `42e68ed` (code identical to `92886e5`; the close commit adds progress files only).
+- **First thing next session:** check CI 45128513936 (push) and the full 5-project run 45128522709 (`gh run list --branch wip/PD-07`; every-page change). Both green → `git switch wip/PD-07 && git merge --ff-only origin/wip/PD-07`, rebase onto main (`git fetch origin && git rebase origin/main`; a PROGRESS conflict keeps this Handoff section from main and the rest from the branch), push `HEAD:main` (the hook re-runs gate:task: the tree differs from the stamp). Red → fix first (KNOWN_ISSUES first).
+- **Then:** PD-08 (Wallet stack, gold wipe, shop photos; PD-C). H-49 at the PD-C close.
+- **NOT VERIFIED:** CI on `92886e5` (running); real devices for the dock (H-13: iOS toolbar, Android keyboard hide, touch).
+- **HUMAN_TASKS** split 23 Nov: open list cross-checked, finished ones in `progress/HUMAN_TASKS_DONE.md`. Human said none of H-45, H-48b, H-51 (b) is done yet.
 - **Windows laptop (WSL):** local WebKit only with `--workers 1`; never push or run suites while a gate runs; on a wip branch update main with `git fetch`, not `git pull --rebase`.
 - **Before work:** nothing new (no env vars, migrations or seeds).
 
