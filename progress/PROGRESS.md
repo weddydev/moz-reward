@@ -7,9 +7,11 @@ Baton: held by talha.syed since 2026-11-23 05:52 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 23 Nov 2026 ~16:10 UTC (Mac); baton held by talha.syed. Autopilot is OFF.**
-- **PD-08 done on `wip/PD-08-b`** (local branch `wip/PD-08-b`; HEAD `c41a066` (closing commit) on top of code `b60e238`): gate:task PASS on `b60e238` (unit 2013/0, int 1456/0, task E2E 24/0, perf 3/0, changed specs 560/0/114, parity 10/0). Built since the last checkpoint: the app's gold wipe (`WipeStage` + `wipe-stage.ts`, `TransitionLink wipe`, RouteContent takes it), design review APPROVE WITH FIXES with every HIGH/MEDIUM fixed (the wipe replaces the card → shop morph: no shared names on cards or covers; settles when another page commits; Wallet inert under the metal; 44 px back target), C-80 → PD-11 (mini vault + offers on the shop page). **Check first:** CI on the closing push of `wip/PD-08-b`; green → push it to main (hook: CI-green check; a merge of main's progress commits needs no new run). Then delete `wip/PD-08`, `wip/PD-08-ff`, and the PD-07 leftovers (Next 2).
-- **Next task: PD-09 · Gilded Gate 2.0** (PD-C; `docs/phases/PD.md`). PD-08 follow-ups for PD-11 are in FOLLOWUPS (navigation commit 178 ms at 4×, landing JS 156.5 KB, reduced motion mid-wipe).
+- **Checkpoint by talha.syed, 23 Nov 2026 ~16:45 UTC (Mac); baton held by talha.syed (human stopping for now). Autopilot is OFF.**
+- **PD-08 done, not yet on main: `wip/PD-08-b`, HEAD `c41a066`** (ticked on that branch; gate:task PASS on code `b60e238`). **First step:** CI 45211398059 on `c41a066` (was in its E2E step at this commit). Green → `git merge origin/main` into `wip/PD-08-b` (main has progress-only commits: this checkpoint, CLAUDE.md backup rule, DECISIONS; conflicts only in progress files/DECISIONS: keep both sides, PHASES PD-08 ticked) → `git push origin HEAD:main` (hook: CI green for an ancestor that differs only in docs/progress). Red → if a test passed on retry (flake) re-run that spec alone; a real failure is fixed on the branch first.
+- **Then the approved process fixes, one at a time, before PD-09** (human 23 Nov; full design in DECISIONS "Process fixes approved by the human"): (1) parallel CI jobs, (2) flake confirmation re-run, (3) @fps median of 3, (4) branch from main + `--force-with-lease` on `wip/*`, (5) early wip push, (6) CLAUDE.md tidy-up (merge duplicates only; backup first; show the human the diff before committing). Each: cross-check against the rules, Windows/WSL2, token use and speed; its own commit; report to the human after each.
+- **CLAUDE.md backup rule (human, 23 Nov):** backup in `docs/backup/CLAUDE.md.2026-11-23.bak` (taken before adding the rule itself).
+- Then **PD-09 · Gilded Gate 2.0**. PD-11 follow-ups from PD-08 in FOLLOWUPS; C-80 → PD-11.
 - Headless Linux Chromium has no hyphenation dictionaries. Laptop Linux WebKit stalls (~1.7 min per parity test): WebKit evidence is CI only.
 
 ## Status
@@ -17,7 +19,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** **PD-C** (PD-07 on main 23 Nov; PD-08 done 23 Nov on `wip/PD-08-b`, main after its CI; next PD-09; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-23, talha.syed (PD-08 done on `wip/PD-08-b`, gate PASS; CI then main)
+- **Last updated:** 2026-11-23, talha.syed (PD-08 done on `wip/PD-08-b` `c41a066`, main after CI; process fixes approved; CLAUDE.md backup rule)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -26,9 +28,9 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 done 23 Nov** (`wip/PD-08-b`, gate PASS; main after CI). Next PD-09 (PD-C).
 
 ## Next (top 3)
-1. CI on the PD-08 closing push (`wip/PD-08-b`) green → push to main; then PD-09 · Gilded Gate 2.0.
-2. Cleanup: remote `wip/PD-07`, `wip/PD-07-b`, `wip/PD-07-bisect-*`, `wip/PD-08`; local `wip/PD-08-ff`; worktrees `../moz-bisect`, `../moz-PD-07`.
-3. Human any time: H-51 (b), H-48b, H-38, H-45, H-46; H-49 at the PD-C close.
+1. CI 45211398059 on `c41a066` green → merge main into `wip/PD-08-b` → push to main.
+2. The six approved process fixes, one at a time (DECISIONS 23 Nov), then PD-09 · Gilded Gate 2.0.
+3. Cleanup: remote `wip/PD-07`, `wip/PD-07-b`, `wip/PD-07-bisect-*`, `wip/PD-08`; local `wip/PD-08-ff`; worktrees `../moz-bisect`, `../moz-PD-07`. Human any time: H-51 (b), H-48b, H-38, H-45, H-46; H-49 at the PD-C close.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 | ID | From | To | Criterion | Proof |
