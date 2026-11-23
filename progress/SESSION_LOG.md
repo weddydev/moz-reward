@@ -876,3 +876,9 @@ Root causes: reference's phone `.back` rule leaks onto the card's back face (40 
 Tests: parity full 156/0 (both engines); Linux Chromium + Pixel 7 molten-fields 45/0; unit molten-card 20/0; screens 320/390/1440 front/back inspected. CI 45061015313 (`ec033ae`) RED on WebKit E2E only → `49a55cd` (tabs scroll coords, pill ≤ 1.5 px, choices opacity 1, slider lean per frame, WebKit drag quarantined C-77); CI 45068046655 pending.
 Left off: PD-06 close (gate:task PD-06, design-reviewer + review-animations, DECISIONS batch, FOLLOWUPS, tick).
 
+
+## 2026-11-23 — PD — PD-06 close part A: CI 45068046655 red fixed, C-77 root-caused (wip/PD-06 9bcd719)
+Done: CI 45068046655 (`4177678`) RED on WebKit E2E only → `9bcd719`: rating choices (COMPLIANCE §1) and card angles polled to their settled look; card hides the face turned away (`visibility` swap with the turn at 9.6%; design-review HIGH: WebKit painted the back over the front, mirrored) + same rule in the parity copy; C-77 slider drag active on WebKit again.
+Root causes (Linux container WebKit probes): ~1 frame/s, so an animation reports done while the computed style holds the last frame, and no frame runs in the slider's drag + 90 ms settle (lean read 0); first mouse event after `scrollIntoViewIfNeeded` scrolls the page back 39 px (press hit the wrapper, value stayed 240, 2/6). Host macOS WebKit draws the lean 12/12 under 3 workers: not a Safari bug.
+Tests: Linux container webkit/iphone14/chromium changed specs 34/0 (drag + tilt 6×: 24/0); host molten-fields 3 projects 69/0; parity member card 12/0; WebKit card screens 320/390 front + back inspected; unit 1947/0; pre-push check + sast PASS.
+Left off: CI on `9bcd719` not yet seen; PD-06 close part B (review findings, DECISIONS batch, FOLLOWUPS, gate:task, tick, main).
