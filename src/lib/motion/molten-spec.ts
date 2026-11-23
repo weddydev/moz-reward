@@ -16,6 +16,7 @@ import {
 import { FX } from "./fx";
 import { type Locator } from "./molten-reference";
 import { PRESS } from "./press";
+import { WIPE } from "./wipe";
 
 /**
  * DESIGN §7.4 (the Molten motion spec) as data (PD-01). Each value says where it lives in the reference
@@ -793,7 +794,122 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
       },
     ],
   },
-  { id: "card-to-shop", element: "Card → shop", task: "PD-08", status: "pending", values: [] },
+  {
+    id: "card-to-shop",
+    element: "Card → shop",
+    task: "PD-08",
+    status: "required",
+    values: [
+      {
+        name: "wipe duration",
+        value: "620",
+        ref: js("$$('.wcard').forEach(c => c.addEventListener('click'", /duration: (\d+), easing/g),
+        prod: { value: () => WIPE.durationMs },
+      },
+      {
+        name: "wipe easing",
+        value: "cubic-bezier(.65,0,.35,1)",
+        ref: js("$$('.wcard').forEach(c => c.addEventListener('click'", /easing: '([^']+)'/g),
+        prod: { value: () => WIPE.easing },
+      },
+      {
+        name: "shop follows",
+        value: "110",
+        ref: js("$$('.wcard').forEach(c => c.addEventListener('click'", /delay: (\d+), easing/g),
+        prod: { value: () => WIPE.shopDelayMs },
+      },
+      {
+        name: "wallet scale",
+        value: ".92",
+        ref: js("$$('.wcard').forEach(c => c.addEventListener('click'", /scale\((\.\d+)\)/g),
+        prod: { value: () => WIPE.walletScale },
+      },
+      {
+        name: "wallet opacity",
+        value: ".4",
+        ref: js("$$('.wcard').forEach(c => c.addEventListener('click'", /opacity: (\.\d+)/g),
+        prod: { value: () => WIPE.walletOpacity },
+      },
+      {
+        name: "wallet duration",
+        value: "600",
+        ref: js("$$('.wcard').forEach(c => c.addEventListener('click'", /\{ duration: (\d+) \}/g),
+        prod: { value: () => WIPE.walletMs },
+      },
+      {
+        name: "radius factor (hypot ×)",
+        value: "1.05",
+        ref: js("const R = () =>", /\* (\d\.\d+);/g),
+        prod: { value: () => WIPE.radiusFactor },
+      },
+      {
+        name: "gold bar fill",
+        value: "900",
+        ref: js(
+          "$$('.wcard').forEach(c => c.addEventListener('click'",
+          /#sBar[^;]*duration: (\d+)/g,
+        ),
+        prod: { value: () => WIPE.bar.ms },
+      },
+      {
+        name: "gold bar delay",
+        value: "420",
+        ref: js("$$('.wcard').forEach(c => c.addEventListener('click'", /#sBar[^;]*delay: (\d+)/g),
+        prod: { value: () => WIPE.bar.delayMs },
+      },
+      {
+        name: "content rise",
+        value: "520",
+        ref: js(
+          "$$('.wcard').forEach(c => c.addEventListener('click'",
+          /duration: (\d+), delay: 300/g,
+        ),
+        prod: { value: () => WIPE.rise.ms },
+      },
+      {
+        name: "content rise start",
+        value: "300",
+        ref: js("$$('.wcard').forEach(c => c.addEventListener('click'", /delay: (\d+) \+ k/g),
+        prod: { value: () => WIPE.rise.delayMs },
+      },
+      {
+        name: "content rise stagger",
+        value: "60",
+        ref: js("$$('.wcard').forEach(c => c.addEventListener('click'", /k \* (\d+)/g),
+        prod: { value: () => WIPE.rise.staggerMs },
+      },
+      {
+        name: "content rise distance (px)",
+        value: "22",
+        ref: js("$$('.wcard').forEach(c => c.addEventListener('click'", /translateY\((\d+)px\)/g),
+        prod: { value: () => WIPE.rise.fromPx },
+      },
+      {
+        name: "sparks",
+        value: "22",
+        ref: js("$$('.wcard').forEach(c => c.addEventListener('click'", /count: (\d+), speed/g),
+        prod: { value: () => WIPE.sparks.count },
+      },
+      {
+        name: "sparks delay",
+        value: "80",
+        ref: js("$$('.wcard').forEach(c => c.addEventListener('click'", /\}\), (\d+)\)/g),
+        prod: { value: () => WIPE.sparks.delayMs },
+      },
+      {
+        name: "back duration",
+        value: "520",
+        ref: js("$('#backBtn').addEventListener('click'", /duration: (\d+), easing/g),
+        prod: { value: () => WIPE.back.ms },
+      },
+      {
+        name: "wallet back delay",
+        value: "80",
+        ref: js("$('#backBtn').addEventListener('click'", /delay: (\d+) \}/g),
+        prod: { value: () => WIPE.back.walletDelayMs },
+      },
+    ],
+  },
   { id: "gilded-gate", element: "Gilded Gate 2.0", task: "PD-09", status: "pending", values: [] },
   {
     id: "vault",
