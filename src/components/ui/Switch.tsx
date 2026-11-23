@@ -7,8 +7,6 @@ import { SWITCH } from "@/lib/motion/controls";
 import { burst } from "@/lib/motion/fx";
 import { useHydrated } from "@/lib/use-hydrated";
 
-const RING = "inset 0 2px 6px rgba(90,60,10,.2),inset 0 0 0 1px rgba(178,128,28,.35)";
-
 /**
  * Coin switch (PD-05; DESIGN §6.3, §7.4; reference `.trow` + `.tgl`). Controlled, `role="switch"`. The knob is
  * a coin: turning on, it rolls across (.7 s spring, 30 px + 360°), flips from M to a tick (.5 s after .18 s)
@@ -55,14 +53,18 @@ export function Switch({
       count: SWITCH.sparks,
       speed: SWITCH.sparkSpeed,
     });
-    anim(
-      el,
-      [
-        { boxShadow: `${RING},0 0 0 0 rgba(255,201,60,.7)` },
-        { boxShadow: `${RING},0 0 0 14px rgba(255,201,60,0)` },
-      ],
-      { duration: SWITCH.pulseMs, fill: "none" },
-    );
+    // Colours from the tokens (ENGINEERING §9), resolved here rather than as var() in the keyframes so every
+    // engine animates plain values; the track's ring stays under the gold pulse.
+    const cs = getComputedStyle(el);
+    const shadow = (pulse: string): string =>
+      [cs.getPropertyValue("--tgl-ring"), cs.getPropertyValue(pulse)]
+        .map((v) => v.trim())
+        .filter(Boolean)
+        .join(", ");
+    anim(el, [{ boxShadow: shadow("--gold-pulse-0") }, { boxShadow: shadow("--gold-pulse-1") }], {
+      duration: SWITCH.pulseMs,
+      fill: "none",
+    });
   };
 
   return (

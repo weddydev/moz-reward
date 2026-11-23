@@ -343,7 +343,7 @@ describe("[PD-06] StarRating", () => {
       unmount();
     }
     expect(new Set(actions).size).toBe(1);
-    expect(RATING_CHOICES).toEqual(["Post on Google", "Send privately"]);
+    expect(RATING_CHOICES).toEqual(["Post on Google", "Send to the shop privately"]);
   });
 
   it("[PD-06] COMPLIANCE §1: a choice reports itself and the rating, the same way for a 1 and a 5", () => {
@@ -353,14 +353,14 @@ describe("[PD-06] StarRating", () => {
         <StarRating value={n} onChange={() => undefined} onChoice={onChoice} />,
       );
       fireEvent.click(screen.getByRole("button", { name: "Post on Google" }));
-      fireEvent.click(screen.getByRole("button", { name: "Send privately" }));
+      fireEvent.click(screen.getByRole("button", { name: "Send to the shop privately" }));
       unmount();
     }
     expect(onChoice.mock.calls).toEqual([
       ["Post on Google", 1],
-      ["Send privately", 1],
+      ["Send to the shop privately", 1],
       ["Post on Google", 5],
-      ["Send privately", 5],
+      ["Send to the shop privately", 5],
     ]);
   });
 
@@ -462,5 +462,24 @@ describe("[PD-06] StarRating", () => {
     expect(star(5)).toHaveAttribute("aria-checked", "true");
     expect(document.querySelectorAll('[role="radio"][tabindex="0"]')).toHaveLength(1);
     expect(star(5)).toHaveAttribute("tabindex", "0");
+  });
+
+  it("[PD-06] Down/Up arrows move and rate like Right/Left (WAI-ARIA radio group), without wrapping", () => {
+    render(<Rate />);
+    const star = (n: number) =>
+      screen.getByRole("radio", { name: n === 1 ? "1 star" : `${String(n)} stars` });
+    act(() => {
+      star(1).focus();
+    });
+    fireEvent.keyDown(star(1), { key: "ArrowDown" });
+    expect(star(2)).toHaveAttribute("aria-checked", "true");
+    expect(star(2)).toHaveFocus();
+    fireEvent.keyDown(star(2), { key: "ArrowUp" });
+    fireEvent.keyDown(star(1), { key: "ArrowUp" });
+    expect(star(1)).toHaveAttribute("aria-checked", "true");
+    expect(star(1)).toHaveFocus();
+    for (let i = 0; i < 6; i++)
+      fireEvent.keyDown(document.activeElement ?? star(1), { key: "ArrowDown" });
+    expect(star(5)).toHaveAttribute("aria-checked", "true");
   });
 });

@@ -1044,3 +1044,15 @@ Why: deterministic captures of timer- and input-driven motion on both pages, in 
 
 ## 2026-11-23 — This session ends after the PD-B close (human; session-scoped)
 Decision: 23 Nov 2026 (human): this session ends after the PD-B close with `/handoff` and stops; PD-07 starts in the next session, not this one; and autopilot ends with this session: the next session resumes in normal mode with plain `/resume` (not `/resume autopilot`). Session-scoped, not a standing rule.
+
+## 2026-11-23 — C-76: the Linux browser container reaches the app through a pooled HTTP forwarder
+Decision: `pnpm e2e:linux` / `gate:task`'s container forwards http://localhost:3100 to the host with `scripts/lib/e2e-forwarder.mjs` (HTTP, keep-alive pool of ≤ 32 host connections, hop-by-hop headers dropped, idle sockets closed at 4 s, one retry of a GET/HEAD on a reused socket the server closed, WebSocket upgrades tunnelled), replacing the 1:1 TCP pipe. Root cause (repro 23 Nov, a plain Node client in the container, no browser): Docker Desktop's host networking hangs every new connect to `host.docker.internal` for ~68 s once ~3,100 have been opened in ~30 s, with or without the forwarder; through the pool, 629,000 requests over 12 host connections in 3 min with no stall. CI has no forwarder and never stalled.
+Why: the browsers open fresh connections for every test context, which hit the limit every couple of minutes in a loaded gate (the `page.goto` stalls); pooling fixes it at the root without touching the browsers, the app or CI.
+
+## 2026-11-23 — Rating choice wording: COMPLIANCE over the reference
+Decision: the second rating choice reads "Send to the shop privately" (COMPLIANCE §1, PRODUCT §109), not the Molten reference's "Send privately"; COMPLIANCE outranks the reference (CLAUDE.md §2). At narrow widths both choices wrap to two balanced lines inside the same 44 px pill (`min-height: 44px`, 4 px / 6 px padding, line-height 1.15): the rating tile keeps its size at 320/340/390/1440 (measured) and both choices stay identical in look and size. Parity does not compare this label, so no parity expectation changes.
+Why: the compliance wording is mandatory; the layout must not grow or overflow at 320 px.
+
+## 2026-11-23 — Member card back is required (no built-in placeholder)
+Decision: `MemberCard`'s `back` prop is required; the decorative QR stand-in is exported as `MemberCardQrPlaceholder` and passed only by /dev/molten and tests. P1-14 passes the member's real code.
+Why: a production screen must never show a fake QR next to "Show this at the till" (ENGINEERING §17); the type now makes that impossible to forget.

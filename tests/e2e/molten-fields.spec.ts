@@ -321,14 +321,14 @@ test("[PD-06] star rating never gates reviews: before a rating the choices are i
   await expect(actions).toHaveAttribute("inert", "");
   await expect(tile.locator(".m-rate-actions button")).toHaveText([
     "Post on Google",
-    "Send privately",
+    "Send to the shop privately",
   ]);
   let first: Array<Record<string, string>> | undefined;
   for (const n of [1, 5, 2, 4, 3]) {
     await group.getByRole("radio", { name: n === 1 ? "1 star" : `${String(n)} stars` }).click();
     await expect(actions).not.toHaveAttribute("inert");
     const google = tile.getByRole("button", { name: "Post on Google" });
-    const privately = tile.getByRole("button", { name: "Send privately" });
+    const privately = tile.getByRole("button", { name: "Send to the shop privately" });
     await expect(google).toBeVisible();
     await expect(privately).toBeVisible();
     await expect(google).toBeEnabled();
@@ -336,12 +336,12 @@ test("[PD-06] star rating never gates reviews: before a rating the choices are i
     // Same two, same order, whatever the rating.
     await expect(tile.locator(".m-rate-actions button")).toHaveText([
       "Post on Google",
-      "Send privately",
+      "Send to the shop privately",
     ]);
     // Once the pop-in has settled (spring overshoot included), the two look exactly alike, and alike for
     // every rating. Both must end fully shown and in place; polled, not read once: Linux WebKit starved of
     // frames (about 1 a second in a container) reports the pop finished while the computed style still holds
-    // the last frame drawn (CI 45068046655: "Send privately" at 0 or .98 with nothing running).
+    // the last frame drawn (CI 45068046655: "Send to the shop privately" at 0 or .98 with nothing running).
     await expect.poll(() => runningWithin(actions), { timeout: 5_000 }).toBe(0);
     const atRest = (t: string | undefined): boolean =>
       t === "none" || t === "matrix(1, 0, 0, 1, 0, 0)";
@@ -371,12 +371,14 @@ test("[PD-06] star rating under reduced motion: every star lights at once, no po
   const group = rating(page);
   await group.getByRole("radio", { name: "5 stars" }).click();
   // All five at once (no 70 ms stagger), with no pop running on any star.
-  await expect.poll(() => litCount(group), { timeout: 500 }).toBe(5);
+  await expect.poll(() => litCount(group)).toBe(5);
   for (const s of await group.locator(".m-star").all()) expect(await running(s)).toBe(0);
   // The word fades in without rising; nothing moves.
   expect(await moves()).toEqual([]);
   await expect(rateTile(page).getByRole("button", { name: "Post on Google" })).toBeVisible();
-  await expect(rateTile(page).getByRole("button", { name: "Send privately" })).toBeVisible();
+  await expect(
+    rateTile(page).getByRole("button", { name: "Send to the shop privately" }),
+  ).toBeVisible();
 });
 
 test("[PD-06] targets ≥ 44 px: every tab, the text field, each star and both rating choices", async ({

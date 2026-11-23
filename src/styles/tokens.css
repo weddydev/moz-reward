@@ -192,6 +192,10 @@
   --metal-svg-4: #8e6417;
   /* Coin switch and liquid choice (PD-05; reference `.tgl-fill::after`, `.face`, `.blob`). */
   --pour-edge: #e8b84a;
+  /* Coin switch track ring and landing pulse (PD-05; reference `.tgl`, `.tgl.on` pulse). */
+  --tgl-ring: inset 0 2px 6px rgba(90, 60, 10, 0.2), inset 0 0 0 1px rgba(178, 128, 28, 0.35);
+  --gold-pulse-0: 0 0 0 0 rgba(255, 201, 60, 0.7);
+  --gold-pulse-1: 0 0 0 14px rgba(255, 201, 60, 0);
   /* Star rating (PD-06; reference `.star svg`, `.stars:hover .star svg`). */
   --star-off: #f1e8d4;
   --star-hover: #f7ebc7;

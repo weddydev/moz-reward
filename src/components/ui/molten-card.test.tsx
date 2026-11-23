@@ -12,7 +12,7 @@ import {
   memberCardMotion,
   qrPlaceholderCells,
 } from "@/lib/motion/controls";
-import { MemberCard } from "./MemberCard";
+import { MemberCard, MemberCardQrPlaceholder } from "./MemberCard";
 
 // next/font only runs under the Next compiler.
 vi.mock("@/styles/fonts-italic", () => ({ frauncesItalic: { variable: "font-italic" } }));
@@ -178,6 +178,7 @@ function Demo(): React.JSX.Element {
       tier="Gold member"
       since="since Nov 2026"
       backText="Show this at the till · K7Q-42M"
+      back={<MemberCardQrPlaceholder />}
     />
   );
 }
@@ -250,7 +251,17 @@ describe("[PD-06] MemberCard", () => {
 
   it("[PD-06] rapid flips end on the face the count says (an even number of taps: front)", () => {
     const onFlip = vi.fn();
-    render(<MemberCard name="A" memberId="B" tier="T" since="S" backText="X" onFlip={onFlip} />);
+    render(
+      <MemberCard
+        name="A"
+        memberId="B"
+        tier="T"
+        since="S"
+        backText="X"
+        back={<span />}
+        onFlip={onFlip}
+      />,
+    );
     for (let i = 0; i < 7; i++) fireEvent.click(card());
     expect(card()).toHaveAttribute("data-face", "back");
     fireEvent.click(card());
@@ -347,7 +358,17 @@ describe("[PD-06] MemberCard", () => {
     expect(html).toContain('aria-label="QR code placeholder"');
   });
 
-  it("[PD-06] a back slot replaces the placeholder (P1-14 puts the real code there)", () => {
+  it("[PD-06] the back is required: no built-in placeholder on a production path (ENGINEERING §17)", () => {
+    // Type level: leaving `back` out does not compile.
+    // @ts-expect-error `back` is required
+    const missing = <MemberCard name="A" memberId="B" tier="T" since="S" backText="X" />;
+    // Run time: even if a caller slips one past the types, nothing stands in for the code.
+    render(missing);
+    expect(document.querySelector('[aria-label="QR code placeholder"]')).toBeNull();
+    expect(document.querySelector(".m-mc-qr")).toBeEmptyDOMElement();
+  });
+
+  it("[PD-06] a back slot holds the real code (P1-14 puts it there), with no placeholder", () => {
     render(
       <MemberCard
         name="A"

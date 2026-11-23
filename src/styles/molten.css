@@ -812,9 +812,7 @@ html:root.rm .m-tile {
   border-radius: 999px;
   overflow: hidden;
   background: var(--ivory);
-  box-shadow:
-    inset 0 2px 6px rgba(90, 60, 10, 0.2),
-    inset 0 0 0 1px rgba(178, 128, 28, 0.35);
+  box-shadow: var(--tgl-ring);
 }
 .m-tgl-fill {
   position: absolute;
@@ -1407,7 +1405,12 @@ html:root.rm .m-tile {
   width: 100%;
 }
 .m-rate-actions button {
-  height: 44px;
+  /* COMPLIANCE §1's "Send to the shop privately" is longer than the reference's "Send privately": at narrow
+     widths both choices wrap to two balanced lines inside the same 44 px pill (the grid keeps them equal). */
+  min-height: 44px;
+  padding: 4px 6px;
+  line-height: 1.15;
+  text-wrap: balance;
   border-radius: 999px;
   border: 1.5px solid var(--gold);
   background: var(--surface);
@@ -1419,7 +1422,7 @@ html:root.rm .m-tile {
 }
 /* Shown, the choices rest at full opacity on their own, not only through the pop's fill: whatever an engine does
    with the restarted animation, both choices always end visible (COMPLIANCE §1; CI 45061015313: Linux WebKit
-   ended "Send privately" at opacity 0 with no animation left). The pop itself is unchanged. */
+   ended the second choice at opacity 0 with no animation left). The pop itself is unchanged. */
 .m-rate-actions[data-show] button {
   opacity: 1;
   animation: m-pop 0.5s var(--spring) both;

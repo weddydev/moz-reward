@@ -85,6 +85,9 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
       { name: "shadow-2", use: "Sheets, menus, toasts" },
       { name: "shadow-gold", use: "Primary button and reward cards only" },
       { name: "shadow-gold-pressed", use: "Primary button while pressed" },
+      { name: "tgl-ring", use: "Coin switch track's inset ring (PD-05)" },
+      { name: "gold-pulse-0", use: "Coin switch landing pulse, start (PD-05)" },
+      { name: "gold-pulse-1", use: "Coin switch landing pulse, end: faded out (PD-05)" },
     ],
   },
   {

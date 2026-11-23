@@ -889,3 +889,9 @@ Tests: unit card + fields fail→pass (2 new RM cases, iOS case rewritten); unit
 Gate `09e9078`: all steps PASS except changed specs 58/4 (4 × C-76 goto stall in `open()`, 01:03–01:05 UTC, molten-fields:313 + :945 on pixel7/desktop1440); rerun alone 2/0 (+2 skipped by design). C-76 evidence for the PD-B close.
 CI 45090767908 (`9bcd719`) GREEN: WebKit E2E 533/0, 0 flaky, slider drag active → C-77 closed.
 Left off: PD-B close (`/subphase-complete`, C-76 first), then `/handoff`; next session plain `/resume`.
+
+## 2026-11-23 — PD — PD-B close part 1: C-76 root cause + fix, code-review MEDIUMs (wip/PD-06)
+Done: C-76 root cause: Docker Desktop hangs new connects to `host.docker.internal` ~68 s after ~3,100 in ~30 s (TCP-pipe repro and direct repro both stall; pooled HTTP forwarder 629k requests / 12 host connections, 0 stalls) → `scripts/lib/e2e-forwarder.mjs` replaces the 1:1 TCP pipe; `overlays.spec` flick bounded by attempts + the page's own velocity samples.
+PD-B close code-review done: e8e9eae..ec5d6cc APPROVE WITH FIXES (5 MEDIUM fixed, 6 LOW → FOLLOWUPS); security review not needed (no server/auth/data code). GooFilter every-page change covered by the PD-05 full 5-project runs (`1177632` 1264/0; 45042543781 green).
+Tests: unit forwarder 5/0, ui 246/0 (new cases fail→pass), typecheck + eslint clean; rating tile 320/340/390/1440 measured + screens inspected.
+Left off: gate:task PD-06 on the tip (one run = C-76 proof), CI, main push; then PD-B close part 2.

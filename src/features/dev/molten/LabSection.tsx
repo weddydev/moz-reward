@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { IconButton } from "@/components/ui/IconButton";
 import { LiquidChoice } from "@/components/ui/LiquidChoice";
-import { MemberCard } from "@/components/ui/MemberCard";
+import { MemberCard, MemberCardQrPlaceholder } from "@/components/ui/MemberCard";
 import { Slider } from "@/components/ui/Slider";
 import { StarRating } from "@/components/ui/StarRating";
 import { Switch } from "@/components/ui/Switch";
@@ -326,6 +326,7 @@ export function LabSection(): React.JSX.Element {
             tier="Gold member"
             since="since Nov 2026"
             backText="Show this at the till · K7Q-42M"
+            back={<MemberCardQrPlaceholder />}
             backLabel="Member card showing a QR code placeholder. Press to turn back"
           />
           <p className="m-how">

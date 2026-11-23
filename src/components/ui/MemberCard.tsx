@@ -46,8 +46,10 @@ function readEnv(): Env {
  * it can't act yet (C-20). `role="button"` on a div like the reference, not a `<button>`: a button may only hold
  * phrasing content, and the card holds two block faces.
  *
- * The back shows `back` (P1-14: the real QR code); until then a labelled, decorative placeholder (the reference's
- * pattern; not a code). `parity` marks the card for the parity harness.
+ * The back shows `back`, which every caller must pass (P1-14: the member's real QR code). There is no built-in
+ * fallback, so a production screen can never show a stand-in next to "Show this at the till" (ENGINEERING §17);
+ * only /dev/molten and tests pass `<MemberCardQrPlaceholder />`, the reference's labelled decorative pattern (not a
+ * code). `parity` marks the card for the parity harness.
  */
 export function MemberCard({
   name,
@@ -73,8 +75,8 @@ export function MemberCard({
   /** The line under the QR code. */
   backText: string;
   brand?: string;
-  /** The back's code; omitted: the labelled placeholder. */
-  back?: ReactNode;
+  /** The back's code (required: no placeholder on a production path; /dev/molten passes MemberCardQrPlaceholder). */
+  back: ReactNode;
   /** The button's name while the front shows. */
   frontLabel?: string;
   /** The button's name while the back shows. */
@@ -202,7 +204,7 @@ export function MemberCard({
         </span>
         <span className="m-mface m-back">
           <span className="m-holo" />
-          <span className="m-mc-qr">{back ?? <QrPlaceholder />}</span>
+          <span className="m-mc-qr">{back}</span>
           <span className="m-mc-note">{backText}</span>
         </span>
       </div>
@@ -211,10 +213,11 @@ export function MemberCard({
 }
 
 /**
- * The card back's stand-in until P1-14 draws the member's real code: the reference's decorative pattern (25 × 25
- * cells, seed 42, three finder squares) in ink, pixel-sharp. Labelled as a placeholder; scanning it does nothing.
+ * The design lab's stand-in for the card back (/dev/molten and tests only; never a production screen): the
+ * reference's decorative pattern (25 × 25 cells, seed 42, three finder squares) in ink, pixel-sharp. Labelled as
+ * a placeholder; scanning it does nothing.
  */
-function QrPlaceholder(): React.JSX.Element {
+export function MemberCardQrPlaceholder(): React.JSX.Element {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = canvas.current;
