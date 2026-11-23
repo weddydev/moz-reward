@@ -585,7 +585,7 @@ body:has(.m-page) {
 .m-t-lbl {
   font-size: 13px;
   font-weight: 600;
-  color: #bfae88;
+  color: var(--on-obsidian-2);
 }
 .m-drops {
   display: flex;
