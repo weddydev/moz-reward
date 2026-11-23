@@ -46,6 +46,7 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 ## Tests in general
 
 **KI-20 · E2E presses keys / types before React owns the control** — wait for hydration: every page (incl. `/dev/molten`) marks `data-hydrating` until hydrated; interactive controls are disabled until then (DECISIONS 10 Nov, 23 Nov).
+- Same cause, other side (CI 45128513936, Linux WebKit iphone14: "keyboard hides the dock" never saw `data-keyboard`): a hook that only listens (focus, resize) misses what happened before its effect ran, and the root's `data-hydrated` can come before the shell's effects. Fix in the product: such hooks also read the current state once on mount (`useKeyboardOpen`, 23 Nov).
 
 **KI-21 · Gesture spec (flick, drag) fails under load** — timed in wall-clock. Bound by pointer steps / the speed the page measured, with bounded retries (overlays flick, C-76 batch).
 
