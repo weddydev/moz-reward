@@ -237,9 +237,25 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     title: "Wallet stack",
     anchor: 'id="stack"',
     task: "PD-08",
-    status: "pending",
+    status: "required",
+    tolerance: {
+      browser: "webkit",
+      max: 0.05,
+      why: `WebKit downsamples the card photos as <img> (object-fit: cover, next/image) differently from the reference's CSS background (background-size: cover): 4.3% at 390 and 1440, high-contrast photo edges only; layout, text, bar and rings match, and Chromium is under 1% (DECISIONS 23 Nov "PD-08 wipe parity")`,
+    },
   },
-  { name: "shop", title: "Shop page", anchor: 'id="vShop"', task: "PD-08", status: "pending" },
+  {
+    name: "shop",
+    title: "Shop page",
+    anchor: 'id="vShop"',
+    task: "PD-08",
+    status: "required",
+    tolerance: {
+      browser: "chromium",
+      max: 0.015,
+      why: `Linux Chromium sets the offer cards' detail line and bottom edge 1 px higher than the reference (same CSS; the Mac is under 1%) and draws the dock labels a device pixel apart (the dock's own allowance): 1.09% at 390 (DECISIONS 23 Nov "PD-08 wipe parity")`,
+    },
+  },
   { name: "vault", title: "Gold Vault", anchor: 'id="vault"', task: "PD-10", status: "pending" },
   {
     name: "reward",
@@ -273,8 +289,16 @@ export function addParityHooks(html: string, parts: readonly ParityPart[] = PARI
  *   border-radius:50%;…}` also matches the member card's `.mface.back`, so in the reference the card's back face
  *   is a 40 px blurred circle and a flip shows an empty card (DECISIONS 23 Nov "Member card back face"). Scoped
  *   to the phone's button, the back face is the whole card with the QR code, as the tile's copy says.
+ * - The wallet cards' gold bars (`.wc-bar i{width:var(--p)}`, `--p:72%`) all draw full width: `@property --p`
+ *   (syntax `<number>`, for the redeem countdown ring) makes a percentage invalid. The copy gives each bar its
+ *   width, so the stack shows the progress its labels state (720 / 1,000).
  */
 export const REFERENCE_FIXES: readonly { why: string; from: string; to: string }[] = [
+  ...(["60", "70", "72"] as const).map((p) => ({
+    why: `the wallet card's bar width is --p, which the reference registers as a <number> (@property --p, for the redeem ring), so its --p:${p}% is invalid and every bar draws full (DECISIONS 23 Nov "PD-08 wipe parity")`,
+    from: `<i style="--p:${p}%">`,
+    to: `<i style="--p:${p}%;width:${p}%">`,
+  })),
   {
     why: "the phone's .back button rule leaks onto the member card's back face",
     from: ".back{position:absolute;top:50px;left:14px;",

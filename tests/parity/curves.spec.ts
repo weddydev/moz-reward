@@ -84,7 +84,9 @@ test.describe("[PD-01] curve parity", () => {
     }
   });
 
-  for (const part of PARITY_PARTS.filter((p) => p.status === "required" && p.name in TRIGGERS)) {
+  for (const part of PARITY_PARTS.filter(
+    (p) => p.status === "required" && p.name in TRIGGERS && TRIGGERS[p.name]?.curves !== false,
+  )) {
     test(`[${part.task}] ${part.title} follows the reference's curves`, async ({
       page,
       context,

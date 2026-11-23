@@ -17,6 +17,22 @@ describe("[PD-08] offer card", () => {
     expect(container.querySelector("img")).toHaveAttribute("alt", "");
     expect(screen.getByText("2-for-1 flat white")).toHaveClass("m-offer-title");
     expect(card).toHaveTextContent("2-for-1 flat whiteWeekdays before 10am");
+    expect(container.querySelector("img")).toHaveAttribute("loading", "lazy");
+  });
+
+  it("[PD-08] eager and unoptimized (the /dev/molten phone): loads at once, the file as it is", () => {
+    const { container } = render(
+      <OfferCard
+        imageUrl="/demo/shops/brew-offer1.jpg"
+        title="2-for-1"
+        detail=""
+        eager
+        unoptimized
+      />,
+    );
+    const img = container.querySelector("img");
+    expect(img).toHaveAttribute("loading", "eager");
+    expect(img).toHaveAttribute("src", "/demo/shops/brew-offer1.jpg");
   });
 
   it("[PD-08] no photo: the dark ground holds the photo's place, so cards in a row stay the same height", () => {

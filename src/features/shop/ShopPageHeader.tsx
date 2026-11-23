@@ -20,6 +20,10 @@ const COVER_SIZES = "(min-width: 1024px) 1056px, (min-width: 592px) 560px, 100vw
  * morphs into (P1-07). The page renders the name as its `h1`; the loading state renders the same cover from the
  * tapped card (`hero-handoff`) with `loading`: no photo yet (a shimmer in its place), and the name is a hidden
  * `p`, so it isn't a second heading or announced twice. The back button works in both.
+ *
+ * /dev/molten's phone (PD-08) passes `onBack` (a button that plays the wipe back, instead of a link), `rise`
+ * (`data-rise` 0/1/2 on the logo, name and area line, the order the reference's content rises in), `titleAs`
+ * (an `h3` inside the gallery's section) and `unoptimized` (the reference's own JPEGs, compared pixel for pixel).
  */
 export function ShopPageHeader({
   shopId,
@@ -28,6 +32,10 @@ export function ShopPageHeader({
   coverUrl = null,
   meta = null,
   loading = false,
+  onBack,
+  rise = false,
+  titleAs = "h1",
+  unoptimized = false,
 }: {
   shopId: string;
   name: string;
@@ -36,12 +44,24 @@ export function ShopPageHeader({
   /** The line under the name (category and town). */
   meta?: string | null;
   loading?: boolean;
+  onBack?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  rise?: boolean;
+  titleAs?: "h1" | "h3";
+  unoptimized?: boolean;
 }): React.JSX.Element {
-  const Title = loading ? "p" : "h1";
+  const Title = loading ? "p" : titleAs;
+  const at = (k: number): { "data-rise"?: number } => (rise ? { "data-rise": k } : {});
+  const backIcon = <ChevronLeft aria-hidden="true" strokeWidth={2.2} />;
   return (
     <header className="m-cover" data-testid={loading ? undefined : "shop-cover"}>
       {coverUrl && !loading ? (
-        <ShopImage src={coverUrl} className="m-cover-photo" sizes={COVER_SIZES} eager />
+        <ShopImage
+          src={coverUrl}
+          className="m-cover-photo"
+          sizes={COVER_SIZES}
+          eager
+          unoptimized={unoptimized}
+        />
       ) : (
         <span
           className={loading ? "m-cover-photo skeleton" : "m-cover-photo"}
@@ -49,34 +69,52 @@ export function ShopPageHeader({
           aria-hidden="true"
         />
       )}
-      <TransitionLink
-        href="/wallet"
-        direction="back"
-        className="m-cover-back"
-        aria-label="Back to wallet"
-        data-testid="shop-back"
-      >
-        <ChevronLeft aria-hidden="true" strokeWidth={2.2} />
-      </TransitionLink>
+      {onBack ? (
+        <button
+          type="button"
+          className="m-cover-back"
+          aria-label="Back to wallet"
+          data-testid="shop-back"
+          onClick={onBack}
+        >
+          {backIcon}
+        </button>
+      ) : (
+        <TransitionLink
+          href="/wallet"
+          direction="back"
+          className="m-cover-back"
+          aria-label="Back to wallet"
+          data-testid="shop-back"
+        >
+          {backIcon}
+        </TransitionLink>
+      )}
       <div className="m-cover-text" aria-hidden={loading || undefined}>
         <SharedElement kind="shopname" id={shopId}>
           <Title
             className="m-cover-title"
             data-testid={loading ? "member-shop-name-loading" : "member-shop-name"}
+            {...at(1)}
           >
             {name}
           </Title>
         </SharedElement>
-        {meta ? <p className="m-cover-meta">{meta}</p> : null}
+        {meta ? (
+          <p className="m-cover-meta" {...at(2)}>
+            {meta}
+          </p>
+        ) : null}
       </div>
       <SharedElement kind="shoplogo" id={shopId} fit="cover">
         <span
           className="m-cover-logo"
           aria-hidden="true"
           data-testid={loading ? undefined : "shop-logo"}
+          {...at(0)}
         >
           {logoUrl ? (
-            <ShopImage src={logoUrl} size={LOGO} eager />
+            <ShopImage src={logoUrl} size={LOGO} eager unoptimized={unoptimized} />
           ) : (
             <ShopCoin name={name} size={LOGO} />
           )}

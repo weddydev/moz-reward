@@ -10,16 +10,26 @@ export function OfferCard({
   imageUrl,
   title,
   detail,
+  unoptimized = false,
+  eager = false,
 }: {
   imageUrl: string | null;
   title: string;
   detail: string;
+  /** Serve the photo as it is (the /dev/molten phone, compared with the reference's own JPEGs). */
+  unoptimized?: boolean;
+  eager?: boolean;
 }): React.JSX.Element {
   return (
     <div className="m-offer" data-testid="offer-card">
       {imageUrl ? (
         <span className="m-offer-photo">
-          <ShopImage src={imageUrl} sizes="(min-width: 592px) 270px, 50vw" />
+          <ShopImage
+            src={imageUrl}
+            sizes="(min-width: 592px) 270px, 50vw"
+            unoptimized={unoptimized}
+            eager={eager}
+          />
         </span>
       ) : (
         <span className="m-offer-photo" aria-hidden="true" />

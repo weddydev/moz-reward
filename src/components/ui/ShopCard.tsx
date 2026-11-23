@@ -27,6 +27,7 @@ export function ShopCard({
   sharedId,
   dimmed = false,
   unoptimized = false,
+  eager = false,
   render,
 }: {
   name: string;
@@ -44,6 +45,8 @@ export function ShopCard({
   sharedId?: string;
   dimmed?: boolean;
   unoptimized?: boolean;
+  /** Load the photos at once (cards in the first screenful). */
+  eager?: boolean;
   /** Renders the card element with the given class, data and children (a link or a button). */
   render: (card: {
     className: string;
@@ -55,7 +58,7 @@ export function ShopCard({
   const logo = (
     <span className="m-wc-logo">
       {logoUrl ? (
-        <ShopImage src={logoUrl} size={36} unoptimized={unoptimized} />
+        <ShopImage src={logoUrl} size={36} unoptimized={unoptimized} eager={eager} />
       ) : (
         <ShopCoin name={name} size={36} />
       )}
@@ -72,6 +75,7 @@ export function ShopCard({
             src={coverUrl}
             sizes={WALLET_CARD_SIZES}
             unoptimized={unoptimized}
+            eager={eager}
             className="m-wc-photo"
           />
         ) : (
