@@ -269,6 +269,11 @@ export const REFERENCE_FIXES: readonly { why: string; from: string; to: string }
     from: ".back{position:absolute;top:50px;left:14px;",
     to: ".back:not(.mface){position:absolute;top:50px;left:14px;",
   },
+  {
+    why: "an engine that draws the card flat (headless WebKit: no 3D) paints the back face over the front, mirrored; the face turned away is hidden as the app does (molten.css .m-mface), swapping where the turn passes 90°",
+    from: ".mface.back{transform:rotateY(180deg);",
+    to: '.mface{transition:visibility .7s linear(0,0 9.6%,1 9.6%,1)}.mcard[aria-label^="Member card."] .mface.back,.mcard[aria-label^="Member card showing"] .mface.front{visibility:hidden}.mface.back{transform:rotateY(180deg);',
+  },
 ];
 
 /** Applies `REFERENCE_FIXES`; throws if a fix no longer matches exactly once (the reference changed). */

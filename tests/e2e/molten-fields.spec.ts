@@ -314,10 +314,22 @@ test("[PD-06] star rating never gates reviews: before a rating the choices are i
       "Send privately",
     ]);
     // Once the pop-in has settled (spring overshoot included), the two look exactly alike, and alike for
-    // every rating.
+    // every rating. Both must end fully shown and in place; polled, not read once: Linux WebKit starved of
+    // frames (about 1 a second in a container) reports the pop finished while the computed style still holds
+    // the last frame drawn (CI 45068046655: "Send privately" at 0 or .98 with nothing running).
     await expect.poll(() => runningWithin(actions), { timeout: 5_000 }).toBe(0);
+    const atRest = (t: string | undefined): boolean =>
+      t === "none" || t === "matrix(1, 0, 0, 1, 0, 0)";
+    await expect
+      .poll(
+        async () =>
+          (await choiceLooks(tile)).map(
+            (l) => `${l.opacity ?? ""} ${atRest(l.transform) ? "in place" : (l.transform ?? "")}`,
+          ),
+        { timeout: 5_000 },
+      )
+      .toEqual(["1 in place", "1 in place"]);
     const looks = await choiceLooks(tile);
-    expect(looks.map((l) => l.opacity)).toEqual(["1", "1"]);
     expect(looks[1], `rating ${String(n)}: the two choices differ`).toEqual(looks[0]);
     first ??= looks;
     expect(looks, `rating ${String(n)} looks unlike rating 1`).toEqual(first);
@@ -406,6 +418,15 @@ const lean = (page: Page): Promise<number> =>
       return (Math.atan2(m.b, m.a) * 180) / Math.PI;
     });
 
+/** What the drag test records in the page (see "slider drag"). */
+type LeanProbe = {
+  __tilts: number[];
+  __minLean: number;
+  __leanFrames: number[];
+  __leanRaf: number;
+  __tiltObs: MutationObserver;
+};
+
 test("[PD-06] slider keyboard: arrows step 10, Home/End and Page keys jump; each notch sparks once per crossing", async ({
   page,
 }) => {
@@ -455,44 +476,90 @@ test("[PD-06] slider drag: the coin follows the pointer, the fill grows, the bub
   browserName,
 }) => {
   test.skip(isMobile, "a mouse drag; touch drags are the browser's own range input");
-  // Quarantined on WebKit (C-77, TESTING §7): CI 45061015313 failed 3/3 (the bubble never leaned) and host WebKit
-  // under 3 workers 1–3 in 12 (the value stayed 240 through the drag, or no lean); root cause not found in two
-  // attempts (layout-settled press and a per-frame lean sampler did not cure it). Chromium keeps it.
-  test.fixme(browserName === "webkit", "C-77: WebKit mouse drag on the range input, quarantined");
   await open(page);
   await sliderAtRest(page);
-  const box = await spend(page).boundingBox();
+  // The pointer rests on the coin, over the input and where it was measured, before the press (C-77): Linux
+  // WebKit scrolls the page back (39 px) at the first mouse event after `scrollIntoViewIfNeeded`, so a box read
+  // before it sent the press onto the wrapper above the input and the value never moved (2 in 6 runs).
+  let measured: { x: number; y: number; width: number; height: number } | null = null;
+  await expect
+    .poll(
+      async () => {
+        measured = await spend(page).boundingBox();
+        if (!measured) return false;
+        const at = { x: measured.x + 18 + (240 / 720) * (measured.width - 36), y: measured.y + 32 };
+        await page.mouse.move(at.x, at.y);
+        const top = measured.y;
+        return spend(page).evaluate(
+          (n, p) =>
+            document.elementFromPoint(p.x, p.y) === n &&
+            Math.abs(n.getBoundingClientRect().top - p.top) < 0.5,
+          { ...at, top },
+        );
+      },
+      { timeout: 5_000 },
+    )
+    .toBe(true);
+  const box = measured as { x: number; y: number; width: number; height: number } | null;
   if (!box) throw new Error("no slider box");
   const coinX = (v: number): number => box.x + 18 + (v / 720) * (box.width - 36);
   const y = box.y + 32;
-  // The deepest lean is recorded on every frame in the page: read after the drag, the bubble may already be
-  // upright again (90 ms after the last input, then .5 s), which a slow runner's round trips outlast (Linux
-  // Chromium, 2 in 4 runs before; 6/6 after). Frames, not wall-clock time, decide.
+  // Recorded in the page: every lean the slider asks for (each write of the bubble's `--tilt`) and, on every
+  // frame, the lean drawn and the frames that ran while a lean was asked for. Read afterwards, the bubble may
+  // already be upright again (90 ms after the last input, then .5 s), which a slow runner's round trips outlast.
+  // What was drawn is judged by frames, not wall-clock time (C-77): Linux WebKit in CI and in a container runs
+  // no frame at all for the whole drag and its 90 ms settle, so the spring never starts there and nothing can be
+  // seen to lean; it is checked wherever frames ran, the asked-for lean everywhere.
   await sliderTile(page)
     .locator(".m-bubble")
     .evaluate((b) => {
-      const w = window as unknown as { __minLean: number; __leanRaf: number };
+      const w = window as unknown as LeanProbe;
+      const tilt = (): number => Number.parseFloat(b.style.getPropertyValue("--tilt")) || 0;
+      w.__tilts = [];
       w.__minLean = 0;
-      const tick = (): void => {
+      w.__leanFrames = [];
+      w.__tiltObs = new MutationObserver(() => {
+        w.__tilts.push(tilt());
+      });
+      w.__tiltObs.observe(b, { attributes: true, attributeFilter: ["style"] });
+      const tick = (t: number): void => {
+        if (tilt() < 0) w.__leanFrames.push(t);
         const m = new DOMMatrixReadOnly(getComputedStyle(b).transform);
         w.__minLean = Math.min(w.__minLean, (Math.atan2(m.b, m.a) * 180) / Math.PI);
         w.__leanRaf = requestAnimationFrame(tick);
       };
       w.__leanRaf = requestAnimationFrame(tick);
     });
+  const probe = (): Promise<LeanProbe> =>
+    page.evaluate(() => {
+      const w = window as unknown as LeanProbe;
+      return {
+        __tilts: w.__tilts,
+        __minLean: w.__minLean,
+        __leanFrames: w.__leanFrames,
+      } as LeanProbe;
+    });
   await page.mouse.move(coinX(240), y);
   await page.mouse.down();
   for (let i = 1; i <= 6; i++) await page.mouse.move(coinX(240 + i * 40), y);
-  // Mid-drag the value follows the pointer and the bubble leaned back against the movement.
+  // Mid-drag the value follows the pointer and the slider leans the bubble back against the movement; held
+  // still, it asks for upright again (the 90 ms settle).
   await expect(spend(page)).not.toHaveValue("240");
   await expect
-    .poll(() => page.evaluate(() => (window as unknown as { __minLean: number }).__minLean), {
-      timeout: 2_000,
-    })
+    .poll(async () => Math.min(...(await probe()).__tilts), { timeout: 2_000 })
     .toBeLessThan(-1);
+  await expect.poll(async () => (await probe()).__tilts.at(-1), { timeout: 2_000 }).toBe(0);
+  const seen = await probe();
   await page.evaluate(() => {
-    cancelAnimationFrame((window as unknown as { __leanRaf: number }).__leanRaf);
+    const w = window as unknown as LeanProbe;
+    cancelAnimationFrame(w.__leanRaf);
+    w.__tiltObs.disconnect();
   });
+  // Drawn: wherever frames ran across 32 ms or more of the lean, the bubble was seen leaning.
+  const leanSpanMs = (seen.__leanFrames.at(-1) ?? 0) - (seen.__leanFrames[0] ?? 0);
+  if (leanSpanMs >= 32)
+    expect(seen.__minLean, `frames over ${String(leanSpanMs)} ms`).toBeLessThan(-1);
+  if (browserName === "chromium") expect(leanSpanMs).toBeGreaterThanOrEqual(32);
   await page.mouse.move(box.x + box.width + 20, y);
   await page.mouse.up();
   await expect(spend(page)).toHaveValue("720");
@@ -612,12 +679,42 @@ async function tapCard(page: Page, hasTouch: boolean): Promise<void> {
   else await page.mouse.click(x, y);
 }
 
-/** Settled on a face: no running transition or animation on the card, turned to `face`. */
+/**
+ * Which face a person sees at the card's centre (hit testing skips a hidden face), and whether the face turned
+ * away is hidden too (not only by `backface-visibility`, which an engine drawing the card flat ignores).
+ */
+const shownFace = (page: Page): Promise<{ hit: string; awayHidden: boolean }> =>
+  memberCard(page).evaluate((c) => {
+    const r = c.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    const faceOf = (el: Element | null): string => {
+      const f = el?.closest(".m-mface");
+      return f ? (f.classList.contains("m-back") ? "back" : "front") : "none";
+    };
+    const away = c.querySelector(
+      c.dataset.face === "back" ? ".m-mface:not(.m-back)" : ".m-mface.m-back",
+    );
+    return {
+      hit: faceOf(hit),
+      awayHidden: !!away && getComputedStyle(away).visibility === "hidden",
+    };
+  });
+
+/**
+ * Settled on a face: no running transition or animation on the card, turned to `face`, and only that face can be
+ * seen. The angle is polled, not read once: Linux WebKit starved of frames reports the transition finished while
+ * its computed transform still holds the last frame's value (CI 45068046655: 0.55° short of 180).
+ */
 async function settledOn(page: Page, face: "front" | "back"): Promise<void> {
   await expect(memberCard(page)).toHaveAttribute("data-face", face);
   await expect.poll(() => running(memberCard(page)), { timeout: 5_000 }).toBe(0);
-  const { ry } = await cardAngles(page);
-  expect(Math.abs(ry - (face === "back" ? 180 : 0))).toBeLessThan(0.5);
+  const target = face === "back" ? 180 : 0;
+  await expect
+    .poll(async () => Math.abs((await cardAngles(page)).ry - target), { timeout: 5_000 })
+    .toBeLessThan(0.5);
+  await expect
+    .poll(() => shownFace(page), { timeout: 5_000 })
+    .toEqual({ hit: face, awayHidden: true });
 }
 
 test("[PD-06] member card: a click, Enter and Space turn it to the QR placeholder and back; the name says which side", async ({
@@ -631,8 +728,17 @@ test("[PD-06] member card: a click, Enter and Space turn it to the QR placeholde
   await expect(card).toHaveAccessibleName(
     "Member card: Aisha Khan, K7Q-42M. Press to show QR code",
   );
+  // Unturned, the front is what shows and the back is hidden, on every engine (design review 23 Nov: Playwright
+  // WebKit drew the back over the front, mirrored, where it draws the card flat).
+  await expect
+    .poll(() => shownFace(page), { timeout: 5_000 })
+    .toEqual({ hit: "front", awayHidden: true });
+  await expect(card.locator(".m-mface.m-back")).toBeHidden();
   await tapCard(page, hasTouch);
   await settledOn(page, "back");
+  await expect(card.locator(".m-mface:not(.m-back)")).toBeHidden();
+  await expect(card.locator(".m-mface.m-back")).toBeVisible();
+  await expect(card.locator(".m-mc-note")).toHaveText("Show this at the till · K7Q-42M");
   await expect(card).toHaveAccessibleName(
     "Member card showing a QR code placeholder. Press to turn back",
   );
@@ -711,8 +817,16 @@ test("[PD-06] member card: a mouse tilts it and lights the glare; leaving fast s
   await page.mouse.move(box.x + box.width + 300, box.y - 200);
   await expect(memberCard(page)).not.toHaveClass(/\blive\b/);
   await expect.poll(() => running(memberCard(page)), { timeout: 5_000 }).toBe(0);
-  const rest = await cardAngles(page);
-  expect(Math.abs(rest.rx) + Math.abs(rest.ry)).toBeLessThan(0.5);
+  // Polled: frame-starved Linux WebKit reports the spring done while the drawn angle is the last frame's.
+  await expect
+    .poll(
+      async () => {
+        const rest = await cardAngles(page);
+        return Math.abs(rest.rx) + Math.abs(rest.ry);
+      },
+      { timeout: 5_000 },
+    )
+    .toBeLessThan(0.5);
   // A fine pointer never sways.
   await expect(memberCard(page)).not.toHaveClass(/\bidle\b/);
 });

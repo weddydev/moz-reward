@@ -310,7 +310,7 @@ h2.sec em{font-style:italic;background:var(--metal-text);background-size:200% 10
 @keyframes sway{from{transform:rotateX(4deg) rotateY(-9deg)}to{transform:rotateX(-3deg) rotateY(9deg)}}
 .mface{position:absolute;inset:0;border-radius:inherit;overflow:hidden;-webkit-backface-visibility:hidden;backface-visibility:hidden;padding:20px 22px;display:flex;flex-direction:column;justify-content:space-between;
   background:linear-gradient(135deg,#FFFDF7,#F5EAD0 60%,#EBD8A9) padding-box,var(--metal) border-box;border:2.5px solid transparent;box-shadow:0 30px 60px -28px rgba(124,85,16,.6)}
-.mface.back{transform:rotateY(180deg);align-items:center;justify-content:center;gap:10px;text-align:center}
+.mface{transition:visibility .7s linear(0,0 9.6%,1 9.6%,1)}.mcard[aria-label^="Member card."] .mface.back,.mcard[aria-label^="Member card showing"] .mface.front{visibility:hidden}.mface.back{transform:rotateY(180deg);align-items:center;justify-content:center;gap:10px;text-align:center}
 .holo{position:absolute;inset:0;pointer-events:none;opacity:.6;mix-blend-mode:multiply;background:linear-gradient(115deg,transparent 22%,rgba(255,214,120,.55) 34%,rgba(251,200,210,.6) 44%,rgba(190,235,220,.6) 54%,rgba(210,200,250,.55) 62%,transparent 76%);background-size:260% 260%;background-position:var(--hx,50%) var(--hy,50%)}
 .glare{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(circle at var(--gx,50%) var(--gy,50%),rgba(255,255,255,.85),rgba(255,255,255,0) 45%)}
 .mcard.live .glare{opacity:1}

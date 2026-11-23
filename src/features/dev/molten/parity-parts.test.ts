@@ -66,7 +66,8 @@ describe("[PD-01] parity parts and the reference copy", () => {
     const fixed = withReferenceFixes(original);
     for (const fix of REFERENCE_FIXES) {
       expect(fixed).toContain(fix.to);
-      expect(fixed.split(fix.from).length - 1, fix.why).toBe(0);
+      // Nothing of the original text is left outside its fix (a fix may keep it, after what it adds).
+      expect(fixed.split(fix.from).length - 1, fix.why).toBe(fix.to.split(fix.from).length - 1);
     }
     // The card's own back-face rule is untouched; only the phone's button rule is scoped.
     expect(fixed).toContain(".mface.back{transform:rotateY(180deg)");
@@ -74,5 +75,21 @@ describe("[PD-01] parity parts and the reference copy", () => {
     expect(() => withReferenceFixes(original.replace(".back{position:absolute", ".bk{"))).toThrow(
       /leaks onto the member card/,
     );
+  });
+
+  it("[PD-06] reference fixes: the card's face turned away is hidden, swapping with the turn, as in the app (WebKit draws the card flat)", () => {
+    const fixed = withReferenceFixes(original);
+    expect(fixed).toContain(".mface{transition:visibility .7s linear(0,0 9.6%,1 9.6%,1)}");
+    // Keyed on the reference's own labels for each side (its flip sets them).
+    expect(original).toContain('aria-label="Member card. Press to show QR code"');
+    expect(original).toContain("'Member card showing QR code. Press to turn back'");
+    expect(fixed).toContain(
+      '.mcard[aria-label^="Member card."] .mface.back,.mcard[aria-label^="Member card showing"] .mface.front{visibility:hidden}',
+    );
+    expect(() =>
+      withReferenceFixes(
+        original.replace(".mface.back{transform:rotateY(180deg);", ".mface.back{"),
+      ),
+    ).toThrow(/draws the card flat/);
   });
 });

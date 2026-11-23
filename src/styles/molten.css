@@ -1649,6 +1649,17 @@ html:root.rm .m-tile {
     var(--metal) border-box;
   border: 2.5px solid transparent;
   box-shadow: 0 30px 60px -28px rgba(124, 85, 16, 0.6);
+  /* The face turned away is also hidden, not only by `backface-visibility`: an engine that draws the card flat
+     (WebKit without 3D compositing: rotateY flattened, backface ignored) would otherwise paint the back over the
+     front, mirrored. The swap rides the turn itself (same .7 s, so it scales with `.rm`'s .12 s and is seeked with
+     the turn): it jumps where the spring passes 90°, at 9.6% (the spring's half way), and never comes back
+     (its overshoot stays past 180°). Without `linear()`, the same moment as a delay. */
+  transition: visibility 0s linear 67ms;
+  transition: visibility 0.7s linear(0, 0 9.6%, 1 9.6%, 1);
+}
+.m-mcard[data-face="front"] .m-mface.m-back,
+.m-mcard[data-face="back"] .m-mface:not(.m-back) {
+  visibility: hidden;
 }
 .m-mface.m-back {
   transform: rotateY(180deg);
