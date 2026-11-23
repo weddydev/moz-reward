@@ -86,3 +86,5 @@ _CLAUDE.md §4 findings policy: LOW findings and nits get one line here, are not
 - [PD-11, PD-B close code review LOW, 23 Nov] `press.ts:122` comment wording does not match what the code does (re-word).
 - [P3 review-flow task, PD-B close code review LOW, 23 Nov] `StarRating` has no way to hide "Post on Google" when the shop has no Place ID (PRODUCT §109): add the option there, keeping the remaining choice's look and order (COMPLIANCE §1).
 - [P0-14 infra, PD-B close, 23 Nov] The main-push hook picked task ID PD-07 (next unticked) for `d59a2eb`, so the PD-06 gate stamp on the same tree didn't cover it and the hook re-ran `gate:task`: derive the IDs from the pushed commits (or accept any stamp on the same tree).
+- [PD-11, PD-07, 23 Nov] Parity frames: WebKit `liquid-choice` frame 0 measured 2.01% (limit 2%) once in a full local parity run under load, 3/3 alone; if it recurs in CI, root-cause (first frame after the click) before adding any tolerance.
+- [PD-11, PD-07, 23 Nov] Shop/admin desktop sidebar (`SideNav`) still has the pre-Molten look; restyle it with the dock's glass and liquid gold with the other portal shells.

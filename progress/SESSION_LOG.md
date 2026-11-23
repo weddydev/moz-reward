@@ -908,6 +908,12 @@ Reviews: code-review MEDIUMs fixed (above); security review not needed. Close's 
 Handoff (talha.syed, 23 Nov): baton freed; autopilot off; next session plain `/resume` → PD-07. Main CI 45112526437 + staging deploy of `d59a2eb` not verified at handoff (check first).
 Handoff by talha.syed (04:52 UTC): baton free; KNOWN_ISSUES.md added; main CI 45112526437 running.
 
+## 2026-11-23 — PD — PD-07 floating dock (wip/PD-07 `42e68ed`)
+Built: `Dock` (reference `.dock/.dk/.scan` 1:1, reference icons, 1fr columns) on the customer/shop/admin bottom navs; shared `useLiquidPour` (LiquidChoice refactored, axis y for the rail); rail liquid gold + glass; keyboard hide; gold drains on Scan/non-dock pages; pours on the tap (`dockPlacement`); /dev/molten phone frame; dock parity part + spec row required. HUMAN_TASKS split (done → `HUMAN_TASKS_DONE.md`; H-31b, H-26b new); issue #2 closed (fixed by 22 Nov green runs).
+Parity: harness snapped inset parts with `top` (dock jumped to the phone's top) → snaps the part's frame; columns `minmax(0,1fr)` → reference `1fr`; Chromium label raster in the backdrop-filter layer 2.0% (0 with the filter off, WebKit 0) → documented tolerance 2.5% (DECISIONS).
+Design review: APPROVE WITH FIXES; MEDIUM (gold jumped to item 0 while draining) + 4 LOW all fixed test-first; the placement test also caught the customer dock treating Notifications as "More" (stale gold).
+Gates: `7d34e58` PASS; `42e68ed` PASS (unit 1972/0, int 1456/0, E2E Linux 13/0 + 54/0, parity 8/0). CI on the wip push + full 5-project run: pending at this commit.
+
 ## 2026-11-23 — PD — PD-07 CI red; PD-08 step (a) (wip/PD-08 `543fe86`)
 CI on `92886e5` RED: WebKit iphone14 keyboard-hides-dock (hook missed pre-hydration focus/resize; fixed `76ed690`, unit test fails without it, KI-20) and pixel7 @fps FX stress (CI A/B: main 58.8–60 fps, PD-07 54–57.7 fps p95 33 ms; local Mac gives no verdict; cause not found yet).
 PD-08 (a): wallet card + stack + coin + demo photos (+2 demo shops, human) + next/image config + public/ in image. `pnpm check` 1985/0, seed int 15/0, wallet unit 7/0. E2E not run (NOT VERIFIED).
