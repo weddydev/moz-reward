@@ -12,7 +12,7 @@ Resume Moz Rewards. Two developers take turns; the repo files are the only share
    - `free` or held by you → continue.
    - Held by the other developer → stop and tell the human: "<name> still holds the baton since <time>. Continue anyway?" Only continue if they confirm.
 4. Set `Baton: held by <you> since <date time>`, commit (`chore(progress): baton <you>`) and push immediately so the other developer sees it. If the push is rejected: pull, re-read the baton, and stop if the other developer took it.
-5. Read `progress/HUMAN_TASKS.md` (open items only). Ask the human whether any open tasks were completed since the last session; move confirmed ones to Done.
+5. Read `progress/HUMAN_TASKS.md` (open items only). Ask the human whether any open tasks were completed since the last session; move confirmed ones to `progress/HUMAN_TASKS_DONE.md` (a Log row at the top + an Index line, with their steps).
 6. **If the handoff note names a wip branch and HEAD** (e.g. "`wip/P0-15`, HEAD `25e05cf`"): `git switch <branch>` and `git merge --ff-only origin/<branch>` (a local copy may be older than the pushed one), then check `git rev-parse --short HEAD` equals the HEAD in the note. If it doesn't match, or the branch has local commits the remote lacks, **stop and tell the human** — never build on a stale copy. (Do this on the light path too.)
    Read the **Handoff note**, the last SESSION_LOG.md entry, `docs/PHASES.md` to find the next unticked task, and that task's section in `docs/phases/<phase>.md` (plus the phase's "How to work this phase" header).
 7. Bring the local environment in line: `pnpm install --frozen-lockfile`, start Docker services, `pnpm db:migrate`, `pnpm db:seed` if the note says so. If `.env.example` gained variables, list them for the human.
