@@ -679,10 +679,7 @@
     gap: 16px;
     width: var(--rail-w-open);
     padding-block: 16px;
-    /* Molten (PD-07): the dock's glass. */
-    background: rgba(255, 252, 245, 0.82);
-    -webkit-backdrop-filter: blur(16px) saturate(1.5);
-    backdrop-filter: blur(16px) saturate(1.5);
+    background: var(--surface); /* Molten glass in molten.css (PD-07) */
     clip-path: inset(0 calc(var(--rail-w-open) - var(--rail-w)) 0 0);
     transition: clip-path var(--dur-base) var(--ease-out);
   }
@@ -695,11 +692,6 @@
     box-shadow: var(--shadow-2);
     opacity: 0;
     transition: opacity var(--dur-base) var(--ease-out);
-  }
-  .lite .rail {
-    background: rgba(255, 252, 245, 0.97);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
   }
   .rail-edge {
     position: absolute;
@@ -725,25 +717,6 @@
   .rail .rail-item {
     position: relative;
     z-index: 1;
-  }
-  .rail .rail-icon {
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-    stroke: currentColor;
-    fill: none;
-    stroke-width: 1.5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-  .rail .rail-item > svg {
-    transition: transform 0.45s var(--spring);
-  }
-  .rail .rail-item:is([aria-current="page"], :hover) > svg {
-    transform: scale(1.08);
-  }
-  .rail .rail-item:hover {
-    color: var(--ink);
   }
   .rail .rail-label {
     opacity: 0;

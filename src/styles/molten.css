@@ -2076,3 +2076,33 @@ html:root.rm .m-tile {
     transition-delay: var(--delay-intent);
   }
 }
+/* The rail's glass, its own icons and hover (PD-07, extended from the dock). */
+.rail {
+  background: rgba(255, 252, 245, 0.82);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+}
+.lite .rail {
+  background: rgba(255, 252, 245, 0.97);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.rail .rail-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rail .rail-item > svg {
+  transition: transform 0.45s var(--spring);
+}
+.rail .rail-item:is([aria-current="page"], :hover) > svg {
+  transform: scale(1.08);
+}
+.rail .rail-item:hover {
+  color: var(--ink);
+}
