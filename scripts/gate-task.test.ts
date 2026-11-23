@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
-  affectedE2eArgs,
   CI_WEBKIT_PROJECTS,
   GATE_LINUX_PROJECTS,
   nativeWindowsWarning,
@@ -38,14 +37,6 @@ describe("[P0-14] gate:task E2E runs where CI runs it (process change, 22 Nov)",
     expect(nativeWindowsWarning("win32")).toMatch(/WSL2/);
     expect(nativeWindowsWarning("linux")).toBeNull();
     expect(nativeWindowsWarning("darwin")).toBeNull();
-  });
-
-  it("[P0-14] specs whose test-side files changed since main also run (Playwright --only-changed)", () => {
-    const args = affectedE2eArgs();
-    expect(args).toContain("--only-changed=origin/main");
-    expect(projectsIn(args)).toEqual(["pixel7", "desktop1440"]);
-    expect(args).not.toContain("--grep");
-    expect(args).toContain("--pass-with-no-tests");
   });
 });
 

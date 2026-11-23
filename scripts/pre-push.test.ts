@@ -7,6 +7,7 @@ import {
   gateFor,
   WIP_STEPS,
   needsGate,
+  onlyMainUpdates,
   parsePushLines,
   refusal,
   type CiRun,
@@ -217,5 +218,22 @@ describe("[P0-14] main only takes a commit CI has already passed (process change
   it("[P0-14] no run at all names the way through: push the wip branch, then main once it is green", () => {
     const v = ciVerdict(C, [], deps());
     expect(v.ok ? "" : v.why).toMatch(/wip\/.*green/s);
+  });
+});
+
+describe("[P0-14] a push to main CI already passed doesn't re-run the gate (process speed, human 23 Nov)", () => {
+  const Z0 = "0".repeat(40);
+  const l = (remoteRef: string, localSha = "a".repeat(40)) => ({
+    localRef: "refs/heads/x",
+    localSha,
+    remoteRef,
+    remoteSha: "b".repeat(40),
+  });
+  it("[P0-14] only main updates: CI's verdict decides; any other branch in the push still runs its own checks", () => {
+    expect(onlyMainUpdates([l("refs/heads/main")])).toBe(true);
+    expect(onlyMainUpdates([l("refs/heads/main"), l("refs/heads/wip/PD-09", Z0)])).toBe(true);
+    expect(onlyMainUpdates([l("refs/heads/main"), l("refs/heads/wip/PD-09")])).toBe(false);
+    expect(onlyMainUpdates([l("refs/heads/wip/PD-09")])).toBe(false);
+    expect(onlyMainUpdates([])).toBe(false);
   });
 });

@@ -12,7 +12,7 @@
 - Same protocol as every phase (CLAUDE.md §1): test first, `pnpm gate:task`, one commit per task, progress files, evidence.
 - **Parity is part of the definition of done.** A task that touches anything the reference shows can't be ticked until its parity specs pass (PD-01 harness). "Looks close" is not done.
 - **Port, don't reinvent:** copy keyframes, durations, easings, colours, gradients, shadow stacks and particle numbers verbatim into tokens and presets. A value that must change (browser bug, accessibility, React constraint) gets a DECISIONS line (what, why, visual effect) and a parity tolerance note for that element only.
-- **Every parity, motion or visual spec** also runs in the Linux Playwright container before the push (CLAUDE.md §4), in Chromium and WebKit.
+- **Every parity, motion or visual spec** runs on Linux Chromium in the gate and on CI, WebKit on CI from the early checkpoint push (CLAUDE.md §4, 23 Nov); `pnpm e2e:linux` is for debugging a Linux-only difference.
 - **Screenshots** of every touched customer screen at 320, 390 and 1440, inspected next to the matching file in `design/reference/molten/screenshots/`.
 - **Reviews:** `design-reviewer` with the `review-animations` skill on every task that adds or changes motion, judged **against the reference**, not general taste. Load `emil-design-eng` / `mobile-native` for the new patterns (liquid choice, coin switch, dock, card stack).
 - **None of these tasks is on the security-relevant list** (CLAUDE.md §4); diffs are reviewed at each sub-phase close (`/subphase-complete` step 4). PD-08 changes seed data and image loading, so its close also checks the CSP `img-src`.

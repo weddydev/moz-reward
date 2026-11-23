@@ -106,21 +106,6 @@ export const taskE2eArgs = (ids: string[], projects: Projects): string[] => [
   "--pass-with-no-tests",
 ];
 
-/**
- * Specs whose own files or test-side imports (fixtures, helpers) changed since main. Playwright can't see app
- * code a spec only reaches through the server, so a changed page still relies on the task specs and the
- * every-page rule (full 5-project run).
- */
-export const CI_E2E_PROJECTS = ["pixel7", "desktop1440"] as const; // .github/workflows/ci.yml, every push
-
-export const affectedE2eArgs = (): string[] => [
-  // CI's projects only: all five over every changed spec overloads a laptop's container (21 Nov: 231 tests,
-  // WebKit timeouts), and these specs are not the task's own.
-  ...CI_E2E_PROJECTS.flatMap((p) => ["--project", p]),
-  "--only-changed=origin/main",
-  "--pass-with-no-tests",
-];
-
 /** The task's perf-budget specs alone, one worker (playwright.config: @perf runs only with PERF=1). */
 export const perfE2eArgs = (ids: string[], projects: Projects): string[] => [
   ...projectArgs(projects),
@@ -251,10 +236,8 @@ function main(): void {
           ),
       },
     );
-    steps.push({
-      name: "e2e changed specs (Linux)",
-      run: () => linuxE2eStep("e2e changed specs (Linux)", affectedE2eArgs()),
-    });
+    // No local run of the changed specs (process speed, human 23 Nov 2026): CI runs every spec on Chromium and
+    // the task's + changed specs on WebKit for every push, and main only takes a commit CI passed.
     // Molten parity (PD-01): a PD task also runs its parity specs ([PD-nn] titles), both browsers.
     const pd = ids.filter((id) => id.startsWith("PD-"));
     if (pd.length > 0) {

@@ -10,6 +10,7 @@
  *   - A push to main that changes code also needs a green CI run for that exact commit (pushed to its `wip/*`
  *     branch first), or for an ancestor it differs from only in docs/progress files (`ciVerdict`; DECISIONS
  *     22 Nov): CI's runners, all its projects, are the one verdict, so main never goes red from a local pass.
+ *     With that verdict the gate isn't run again for main (`onlyMainUpdates`; process speed, 23 Nov).
  * Server-side protection exists only in GITHUB_MODE=pro; in free mode this hook is the guard (it can be
  * bypassed with --no-verify, which the project rules forbid).
  */
@@ -56,6 +57,17 @@ export function refusal(
     return `non-fast-forward push to ${line.remoteRef} is refused (no force-pushes; pull --rebase first)`;
   }
   return null;
+}
+
+/**
+ * True when the push updates main and nothing else (deletions aside). Main only takes a commit CI already
+ * passed on every job (`ciVerdict`), and CI runs every step of `gate:task` and more on Linux, so the hook then
+ * doesn't run the gate a second time (process speed, human 23 Nov 2026; KI-04). Any other branch in the same push
+ * still gets its own checks.
+ */
+export function onlyMainUpdates(lines: PushLine[]): boolean {
+  const updates = lines.filter((l) => !ZERO.test(l.localSha));
+  return updates.length > 0 && updates.every((l) => l.remoteRef === "refs/heads/main");
 }
 
 /** True when at least one changed file can affect the build or tests. Git prints `/`-separated paths. */
@@ -238,6 +250,10 @@ function main(): void {
     console.warn(
       `[pre-push] CI green for ${v.via.slice(0, 7)}${v.via === l.localSha ? "" : " (only docs/progress files changed since)"}`,
     );
+  }
+  if (onlyMainUpdates(lines)) {
+    console.warn("[pre-push] main takes a commit CI passed on every job: gate:task not re-run");
+    process.exit(0);
   }
   if (gateFor(lines) === "check") {
     console.warn(
