@@ -66,7 +66,8 @@ test("[P1-02] active shop: screen 1 content, Collect points to sign-in, screensh
     .poll(() => cover.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
     .toBe(true);
   await expect(page.getByTestId("landing-name")).toHaveText("Brew & Bloom Café");
-  await expect(page.getByText("Café · Shoreditch")).toBeVisible();
+  // The page's own line (the gate, aria-hidden decoration, carries the same words as its subtitle: PD-09).
+  await expect(page.locator("#main").getByText("Café · Shoreditch")).toBeVisible();
   await expect(page.getByTestId("landing-status")).toHaveText(/^(Open|Closes soon|Closed)/);
   await expect(page.getByTestId("landing-hours").getByText("Monday")).toBeVisible();
   await expect(
