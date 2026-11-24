@@ -18,7 +18,7 @@ export function DemoTabBar(): React.JSX.Element {
           aria-current={i === current ? "page" : undefined}
           className={cx(
             "hit-44 rounded-pill text-small flex h-10 items-center justify-center font-semibold",
-            i === current ? "bg-surface shadow-1 text-ink" : "text-ink-2",
+            i === current ? "bg-surface shadow-lift-sm text-ink" : "text-ink-2",
           )}
         >
           {t.label}

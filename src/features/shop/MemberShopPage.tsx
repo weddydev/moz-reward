@@ -127,7 +127,7 @@ export function MemberShopPage({
           data-testid="join-welcome"
           data-rise={5}
         >
-          <Icon icon={PartyPopper} className="text-gold-700 mt-1 shrink-0" />
+          <Icon icon={PartyPopper} className="text-gold-deep mt-1 shrink-0" />
           <div className="flex flex-col gap-1">
             <p className="text-h2">Welcome to {shop.name}</p>
             <p className="text-body text-ink-2">
@@ -145,7 +145,7 @@ export function MemberShopPage({
               <MemberIdCard memberId={member.memberId} fullName={member.fullName} />
               <Card className="flex flex-col gap-3 p-5" data-testid="shop-receipts">
                 <h2 className="text-h2 flex items-center gap-2">
-                  <Icon icon={Receipt} className="text-gold-700" /> Recent receipts
+                  <Icon icon={Receipt} className="text-gold-deep" /> Recent receipts
                 </h2>
                 <EmptyState
                   title="No receipts yet"
@@ -171,7 +171,7 @@ export function MemberShopPage({
           {member ? (
             <Card className="flex flex-col gap-4 p-5" data-testid="shop-settings">
               <h2 className="text-h2 flex items-center gap-2">
-                <Icon icon={Settings} className="text-gold-700" /> Your membership
+                <Icon icon={Settings} className="text-gold-deep" /> Your membership
               </h2>
               <MembershipControls
                 shopId={shop.shopId}
@@ -244,7 +244,7 @@ function DetailsCard({ details, today }: { details: Live; today: string }): Reac
     <Card className="flex flex-col gap-5 p-5" data-testid="shop-details">
       <section className="flex flex-col gap-3" aria-labelledby="shop-hours-title">
         <h2 id="shop-hours-title" className="text-h2 flex items-center gap-2">
-          <Icon icon={Clock} className="text-gold-700" /> Opening hours
+          <Icon icon={Clock} className="text-gold-deep" /> Opening hours
         </h2>
         {details.hours.length ? (
           <dl
@@ -270,7 +270,7 @@ function DetailsCard({ details, today }: { details: Live; today: string }): Reac
           data-testid="shop-closures"
         >
           <h3 id="shop-closures-title" className="text-body flex items-center gap-2 font-semibold">
-            <Icon icon={CalendarX} size={18} className="text-gold-700" /> Special closures
+            <Icon icon={CalendarX} size={18} className="text-gold-deep" /> Special closures
           </h3>
           <ul className="text-small text-ink-2 flex flex-col gap-1">
             {closures.map((c) => (
@@ -285,7 +285,7 @@ function DetailsCard({ details, today }: { details: Live; today: string }): Reac
 
       <section className="flex flex-col gap-2" aria-labelledby="shop-address-title">
         <h2 id="shop-address-title" className="text-h2 flex items-center gap-2">
-          <Icon icon={MapPin} className="text-gold-700" /> Address
+          <Icon icon={MapPin} className="text-gold-deep" /> Address
         </h2>
         <p className="text-small text-ink-2" data-testid="shop-address">
           {address ?? "Address not added yet."}
@@ -295,7 +295,7 @@ function DetailsCard({ details, today }: { details: Live; today: string }): Reac
       {shop.description ? (
         <section className="flex flex-col gap-2" aria-labelledby="shop-about-title">
           <h2 id="shop-about-title" className="text-h2 flex items-center gap-2">
-            <Icon icon={Info} className="text-gold-700" /> About
+            <Icon icon={Info} className="text-gold-deep" /> About
           </h2>
           <p className="text-small text-ink-2 break-words" data-testid="shop-about">
             {shop.description}

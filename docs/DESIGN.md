@@ -31,18 +31,18 @@ Implement as CSS variables in `src/styles/tokens.css` and expose via Tailwind th
 
 | Token | Value | Use |
 |---|---|---|
-| `--bg` | `#FBF8F1` | App background (warm ivory) |
+| `--pearl` | `#FFFCF5` | App background (Molten pearl; the v1 `--bg` was retired in PD-11) |
 | `--surface` | `#FFFFFF` | Cards, sheets |
 | `--surface-2` | `#F4EEE2` | Subtle panels, inputs, skeletons |
 | `--ink` | `#1C1A17` | Primary text |
 | `--ink-2` | `#5C564C` | Secondary text |
 | `--ink-3` | `#8E877B` | Tertiary text, placeholders (not for body copy) |
 | `--line` | `#E8DFCE` | Borders, dividers |
-| `--gold-700` | `#8A6A1F` | Gold text on ivory (AA for large text), icons |
-| `--gold-500` | `#C9A24A` | Gold accents, progress |
-| `--gold-300` | `#E9D08A` | Highlights, shimmer |
-| `--gold-100` | `#F7EDD0` | Gold tint backgrounds |
-| `--gold-gradient` | `linear-gradient(135deg,#8C6A1F 0%,#C9A24A 35%,#F3DE8A 55%,#C49A3A 75%,#8C6A1F 100%)` | Primary buttons, ingot fill, member card edge |
+| `--gold-deep` | `#7C5510` | Gold text and icons on pearl and cards (was `--gold-700`) |
+| `--gold` | `#D2A033` | Gold accents, progress, milestone fills (was `--gold-500`) |
+| `--gold-light` | `#FBE7A6` | Highlights (was `--gold-300`) |
+| `--champagne` | `#EFDDB0` | Gold tint backgrounds: chosen chip, avatar, current nav row (was `--gold-100`) |
+| `--metal` | the reference's metal gradient (§6.1) | Molten buttons, progress and ingot fills, member card edge (was `--gold-gradient`) |
 | `--success` | `#2F7D5B` | Success states |
 | `--warning` | `#B7791F` | Warnings |
 | `--danger` | `#B3432F` | Errors, destructive |
@@ -74,8 +74,7 @@ Rules (v2): no area cap on gold (it is a material; the v1 "≤ 10%" rule is reti
 
 - Spacing scale (px): 4, 8, 12, 16, 20, 24, 32, 40, 56, 72, 96.
 - Radius: `--r-sm 8`, `--r-md 14` (cards, inputs), `--r-lg 22` (sheets, hero cards), `--r-pill 999`.
-- Shadows (warm): `--shadow-1: 0 1px 2px rgba(60,45,20,.06), 0 2px 8px rgba(60,45,20,.05)`; `--shadow-2: 0 8px 24px rgba(60,45,20,.10)`; `--shadow-gold: 0 6px 20px rgba(201,162,74,.28)` (primary button and reward cards only).
-- Foil texture: an optional, very subtle noise/brushed SVG overlay (≤ 2 KB, opacity ≤ 0.06) on hero cards and the member card.
+- Shadows (warm, Molten since PD-11): `shadow-lift` = `--inner` + `--lift` (placed surfaces, sheets, menus, the cookie notice); `shadow-lift-sm` = `--lift-sm`, the reference's mini-vault lift (chips, secondary icon buttons, small placed parts). The v1 `--shadow-1/2/gold` were retired in PD-11.
 - **v2 surfaces (reference):** `--surface` (pearl-to-ivory gradient), `--edge` (gold hairline gradient border), `--inner` (white inner bevel), `--lift` and `--lift-hover` (four-layer warm shadows); radii `--r-md 16`, `--r-lg 26`. A grain overlay at 5% sits over the whole page (§6.1).
 
 ## 4. Typography
@@ -108,7 +107,7 @@ Rules (v2): no area cap on gold (it is a material; the v1 "≤ 10%" rule is reti
 Build in `src/components/ui/` with Storybook-free docs: a `/dev/ui` route (dev only) showing every component state.
 
 - **Button**: Primary (gold gradient, ink text, `--shadow-gold`), Secondary (surface + line border), Ghost, Destructive. Sizes 40/48/56. Press: scale .97, 120ms. Loading: inline spinner, keeps width.
-- **Card** (surface, radius md, shadow-1), **Hero card** (radius lg, foil overlay).
+- **Card**: placed (default) or dark (§6.1); a hero card is a placed card with the gilded edge (§6.2). The v1 plain card and foil Hero card were retired in PD-11.
 - **Shop card**: photo 64px rounded, name, 1-line address (ellipsis), progress bar 4px with gold gradient, label, badges.
 - **Progress bar**, **Ingot** (SVG component, see §8.3), **Milestone track** (horizontal mobile, vertical desktop).
 - **Bottom sheet** (mobile), **Modal** (desktop), **Side panel** (dashboard).
@@ -117,7 +116,7 @@ Build in `src/components/ui/` with Storybook-free docs: a `/dev/ui` route (dev o
 - **Table** (dashboard): sticky header, row hover, density toggle.
 - **KPI card** with sparkline (tiny SVG, no chart lib for sparklines).
 - **Charts** (dashboard analytics only): lightweight library loaded on those routes only.
-- **Toast**, **Empty state** (illustration line-art in gold-700, one-line message, CTA), **Skeletons** (shimmer ≤ 1.2s loop, reduced-motion: static).
+- **Toast**, **Empty state** (illustration line-art in `--gold-deep`, one-line message, CTA), **Skeletons** (shimmer ≤ 1.2s loop, reduced-motion: static).
 - **Member card**: gold-edged card, member ID, QR, subtle foil, tilt-on-device-orientation (disabled on reduced motion and on iOS unless permission granted — default off on iOS).
 - Icons: one outline icon set (e.g. Lucide), 1.5px stroke, imported per icon.
 
@@ -156,7 +155,7 @@ The installed Emil Kowalski skills (`emil-design-eng`, `animation-performance`, 
 | Spring | the reference's exact `linear(…)` curve; fallback `cubic-bezier(.34,1.56,.64,1)` where `linear()` is unsupported |
 | Liquid | `cubic-bezier(.45,0,.2,1)` (liquid choice, droplets) |
 
-The v1 tokens (`--dur-fast` 120, `--dur-base` 220, `--dur-slow` 380, `--dur-hero`) stay as aliases until PD-11.
+Duration tokens (PD-11; the v1 `--dur-fast/base/slow/hero` names were retired): `--dur-tap` 120 ms (press, hover, toggles) and `--dur-quiet` 220 ms (sheets, popovers, small transitions) are quiet tier; `--dur-expressive` 380 ms (page moves) is expressive. Signature moments carry their own lengths from the reference (§7.4). Reduced motion sets tap to 0 and the others to `--dur-reduced` (150 ms).
 
 ### 7.2 Rules
 - Animate `transform` and `opacity` by default. No layout-affecting animation. **Named paint exceptions (v2), each confined to a small element:** the goo filter (liquid choice, dock indicator), the `@property` orbiting border (secondary button), text shine (`background-position` on headings and totals), the Fraunces weight forge (Gilded Gate title only), SVG stroke-dash light (gilded edge, vault stream), `clip-path` reveals (seal checkbox, page wipe).
@@ -170,7 +169,7 @@ The v1 tokens (`--dur-fast` 120, `--dur-base` 220, `--dur-slow` 380, `--dur-hero
 - `will-change` only during an animation, removed after.
 
 ### 7.3 Page transitions
-- Use the **View Transitions API** where supported (feature-detect) for the shared-element morph; page slides animate the live content (fade + 8px, `--dur-slow`, in every browser), because a view-transition snapshot can't be tapped while it animates (DECISIONS 11 Nov 2026 "Pages slide as live content"). No old-page cross-fade: the old page leaves at once.
+- Use the **View Transitions API** where supported (feature-detect) for the shared-element morph; page slides animate the live content (fade + 8px, `--dur-expressive`, in every browser), because a view-transition snapshot can't be tapped while it animates (DECISIONS 11 Nov 2026 "Pages slide as live content"). No old-page cross-fade: the old page leaves at once.
 - **Card → page**: tapping a shop card morphs the card image and title into the shop page header (shared element via `view-transition-name`), and (v2) a **gold circle wipe** spreads from the tap point (620 ms ease-in-out; the shop view follows 110 ms later; the wallet scales to .92 at 40% opacity; content rises with a 60 ms stagger; sparks at the tap). Back reverses the wipe from the back button (520 ms).
 - **Tab switches (bottom nav)**: cross-fade with 6px directional slide based on tab order.
 - **Back**: reverse direction.
@@ -316,7 +315,7 @@ Techniques: React Server Components by default, client components only where int
 - WCAG 2.2 AA. Keyboard reachable everything; visible focus ring; skip-to-content.
 - Touch targets ≥ 44×44px.
 - Animations never convey information alone: points and rewards also appear as text and are announced via an `aria-live="polite"` region.
-- Colour contrast checked for every text/background pair (gold text only `--gold-700` on ivory for large text/icons).
+- Colour contrast checked for every text/background pair (gold text only `--gold-deep` on pearl or cards, for large text and icons).
 - Forms: labels, error messages linked with `aria-describedby`.
 - Game: has a "Skip / practise later" path; not required for anything.
 

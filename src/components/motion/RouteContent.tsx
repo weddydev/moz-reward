@@ -16,7 +16,7 @@ const Claim = createContext<((pathname: string) => void) | null>(null);
 
 /**
  * The page content (`data-route-content`) and its enter animation: when the path changes, the new content
- * fades in and slides in the navigation's direction (`enterKeyframes`, `--dur-slow`, `--ease-out`). Live
+ * fades in and slides in the navigation's direction (`enterKeyframes`, `--dur-expressive`, `--ease-out`). Live
  * content, so it is clickable from the first frame; never on the first render, never on exit; a further
  * navigation cancels it, and reduced motion switched on mid-slide ends it at once. Nested: passive effects run child-first, so the innermost `RouteContent` whose page
  * changed animates and claims the navigation; its ancestors stay still (a tab layout's bar holds still).
@@ -55,14 +55,22 @@ export function RouteContent({
     // A Wallet card's gold wipe (or its way back) waiting for this page plays instead of the slide (PD-08).
     const wiped = openWipe(el, pathname) ?? returnWipe(el, pathname);
     if (wiped) {
+      // Reduced motion switched on mid-wipe: the wipe and the parts rising with it land at once (FOLLOWUPS L8).
+      const unwatchWipe = onReducedMotion(() => {
+        wiped.finish();
+        for (const a of el.getAnimations({ subtree: true }))
+          if (a.effect?.getTiming().iterations !== Infinity) a.finish();
+      });
+      wiped.finished.then(unwatchWipe, unwatchWipe);
       return () => {
         wiped.cancel();
+        unwatchWipe();
       };
     }
     // Any other page: a wipe still showing (it pointed elsewhere, or the user left mid-way) goes now.
     settleWipe();
     const root = getComputedStyle(document.documentElement);
-    const duration = cssTimeMs(root.getPropertyValue("--dur-slow"));
+    const duration = cssTimeMs(root.getPropertyValue("--dur-expressive"));
     if (duration <= 0) return;
     const motionOn = root.getPropertyValue("--motion-on").trim() !== "0";
     const inPlace =
@@ -95,23 +103,11 @@ export function RouteContent({
     };
     animation.finished.then(unclip, unclip);
     // Reduced motion switched on mid-enter (the Me toggle, or the system setting): land at once.
-    const landIfReduced = (): void => {
-      const on = getComputedStyle(document.documentElement).getPropertyValue("--motion-on");
-      if (on.trim() === "0") animation.finish();
-    };
-    const system = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const toggle = motionOn ? new MutationObserver(landIfReduced) : null;
-    if (toggle) {
-      toggle.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ["data-reduce-motion"],
-      });
-      system.addEventListener("change", landIfReduced);
-    }
-    const unwatch = (): void => {
-      toggle?.disconnect();
-      system.removeEventListener("change", landIfReduced);
-    };
+    const unwatch = motionOn
+      ? onReducedMotion(() => {
+          animation.finish();
+        })
+      : () => undefined;
     animation.finished.then(unwatch, unwatch);
     return () => {
       animation.cancel();
@@ -126,4 +122,26 @@ export function RouteContent({
       </div>
     </Claim>
   );
+}
+
+/**
+ * Calls `land` once reduced motion comes on (the Me toggle's `data-reduce-motion`, or the system setting), as
+ * `--motion-on` reads 0. Returns the function that stops watching.
+ */
+function onReducedMotion(land: () => void): () => void {
+  const check = (): void => {
+    const on = getComputedStyle(document.documentElement).getPropertyValue("--motion-on");
+    if (on.trim() === "0") land();
+  };
+  const system = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const toggle = new MutationObserver(check);
+  toggle.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-reduce-motion"],
+  });
+  system.addEventListener("change", check);
+  return () => {
+    toggle.disconnect();
+    system.removeEventListener("change", check);
+  };
 }

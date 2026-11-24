@@ -37,7 +37,7 @@ export function Sparkline({
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       fill="none"
-      className="text-gold-500"
+      className="text-gold"
     >
       <path
         d={d}

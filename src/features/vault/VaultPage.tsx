@@ -92,7 +92,7 @@ function Vault({
           <Card className="flex flex-col gap-5 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-h2 flex items-center gap-2">
-                <Icon icon={Gift} className="text-gold-700" /> Milestone rewards
+                <Icon icon={Gift} className="text-gold-deep" /> Milestone rewards
               </h2>
               {streak ? <StreakChip bonusGold={streak.bonusGold} /> : null}
             </div>
@@ -110,7 +110,7 @@ function Vault({
           <Card className="flex flex-col gap-4 p-5" data-testid="vault-tier">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-h2 flex items-center gap-2">
-                <Icon icon={Crown} className="text-gold-700" /> Your tier
+                <Icon icon={Crown} className="text-gold-deep" /> Your tier
               </h2>
               <p className="text-small text-ink-2">
                 {tier.next ? nextTierText(tier.next) : "You've reached the top tier"}
@@ -171,7 +171,7 @@ function Vault({
 
         <Card className="flex flex-col gap-3 p-5" data-testid="vault-rewards">
           <h2 className="text-h2 flex items-center gap-2">
-            <Icon icon={Sparkles} className="text-gold-700" /> Rewards ready
+            <Icon icon={Sparkles} className="text-gold-deep" /> Rewards ready
           </h2>
           <p className="text-small text-ink-2">
             Nothing to redeem yet. Rewards appear here when you reach a milestone or fill your ingot
@@ -202,7 +202,7 @@ function StreakChip({ bonusGold }: { bonusGold: number }): React.JSX.Element {
       className="rounded-pill bg-surface-2 text-small text-ink inline-flex min-h-8 items-center gap-1.5 px-3 py-1"
       data-testid="vault-streak"
     >
-      <Icon icon={Flame} size={16} className="text-gold-700" />
+      <Icon icon={Flame} size={16} className="text-gold-deep" />
       Visit 2 weeks running for +{bonusGold} bonus gold
     </span>
   );
@@ -219,7 +219,7 @@ function HowRow({
 }): React.JSX.Element {
   return (
     <li className="flex items-start gap-3">
-      <Icon icon={icon} className="text-gold-700 mt-0.5" />
+      <Icon icon={icon} className="text-gold-deep mt-0.5" />
       <div className="flex min-w-0 flex-col">
         <span className="text-small font-semibold">{title}</span>
         <span className="text-small text-ink-2">{text}</span>

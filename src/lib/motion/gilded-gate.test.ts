@@ -65,11 +65,22 @@ describe("[PD-09] timeline (DESIGN §8.1, the reference intro's beats)", () => {
 
 describe("[PD-09] gateTitle (letters forged one by one, wrapped by word)", () => {
   it("splits into words of letters and counts them (spaces aren't letters)", () => {
-    expect(gateTitle("Brew & Bloom")).toEqual({
+    expect(gateTitle("Brew & Bloom")).toMatchObject({
       words: [["B", "r", "e", "w"], ["&"], ["B", "l", "o", "o", "m"]],
       letters: 10,
-      longestWord: 5,
     });
+  });
+
+  it("[PD-11] fits by the widest word in em, not the most letters: wide glyphs (M, W) count wide (FOLLOWUPS L6)", () => {
+    const narrow = gateTitle("illicit WWW");
+    // Three Ws are wider than seven narrow letters.
+    expect(narrow.longestEm).toBeCloseTo(gateTitle("WWW").longestEm, 5);
+    // Twelve Ms need far more room than the old flat 0.62 em a letter allowed (7.44 em): no clipping at 320.
+    expect(gateTitle("MMMMMMMMMMMM").longestEm).toBeGreaterThan(11);
+    // An everyday name stays close to the old estimate, so the reference's sizes don't move.
+    const brew = gateTitle("Brew & Bloom");
+    expect(brew.longestEm).toBeGreaterThan(5 * 0.5);
+    expect(brew.longestEm).toBeLessThan(5 * 0.75);
   });
 
   it("keeps grapheme clusters whole and ignores extra spaces", () => {
@@ -93,6 +104,7 @@ function runScript(
 ): {
   state: () => string | null;
   panelCancelled: () => number;
+  sceneCancelled: () => number;
   stored: Map<string, string>;
   fire: (type: string, init?: Record<string, unknown>) => void;
   end: (target: "gate" | "child") => void;
@@ -106,6 +118,9 @@ function runScript(
       { cancel: () => (panel.cancelled += 1) },
     ],
   };
+  // The scene's own animations (letters, coin, rays; forwards fill) sit beside the panel's under the gate.
+  const scene = { cancelled: 0 };
+  const sceneAnimations = [1, 2, 3].map(() => ({ cancel: () => (scene.cancelled += 1) }));
   const winListeners = new Map<string, (e: unknown) => void>();
   const gateListeners = new Map<string, (e: unknown) => void>();
   const stored = new Map<string, string>(opts.seen ? [[gateStorageKey(code), "1"]] : []);
@@ -114,6 +129,8 @@ function runScript(
     getAttribute: (k: string) => attrs.get(k) ?? null,
     addEventListener: (t: string, f: (e: unknown) => void) => gateListeners.set(t, f),
     querySelector: (sel: string) => (sel === "[data-gate-panel]" ? panel : null),
+    getAnimations: (o?: { subtree?: boolean }) =>
+      o?.subtree ? [...panel.getAnimations(), ...sceneAnimations] : [],
   };
   const storage =
     opts.storage === "throws"
@@ -144,6 +161,7 @@ function runScript(
   return {
     state: () => attrs.get("data-state") ?? null,
     panelCancelled: () => panel.cancelled,
+    sceneCancelled: () => scene.cancelled,
     stored,
     fire: (type, init = {}) => winListeners.get(type)?.({ type, target: document, ...init }),
     end: (target) => gateListeners.get("animationend")?.({ target: target === "gate" ? gate : {} }),
@@ -206,6 +224,8 @@ describe("[P1-03] gateScript (runs before first paint)", () => {
     r.end("gate");
     expect(r.state()).toBe("done");
     expect(r.panelCancelled()).toBe(2); // the morph stops with it (no DOM removal: React owns that node)
+    // [PD-11] So does every scene animation left on the hidden gate (FOLLOWUPS L5).
+    expect(r.sceneCancelled()).toBe(3);
     r.fire("click"); // listeners are gone: a later tap changes nothing
     expect(r.state()).toBe("done");
   });

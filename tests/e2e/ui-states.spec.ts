@@ -196,9 +196,7 @@ test.describe("[P0-09] UI gallery states", () => {
       if (reduced) await page.emulateMedia({ reducedMotion: "reduce" });
       await gallery(page);
       const count = await page.evaluate(() => {
-        const els = [
-          ...document.querySelectorAll<HTMLElement>(".pressable, .btn-gold, [data-press]"),
-        ]
+        const els = [...document.querySelectorAll<HTMLElement>(".pressable, [data-press]")]
           .map((el) => (el.matches("[data-press]") ? el.parentElement : el))
           .filter((el): el is HTMLElement => {
             if (!el || el.closest("[inert]") || el.closest("dialog")) return false;

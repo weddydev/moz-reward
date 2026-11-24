@@ -3,13 +3,12 @@
  * QR code and HTML emails can't use CSS variables). `tokens.css` stays the source of truth: `tokens.test.ts` fails if these drift.
  */
 export const colourTokens = {
-  bg: "#fbf8f1",
   pearl: "#fffcf5",
   surface: "#ffffff",
   ink: "#1a140a",
   "ink-2": "#5b4f3c",
   line: "#e9dcbe",
-  "gold-700": "#8a6a1f",
+  "gold-deep": "#7c5510",
 } as const;
 
 /** Spring for press release and sheets (DESIGN §7). A spring has no CSS form, so Motion reads it from here. */
@@ -30,17 +29,12 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
     title: "Colour",
     kind: "colour",
     tokens: [
-      { name: "bg", use: "App background (warm ivory)" },
       { name: "surface", use: "Cards, sheets" },
       { name: "surface-2", use: "Subtle panels, inputs, skeletons" },
       { name: "ink", use: "Primary text" },
       { name: "ink-2", use: "Secondary text" },
       { name: "ink-3", use: "Tertiary text, placeholders (not body copy)" },
       { name: "line", use: "Borders, dividers" },
-      { name: "gold-700", use: "Gold text on ivory (large text), icons" },
-      { name: "gold-500", use: "Gold accents, progress" },
-      { name: "gold-300", use: "Highlights, shimmer" },
-      { name: "gold-100", use: "Gold tint backgrounds" },
       { name: "success", use: "Success states" },
       { name: "warning", use: "Warnings" },
       { name: "danger", use: "Errors, destructive actions" },
@@ -51,11 +45,6 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
       { name: "warning-tint", use: "Warning badge and notice background" },
       { name: "scrim", use: "Dim layer behind Modal, SidePanel and BottomSheet" },
     ],
-  },
-  {
-    title: "Gradient",
-    kind: "gradient",
-    tokens: [{ name: "gold-gradient", use: "Primary buttons, ingot fill, member card edge" }],
   },
   {
     title: "Space",
@@ -82,10 +71,6 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
     title: "Elevation",
     kind: "shadow",
     tokens: [
-      { name: "shadow-1", use: "Cards" },
-      { name: "shadow-2", use: "Sheets, menus, toasts" },
-      { name: "shadow-gold", use: "Primary button and reward cards only" },
-      { name: "shadow-gold-pressed", use: "Primary button while pressed" },
       { name: "tgl-ring", use: "Coin switch track's inset ring (PD-05)" },
       { name: "gold-pulse-0", use: "Coin switch landing pulse, start (PD-05)" },
       { name: "gold-pulse-1", use: "Coin switch landing pulse, end: faded out (PD-05)" },
@@ -95,17 +80,15 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
     title: "Motion: durations",
     kind: "duration",
     tokens: [
-      { name: "dur-fast", use: "Press, hover, toggles" },
-      { name: "dur-base", use: "Sheets, tabs, small transitions" },
-      { name: "dur-slow", use: "Page transitions, card to page" },
-      { name: "dur-hero", use: "Signature moments only (900–1600ms each)" },
+      { name: "dur-tap", use: "Press, hover, toggles (quiet tier)" },
+      { name: "dur-quiet", use: "Sheets, popovers, small transitions (quiet tier)" },
+      { name: "dur-expressive", use: "Page moves (expressive tier)" },
       { name: "dur-exit", use: "Leaving elements (toast dismiss)" },
       { name: "dur-instant", use: "A step change at the end of a transition (rail item width)" },
       {
         name: "delay-intent",
         use: "Hover intent before a hover-opened panel opens (customer rail)",
       },
-      { name: "dur-sheen", use: "Primary button hover sheen" },
       { name: "dur-shimmer", use: "Skeleton shimmer loop" },
       { name: "dur-spin", use: "One spinner turn (fast spin feels faster)" },
       { name: "dur-reduced", use: "Longest fade when motion is reduced" },
@@ -124,13 +107,6 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
     kind: "number",
     tokens: [
       { name: "motion-on", use: "1, or 0 when motion is reduced (overlays then only fade)" },
-    ],
-  },
-  {
-    title: "Texture",
-    kind: "number",
-    tokens: [
-      { name: "foil-opacity", use: "Foil overlay on hero cards and the member card (≤ 0.06)" },
     ],
   },
   {
@@ -239,6 +215,14 @@ export const TOKEN_GROUPS: readonly TokenGroup[] = [
       { name: "inner", use: "White inner bevel" },
       { name: "lift", use: "Placed card shadow" },
       { name: "lift-hover", use: "Placed card hover shadow" },
+      {
+        name: "lift-placed",
+        use: "A placed surface's whole shadow: bevel + lift (Tailwind shadow-lift)",
+      },
+      {
+        name: "lift-sm",
+        use: "Small placed parts: chips, secondary icon buttons (reference mini vault)",
+      },
       { name: "lift-dark", use: "Dark panel bevel and gold outline" },
     ],
   },

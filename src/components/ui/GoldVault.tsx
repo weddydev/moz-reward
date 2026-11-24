@@ -3,6 +3,7 @@
 import { type ReactNode, useRef, useState } from "react";
 import { GildedEdge } from "@/components/motion/GildedEdge";
 import { IngotPour } from "@/components/motion/IngotPour";
+import { usePauseOffscreen } from "@/components/motion/usePauseOffscreen";
 import { formatCount } from "@/lib/motion/press";
 import { goldToGo } from "@/lib/motion/vault";
 import { ShopCoin, ShopImage } from "./ShopImage";
@@ -55,6 +56,9 @@ export function GoldVault({
   unoptimized?: boolean;
 }): React.JSX.Element {
   const count = useRef<HTMLSpanElement>(null);
+  // The rays' 40 s loop (and every other loop inside) sleeps off screen or in a hidden tab (FOLLOWUPS L5).
+  const section = useRef<HTMLElement>(null);
+  usePauseOffscreen(section);
   // The line under the title follows the liquid: it changes when a pour lands, not when the gold arrives.
   // Less gold (a reset, a new ingot) shows at once.
   const [landed, setLanded] = useState(gold);
@@ -66,6 +70,7 @@ export function GoldVault({
   const line = goldToGo(Math.min(landed, gold), size, perVisit);
   return (
     <section
+      ref={section}
       className="m-vault"
       data-unlocked={unlocked ? "" : undefined}
       data-parity={parity}

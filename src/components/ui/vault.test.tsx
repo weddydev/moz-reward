@@ -162,6 +162,29 @@ describe("[PD-10] Gold Vault", () => {
     expect(screen.getByTestId("shop-coin").parentElement).toHaveClass("m-v-logo");
   });
 
+  it("[PD-11] the rays' 40 s loop sleeps while the vault is off screen (FOLLOWUPS L5)", () => {
+    render(
+      <GoldVault
+        shop={SHOP}
+        title="Free coffee & cake"
+        gold={1_000}
+        size={1_000}
+        seenKey="t-rays"
+        unlocked
+      />,
+    );
+    const vault = screen.getByTestId("gold-vault");
+    const watcher = observers.find((o) => o.els.includes(vault));
+    expect(watcher, "the vault section itself is watched").toBeDefined();
+    act(() => {
+      watcher?.cb(
+        [{ target: vault, isIntersecting: false, intersectionRatio: 0 }] as never,
+        {} as IntersectionObserver,
+      );
+    });
+    expect(vault).toHaveAttribute("data-paused");
+  });
+
   it("[PD-10] unlocked: the reward slot shows the card with 'Your reward is ready'", () => {
     render(
       <GoldVault

@@ -126,11 +126,11 @@ export function RadioGroup<T extends string>({
                 // Named by the label text only: the row <label> also wraps the description.
                 aria-labelledby={`${optionId}-l`}
                 aria-describedby={o.description ? `${optionId}-d` : undefined}
-                className="peer border-ink-3 bg-surface checked:border-gold-500 absolute inset-0 m-0 cursor-[inherit] appearance-none rounded-full border-2"
+                className="peer border-ink-3 bg-surface checked:border-gold absolute inset-0 m-0 cursor-[inherit] appearance-none rounded-full border-2"
               />
               <span
                 aria-hidden="true"
-                className="bg-gold-gradient duration-fast pointer-events-none relative size-3 scale-0 rounded-full transition-transform ease-out peer-checked:scale-100"
+                className="bg-metal duration-tap pointer-events-none relative size-3 scale-0 rounded-full transition-transform ease-out peer-checked:scale-100"
               />
             </span>
             <span className="flex min-w-0 flex-col [overflow-wrap:break-word]">

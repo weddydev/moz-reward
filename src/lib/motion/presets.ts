@@ -28,7 +28,7 @@ export const MOTION_PRESETS = {
   modal: {
     selector: '.overlay[data-kind="modal"]',
     motion: "scale .96 → 1 + fade",
-    enter: "--dur-base",
+    enter: "--dur-quiet",
     exit: "--dur-exit",
     scan: true,
   },
@@ -36,7 +36,7 @@ export const MOTION_PRESETS = {
   panel: {
     selector: '.overlay[data-kind="panel"]',
     motion: "translateX(100%) → 0",
-    enter: "--dur-base",
+    enter: "--dur-quiet",
     exit: "--dur-exit",
     scan: true,
   },
@@ -44,7 +44,7 @@ export const MOTION_PRESETS = {
   sheet: {
     selector: '.overlay[data-kind="sheet"]',
     motion: "translateY(100%) → 0",
-    enter: "--dur-base",
+    enter: "--dur-quiet",
     exit: "--dur-exit",
     scan: true,
   },
@@ -52,7 +52,7 @@ export const MOTION_PRESETS = {
   backdrop: {
     selector: ".overlay-backdrop",
     motion: "fade",
-    enter: "--dur-base",
+    enter: "--dur-quiet",
     exit: "--dur-exit",
     scan: true,
   },
@@ -71,7 +71,7 @@ export const MOTION_PRESETS = {
   popover: {
     selector: ".popover",
     motion: "scale .95 → 1 + fade, from the trigger",
-    enter: "--dur-base",
+    enter: "--dur-quiet",
     exit: "--dur-exit",
     scan: true,
   },
@@ -79,7 +79,7 @@ export const MOTION_PRESETS = {
   stagger: {
     selector: ".stagger-item",
     motion: "translateY(8px) → 0 + fade, 30–80ms apart",
-    enter: "--dur-base",
+    enter: "--dur-quiet",
     exit: "none",
     scan: true,
   },
@@ -90,16 +90,16 @@ export const MOTION_PRESETS = {
   press: {
     selector: ".pressable",
     motion: "scale .97 on :active",
-    enter: "--dur-fast",
-    exit: "--dur-fast",
+    enter: "--dur-tap",
+    exit: "--dur-tap",
     scan: false,
   },
   /** Press on the visible part of a control whose hit area is bigger (Switch track): `data-press`. */
   pressTarget: {
     selector: "[data-press]",
     motion: "scale .97 when its parent is :active",
-    enter: "--dur-fast",
-    exit: "--dur-fast",
+    enter: "--dur-tap",
+    exit: "--dur-tap",
     scan: true,
   },
 } as const satisfies Record<string, MotionPreset>;

@@ -621,12 +621,16 @@ test("[PD-10] the redeem code fits the reward card at 320: digits and ring insid
     const parts = [".m-digits", ".m-ring-cd"].map((s) =>
       document.querySelector(`[data-testid="redeem-code"] ${s}`)?.getBoundingClientRect(),
     );
+    // [PD-11] Inside the card's padding too, not only its border box (FOLLOWUPS L7: 4 px gaps overhung by 6 px).
+    const el = document.querySelector<HTMLElement>('[data-testid="reward-card"]');
+    const padRight = el ? parseFloat(getComputedStyle(el).paddingRight) : 0;
     return {
       inside: parts.every((r) => card && r && r.left >= card.left && r.right <= card.right),
+      inPadding: !!card && !!parts[0] && parts[0].right <= card.right - padRight + 0.5,
       wrapped: (parts[1]?.top ?? 0) >= (parts[0]?.bottom ?? 0),
     };
   });
-  expect(fit).toEqual({ inside: true, wrapped: true });
+  expect(fit).toEqual({ inside: true, inPadding: true, wrapped: true });
 });
 
 test("[PD-10] reduced motion: the unlock lands lifted at once, no ring pulse and no lift transition", async ({

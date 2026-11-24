@@ -44,7 +44,29 @@ export function gateTimeline(letters: number): GateTimeline {
   return { staggerMs, forgeEndMs, subDelayMs, handoffMs, totalMs: handoffMs + GATE.morphMs };
 }
 
-export type GateTitle = { words: string[][]; letters: number; longestWord: number };
+export type GateTitle = { words: string[][]; letters: number; longestEm: number };
+
+/** The title's letter-spacing (gilded-gate.css `.gate-title`, -0.03em), counted once per letter. */
+const TITLE_TRACKING_EM = -0.03;
+/** A little room over the estimate, so a word near the edge never clips. */
+const FIT_MARGIN = 1.04;
+
+/**
+ * A letter's advance in em at the Gate's Fraunces 600, rounded up from the font's widths (PD-11; FOLLOWUPS L6:
+ * a flat 0.62 em a letter let a word of wide glyphs clip at 320). Anything outside the table (an emoji, another
+ * script) counts as a full em.
+ */
+function glyphEm(ch: string): number {
+  if (/^[MW]$/.test(ch)) return 1;
+  if (/^[mw]$/.test(ch)) return 0.9;
+  if (/^[ijlI.,:;'’!|]$/.test(ch)) return 0.32;
+  if (/^[frt]$/.test(ch)) return 0.45;
+  if (/^[A-Z]$/.test(ch)) return 0.76;
+  if (/^[a-z]$/.test(ch)) return 0.6;
+  if (/^[0-9&]$/.test(ch)) return 0.68;
+  if (/^\p{L}$/u.test(ch)) return 0.76; // accented and other Latin letters
+  return 1;
+}
 
 /** The shop name split for the forge: words (wrapped as wholes) of letters (grapheme clusters). */
 export function gateTitle(name: string): GateTitle {
@@ -55,8 +77,13 @@ export function gateTitle(name: string): GateTitle {
     .filter(Boolean)
     .map((w) => [...seg.segment(w)].map((g) => g.segment));
   const letters = words.reduce((sum, w) => sum + w.length, 0);
-  const longestWord = words.reduce((m, w) => Math.max(m, w.length), 0);
-  return { words, letters, longestWord };
+  // The widest word in em (wrapped words never break inside), which the title's font size is fitted to.
+  const longestEm = words.reduce(
+    (m, w) =>
+      Math.max(m, w.reduce((sum, ch) => sum + glyphEm(ch) + TITLE_TRACKING_EM, 0) * FIT_MARGIN),
+    0,
+  );
+  return { words, letters, longestEm };
 }
 
 export type GateSource = "qr" | "nfc";
@@ -76,11 +103,12 @@ const scriptString = (value: string): string => JSON.stringify(value).replace(/<
  * (a tap ends in one), a scroll of the page (a swipe on the gate scrolls it; inner scrollers don't count), wheel,
  * or any key but a bare
  * modifier; the tab going to the background ends it too (PD-09: it finishes at its end state, the canvas frozen
- * otherwise); the gate's own animation end also ends it, and stops the morph (the hidden gate hides its copy).
+ * otherwise); the gate's own animation end also ends it. Ending cancels every animation under the gate (the morph
+ * and the forwards-filled scene parts), so nothing keeps running on the hidden gate.
  * Clicks, not pointerdown: hiding the gate on touch-down would hand the rest of the tap to the button below.
  */
 export function gateScript(code: string): string {
-  return `(function(){var g=document.getElementById(${scriptString(GATE.id)}),k=${scriptString(gateStorageKey(code))};if(!g)return;try{if(document.hidden||sessionStorage.getItem(k))return;sessionStorage.setItem(k,"1")}catch(e){return}var T=["click","wheel","scroll","keydown"];function end(){g.setAttribute("data-state","done");var p=g.querySelector("[data-gate-panel]");if(p&&p.getAnimations)p.getAnimations({subtree:true}).forEach(function(a){a.cancel()});T.forEach(function(t){removeEventListener(t,skip,true)})}function skip(e){if(e.type==="keydown"&&/^(Shift|Control|Alt|Meta)$/.test(e.key))return;if(e.type==="scroll"&&e.target!==document)return;end()}g.setAttribute("data-state","play");T.forEach(function(t){addEventListener(t,skip,{capture:true,passive:true})});document.addEventListener("visibilitychange",function(){if(document.hidden)end()});g.addEventListener("animationend",function(e){if(e.target===g)end()})})()`;
+  return `(function(){var g=document.getElementById(${scriptString(GATE.id)}),k=${scriptString(gateStorageKey(code))};if(!g)return;try{if(document.hidden||sessionStorage.getItem(k))return;sessionStorage.setItem(k,"1")}catch(e){return}var T=["click","wheel","scroll","keydown"];function end(){g.setAttribute("data-state","done");if(g.getAnimations)g.getAnimations({subtree:true}).forEach(function(a){a.cancel()});T.forEach(function(t){removeEventListener(t,skip,true)})}function skip(e){if(e.type==="keydown"&&/^(Shift|Control|Alt|Meta)$/.test(e.key))return;if(e.type==="scroll"&&e.target!==document)return;end()}g.setAttribute("data-state","play");T.forEach(function(t){addEventListener(t,skip,{capture:true,passive:true})});document.addEventListener("visibilitychange",function(){if(document.hidden)end()});g.addEventListener("animationend",function(e){if(e.target===g)end()})})()`;
 }
 
 export type GateMorph = {
@@ -351,19 +379,31 @@ export type GateSceneOptions = Omit<GateCanvasOptions, "t0"> & {
 export type GateSceneLib = GateCanvasLib & { runGateCanvas: typeof runGateCanvas };
 
 /**
- * Plays the scene inside `host` (the real gate, or the /dev/molten stage): the reference intro's `play()`, beat
- * for beat, as Web Animations with delays instead of its timers (a busy main thread can't make a delay late, and
- * each still runs on the compositor). Each effect keeps the reference's own keyframes, duration and effect-level
- * easing; a beat that hasn't started yet leaves the element's own (hidden) style, as the timer did. Returns the
- * animations and a stop function (the canvas loop).
- *
- * Self-contained on purpose: `gateSceneScript` inlines its source with `lib` passed in.
+ * Plays the scene inside `host` (the /dev/molten stage): the canvas (`runGateCanvas`) and the beats
+ * (`gateBeats`) in one go. Returns the animations and a stop function (the canvas loop). The real gate starts the
+ * same two parts one frame apart (`startGate`).
  */
 export function playGateScene(
   host: HTMLElement,
   o: GateSceneOptions,
   lib: GateSceneLib,
 ): { anims: Animation[]; stop: () => void } {
+  const stop = lib.runGateCanvas(host, { ...o, t0: performance.now() }, lib);
+  return { anims: gateBeats(host, o), stop };
+}
+
+/**
+ * The scene's beats inside `host`: the reference intro's `play()`, beat for beat, as Web Animations with delays
+ * instead of its timers (a busy main thread can't make a delay late, and each still runs on the compositor). Each
+ * effect keeps the reference's own keyframes, duration and effect-level easing; a beat that hasn't started yet
+ * leaves the element's own (hidden) style, as the timer did. Returns the animations.
+ *
+ * Self-contained on purpose: `gateSceneScript` inlines its source.
+ */
+export function gateBeats(
+  host: HTMLElement,
+  o: Pick<GateSceneOptions, "slow" | "staggerMs" | "subDelayMs">,
+): Animation[] {
   const OUT = "cubic-bezier(.22,1,.36,1)";
   const spring =
     CSS.supports("transition-timing-function", "linear(0, 1)") &&
@@ -406,8 +446,6 @@ export function playGateScene(
       ),
     );
   };
-  const t0 = performance.now();
-  const stop = lib.runGateCanvas(host, { ...o, t0 }, lib);
   // 1250 ms, ignite: the night fades, one flash, the shockwave, the glow, the coin lands, the rays.
   A(q("[data-gate-canvas]"), 1250, [{ opacity: 1 }, { opacity: 0 }], 560);
   A(q(".gate-flash"), 1250, [{ opacity: 0 }, { opacity: 0.95, offset: 0.18 }, { opacity: 0 }], 650);
@@ -509,7 +547,7 @@ export function playGateScene(
       ),
     );
   });
-  return { anims, stop };
+  return anims;
 }
 
 /**
@@ -520,40 +558,44 @@ export function playGateScene(
 export function startGate(
   id: string,
   t: { staggerMs: number; subDelayMs: number },
-  play: typeof playGateScene,
+  beats: typeof gateBeats,
   lib: GateSceneLib,
 ): void {
   const gate = document.getElementById(id);
   if (!gate || gate.getAttribute("data-state") !== "play") return;
+  const alive = (): boolean => gate.getAttribute("data-state") === "play";
   // In the first frame, not during parse: first paint has then done the document's style and layout, so
-  // nothing here forces them inside the parser's task (a long task at 4× CPU, gate 24 Nov). The beats are then
-  // set to the CSS timeline's own start, so they keep its clock.
+  // nothing here forces them inside the parser's task (a long task at 4× CPU, gate 24 Nov). The canvas (layout
+  // reads, the coin's pixels, the particles) starts in that frame and the beats in the next, so neither frame's
+  // task carries both (C-82: together they measured 65–72 ms at 4× CPU). The first beat is at 1250 ms, and the
+  // beats are set to the CSS timeline's own start, so starting them a frame later changes nothing on screen.
   requestAnimationFrame(() => {
-    if (gate.getAttribute("data-state") !== "play") return;
+    if (!alive()) return;
     const life = gate
       .getAnimations()
       .filter((a) => (a as CSSAnimation).animationName === "gate-life")[0];
     if (!life) return;
-    const { anims } = play(
-      gate,
-      {
-        lite: document.documentElement.classList.contains("lite"),
-        slow: 1,
-        alive: () => gate.getAttribute("data-state") === "play",
-        start: () => (typeof life.startTime === "number" ? life.startTime : null),
-        staggerMs: t.staggerMs,
-        subDelayMs: t.subDelayMs,
-      },
-      lib,
-    );
-    if (life.playState === "running" && typeof life.startTime === "number") {
-      for (const a of anims) a.startTime = life.startTime;
-    } else if (typeof life.currentTime === "number") {
-      for (const a of anims) {
-        a.pause();
-        a.currentTime = life.currentTime;
+    const o = {
+      lite: document.documentElement.classList.contains("lite"),
+      slow: 1,
+      alive,
+      start: () => (typeof life.startTime === "number" ? life.startTime : null),
+      staggerMs: t.staggerMs,
+      subDelayMs: t.subDelayMs,
+    };
+    lib.runGateCanvas(gate, { ...o, t0: performance.now() }, lib);
+    requestAnimationFrame(() => {
+      if (!alive()) return;
+      const anims = beats(gate, o);
+      if (life.playState === "running" && typeof life.startTime === "number") {
+        for (const a of anims) a.startTime = life.startTime;
+      } else if (typeof life.currentTime === "number") {
+        for (const a of anims) {
+          a.pause();
+          a.currentTime = life.currentTime;
+        }
       }
-    }
+    });
   });
 }
 
@@ -561,5 +603,5 @@ export function startGate(
 export function gateSceneScript(t: GateTimeline): string {
   const lib = `{runGateCanvas:(${runGateCanvas.toString()}),sampleTargets:(${sampleTargets.toString()}),buildParticles:(${buildParticles.toString()}),particleAt:(${particleAt.toString()})}`;
   const timing = JSON.stringify({ staggerMs: t.staggerMs, subDelayMs: t.subDelayMs });
-  return `(${startGate.toString()})(${JSON.stringify(GATE.id)},${timing},(${playGateScene.toString()}),${lib})`;
+  return `(${startGate.toString()})(${JSON.stringify(GATE.id)},${timing},(${gateBeats.toString()}),${lib})`;
 }

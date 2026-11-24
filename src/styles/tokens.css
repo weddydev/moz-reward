@@ -6,25 +6,12 @@
  */
 :root {
   /* Colour */
-  --bg: #fbf8f1;
   --surface: #ffffff;
   --surface-2: #f4eee2;
   --ink: #1a140a;
   --ink-2: #5b4f3c;
   --ink-3: #8c806b;
   --line: #e9dcbe;
-  --gold-700: #8a6a1f;
-  --gold-500: #c9a24a;
-  --gold-300: #e9d08a;
-  --gold-100: #f7edd0;
-  --gold-gradient: linear-gradient(
-    135deg,
-    #8c6a1f 0%,
-    #c9a24a 35%,
-    #f3de8a 55%,
-    #c49a3a 75%,
-    #8c6a1f 100%
-  );
   --success: #2f7d5b;
   --warning: #b7791f;
   --danger: #b3432f;
@@ -58,24 +45,15 @@
   --r-lg: 26px;
   --r-pill: 999px;
 
-  /* Elevation (warm) */
-  --shadow-1: 0 1px 2px rgba(60, 45, 20, 0.06), 0 2px 8px rgba(60, 45, 20, 0.05);
-  --shadow-2: 0 8px 24px rgba(60, 45, 20, 0.1);
-  --shadow-gold: 0 6px 20px rgba(201, 162, 74, 0.28);
-  --shadow-gold-pressed: 0 3px 10px rgba(201, 162, 74, 0.22);
-  --foil-opacity: 0.05;
-
-  /* Motion */
-  --dur-fast: 120ms;
-  --dur-base: 220ms;
-  --dur-slow: 380ms;
-  /* Signature moments only (DESIGN §8 gives each its own 900–1600ms length; this is the middle). */
-  --dur-hero: 1200ms;
+  /* Motion (DESIGN v2 §7.1 tiers): tap and quiet stay under 300 ms, expressive is the page move. Signature
+     moments carry their own lengths from the reference (src/lib/motion). */
+  --dur-tap: 120ms;
+  --dur-quiet: 220ms;
+  --dur-expressive: 380ms;
   --dur-exit: 160ms;
   --dur-instant: 0ms;
   /* Hover intent: a pointer passing over (not stopping on) a hover-opened panel doesn't open it. */
   --delay-intent: 100ms;
-  --dur-sheen: 600ms;
   --dur-shimmer: 1200ms;
   --dur-spin: 700ms;
   /* The longest any fade lasts when motion is reduced (DESIGN §7). */
@@ -135,6 +113,11 @@
   --lift-hover:
     0 2px 3px rgba(90, 60, 10, 0.08), 0 8px 14px -4px rgba(90, 60, 10, 0.08),
     0 24px 44px -14px rgba(124, 85, 16, 0.26), 0 52px 84px -36px rgba(124, 85, 16, 0.38);
+  /* A placed surface's whole shadow, as the reference's `.pcard` draws it: bevel plus lift. */
+  --lift-placed: var(--inner), var(--lift);
+  /* The reference's small lift (`.mini-vault`): small placed parts (chips, secondary icon buttons, notices). */
+  --lift-sm:
+    var(--inner), 0 1px 2px rgba(90, 60, 10, 0.08), 0 10px 20px -10px rgba(124, 85, 16, 0.25);
   --lift-dark: inset 0 1px 0 rgba(255, 230, 160, 0.3), 0 0 0 1px rgba(214, 170, 80, 0.5);
   /* Metal detail tones (gilded edge stops, gem facets, shine, glint; text on obsidian), from the reference. */
   --gild-amber: #b9862a;
@@ -307,21 +290,17 @@
  */
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-reduce-motion="false"]) {
-    --dur-fast: 0ms;
-    --dur-base: var(--dur-reduced);
-    --dur-slow: var(--dur-reduced);
-    --dur-hero: var(--dur-reduced);
+    --dur-tap: 0ms;
+    --dur-quiet: var(--dur-reduced);
+    --dur-expressive: var(--dur-reduced);
     --dur-exit: var(--dur-reduced);
-    --dur-sheen: 0ms;
     --motion-on: 0;
   }
 }
 :root[data-reduce-motion="true"] {
-  --dur-fast: 0ms;
-  --dur-base: var(--dur-reduced);
-  --dur-slow: var(--dur-reduced);
-  --dur-hero: var(--dur-reduced);
+  --dur-tap: 0ms;
+  --dur-quiet: var(--dur-reduced);
+  --dur-expressive: var(--dur-reduced);
   --dur-exit: var(--dur-reduced);
-  --dur-sheen: 0ms;
   --motion-on: 0;
 }

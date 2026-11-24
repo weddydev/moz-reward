@@ -4,7 +4,7 @@ export { BottomSheet } from "./BottomSheet";
 export { Button } from "./Button";
 export { buttonClasses, type ButtonSize, type ButtonVariant } from "./button-classes";
 export { Tile } from "./Tile";
-export { Card, HeroCard } from "./Card";
+export { Card } from "./Card";
 export { Checkbox } from "./Checkbox";
 export { Chip, ChipGroup } from "./Chip";
 export { EmptyState } from "./EmptyState";

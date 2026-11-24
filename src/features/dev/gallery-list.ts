@@ -15,7 +15,6 @@ export const GALLERY_PRIMITIVES = [
   "ChipGroup",
   "EmptyState",
   "ErrorState",
-  "HeroCard",
   "Icon",
   "IconButton",
   "KpiCard",

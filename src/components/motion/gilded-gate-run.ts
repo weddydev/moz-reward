@@ -39,7 +39,11 @@ export function runGate(gate: HTMLElement): void {
       const coin = gate.querySelector("[data-gate-frame]");
       if (wait < 0 || !coin || (life as CSSAnimation).animationName !== "gate-life") return;
       window.setTimeout(() => {
-        if (gate.dataset.state === "play") igniteBurst(coin);
+        // A timer held up by a busy main thread fires late: a burst well after the coin lit would look detached
+        // from it, so it is skipped (FOLLOWUPS L7).
+        const now = life.currentTime;
+        const late = typeof now === "number" && now > GATE.igniteAt + GATE.igniteLateMs;
+        if (gate.dataset.state === "play" && !late) igniteBurst(coin);
       }, wait);
     })
     .catch(() => undefined); // cancelled by a skip

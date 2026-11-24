@@ -19,7 +19,9 @@ export default function MotionTabsLayout({
         ← Motion gallery
       </TransitionLink>
       <DemoTabBar />
-      <RouteTransition className="bg-surface shadow-1 rounded-md p-6">{children}</RouteTransition>
+      <RouteTransition className="bg-surface shadow-lift-sm rounded-md p-6">
+        {children}
+      </RouteTransition>
     </main>
   );
 }

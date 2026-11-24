@@ -30,7 +30,7 @@ export function Chip({
       onClick={onToggle}
       className={cx(
         "pressable hit-44 rounded-pill text-small inline-flex h-10 shrink-0 items-center gap-1.5 border px-4 font-semibold whitespace-nowrap",
-        selected ? "border-gold-500 bg-gold-100 text-ink" : "border-line bg-surface text-ink-2",
+        selected ? "border-gold bg-champagne text-ink" : "border-line bg-surface text-ink-2",
         disabled && "cursor-not-allowed opacity-55",
       )}
     >

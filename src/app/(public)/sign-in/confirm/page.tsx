@@ -47,7 +47,7 @@ export default async function ConfirmSignInPage({
     >
       <ConfirmSignInForm action={CONFIRM_POST_PATH} token={token} returnTo={returnTo}>
         {retryMessage ? (
-          <p role="alert" className="bg-gold-100 rounded-md p-3 text-sm">
+          <p role="alert" className="bg-champagne rounded-md p-3 text-sm">
             {retryMessage}
           </p>
         ) : null}

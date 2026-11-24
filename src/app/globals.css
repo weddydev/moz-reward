@@ -13,17 +13,18 @@
   --color-*: initial;
   --color-transparent: transparent;
   --color-current: currentColor;
-  --color-bg: var(--bg);
+  --color-pearl: var(--pearl);
+  --color-ivory: var(--ivory);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
   --color-line: var(--line);
-  --color-gold-700: var(--gold-700);
-  --color-gold-500: var(--gold-500);
-  --color-gold-300: var(--gold-300);
-  --color-gold-100: var(--gold-100);
+  --color-gold-deep: var(--gold-deep);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-champagne: var(--champagne);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
@@ -46,9 +47,9 @@
   --radius-lg: var(--r-lg);
   --radius-pill: var(--r-pill);
 
-  --shadow-1: var(--shadow-1);
-  --shadow-2: var(--shadow-2);
-  --shadow-gold: var(--shadow-gold);
+  /* Molten lift (DESIGN §6.1): `shadow-lift` the placed card's, `shadow-lift-sm` the reference's mini vault's. */
+  --shadow-lift: var(--lift-placed);
+  --shadow-lift-sm: var(--lift-sm);
 
   --ease-out: var(--ease-out);
   --ease-in-out: var(--ease-in-out);
@@ -117,17 +118,17 @@
   font-size: 12px;
   line-height: 1.4;
 }
-@utility bg-gold-gradient {
-  background-image: var(--gold-gradient);
+@utility bg-metal {
+  background-image: var(--metal);
 }
-@utility duration-fast {
-  transition-duration: var(--dur-fast);
+@utility duration-tap {
+  transition-duration: var(--dur-tap);
 }
-@utility duration-base {
-  transition-duration: var(--dur-base);
+@utility duration-quiet {
+  transition-duration: var(--dur-quiet);
 }
-@utility duration-slow {
-  transition-duration: var(--dur-slow);
+@utility duration-expressive {
+  transition-duration: var(--dur-expressive);
 }
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
@@ -204,7 +205,7 @@
     font-size: max(16px, 1em);
   }
   ::selection {
-    background: var(--gold-100);
+    background: var(--champagne);
     color: var(--ink);
   }
 }
@@ -228,7 +229,7 @@
 .overlay-panel:focus-visible,
 .popover:focus-visible {
   outline: none;
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--lift-placed);
 }
 
 /*
@@ -291,10 +292,10 @@
   /* Press feedback: scale .97, 120ms, springs back (ease-out). Everyday motion stays < 300ms. */
   .pressable {
     transition:
-      transform var(--dur-fast) var(--ease-out),
-      box-shadow var(--dur-fast) var(--ease-out),
-      background-color var(--dur-fast) ease,
-      opacity var(--dur-fast) ease;
+      transform var(--dur-tap) var(--ease-out),
+      box-shadow var(--dur-tap) var(--ease-out),
+      background-color var(--dur-tap) ease,
+      opacity var(--dur-tap) ease;
     -webkit-user-select: none;
     user-select: none;
   }
@@ -304,8 +305,8 @@
    */
   [data-press] {
     transition:
-      transform var(--dur-fast) var(--ease-out),
-      opacity var(--dur-fast) ease;
+      transform var(--dur-tap) var(--ease-out),
+      opacity var(--dur-tap) ease;
   }
   .pressable:active:not(:disabled):not([aria-disabled="true"]),
   :active:not(:disabled):not([aria-disabled="true"]) > [data-press] {
@@ -328,27 +329,6 @@
     > [data-press] {
     transform: none;
     opacity: 0.8;
-  }
-
-  /* Primary button: gold gradient with a soft sheen on desktop hover (gradient position shift). */
-  .btn-gold {
-    background-image: var(--gold-gradient);
-    background-size: 200% 100%;
-    background-position: 0% 0%;
-    box-shadow: var(--shadow-gold);
-    transition:
-      transform var(--dur-fast) var(--ease-out),
-      box-shadow var(--dur-fast) var(--ease-out),
-      background-position var(--dur-sheen) var(--ease-in-out),
-      opacity var(--dur-fast) ease;
-  }
-  .btn-gold:active:not(:disabled):not([aria-disabled="true"]) {
-    box-shadow: var(--shadow-gold-pressed);
-  }
-  @media (hover: hover) and (pointer: fine) {
-    .btn-gold:hover:not(:disabled) {
-      background-position: 20% 0%;
-    }
   }
 
   /*
@@ -395,17 +375,6 @@
     animation: none;
   }
 
-  /* Foil texture overlay for hero cards and the member card (opacity ≤ .06). */
-  .foil::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    border-radius: inherit;
-    opacity: var(--foil-opacity);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-
   /*
    * Overlays: Modal, SidePanel, BottomSheet (P0-09 AC 3, 11; Overlay.tsx). The <dialog> is a transparent
    * full-viewport layer holding a backdrop and the panel. Enter: @starting-style. Exit: [data-state="closing"],
@@ -441,7 +410,7 @@
     position: absolute;
     inset: 0;
     background: var(--scrim);
-    transition: opacity var(--dur-base) var(--ease-out);
+    transition: opacity var(--dur-quiet) var(--ease-out);
     @starting-style {
       opacity: 0;
     }
@@ -449,14 +418,14 @@
   .overlay-panel {
     position: relative;
     /* One layer, the same value as its focus state, so taking focus on open animates nothing. */
-    box-shadow: var(--shadow-2);
+    box-shadow: var(--lift-placed);
     display: flex;
     flex-direction: column;
     min-height: 0;
     max-height: 100%;
     transition:
-      transform var(--dur-base) var(--ease-out),
-      opacity var(--dur-base) var(--ease-out);
+      transform var(--dur-quiet) var(--ease-out),
+      opacity var(--dur-quiet) var(--ease-out);
   }
   .overlay-body {
     flex: 1 1 auto;
@@ -555,10 +524,10 @@
    * where it is. Reduced motion: the scale is multiplied away (fade only, ≤ 150ms).
    */
   .popover {
-    box-shadow: var(--shadow-2);
+    box-shadow: var(--lift-placed);
     transition:
-      transform var(--dur-base) var(--ease-out),
-      opacity var(--dur-base) var(--ease-out);
+      transform var(--dur-quiet) var(--ease-out),
+      opacity var(--dur-quiet) var(--ease-out);
     @starting-style {
       opacity: 0;
       transform: scale(calc(1 - 0.05 * var(--motion-on)));
@@ -577,7 +546,7 @@
    * first paint. Reduced motion: a plain fade, no delay.
    */
   .stagger-item {
-    animation: moz-rise var(--dur-base) var(--ease-out) backwards;
+    animation: moz-rise var(--dur-quiet) var(--ease-out) backwards;
     animation-delay: var(--stagger-delay); /* unset → initial (no delay) */
   }
   @media (prefers-reduced-motion: reduce) {
@@ -635,15 +604,15 @@
 ::view-transition-group(*),
 ::view-transition-old(*),
 ::view-transition-new(*) {
-  animation-duration: var(--dur-base);
+  animation-duration: var(--dur-quiet);
 }
 /*
- * Shared-element morph (SharedElement): the box moves for --dur-slow while the two snapshots cross-fade in
- * --dur-base (rule above), so the new image is in before the move ends. Reduced motion → no movement, the
+ * Shared-element morph (SharedElement): the box moves for --dur-expressive while the two snapshots cross-fade in
+ * --dur-quiet (rule above), so the new image is in before the move ends. Reduced motion → no movement, the
  * snapshots cross-fade.
  */
 ::view-transition-group(.morph) {
-  animation-duration: var(--dur-slow);
+  animation-duration: var(--dur-expressive);
   animation-timing-function: var(--ease-in-out);
 }
 /*
@@ -689,7 +658,7 @@
     padding-block: 16px;
     background: var(--surface); /* Molten glass in molten.css (PD-07) */
     clip-path: inset(0 calc(var(--rail-w-open) - var(--rail-w)) 0 0);
-    transition: clip-path var(--dur-base) var(--ease-out);
+    transition: clip-path var(--dur-quiet) var(--ease-out);
   }
   .rail::after {
     content: "";
@@ -697,9 +666,9 @@
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    box-shadow: var(--shadow-2);
+    box-shadow: var(--lift-placed);
     opacity: 0;
-    transition: opacity var(--dur-base) var(--ease-out);
+    transition: opacity var(--dur-quiet) var(--ease-out);
   }
   .rail-edge {
     position: absolute;
@@ -708,15 +677,15 @@
     width: 1px;
     background: var(--line);
     transform: translateX(calc(var(--rail-w) - 1px));
-    transition: transform var(--dur-base) var(--ease-out);
+    transition: transform var(--dur-quiet) var(--ease-out);
   }
   /*
    * Collapsed, an item is a 56px pill centred in the rail; opened, it spans the panel. Closing, the width
-   * changes only once the clip has closed (step after --dur-base), so the active pill doesn't jump.
+   * changes only once the clip has closed (step after --dur-quiet), so the active pill doesn't jump.
    */
   .rail .rail-item {
     width: 56px;
-    transition: width var(--dur-instant) linear var(--dur-base);
+    transition: width var(--dur-instant) linear var(--dur-quiet);
   }
   /*
    * Molten (PD-07): items sit over the current page's liquid gold (its rules are in molten.css, next to the
@@ -729,7 +698,7 @@
   .rail .rail-label {
     opacity: 0;
     white-space: nowrap;
-    transition: opacity var(--dur-fast) ease;
+    transition: opacity var(--dur-tap) ease;
   }
   :is(.rail:has(:focus-visible), .rail:has([aria-expanded="true"]), .rail[data-open]) {
     clip-path: inset(0 -40px 0 0);

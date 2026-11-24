@@ -15,7 +15,7 @@ import { ShopThumb } from "./ShopThumb";
 export function MotionGallery(): React.JSX.Element {
   return (
     <main id="main" className="mx-auto w-full max-w-5xl px-5 py-10">
-      <p className="text-small text-gold-700 font-semibold">Dev only</p>
+      <p className="text-small text-gold-deep font-semibold">Dev only</p>
       <h1 className="text-display">Motion gallery</h1>
       <p className="text-ink-2 mt-2 mb-8 max-w-prose">
         Page transitions and motion primitives (DESIGN.md §7). Navigation never waits for an
@@ -64,7 +64,7 @@ export function MotionGallery(): React.JSX.Element {
               <TransitionLink
                 href={`/dev/motion/shop/${shop.id}`}
                 direction="forward"
-                className="pressable bg-surface shadow-1 flex items-center gap-3 rounded-md p-3"
+                className="pressable bg-surface shadow-lift-sm flex items-center gap-3 rounded-md p-3"
               >
                 <SharedElement kind="shopimage" id={shop.id} fit="cover">
                   <div data-shared="image">

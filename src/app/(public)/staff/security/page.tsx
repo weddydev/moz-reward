@@ -20,7 +20,7 @@ export default async function StaffSecurityPage(): Promise<React.JSX.Element> {
     <AuthCard title="Two-step verification">
       {session.user.twoFactorEnabled ? (
         <>
-          <p className="bg-gold-100 rounded-md p-3">
+          <p className="bg-champagne rounded-md p-3">
             Two-step verification is on for{" "}
             <span className="font-semibold">{session.user.email}</span>.
           </p>

@@ -131,7 +131,7 @@ export function GateScene({
       <div className="gate-shock" />
       <div
         className="gate-welcome"
-        style={{ "--gate-longest": String(Math.max(1, title.longestWord)) } as React.CSSProperties}
+        style={{ "--gate-em": String(Math.max(1, title.longestEm)) } as React.CSSProperties}
       >
         <p className="gate-pre">Welcome to</p>
         <p className="gate-title">

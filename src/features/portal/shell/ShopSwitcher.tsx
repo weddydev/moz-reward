@@ -123,7 +123,7 @@ export function ShopSwitchList({
                 }}
                 className={cx(
                   "pressable flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2",
-                  current ? "bg-gold-100" : "hover:bg-surface-2",
+                  current ? "bg-champagne" : "hover:bg-surface-2",
                 )}
               >
                 <Icon icon={Store} />
@@ -160,7 +160,7 @@ export function ShopSwitcher({
   if (!active) return null;
   const card = (
     <>
-      <span className="bg-gold-100 text-gold-700 grid size-10 shrink-0 place-items-center rounded-md">
+      <span className="bg-champagne text-gold-deep grid size-10 shrink-0 place-items-center rounded-md">
         <Icon icon={Store} />
       </span>
       <ShopLine shop={active} />

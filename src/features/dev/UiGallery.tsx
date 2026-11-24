@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card, HeroCard } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -175,7 +175,7 @@ export function UiGallery(): React.JSX.Element {
       // layout's <html data-hydrated>, so tests also wait for no [data-hydrating] before measuring.
       data-hydrating={hydrated ? undefined : ""}
     >
-      <p className="text-small text-gold-700 font-semibold">Dev only</p>
+      <p className="text-small text-gold-deep font-semibold">Dev only</p>
       <h1 className="text-display">UI gallery</h1>
       <p className="text-ink-2 mt-2 mb-8 max-w-prose">
         Every token (DESIGN.md §3, §7) and every primitive and state from DESIGN.md §6. Hover (mouse
@@ -303,7 +303,9 @@ export function UiGallery(): React.JSX.Element {
           <div className="grid gap-4 md:grid-cols-2">
             <Card className="p-5">
               <p className="text-h3">Card</p>
-              <p className="text-small text-ink-2">Surface, radius 14, shadow-1.</p>
+              <p className="text-small text-ink-2">
+                Placed: pearl fill, gold hairline edge, lift; radius 24.
+              </p>
             </Card>
             <Card className="p-5">
               <p className="text-h3">Long unbroken word</p>
@@ -325,12 +327,6 @@ export function UiGallery(): React.JSX.Element {
               <p className="text-small text-ink-2 [overflow-wrap:anywhere]">{LONG_WORD}</p>
             </Tile>
           </div>
-        </Demo>
-        <Demo name="HeroCard">
-          <HeroCard className="p-5">
-            <p className="text-h3">Hero card</p>
-            <p className="text-small text-ink-2">Radius 22 with a subtle foil texture.</p>
-          </HeroCard>
         </Demo>
         <Demo
           name="ShopCard"
@@ -800,7 +796,7 @@ export function UiGallery(): React.JSX.Element {
           </div>
         </Demo>
         <Demo name="Sparkline" note="Decorative; the KPI value carries the meaning.">
-          <div className="text-gold-700 flex flex-wrap items-end gap-6">
+          <div className="text-gold-deep flex flex-wrap items-end gap-6">
             <State label="rising">
               <Sparkline values={[3, 5, 4, 7, 9, 8, 12]} />
             </State>

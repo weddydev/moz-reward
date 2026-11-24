@@ -6,7 +6,7 @@ export function ShopThumb({ large = false }: { large?: boolean }): React.JSX.Ele
   return (
     <div
       className={cx(
-        "bg-gold-100 text-gold-700 grid shrink-0 place-items-center",
+        "bg-champagne text-gold-deep grid shrink-0 place-items-center",
         large ? "h-40 w-full rounded-lg" : "size-16 rounded-md",
       )}
     >

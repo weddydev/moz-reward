@@ -88,7 +88,7 @@ export function CookieNotice({
   return (
     <section
       aria-label="Cookies"
-      className="bg-surface shadow-2 border-line fixed inset-x-3 z-40 mx-auto max-w-xl rounded-md border p-4"
+      className="bg-surface shadow-lift border-line fixed inset-x-3 z-40 mx-auto max-w-xl rounded-md border p-4"
       style={{ bottom: "var(--fixed-bottom)" }}
     >
       <p className="text-small">

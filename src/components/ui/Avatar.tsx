@@ -41,7 +41,7 @@ export function Avatar({
     <span
       {...(labelled && name ? { role: "img", "aria-label": name } : { "aria-hidden": true })}
       className={cx(
-        "bg-gold-100 text-ink relative inline-grid shrink-0 place-items-center overflow-hidden rounded-full font-semibold select-none",
+        "bg-champagne text-ink relative inline-grid shrink-0 place-items-center overflow-hidden rounded-full font-semibold select-none",
         SIZE[size],
         className,
       )}

@@ -23,13 +23,10 @@ beforeAll(() => {
 });
 
 describe("[PD-02] Card variants (DESIGN §6.1–6.2)", () => {
-  it("[PD-11] placed is the default (Molten surface, card radius); plain stays the v1 card; dark", () => {
+  it("[PD-11] placed is the default (Molten surface, card radius); dark; the v1 plain card is gone", () => {
     render(
       <>
         <Card data-testid="default">a</Card>
-        <Card data-testid="plain" variant="plain">
-          a
-        </Card>
         <Card data-testid="placed" variant="placed" lift>
           b
         </Card>
@@ -42,8 +39,6 @@ describe("[PD-02] Card variants (DESIGN §6.1–6.2)", () => {
       </>,
     );
     expect(screen.getByTestId("default").className).toBe("m-placed m-card");
-    expect(screen.getByTestId("plain").className).toContain("shadow-1");
-    expect(screen.getByTestId("plain").className).not.toContain("m-card");
     expect(screen.getByTestId("placed").className).toContain("m-placed");
     expect(screen.getByTestId("placed")).toHaveAttribute("data-lift");
     expect(screen.getByTestId("dark").className).toContain("m-dark");

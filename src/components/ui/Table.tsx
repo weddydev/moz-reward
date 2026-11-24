@@ -213,7 +213,7 @@ export function Table<Row>({
                         : undefined
                     }
                     className={cx(
-                      "border-line duration-fast hover:bg-gold-100/40 border-t transition-colors",
+                      "border-line duration-tap hover:bg-champagne/40 border-t transition-colors",
                       ROW_H[density],
                       action && "cursor-pointer",
                     )}
@@ -254,7 +254,7 @@ export function Table<Row>({
           aria-hidden="true"
           data-part="scroll-hint-start"
           className={cx(
-            "duration-fast from-ink/10 pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r to-transparent transition-opacity",
+            "duration-tap from-ink/10 pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r to-transparent transition-opacity",
             overflow === "start" || overflow === "both" ? "opacity-100" : "opacity-0",
           )}
         />
@@ -262,7 +262,7 @@ export function Table<Row>({
           aria-hidden="true"
           data-part="scroll-hint-end"
           className={cx(
-            "duration-fast from-ink/10 pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l to-transparent transition-opacity",
+            "duration-tap from-ink/10 pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l to-transparent transition-opacity",
             overflow === "end" || overflow === "both" ? "opacity-100" : "opacity-0",
           )}
         />

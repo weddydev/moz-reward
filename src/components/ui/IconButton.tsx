@@ -69,7 +69,7 @@ export function IconButton({
           ? "m-ico-btn"
           : "pressable text-ink inline-grid size-11 shrink-0 place-items-center rounded-md",
         variant === "ghost" && "hover:bg-surface-2 bg-transparent",
-        variant === "secondary" && "bg-surface border-line shadow-1 border",
+        variant === "secondary" && "bg-surface border-line shadow-lift-sm border",
         disabled && "cursor-not-allowed opacity-55",
         className,
       )}

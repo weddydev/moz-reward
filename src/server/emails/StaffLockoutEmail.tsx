@@ -45,7 +45,11 @@ function StaffLockoutEmail({ reason }: { reason: LockoutReason }): React.JSX.Ele
       <Head />
       <Preview>{content.preview}</Preview>
       <Body
-        style={{ backgroundColor: c.bg, color: c.ink, fontFamily: "Helvetica, Arial, sans-serif" }}
+        style={{
+          backgroundColor: c.pearl,
+          color: c.ink,
+          fontFamily: "Helvetica, Arial, sans-serif",
+        }}
       >
         <Container style={{ maxWidth: 480, margin: "0 auto", padding: "32px 24px" }}>
           <Heading as="h1" style={{ fontSize: 22, lineHeight: "30px" }}>

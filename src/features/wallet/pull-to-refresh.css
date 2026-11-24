@@ -9,18 +9,18 @@
   top: 0;
   left: 50%;
   z-index: 1;
-  color: var(--gold-700);
+  color: var(--gold-deep);
   pointer-events: none;
   opacity: calc(var(--pull-fill, 0) * 1);
   transform: translate(-50%, calc(var(--pull, 0) * 1px - 100%));
 }
 .pull-indicator:not([data-dragging="true"]) {
   transition:
-    transform var(--dur-base) var(--ease-out),
-    opacity var(--dur-base) ease;
+    transform var(--dur-quiet) var(--ease-out),
+    opacity var(--dur-quiet) ease;
 }
 .pull-indicator-fill {
-  fill: var(--gold-500);
+  fill: var(--gold);
   transform-box: fill-box;
   transform-origin: bottom;
   transform: scaleY(var(--pull-fill, 0));

@@ -91,7 +91,7 @@ export function WalletPage({
           <aside className="hidden flex-col gap-6 lg:flex" aria-label="Rewards and activity">
             <Card className="flex flex-col gap-2 p-5" data-testid="wallet-rewards-ready">
               <h2 className="text-h3 flex items-center gap-2">
-                <Icon icon={Gift} className="text-gold-700" />
+                <Icon icon={Gift} className="text-gold-deep" />
                 Rewards ready ({summary.rewardsReady})
               </h2>
               <p className="text-small text-ink-2">
@@ -100,7 +100,7 @@ export function WalletPage({
             </Card>
             <Card className="flex flex-col gap-2 p-5" data-testid="wallet-activity">
               <h2 className="text-h3 flex items-center gap-2">
-                <Icon icon={Clock3} className="text-gold-700" />
+                <Icon icon={Clock3} className="text-gold-deep" />
                 Recent activity
               </h2>
               <p className="text-small text-ink-2">Gold you collect will show here.</p>
@@ -131,7 +131,7 @@ function SummaryStrip({
             className="flex h-full items-center gap-3 px-4 py-3 xl:min-w-[168px]"
             data-testid={`summary-${t.id}`}
           >
-            <span className="text-gold-700 shrink-0" aria-hidden="true">
+            <span className="text-gold-deep shrink-0" aria-hidden="true">
               {t.icon}
             </span>
             <p className="flex min-w-0 flex-col">
@@ -145,7 +145,7 @@ function SummaryStrip({
   );
 }
 
-/** Small ingot outline (gold-700 line art, like the empty-state illustrations). */
+/** Small ingot outline (gold-deep line art, like the empty-state illustrations). */
 function IngotIcon(): React.JSX.Element {
   return (
     <svg

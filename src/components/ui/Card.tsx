@@ -4,11 +4,11 @@ import type { HTMLAttributes } from "react";
 
 type CardProps = HTMLAttributes<HTMLDivElement> & {
   /**
-   * `placed` (the default; Molten: pearl fill, gold hairline edge, inner bevel, layered lift; DESIGN §6.1),
-   * `dark` (obsidian with a gold outline) or `plain` (v1: surface, radius md, shadow-1; retired with the v1
-   * tokens in PD-11).
+   * `placed` (the default; Molten: pearl fill, gold hairline edge, inner bevel, layered lift; DESIGN §6.1) or
+   * `dark` (obsidian with a gold outline). The v1 `plain` card and `HeroCard` were retired in PD-11: a hero is a
+   * placed card with `gilded`.
    */
-  variant?: "plain" | "placed" | "dark";
+  variant?: "placed" | "dark";
   /** Molten hero cards: the gilded edge (gem, line, echo; DESIGN §6.2). The card must not clip. */
   gilded?: boolean;
   /** Lift 4 px with the deeper shadow on hover (fine pointer only). */
@@ -30,31 +30,12 @@ export function Card({
 }: CardProps): React.JSX.Element {
   return (
     <div
-      className={cx(
-        variant === "plain" && "bg-surface shadow-1 rounded-md",
-        variant === "placed" && "m-placed",
-        variant === "dark" && "m-dark",
-        variant !== "plain" && "m-card",
-        className,
-      )}
+      className={cx(variant === "placed" ? "m-placed" : "m-dark", "m-card", className)}
       data-lift={lift ? "" : undefined}
       {...rest}
     >
       {children}
       {gilded ? <GildedEdge /> : null}
     </div>
-  );
-}
-
-/** Hero card: radius lg with a subtle foil texture. */
-export function HeroCard({
-  className,
-  ...rest
-}: HTMLAttributes<HTMLDivElement>): React.JSX.Element {
-  return (
-    <div
-      className={cx("foil bg-surface shadow-2 relative overflow-hidden rounded-lg", className)}
-      {...rest}
-    />
   );
 }

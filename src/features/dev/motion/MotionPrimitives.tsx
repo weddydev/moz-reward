@@ -167,7 +167,7 @@ function StaggerDemo(): React.JSX.Element {
             <li key={i} className="stagger-item" style={staggerStyle(i)}>
               <button
                 type="button"
-                className="pressable bg-surface shadow-1 text-small hit-44 w-full rounded-md px-4 py-3 text-left"
+                className="pressable bg-surface shadow-lift-sm text-small hit-44 w-full rounded-md px-4 py-3 text-left"
                 onClick={() => {
                   setClicked(i);
                 }}
@@ -207,7 +207,7 @@ function PressHoverDemos(): React.JSX.Element {
         <div className="w-64">
           <Switch checked={on} onCheckedChange={setOn} label="Switch (data-press)" />
         </div>
-        <Card className="hover:bg-surface-2 duration-fast w-48 p-4 transition-colors">
+        <Card className="hover:bg-surface-2 duration-tap w-48 p-4 transition-colors">
           <p className="text-small">Hover me with a mouse</p>
         </Card>
       </div>

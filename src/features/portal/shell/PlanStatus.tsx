@@ -27,7 +27,7 @@ export function PlanStatus({
 }): React.JSX.Element {
   const body = (
     <>
-      <span className="bg-gold-100 text-gold-700 grid size-9 shrink-0 place-items-center rounded-sm">
+      <span className="bg-champagne text-gold-deep grid size-9 shrink-0 place-items-center rounded-sm">
         <Icon icon={Crown} size={18} />
       </span>
       <span className="flex min-w-0 flex-1 flex-col">

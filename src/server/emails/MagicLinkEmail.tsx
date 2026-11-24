@@ -27,10 +27,14 @@ function MagicLinkEmail({ url }: { url: string }): React.JSX.Element {
       <Head />
       <Preview>Your sign-in link for Moz Rewards. It works once and expires in {EXPIRY}.</Preview>
       <Body
-        style={{ backgroundColor: c.bg, color: c.ink, fontFamily: "Helvetica, Arial, sans-serif" }}
+        style={{
+          backgroundColor: c.pearl,
+          color: c.ink,
+          fontFamily: "Helvetica, Arial, sans-serif",
+        }}
       >
         <Container style={{ maxWidth: 480, margin: "0 auto", padding: "32px 24px" }}>
-          <Text style={{ fontSize: 14, letterSpacing: 1, color: c["gold-700"], margin: 0 }}>
+          <Text style={{ fontSize: 14, letterSpacing: 1, color: c["gold-deep"], margin: 0 }}>
             MOZ REWARDS
           </Text>
           <Heading as="h1" style={{ fontSize: 24, lineHeight: "32px", margin: "16px 0 8px" }}>
@@ -43,7 +47,7 @@ function MagicLinkEmail({ url }: { url: string }): React.JSX.Element {
             <Button
               href={url}
               style={{
-                backgroundColor: c["gold-700"],
+                backgroundColor: c["gold-deep"],
                 color: c.surface,
                 borderRadius: 12,
                 padding: "14px 24px",

@@ -2134,7 +2134,7 @@ html:root.rm .m-tile {
   width: 56px;
   height: 44px;
   background: var(--dock-blob);
-  transition: width var(--dur-instant) linear var(--dur-base);
+  transition: width var(--dur-instant) linear var(--dur-quiet);
 }
 .rail .m-drop {
   top: 0;
@@ -3028,6 +3028,13 @@ html:root.rm .m-cover > .m-cover-back {
   display: flex;
   gap: 4px;
   perspective: 400px;
+}
+/* At 320 the reward card's content box is 194 px: six 30 px digits fit only with 2 px gaps (190 px); the
+   reference's 4 px overhangs by 6 px (FOLLOWUPS L7, PD-10 review). */
+@media (max-width: 339px) {
+  .m-digits {
+    gap: 2px;
+  }
 }
 .m-digits span {
   width: 30px;

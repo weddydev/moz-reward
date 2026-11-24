@@ -191,7 +191,7 @@ export function StaffSignInForm(): React.JSX.Element {
         </button>
         <button
           type="button"
-          className="text-gold-700 text-sm font-semibold underline-offset-4 hover:underline"
+          className="text-gold-deep text-sm font-semibold underline-offset-4 hover:underline"
           onClick={() => {
             setUseBackup((v) => !v);
             setError(null);

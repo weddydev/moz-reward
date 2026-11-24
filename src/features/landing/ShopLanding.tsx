@@ -94,7 +94,7 @@ export function ShopLanding({
         {data.reward ? <RewardPreviewCard reward={data.reward} /> : null}
         <Card className="flex flex-col gap-3 p-5" data-testid="landing-hours" {...rise(4)}>
           <h2 className="text-h2 flex items-center gap-2">
-            <Icon icon={Clock} className="text-gold-700" /> Opening hours
+            <Icon icon={Clock} className="text-gold-deep" /> Opening hours
           </h2>
           {data.hours.length ? (
             <dl className="text-small grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
@@ -112,7 +112,7 @@ export function ShopLanding({
 
         <Card className="flex flex-col gap-3 p-5" data-testid="landing-details" {...rise(5)}>
           <h2 className="text-h2 flex items-center gap-2">
-            <Icon icon={MapPin} className="text-gold-700" /> Find us
+            <Icon icon={MapPin} className="text-gold-deep" /> Find us
           </h2>
           {address ? <p className="text-small text-ink-2">{address}</p> : null}
           {directions || tel ? (
@@ -152,7 +152,7 @@ function RewardPreviewCard({ reward }: { reward: NonNullable<Live["reward"]> }):
   return (
     <Card className="flex flex-col gap-4 p-5" data-testid="landing-reward" {...rise(4)}>
       <h2 className="text-h2 flex items-center gap-2">
-        <Icon icon={Gift} className="text-gold-700" /> Rewards
+        <Icon icon={Gift} className="text-gold-deep" /> Rewards
       </h2>
       <div className="flex items-center gap-4">
         {/* Filled to the first reward; the text beside it says everything it shows. */}
@@ -232,7 +232,7 @@ export function ShopLogo({
   return (
     <span
       data-testid="shop-logo"
-      className="border-surface bg-gold-100 grid size-20 shrink-0 place-items-center overflow-hidden rounded-[var(--r-md)] border-4 shadow-[var(--shadow-2)]"
+      className="border-surface bg-champagne shadow-lift grid size-20 shrink-0 place-items-center overflow-hidden rounded-[var(--r-md)] border-4"
     >
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element

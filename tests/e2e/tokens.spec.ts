@@ -118,13 +118,13 @@ test.describe("[P0-08] token page and contrast table", () => {
 
   test("[P0-08] AC1: the values follow the reduced-motion choice", async ({ page }) => {
     await openGallery(page);
-    const base = page.locator('[data-token="dur-base"] [data-token-value]');
-    await expect.poll(async () => shownMs(base)).toBe(toMs(declared.get("dur-base") ?? ""));
+    const base = page.locator('[data-token="dur-quiet"] [data-token-value]');
+    await expect.poll(async () => shownMs(base)).toBe(toMs(declared.get("dur-quiet") ?? ""));
 
     await page.getByTestId("preference-toggles").getByRole("radio", { name: "Reduced" }).click();
     await expect(page.locator(html)).toHaveAttribute(ATTR, "true");
     await expect.poll(async () => shownMs(base)).toBe(150);
-    const fast = page.locator('[data-token="dur-fast"] [data-token-value]');
+    const fast = page.locator('[data-token="dur-tap"] [data-token-value]');
     await expect.poll(async () => shownMs(fast)).toBe(0);
   });
 

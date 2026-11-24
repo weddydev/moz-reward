@@ -44,18 +44,13 @@ describe("[P0-08] the token list shown on /dev/ui is complete", () => {
 
 describe("[P0-08] tokens carry the DESIGN §3 / §7 values", () => {
   it.each([
-    ["bg", "#fbf8f1"],
     ["surface", "#ffffff"],
     ["surface-2", "#f4eee2"],
-    // Molten values from PD-02 (DESIGN v2 §3); the other v1 names stay until PD-11 restyles the screens.
+    // Molten values from PD-02 (DESIGN v2 §3); the v1 names were retired in PD-11.
     ["ink", "#1a140a"],
     ["ink-2", "#5b4f3c"],
     ["ink-3", "#8c806b"],
     ["line", "#e9dcbe"],
-    ["gold-700", "#8a6a1f"],
-    ["gold-500", "#c9a24a"],
-    ["gold-300", "#e9d08a"],
-    ["gold-100", "#f7edd0"],
     ["success", "#2f7d5b"],
     ["warning", "#b7791f"],
     ["danger", "#b3432f"],
@@ -79,12 +74,9 @@ describe("[P0-08] tokens carry the DESIGN §3 / §7 values", () => {
     ["iri-lilac", "#e9e3fb"],
     ["ease-io", "cubic-bezier(0.65, 0, 0.35, 1)"],
     ["r-pill", "999px"],
-    ["shadow-1", "0 1px 2px rgba(60, 45, 20, 0.06), 0 2px 8px rgba(60, 45, 20, 0.05)"],
-    ["shadow-2", "0 8px 24px rgba(60, 45, 20, 0.1)"],
-    ["shadow-gold", "0 6px 20px rgba(201, 162, 74, 0.28)"],
-    ["dur-fast", "120ms"],
-    ["dur-base", "220ms"],
-    ["dur-slow", "380ms"],
+    ["dur-tap", "120ms"],
+    ["dur-quiet", "220ms"],
+    ["dur-expressive", "380ms"],
     ["ease-out", "cubic-bezier(0.22, 1, 0.36, 1)"],
     ["ease-in-out", "cubic-bezier(0.65, 0, 0.35, 1)"],
   ])("--%s is %s", (name, expected) => {
@@ -98,11 +90,27 @@ describe("[P0-08] tokens carry the DESIGN §3 / §7 values", () => {
     expect(value("space-unit")).toBe("4px");
   });
 
-  it("signature-moment duration sits inside 900–1600ms; the foil stays at or under 0.06", () => {
-    const hero = parseInt(value("dur-hero"), 10);
-    expect(hero).toBeGreaterThanOrEqual(900);
-    expect(hero).toBeLessThanOrEqual(1600);
-    expect(Number(value("foil-opacity"))).toBeLessThanOrEqual(0.06);
+  it("[PD-11] the tiers: tap and quiet stay under 300ms, expressive inside 300–760ms (DESIGN §7.1)", () => {
+    expect(parseInt(value("dur-tap"), 10)).toBeLessThan(300);
+    expect(parseInt(value("dur-quiet"), 10)).toBeLessThan(300);
+    const expressive = parseInt(value("dur-expressive"), 10);
+    expect(expressive).toBeGreaterThanOrEqual(300);
+    expect(expressive).toBeLessThanOrEqual(760);
+  });
+
+  it("[PD-11] the v1 names are gone (retired in PD-11)", () => {
+    for (const name of ["bg", "gold-700", "gold-500", "gold-300", "gold-100", "gold-gradient"])
+      expect(css).not.toContain(`--${name}:`);
+    for (const name of [
+      "shadow-1",
+      "shadow-2",
+      "shadow-gold",
+      "dur-fast",
+      "dur-base",
+      "dur-slow",
+      "dur-hero",
+    ])
+      expect(css).not.toContain(`--${name}:`);
   });
 
   it("the spring is stiffness 380, damping 32", () => {
@@ -116,7 +124,7 @@ describe("[P0-08] reduced motion retunes the duration tokens (fades of at most 1
   it("both the system rule and the user toggle shorten every everyday duration", () => {
     expect(blocks).toContain(':root:not([data-reduce-motion="false"])');
     expect(blocks).toContain(':root[data-reduce-motion="true"]');
-    for (const name of ["dur-base", "dur-slow", "dur-hero", "dur-exit"]) {
+    for (const name of ["dur-quiet", "dur-expressive", "dur-exit"]) {
       expect(blocks.split(`--${name}: var(--dur-reduced);`)).toHaveLength(3);
     }
     expect(value("dur-reduced")).toBe("150ms");

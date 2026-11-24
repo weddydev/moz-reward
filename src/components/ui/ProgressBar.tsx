@@ -28,7 +28,7 @@ export function ProgressBar({
       style={{ height }}
     >
       <div
-        className="rounded-pill bg-gold-gradient h-full origin-left"
+        className="rounded-pill bg-metal h-full origin-left"
         style={{ transform: `scaleX(${pct / 100})` }}
       />
     </div>

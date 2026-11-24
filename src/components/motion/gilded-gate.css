@@ -251,9 +251,10 @@
 }
 .gate-title {
   margin: 8px 0 0;
-  /* The reference's size; a word too long for the stage scales down to fit (no mid-word break). */
+  /* The reference's size; a word too long for the stage scales down to fit (no mid-word break): `--gate-em` is the
+     widest word's width in em (`gateTitle`). */
   font:
-    600 min(clamp(40px, 8vw, 76px), calc((100cqw - 32px) / (var(--gate-longest, 1) * 0.62))) / 1
+    600 min(clamp(40px, 8vw, 76px), calc((100cqw - 32px) / var(--gate-em, 1))) / 1
       var(--font-fraunces),
     "Fraunces Fallback Liberation",
     "Fraunces Fallback Noto",

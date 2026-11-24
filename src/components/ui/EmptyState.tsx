@@ -14,7 +14,7 @@ export function EmptyState({
 }): React.JSX.Element {
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-      <div className="text-gold-700" aria-hidden="true">
+      <div className="text-gold-deep" aria-hidden="true">
         {illustration ?? (
           <svg
             width="72"

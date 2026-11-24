@@ -219,6 +219,46 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
     await settled(page);
   });
 
+  test("[PD-11] reduced motion switched on mid-wipe lands it at once: no metal, no circle left (FOLLOWUPS L8)", async ({
+    page,
+    signInAs,
+  }) => {
+    const me = await signInAs("customer");
+    const shopId = await seedShop(page, me.userId);
+    await page.goto("/wallet");
+    await expect(card(page)).toBeVisible();
+    // Hold the arriving shop's opening at its first frame, whatever the machine's speed: the switch then lands
+    // mid-wipe for sure, and only the switch can end it.
+    await page.evaluate((path) => {
+      const w = window as unknown as { __held: number };
+      w.__held = 0;
+      const until = performance.now() + 8000;
+      const scan = (): void => {
+        const c = [...document.querySelectorAll<HTMLElement>("[data-route-content]")].pop();
+        const running =
+          location.pathname === path
+            ? (c?.getAnimations({ subtree: true }) ?? []).filter(
+                (a) => a.playState === "running" && a.effect?.getTiming().iterations !== Infinity,
+              )
+            : [];
+        for (const a of running) a.pause();
+        w.__held += running.length;
+        if (w.__held === 0 && performance.now() < until) requestAnimationFrame(scan);
+      };
+      requestAnimationFrame(scan);
+    }, `/shops/${shopId}`);
+    await card(page).click({ position: { x: 60, y: 24 } });
+    await expect(page).toHaveURL(`/shops/${shopId}`);
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { __held: number }).__held))
+      .toBeGreaterThan(0);
+    await page.evaluate(() => {
+      document.documentElement.setAttribute("data-reduce-motion", "true");
+    });
+    await expect(page.getByTestId("wipe-stage")).toBeHidden({ timeout: 1_000 });
+    await settled(page);
+  });
+
   test("[PD-08] slow network: the metal holds over the Wallet until the shop commits, then opens", async ({
     page,
     signInAs,

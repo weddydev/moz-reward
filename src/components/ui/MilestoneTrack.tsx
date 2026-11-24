@@ -39,7 +39,7 @@ export function MilestoneTrack({
                 aria-hidden="true"
                 className={cx(
                   "absolute top-3 left-1/2 h-0.5 w-full lg:top-6 lg:left-3 lg:h-full lg:w-0.5",
-                  s.reached && steps[i + 1]?.reached ? "bg-gold-500" : "bg-line",
+                  s.reached && steps[i + 1]?.reached ? "bg-gold" : "bg-line",
                 )}
               />
             ) : null}
@@ -48,9 +48,9 @@ export function MilestoneTrack({
               className={cx(
                 "relative grid size-6 shrink-0 place-items-center rounded-full border-2",
                 s.reached
-                  ? "border-gold-500 bg-gold-gradient text-ink"
+                  ? "border-gold bg-metal text-ink"
                   : i === current
-                    ? "border-gold-500 bg-surface"
+                    ? "border-gold bg-surface"
                     : "border-ink-3 bg-surface",
               )}
             >

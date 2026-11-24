@@ -72,7 +72,7 @@ function Sample({ kind, name }: { kind: TokenKind; name: string }): React.JSX.El
         />
       );
     case "space":
-      return <span className="bg-gold-500 block h-3 rounded-sm" style={{ width: value }} />;
+      return <span className="bg-gold block h-3 rounded-sm" style={{ width: value }} />;
     case "radius":
       return (
         <span

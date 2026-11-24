@@ -172,7 +172,7 @@ const typedVt = (page: Page): Promise<boolean> =>
   );
 
 /**
- * Every animation seen is transform/opacity only and ends within --dur-slow (AC 1). Zero-length ones are
+ * Every animation seen is transform/opacity only and ends within --dur-expressive (AC 1). Zero-length ones are
  * skipped: React parks pseudos it cancels with a 0ms fill (opacity/pointer-events/size), nothing moves.
  */
 function expectCompositeOnly(all: Seen[], maxMs = 380): void {
@@ -206,7 +206,7 @@ function expectOneEnter(enter: Seen[], offset: string, depth = 0): void {
   expect(a?.props.sort()).toEqual(["opacity", "transform"]);
   expect(a?.transforms[0]).toBe(`translateX(${offset})`);
   expect(a?.transforms.at(-1)).toBe("none");
-  // --dur-slow: a real duration (the minified token reads ".38s"), within the 380ms budget.
+  // --dur-expressive: a real duration (the minified token reads ".38s"), within the 380ms budget.
   expect((a?.duration ?? 0) + (a?.delay ?? 0)).toBeLessThanOrEqual(380);
   expect(a?.duration).toBeGreaterThanOrEqual(300);
 }

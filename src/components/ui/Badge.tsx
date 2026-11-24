@@ -7,10 +7,10 @@ export type BadgeTone =
 const TONE: Record<BadgeTone, string> = {
   open: "bg-success-tint text-success",
   closed: "bg-surface-2 text-ink-2",
-  "happy-hour": "bg-gold-100 text-ink",
+  "happy-hour": "bg-champagne text-ink",
   featured: "bg-ink text-surface",
   private: "bg-surface-2 text-ink",
-  business: "bg-gold-100 text-ink",
+  business: "bg-champagne text-ink",
   neutral: "bg-surface-2 text-ink-2",
   warning: "bg-warning-tint text-ink",
 };

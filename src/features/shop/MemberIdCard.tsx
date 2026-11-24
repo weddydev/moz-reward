@@ -16,7 +16,7 @@ export function MemberIdCard({
   return (
     <section
       aria-labelledby="member-card-title"
-      className="rounded-[var(--r-lg)] bg-[image:var(--gold-gradient)] p-[2px] shadow-[var(--shadow-gold)]"
+      className="bg-metal shadow-lift rounded-[var(--r-lg)] p-[2px]"
       data-testid="member-card"
     >
       <div className="bg-surface flex flex-col gap-4 rounded-[calc(var(--r-lg)-2px)] p-5">
@@ -29,7 +29,7 @@ export function MemberIdCard({
             Member ID
           </span>
           <span
-            className="text-display tabular text-gold-700 tracking-[0.08em]"
+            className="text-display tabular text-gold-deep tracking-[0.08em]"
             aria-labelledby="member-id-label"
             data-testid="member-id"
           >

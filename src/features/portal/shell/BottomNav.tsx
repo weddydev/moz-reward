@@ -156,7 +156,7 @@ export function BottomNav({
                     }}
                     className={cx(
                       "pressable text-small flex min-h-11 items-center gap-3 rounded-md px-3 font-semibold",
-                      r.path === active ? "bg-gold-100 text-ink" : "text-ink-2 hover:bg-surface-2",
+                      r.path === active ? "bg-champagne text-ink" : "text-ink-2 hover:bg-surface-2",
                     )}
                   >
                     <Icon icon={navIcon(r.icon)} />

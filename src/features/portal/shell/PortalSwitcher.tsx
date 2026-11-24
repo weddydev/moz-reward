@@ -27,7 +27,7 @@ export function PortalSwitchList({
             aria-current={l.portal === current ? "true" : undefined}
             className={cx(
               "pressable text-small flex min-h-11 items-center gap-3 rounded-md px-3 font-semibold",
-              l.portal === current ? "bg-gold-100 text-ink" : "text-ink-2 hover:bg-surface-2",
+              l.portal === current ? "bg-champagne text-ink" : "text-ink-2 hover:bg-surface-2",
             )}
           >
             <span className="flex-1">{l.label}</span>

@@ -9,6 +9,8 @@ export const GATE = {
   sparkMs: 520,
   convergeAt: 300,
   igniteAt: 1250,
+  /** The ignite burst is skipped when its timer fires later than this past `igniteAt` (a busy main thread). */
+  igniteLateMs: 80,
   orbitAt: 1420,
   shineAt: 2350,
   /** The canvas stops drawing here (it has faded out by 1810 ms). */

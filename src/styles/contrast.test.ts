@@ -66,7 +66,7 @@ describe("[P0-08] token contrast (WCAG AA)", () => {
   it("every body-text pair is at least 4.5:1 and the list covers the text colours on each background", () => {
     const body = CONTRAST_PAIRS.filter((p) => p.min === BODY);
     expect(body.length).toBeGreaterThanOrEqual(14);
-    for (const bg of ["bg", "surface", "surface-2"]) {
+    for (const bg of ["pearl", "surface", "surface-2"]) {
       expect(body.some((p) => p.fg === "ink" && p.bg === bg)).toBe(true);
       expect(body.some((p) => p.fg === "ink-2" && p.bg === bg)).toBe(true);
     }

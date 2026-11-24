@@ -129,7 +129,7 @@ export function FxPlayground(): React.JSX.Element {
           ref={press}
           type="button"
           data-testid="fx-press"
-          className="m-press bg-gold-500 text-ink rounded-pill relative inline-flex h-[54px] items-center overflow-hidden px-7 font-bold"
+          className="m-press bg-gold text-ink rounded-pill relative inline-flex h-[54px] items-center overflow-hidden px-7 font-bold"
           onClick={(e) => {
             celebrate(e.currentTarget, e);
             setGold((g) => g + 80);

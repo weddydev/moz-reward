@@ -38,7 +38,7 @@ export type PopoverProps = {
 /**
  * A small non-modal popover anchored to its trigger (P0-10 AC 8, DESIGN §7). Placed below the trigger (above
  * when it doesn't fit), 16px inside the viewport, and it grows from the trigger: `transform-origin` comes from
- * `transformOriginFor` (the `.popover` preset: scale .95 + fade, `--dur-base`, never from 0). Closing plays
+ * `transformOriginFor` (the `.popover` preset: scale .95 + fade, `--dur-quiet`, never from 0). Closing plays
  * the exit, then unmounts; re-opening mid-exit reverses it from where it is (CSS transitions). Esc closes and
  * returns focus to the trigger; a press outside or focus leaving closes it.
  *
