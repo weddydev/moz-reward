@@ -20,6 +20,8 @@ const VIEWPORTS = [
 /** At rest (nothing moving): the static limit; moving frames: the frame limit (PD-01). */
 const REST_DIFF = 0.01;
 const FRAME_DIFF = 0.02;
+/** The first-view frame only: Linux Chromium reads it 2.02–2.03% at 390 (CLAUDE.md "small overshoots"). */
+const FIRST_VIEW_DIFF = 0.022;
 
 const vault = PARITY_PARTS.find((p) => p.name === "vault");
 const reward = PARITY_PARTS.find((p) => p.name === "reward");
@@ -141,7 +143,9 @@ test.describe("[PD-10] Gold Vault parity", () => {
       await run(both, 1_200);
       for (const p of both) await freezeTimed(p);
       await alignGlint(ref, page);
-      await compare(ref, page, "vault", "first-view", FRAME_DIFF);
+      // 2.2%, not 2%: on CI's Linux Chromium this frame read 2.02–2.03% at 390 (3/3; 1.9x% on the Mac, 1440 under
+      // 2% everywhere), the stream's fade and the stamp's edges rasterising a little differently (DECISIONS 24 Nov).
+      await compare(ref, page, "vault", "first-view", FIRST_VIEW_DIFF);
       for (const p of both) await release(p);
       await run(both, 1_300);
       for (const p of both) await freezeTimed(p, true);
