@@ -983,3 +983,9 @@ Next: CI on `6386f9a` green → merge origin/main, push main via hook; then PD-1
 CI 45467487343 on `wip/PD-10` `6386f9a` GREEN on every job (check, unit+int, E2E Chromium ×2, WebKit, perf with T-8, parity); 1 confirmed WebKit flake (PD-06 tabs keyboard, 5/5 alone → FOLLOWUPS).
 Merged main's progress commits (`2cb621f`), pushed to main through the hook ("CI green for 6386f9a, only docs/progress changed since").
 Next: PD-11 step A on `wip/PD-11` from main (plan in the PROGRESS handoff).
+
+## 2026-11-25 — PD — PD-11 step A (global surfaces, landing, sign-in): built, CI running (wip/PD-11 `9b70acb`)
+Resume (light path). Step A: LivingBackground in root layout + pearl ground/theme colour; `Card` placed by default (`.m-card` 24 px, layered); landing takes the shop page cover (`.m-cover-art` layer = gate morph target, coin logo, gate keeps the logo absolute while rising); `CoverPhoto` falls back to the ground on a broken cover (FOLLOWUPS 73); auth screens gilded placed card + TextField + molten buttons, top-anchored (FOLLOWUPS 74, no-shift assertion in slow-network spec).
+gate:task on `9b70acb`: every step PASS (unit 2079/0, int 1456/0, E2E PD-11 9/0); only "working tree unchanged" failed (progress files edited mid-run). Full Chromium E2E (Linux) 325 passed / 0 failed. Screens 390/1440 landing, 390 sign-in + staff sign-in inspected (dev server).
+NOT VERIFIED: CI 45476822891 (shard 2 + WebKit running). Next: read it; green → step B (customer screens).
+
