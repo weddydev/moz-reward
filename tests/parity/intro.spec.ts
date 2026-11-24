@@ -92,6 +92,10 @@ async function sample(page: Page, selector: string): Promise<Sample[]> {
 }
 
 test.describe("[PD-09] Gilded Gate intro parity", () => {
+  // Two pages driven through 4 s of canvas frames: ~33 s alone on laptop Linux WebKit, past 90 s beside three
+  // other parity workers (gate 24 Nov; KI-10).
+  test.describe.configure({ timeout: 180_000 });
+
   test("[PD-09] the intro's beats and rest frame match the reference", async ({
     page,
     context,

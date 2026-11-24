@@ -424,7 +424,7 @@ async function profileLoad(page: Page, url: string): Promise<LoadProfile> {
  * runs too, and the only script-less long frame is the first paint itself (DECISIONS 17 Nov). The gate's
  * motion after the 200ms outline is transform/opacity, which the compositor keeps running through that task.
  */
-test("[P1-03] adds no long task while it plays, 4× CPU throttle (Chromium) @perf", async ({
+test("[PD-09] adds no long task while it plays, 4× CPU throttle (Chromium) @perf", async ({
   page,
   request,
   browserName,
