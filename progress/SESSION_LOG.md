@@ -955,3 +955,8 @@ Gate runs: 1 beat-frames timeout (container) → 120 s; 2 WebKit parity timeout 
 Design review: pass, no BLOCK; HIGH (one-flash test) + M2 (canvas clock) fixed; M3 = @fps on CI; LOWs 5–7 → FOLLOWUPS; L4 in DECISIONS.
 NOT VERIFIED: CI 45352009042 + perf suite 45352014187 on `wip/PD-09` (running at this checkpoint).
 PD-09 CLOSED: CI 45352009042 red on test-side issues only (landing `getByText` matched the gate's subtitle; WebKit's "Blocked by Web Inspector" for the blocked font; long-names test seeked before the first-frame scene on slow Linux WebKit, KI-10) → fixed `757f8eb`, `124b276`. CI 45357702882 on `124b276` GREEN on every job; frame-rate suite 45352014187 GREEN (@fps convergence + @perf on CI's runner). Ticked; to main.
+
+## 2026-11-24 — PD — PD-10 Vault pour, reward unlocked, redeem code: IN PROGRESS (wip/PD-10 `3826a87`)
+PD-10 (Syedbadeshah76, WSL) built, not finished: Ingot reference geometry + pour timing/overflow, GoldVault, RewardUnlocked, RedeemCode (server-expiry countdown), /dev/molten VaultSection, parity vault spec (5 states). `pnpm check` green (unit 2057/0 after registering 20 vault tokens in `tokens.ts`). NOT VERIFIED: parity, E2E, gate:task, component tests (not written yet), CI on `wip/PD-10` `3826a87`.
+Scheduled run 45397054403 on main RED: only PD-09 @fps convergence lite tier on desktop1440 (16.800000000000068 vs 16.8, retry 33.3); not investigated, first item for the next session. Docker Desktop was down (KI-46): gitleaks 8.30.1 installed in `~/.local/bin` (checksum OK), Docker Desktop started from WSL.
+Handoff by Syedbadeshah76 (~13:30 UTC): baton free; autopilot off; PD-10 half-done on `wip/PD-10` `3826a87`; next: red scheduled run, then finish PD-10.

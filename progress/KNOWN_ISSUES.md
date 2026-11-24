@@ -8,6 +8,10 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 - Cause: Docker Desktop hangs every new connect to `host.docker.internal` for ~68 s after ~3,100 connects in ~30 s (browsers open fresh connections per test context).
 - Fix: `scripts/lib/e2e-forwarder.mjs` (pooled keep-alive HTTP forwarder used by `pnpm e2e:linux` / `gate:task`). If stalls come back: check the forwarder is in use and its pool size, not the app. DECISIONS 23 Nov "C-76".
 
+**KI-46 · Commit refused "[gitleaks] neither `gitleaks` nor Docker is available", or a wip push fails on "sast: could not run Docker (spawnSync docker EPIPE)" (WSL laptop)** — 24 Nov.
+- Cause: Docker Desktop (Windows, per-user install) isn't running after a Windows restart; WSL has no Docker of its own (`/usr/bin/docker` is Desktop's CLI shim), so `sudo systemctl start docker` does nothing.
+- Fix: start it from WSL: `cd /mnt/c/Users/DELL/AppData/Local/Programs/DockerDesktop && cmd.exe /c start "" "Docker Desktop.exe"`, wait until `docker info` answers (~1 min). Commits alone also work with the pinned gitleaks 8.30.1 binary in `~/.local/bin` (checksum-verified 24 Nov; not on PATH by default: `export PATH="$HOME/.local/bin:$PATH"`). Never `--no-verify`.
+
 **KI-02 · A gate step "TIMED OUT"** — a hung process, never a slow machine.
 - Read that step's log in `.artifacts/gate/` (Vitest steps carry the hanging-process report); fix the cause; never raise `STEP_LIMITS`. `GATE_TIMEOUT_SCALE=2` only for a one-off on a loaded machine. CLAUDE.md "Gate speed rules".
 
