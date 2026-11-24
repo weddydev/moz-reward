@@ -236,6 +236,11 @@ export type GateCanvasOptions = {
   slow: number;
   /** False once the gate is skipped or replayed: the loop stops. */
   alive: () => boolean;
+  /**
+   * The real gate's clock: its CSS timeline's start (first paint), once known. The canvas then runs on the
+   * same clock as the beats even when first paint lags parsing on a slow phone (design review PD-09).
+   */
+  start?: () => number | null;
 };
 
 export type GateCanvasLib = {
@@ -309,7 +314,7 @@ export function runGateCanvas(
   ctx.fillRect(0, 0, W, H);
   const frame = (now: number): void => {
     if (stopped || !o.alive()) return;
-    const t = (now - o.t0) / o.slow;
+    const t = (now - (o.start?.() ?? o.t0)) / o.slow;
     ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = "rgba(21,16,10,.3)";
     ctx.fillRect(0, 0, W, H);
@@ -530,6 +535,7 @@ export function startGate(
       lite: document.documentElement.classList.contains("lite"),
       slow: 1,
       alive: () => gate.getAttribute("data-state") === "play",
+      start: () => (typeof life.startTime === "number" ? life.startTime : null),
       staggerMs: t.staggerMs,
       subDelayMs: t.subDelayMs,
     },

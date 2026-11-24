@@ -140,6 +140,14 @@ test("[PD-09] the timeline lasts 3.28 s and the morph grows the cover out of the
   });
   expect(ends.outside).toBeCloseTo(TOTAL_MS, 3); // the rise delay is a calc(): 3280.0000000000005
   expect(ends.scene).toBeGreaterThan(20); // the inline scene script played the beats (letters, coin, rays…)
+  // Exactly one flash (WCAG 2.3.1): one animation on the flash, one iteration, a single peak (0 → .95 → 0).
+  const flash = await page.evaluate(() =>
+    (document.querySelector("#gilded-gate .gate-flash")?.getAnimations() ?? []).map((a) => ({
+      iterations: a.effect?.getTiming().iterations,
+      opacity: (a.effect as KeyframeEffect).getKeyframes().map((k) => Number(k.opacity)),
+    })),
+  );
+  expect(flash).toEqual([{ iterations: 1, opacity: [0, 0.95, 0] }]);
   const coverOpacity = (): Promise<string> =>
     page.locator("[data-gate-cover]").evaluate((el) => getComputedStyle(el).opacity);
   await seek(page, HANDOFF_MS + 200); // mid-morph: one cover on screen, the clone
