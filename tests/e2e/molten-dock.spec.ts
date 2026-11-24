@@ -283,3 +283,28 @@ test.describe("[PD-07] customer rail", () => {
     expect(Math.abs(await goldOn(list, market, "y"))).toBeLessThanOrEqual(1);
   });
 });
+
+test.describe("[PD-11] shop and admin sidebar", () => {
+  test("[PD-11] glass, the current page on liquid gold that pours down to the next page", async ({
+    page,
+    signInAs,
+    shoot,
+  }) => {
+    test.skip((page.viewportSize()?.width ?? 1280) < 1024, "the sidebar is the desktop navigation");
+    await signInAs("owner");
+    await page.goto("/dashboard");
+    const side = rail(page);
+    const list = side.locator("ul").first();
+    await expect(side).toHaveCSS("backdrop-filter", /blur\(16px\)/);
+    const overview = side.getByRole("link", { name: "Overview" });
+    await expect(overview).toHaveAttribute("aria-current", "page");
+    expect(Math.abs(await goldOn(list, overview, "y"))).toBeLessThanOrEqual(1);
+    await shoot("side-nav-overview");
+    await side.getByRole("link", { name: "Customers" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/customers$/);
+    const customers = side.getByRole("link", { name: "Customers" });
+    await expect(customers).toHaveAttribute("aria-current", "page");
+    await poured(list);
+    expect(Math.abs(await goldOn(list, customers, "y"))).toBeLessThanOrEqual(1);
+  });
+});

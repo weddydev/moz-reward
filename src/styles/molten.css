@@ -2125,6 +2125,66 @@ html:root.rm .rail .m-blob {
   transition: none !important;
 }
 
+/* The shop and admin sidebar (PD-11, extended from the customer rail): the rail's glass, the dock's liquid gold
+   under the current page at the items' full width, poured along the column (`useLiquidPour`, axis "y"). */
+.m-side {
+  background: rgba(255, 252, 245, 0.82);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+}
+.lite .m-side {
+  background: rgba(255, 252, 245, 0.97);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.m-side .m-goo {
+  transition: opacity 0.3s var(--ease-out);
+}
+.m-side [data-empty] > .m-goo {
+  opacity: 0;
+}
+.m-side .m-blob {
+  top: 0;
+  bottom: auto;
+  left: 12px;
+  width: calc(100% - 24px);
+  height: 44px;
+  background: var(--dock-blob);
+}
+.m-side .m-drop {
+  top: 0;
+  left: 26px;
+  margin-top: 0;
+}
+.m-side-item {
+  position: relative;
+  z-index: 1;
+}
+.m-side-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.m-side-item > svg {
+  transition: transform 0.45s var(--spring);
+}
+.m-side-item[aria-current="page"] > svg {
+  transform: scale(1.08);
+}
+@media (hover: hover) and (pointer: fine) {
+  .m-side-item:hover > svg {
+    transform: scale(1.08);
+  }
+  .m-side-item:hover {
+    color: var(--ink);
+  }
+}
+
 /* ---------- wallet stack and card (PD-08; reference `.stack`, `.wcard`, `.wc-*`, `cardshine`) ---------- */
 /* Phones stack the cards like cards in a wallet: each overlaps the previous, leaving its 58 px header strip in
    view. A slot (`li`) carries the stack's offsets; the card inside it (`a`/`button`) is the reference's `.wcard`. */

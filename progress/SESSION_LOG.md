@@ -995,3 +995,4 @@ Shop page: mini vault under the cover (C-80; the wipe now also fills/raises part
 gate:task: every step PASS (unit 2081/0, int 1456/0, E2E PD-11 12/0, tree unchanged). Local prod-build E2E vault + shop-page + wipe + portal-pages on chromium + desktop1440: all pass (78 then 24 + 18 after the fixes).
 Screens inspected: shop page 390, vault 390/320/1440, 403 + error 390. C-80 closed (E2E: bar 0 → 0.72, 900 ms).
 NOT VERIFIED: CI on this commit (pushed after step A's CI 45476822891 reports; WebKit still running at commit).
+Step C part 1: SideNav (shop/admin) on the rail's glass with the liquid gold poured down the column (FOLLOWUPS 88). E2E molten-dock + portal-shells at desktop1440: 16 passed; sidebar screen at 1440 inspected.
