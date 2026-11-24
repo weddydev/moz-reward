@@ -467,6 +467,8 @@ test("[PD-09] beat frames (390, 320, 1440, landscape 844 × 390)", async ({
   page,
   request,
 }, testInfo) => {
+  // Four loads and 32 full-page screenshots: about 25 s on the host, more in the Linux container (gate 24 Nov).
+  test.setTimeout(120_000);
   const { shopCode } = await seedShop(request);
   // The page clock drives the canvas (rAF) and every animation is seeked, so each frame is the same instant.
   await page.clock.install({ time: new Date("2026-01-01T12:00:00Z") });
