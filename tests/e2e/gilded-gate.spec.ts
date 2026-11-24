@@ -421,8 +421,8 @@ async function profileLoad(page: Page, url: string): Promise<LoadProfile> {
  * page's own bootstrap (Next's framework chunk: react-dom + hydration, ~80–160ms at 4×, the same on every
  * page with or without the gate) always falls inside its 3.28 s. What this proves is that the gate adds none:
  * no long frame is the gate's doing (its inline script or chunk), every long script is one the plain landing
- * runs too, and the only script-less long frame is the first paint itself (DECISIONS 17 Nov). The gate's
- * motion after the 200ms outline is transform/opacity, which the compositor keeps running through that task.
+ * runs too, and no script-less frame after first paint is over the long-task limit (DECISIONS 17 Nov, 24 Nov).
+ * Most of the gate's motion is transform/opacity, which the compositor keeps running through that task.
  */
 test("[PD-09] adds no long task while it plays, 4× CPU throttle (Chromium) @perf", async ({
   page,
@@ -455,7 +455,10 @@ test("[PD-09] adds no long task while it plays, 4× CPU throttle (Chromium) @per
       if (gateCode.has(x.url)) expect(x.duration, report).toBeLessThanOrEqual(LONG_TASK_MS);
       if (x.duration > LONG_TASK_MS) expect(plain.scripts, report).toContain(x.url);
     }
-    if (f.scripts.length === 0) expect(f.start, report).toBeLessThanOrEqual(scanned.paint);
+    // Rendering-only frames after first paint (PD-09: the letter forge's weight axis and letter-spacing, the
+    // hand-off's clip-path; ~56–60 ms at 4×) stay within the long-task limit too.
+    if (f.scripts.length === 0 && f.start > scanned.paint)
+      expect(f.duration, report).toBeLessThanOrEqual(LONG_TASK_MS);
   }
 });
 
