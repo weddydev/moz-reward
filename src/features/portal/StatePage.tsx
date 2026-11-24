@@ -1,8 +1,8 @@
 import { Compass, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { buttonClasses } from "@/components/ui/button-classes";
-import { Icon } from "@/components/ui/Icon";
 import { PORTAL_ROOT, type Portal, routeByPath } from "./routes";
+import { StateMark } from "./StateMark";
 
 /**
  * A whole-page state (P0-12): the 403 page, a not-found page. One icon, one heading, one line, one way on.
@@ -31,9 +31,7 @@ export function StatePage({
       data-page={page}
       className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-4 px-5 py-16 text-center"
     >
-      <span className="bg-surface-2 text-gold-700 grid size-16 place-items-center rounded-full">
-        <Icon icon={icon} size={32} />
-      </span>
+      <StateMark icon={icon} />
       <h1 className="text-h1">{title}</h1>
       <p className="text-body text-ink-2">{message}</p>
       <Link href={action.href} className={buttonClasses({ className: "mt-2" })}>

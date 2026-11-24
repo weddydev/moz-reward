@@ -87,7 +87,9 @@ export function GoldVault({
                 eager
               />
             ) : (
-              <ShopCoin name={shop.name} size={30} />
+              <span className="m-v-logo">
+                <ShopCoin name={shop.name} size={30} />
+              </span>
             )}
             Gold Vault · {shop.name}
           </p>

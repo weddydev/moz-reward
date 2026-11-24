@@ -25,6 +25,8 @@ export type VaultView = {
   ingot: IngotFill;
   steps: VaultStep[];
   streak: { bonusGold: number } | null;
+  /** Gold a visit earns under the rules in force now ("about N visits"); null when gold is earned per £1. */
+  perVisit: number | null;
   tier: {
     name: TierName;
     ingots: number;
@@ -122,6 +124,7 @@ export function vaultView(input: VaultInput, now: Date): VaultView | null {
     ingot,
     steps,
     streak: current.streak ? { bonusGold: current.streak.bonusGold } : null,
+    perVisit: current.earnMode === "per_visit" ? current.earnRate : null,
     tier: { name, ingots, ladder, next },
     shelf: { completed: ingots, slots: Math.max(SHELF_MIN_SLOTS, ingots + 1) },
     howItWorks: {

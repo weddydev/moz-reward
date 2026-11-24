@@ -141,8 +141,12 @@ test("[P1-08] gold vault: DESIGN sample data, mystery hidden, tiers, shelf, how 
   await page.goto(`/vault/${shopId}`);
   await expect(page.getByRole("heading", { level: 1, name: "Your Gold Vault" })).toBeVisible();
   await expect(page.getByRole("img", { name: "720 of 1,000 gold, 72%" })).toBeAttached();
-  await expect(page.getByTestId("vault-gold")).toHaveText("720 / 1,000 gold");
-  await expect(page.getByTestId("vault-percent")).toHaveText("72%");
+  // The Molten vault (PD-11): the shop's eyebrow, the reward the ingot is for, gold to go, the count.
+  const vault = page.getByRole("region", { name: "Gold Vault, Brew & Bloom Café" });
+  await expect(vault.getByRole("heading", { name: "Free coffee & cake" })).toBeVisible();
+  await expect(vault.getByTestId("vault-line")).toHaveText("280 gold to go · about 3 visits");
+  await expect(vault.locator(".m-v-count")).toHaveText("720 / 1,000");
+  await expect(page.getByTestId("shop-logo")).toHaveCount(0); // the v1 square logo is gone
 
   const track = page.getByRole("list", { name: "Rewards in this ingot" });
   await expect(track.getByRole("listitem")).toHaveText([

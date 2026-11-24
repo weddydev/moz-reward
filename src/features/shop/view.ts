@@ -1,5 +1,4 @@
 import type { VaultView } from "@/features/vault/view";
-import { vaultGoldText } from "@/features/vault/view";
 import { formatDate } from "@/lib/format-date";
 import { addLondonDays } from "@/lib/time";
 
@@ -12,17 +11,18 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 /** Days a left membership's progress is kept for a rejoin (PRODUCT §4; P1-13 forfeits it after this). */
 export const RESTORE_DAYS = 30;
 
-/** The Gold Vault card: how full the current ingot is and the next reward on the way. */
+/**
+ * The Gold Vault card: how full the current ingot is and the next reward on the way (the gold itself is on the
+ * mini vault line above it, PD-11).
+ */
 export function vaultCardText(view: Pick<VaultView, "ingot" | "steps">): {
   percent: number;
-  gold: string;
   next: string;
 } {
   const next = view.steps.find((s) => !s.reached);
   const main = view.steps.find((s) => s.main);
   return {
     percent: view.ingot.percent,
-    gold: vaultGoldText(view.ingot),
     next: next
       ? `Next: ${next.title} at ${String(next.percent)}%`
       : `Ingot full: ${main?.title ?? "your reward"} is ready`,

@@ -125,6 +125,12 @@ describe("[P1-08] Gold Vault view", () => {
     });
   });
 
+  it("[PD-11] perVisit: the gold a visit earns under the rules in force now, null when earned per £1", () => {
+    expect(view(0)?.perVisit).toBe(100);
+    const perPound = version({ earnMode: "per_pound", earnRate: 10, milestones: [] });
+    expect(view(0, 0, [perPound])?.perVisit).toBeNull();
+  });
+
   it("an odd ingot size rounds a milestone's gold up (25% of 1,001 needs 251)", () => {
     const v = view(250, 0, [version({ ingotSize: 1_001 })]);
     expect(v?.steps[0]).toMatchObject({ gold: 251, reached: false });

@@ -59,7 +59,8 @@ test("[P1-09] member shop page: cover, status, directions and call, vault card, 
   const vault = page.getByTestId("shop-vault");
   await expect(vault.getByRole("img", { name: "720 of 1,000 gold, 72%" })).toBeAttached();
   await expect(page.getByTestId("shop-vault-percent")).toHaveText("72%");
-  await expect(page.getByTestId("shop-vault-gold")).toHaveText("720 / 1,000 gold");
+  // The compact Gold Vault line under the cover (PD-11, C-80) carries the gold.
+  await expect(page.getByTestId("mini-vault")).toContainText("Gold Vault720 / 1,000");
   // The sample programme: 25% and 50% reached, the 75% step is a mystery not reached yet.
   await expect(page.getByTestId("shop-vault-next")).toHaveText("Next: Mystery reward at 75%");
   expect(await page.content()).not.toContain("Secret brownie");
@@ -153,6 +154,7 @@ test("[P1-09] leave on day 1: the sheet explains the 30-day window, the shop lea
   await expect(page.getByTestId("shop-join")).toBeVisible();
   await expect(page.getByTestId("member-card")).toHaveCount(0);
   await expect(page.getByTestId("shop-vault")).toHaveCount(0);
+  await expect(page.getByTestId("mini-vault")).toHaveCount(0);
   await expect(page.getByTestId("shop-settings")).toHaveCount(0);
   await shoot("shop-page-non-member-390");
 
@@ -163,7 +165,7 @@ test("[P1-09] leave on day 1: the sheet explains the 30-day window, the shop lea
   await expect(join.getByTestId("join-marketing")).not.toBeChecked();
   await join.getByTestId("join-submit").click();
   await expect(page).toHaveURL(`/shops/${shopId}?welcome=1`);
-  await expect(page.getByTestId("shop-vault-gold")).toHaveText("720 / 1,000 gold");
+  await expect(page.getByTestId("mini-vault")).toContainText("720 / 1,000");
 });
 
 test("[P1-09] leave from a stale second tab: the second leave lands on the Wallet too", async ({

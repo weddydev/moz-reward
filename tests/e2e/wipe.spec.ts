@@ -113,6 +113,61 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
     expect(back.sunk, "the wallet came back from the sunk state").toBeGreaterThan(0);
   });
 
+  test("[PD-11] the shop's mini vault bar fills from empty in the wipe (420 ms in, 900 ms) and rests at the member's gold (C-80)", async ({
+    page,
+    signInAs,
+  }) => {
+    const me = await signInAs("customer");
+    const shopId = await seedShop(page, me.userId);
+    await page.goto("/wallet");
+    await expect(card(page)).toBeVisible();
+    // Frame by frame: the bar's drawn scaleX, and the timing of the animation that fills it.
+    await page.evaluate(() => {
+      const w = window as unknown as { __bar: { scales: number[]; timing: string | null } };
+      w.__bar = { scales: [], timing: null };
+      const until = performance.now() + 6000;
+      const tick = (): void => {
+        const bar = document.querySelector<HTMLElement>(
+          '[data-testid="mini-vault"] [data-wipe-bar]',
+        );
+        if (bar) {
+          w.__bar.scales.push(new DOMMatrix(getComputedStyle(bar).transform).a);
+          const t = bar.getAnimations()[0]?.effect?.getTiming();
+          if (t && !w.__bar.timing) w.__bar.timing = `${String(t.delay)}|${String(t.duration)}`;
+        }
+        if (performance.now() < until) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    await card(page).click({ position: { x: 60, y: 24 } });
+    await expect(page).toHaveURL(`/shops/${shopId}`);
+    await expect(page.getByTestId("mini-vault")).toContainText("720 / 1,000");
+    await settled(page);
+    const bar = await page.evaluate(
+      () => (window as unknown as { __bar: { scales: number[]; timing: string | null } }).__bar,
+    );
+    expect(bar.timing, "the wipe filled the bar").not.toBeNull();
+    // The delay counts from the tap, so what is left of the 420 ms when the shop commits; the length is 900.
+    expect(Number(bar.timing?.split("|")[1])).toBe(900);
+    expect(Math.min(...bar.scales), "the bar started empty").toBeLessThan(0.05);
+    // It rests at 720 / 1,000 once its fill ends (after the circle's).
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const el = document.querySelector<HTMLElement>(
+            '[data-testid="mini-vault"] [data-wipe-bar]',
+          );
+          return el && el.getAnimations().length === 0
+            ? new DOMMatrix(getComputedStyle(el).transform).a
+            : -1;
+        }),
+      )
+      .toBeCloseTo(0.72, 2);
+    await expect(
+      page.getByRole("progressbar", { name: /Gold Vault: 720 \/ 1,000/ }),
+    ).toHaveAttribute("aria-valuenow", "720");
+  });
+
   test("[PD-08] back during the wipe and browser back during the wipe both land on a clean Wallet", async ({
     page,
     signInAs,

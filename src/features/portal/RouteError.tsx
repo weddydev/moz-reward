@@ -3,8 +3,8 @@
 import { CircleAlert } from "lucide-react";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/Button";
-import { Icon } from "@/components/ui/Icon";
 import { useHydrated } from "@/lib/use-hydrated";
+import { StateMark } from "./StateMark";
 
 /** The server's reference for an error it already logged; absent on an error thrown in the browser. */
 function digestOf(error: unknown): string | null {
@@ -38,9 +38,7 @@ export function RouteError({
       className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-4 px-5 py-16 text-center"
     >
       <div role="alert" className="flex flex-col items-center gap-4">
-        <span className="bg-surface-2 text-danger grid size-16 place-items-center rounded-full">
-          <Icon icon={CircleAlert} size={32} />
-        </span>
+        <StateMark icon={CircleAlert} tone="danger" />
         <h1 className="text-h1">Something went wrong</h1>
         <p className="text-body text-ink-2">
           Please try again. If it keeps happening, get in touch and we&apos;ll put it right.

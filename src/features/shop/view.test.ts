@@ -17,7 +17,7 @@ const card = (gold: number, steps: VaultView["steps"]): Pick<VaultView, "ingot" 
 });
 
 describe("[P1-09] shop page view", () => {
-  it("vault card: percent, gold text and the next step not reached yet", () => {
+  it("[PD-11] vault card: percent and the next step not reached yet (the gold is on the mini vault)", () => {
     const text = vaultCardText(
       card(320, [
         step(25, "Free drink", true),
@@ -27,7 +27,6 @@ describe("[P1-09] shop page view", () => {
     );
     expect(text).toEqual({
       percent: 32,
-      gold: "320 / 1,000 gold",
       next: "Next: Mystery reward at 50%",
     });
   });

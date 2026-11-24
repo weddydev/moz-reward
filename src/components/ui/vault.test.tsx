@@ -158,6 +158,8 @@ describe("[PD-10] Gold Vault", () => {
     expect(screen.getByTestId("vault-line")).toHaveTextContent("280 gold to go · about 4 visits");
     expect(screen.getByRole("img", { name: "720 of 1,000 gold, 72%" })).toBeInTheDocument();
     expect(screen.queryByTestId("reward-card")).toBeNull();
+    // [PD-11] A shop without a logo photo gets its coin in the same 30 px ring box (never stretched by the row).
+    expect(screen.getByTestId("shop-coin").parentElement).toHaveClass("m-v-logo");
   });
 
   it("[PD-10] unlocked: the reward slot shows the card with 'Your reward is ready'", () => {

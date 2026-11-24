@@ -172,6 +172,27 @@ export function startWipe(
   return true;
 }
 
+const LATE_PARTS = "[data-rise], [data-wipe-bar]";
+/** Parts that stream in later than this after the tap simply appear (the bar's own end: 420 + 900 ms). */
+const LATE_WINDOW_MS = WIPE.bar.delayMs + WIPE.bar.ms;
+
+/**
+ * The delay for a part that arrived `elapsed` ms after the tap, while the wipe was open (PD-11, C-80), or null
+ * to leave it still: a bar fills for what is left of its 420 ms; a rise part rises in its stagger slot unless a
+ * part with its index already rose (the page's own header replacing the loading cover's must not rise twice).
+ * Nothing moves once the window is over.
+ */
+export function lateDelay(
+  part: "bar" | { rise: number },
+  elapsed: number,
+  risen: ReadonlySet<number>,
+): number | null {
+  if (elapsed >= LATE_WINDOW_MS) return null;
+  if (part === "bar") return remainingDelay(WIPE.bar.delayMs, elapsed);
+  if (!Number.isFinite(part.rise) || risen.has(part.rise)) return null;
+  return remainingDelay(riseDelay(part.rise), elapsed);
+}
+
 /**
  * The arriving shop content takes the wipe (`RouteContent`, in the commit). Returns the opening animation (the
  * caller cancels it if another navigation comes), or null when no wipe is waiting for `pathname`.
@@ -208,33 +229,63 @@ export function openWipe(
     fill: "backwards",
   });
   const parts: Animation[] = [];
-  for (const part of el.querySelectorAll<HTMLElement>("[data-rise]")) {
-    const a = anim(
-      part,
-      [
-        { opacity: 0, transform: `translateY(${String(WIPE.rise.fromPx)}px)` },
-        { opacity: 1, transform: "none" },
-      ],
-      {
-        duration: WIPE.rise.ms,
-        delay: remainingDelay(riseDelay(Number(part.dataset.rise)), w.elapsed),
-        fill: "backwards",
-      },
-    );
+  const risen = new Set<number>();
+  const play = (part: HTMLElement, delay: number): void => {
+    const bar = part.hasAttribute("data-wipe-bar");
+    const a = bar
+      ? anim(part, [{ transform: "scaleX(0)" }, { transform: part.style.transform || "none" }], {
+          duration: WIPE.bar.ms,
+          delay,
+          fill: "backwards",
+        })
+      : anim(
+          part,
+          [
+            { opacity: 0, transform: `translateY(${String(WIPE.rise.fromPx)}px)` },
+            { opacity: 1, transform: "none" },
+          ],
+          { duration: WIPE.rise.ms, delay, fill: "backwards" },
+        );
     if (a) parts.push(a);
+  };
+  for (const part of el.querySelectorAll<HTMLElement>("[data-rise]")) {
+    const k = Number(part.dataset.rise);
+    risen.add(k);
+    play(part, remainingDelay(riseDelay(k), w.elapsed));
   }
   for (const bar of el.querySelectorAll<HTMLElement>("[data-wipe-bar]")) {
-    const a = anim(
-      bar,
-      [{ transform: "scaleX(0)" }, { transform: bar.style.transform || "none" }],
-      {
-        duration: WIPE.bar.ms,
-        delay: remainingDelay(WIPE.bar.delayMs, w.elapsed),
-        fill: "backwards",
-      },
-    );
-    if (a) parts.push(a);
+    play(bar, remainingDelay(WIPE.bar.delayMs, w.elapsed));
   }
+  // The wipe usually opens on the loading cover and the page streams in under it: its new parts take what is
+  // left of their schedule (`lateDelay`), for as long as the bar's window lasts.
+  const late = new MutationObserver((records) => {
+    const elapsed = w.elapsed + performance.now() - now;
+    if (elapsed >= LATE_WINDOW_MS) {
+      late.disconnect();
+      return;
+    }
+    for (const r of records) {
+      for (const node of r.addedNodes) {
+        if (!(node instanceof HTMLElement)) continue;
+        const found = node.matches(LATE_PARTS) ? [node] : [];
+        for (const part of [...found, ...node.querySelectorAll<HTMLElement>(LATE_PARTS)]) {
+          const bar = part.hasAttribute("data-wipe-bar");
+          const k = Number(part.dataset.rise);
+          const delay = lateDelay(bar ? "bar" : { rise: k }, elapsed, risen);
+          if (delay === null) continue;
+          if (!bar) risen.add(k);
+          play(part, delay);
+        }
+      }
+    }
+  });
+  late.observe(el, { childList: true, subtree: true });
+  const lateEnd = setTimeout(
+    () => {
+      late.disconnect();
+    },
+    remainingDelay(LATE_WINDOW_MS, w.elapsed),
+  );
   const reset = (): void => {
     el.style.position = "";
     el.style.zIndex = "";
@@ -243,6 +294,8 @@ export function openWipe(
     hideStage();
   };
   if (!open) {
+    late.disconnect();
+    clearTimeout(lateEnd);
     reset();
     return null;
   }
@@ -258,6 +311,8 @@ export function openWipe(
   };
   // Every part lands with the circle's end or later: if the circle is cancelled (another navigation), they go too.
   open.finished.then(done, () => {
+    late.disconnect();
+    clearTimeout(lateEnd);
     for (const a of parts) a.cancel();
     done();
   });

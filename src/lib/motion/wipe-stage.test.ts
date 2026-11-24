@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPlainClick, sinkOrigin, stageBox } from "./wipe-stage";
+import { isPlainClick, lateDelay, sinkOrigin, stageBox } from "./wipe-stage";
 
 const click = {
   button: 0,
@@ -28,5 +28,20 @@ describe("[PD-08] gold wipe stage (app)", () => {
     expect(sinkOrigin({ left: 0, top: 0 }, { width: 390, height: 844 })).toBe("195px 253px");
     // A content box below the header and right of the rail, scrolled 300 px.
     expect(sinkOrigin({ left: 88, top: -300 }, { width: 1440, height: 900 })).toBe("632px 570px");
+  });
+
+  it("[PD-11] parts that stream in after the wipe opened: a bar fills for what is left of its 420 ms; a rise only for a new index; nothing once the window (1,320 ms) is over", () => {
+    const risen = new Set([0, 1, 2]); // the loading cover's header
+    expect(lateDelay("bar", 300, risen)).toBe(120);
+    expect(lateDelay("bar", 600, risen)).toBe(0);
+    expect(lateDelay("bar", 1_319, risen)).toBe(0);
+    expect(lateDelay("bar", 1_320, risen)).toBeNull();
+    // The page's own header replaces the cover's: it has already risen, so it doesn't rise twice.
+    expect(lateDelay({ rise: 1 }, 400, risen)).toBeNull();
+    // Content below it rises in its place in the stagger (300 + 60 × k from the tap), or at once if late.
+    expect(lateDelay({ rise: 4 }, 400, risen)).toBe(140);
+    expect(lateDelay({ rise: 6 }, 1_000, risen)).toBe(0);
+    expect(lateDelay({ rise: 6 }, 1_400, risen)).toBeNull();
+    expect(lateDelay({ rise: Number.NaN }, 400, risen)).toBeNull();
   });
 });

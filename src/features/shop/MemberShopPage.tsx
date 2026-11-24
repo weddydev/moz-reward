@@ -17,6 +17,7 @@ import { buttonClasses } from "@/components/ui/button-classes";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
+import { MiniVault } from "@/components/ui/MiniVault";
 import { addressLine, areaLine, statusLabel, weekRows } from "@/features/landing/view";
 import type { VaultView } from "@/features/vault/view";
 import type { MemberId } from "@/lib/brand";
@@ -32,8 +33,9 @@ import { leaveRestoreBy, upcomingClosures, vaultCardText } from "./view";
 type Live = Extract<ShopLandingData, { kind: "live" }>;
 
 /**
- * The customer's shop page, screen 4 (DESIGN §15, PRODUCT §4; P1-09). Cover, logo and name (the shared
- * elements a Wallet card morphs into), open status, Directions and Call; then two columns from 1024px: the
+ * The customer's shop page, screen 4 (DESIGN §15, PRODUCT §4; P1-09, Molten PD-11). Cover, logo and name (the
+ * parts that rise in the gold wipe), open status, Directions and Call; the member's compact Gold Vault line (the
+ * reference's mini vault: its bar fills in the wipe, C-80); then two columns from 1024px: the
  * Gold Vault card (the pour on every view), the member ID and recent receipts on the left; the shop's details
  * and the member's own settings (mute, leave) on the right. A non-member (never joined, or left) sees the
  * join CTA in place of the member sections. Slots filled by later tasks: Request points and the pending state
@@ -112,12 +114,18 @@ export function MemberShopPage({
         </div>
       </div>
 
+      {member && vault ? (
+        <div data-rise={4}>
+          <MiniVault gold={vault.ingot.gold} target={vault.ingot.size} />
+        </div>
+      ) : null}
+
       {welcome && member ? (
         <Card
           className="flex items-start gap-3 p-5"
           role="status"
           data-testid="join-welcome"
-          data-rise={4}
+          data-rise={5}
         >
           <Icon icon={PartyPopper} className="text-gold-700 mt-1 shrink-0" />
           <div className="flex flex-col gap-1">
@@ -129,7 +137,7 @@ export function MemberShopPage({
         </Card>
       ) : null}
 
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start" data-rise={5}>
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start" data-rise={6}>
         <div className="flex flex-col gap-6">
           {member ? (
             <>
@@ -208,9 +216,6 @@ function VaultCard({
         <div className="flex min-w-0 flex-col gap-1">
           <p className="text-h1 tabular-nums" data-testid="shop-vault-percent">
             {text.percent}%
-          </p>
-          <p className="text-small text-ink-2 tabular-nums" data-testid="shop-vault-gold">
-            {text.gold}
           </p>
           <p className="text-small break-words" data-testid="shop-vault-next">
             {text.next}
