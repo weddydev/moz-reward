@@ -3,32 +3,33 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-25 19:00 UTC
+Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handoff by talha.syed, 25 Nov 2026 ~00:20 UTC (Mac); baton free. Autopilot OFF.**
-- **Finished: PD-10** (Gold Vault pour, reward unlocked, redeem code), ticked in its closing commit **`wip/PD-10` @ `873dbf6`** (pushed; rebased onto main `7d02512`). Includes the design review fixes (H1 first-view "+720" stamp + parity frame; M2 reduced-motion unlock; M3 `RedeemCode` `receivedAt`, C-81 → P1-16; M4 DECISIONS), the Linux WebKit-proof landing E2E, component tests, the parity harness fixes (KI-47) and the frame-rate p95 rounding.
-- **Half-done: PD-10 is not on main yet.** Its CI **45461722765** on `873dbf6` was running at the handoff (the run before, 45454982533, was red only on the first-view parity frame at 390, 2.02% vs 2% → that frame's limit 2.2%, DECISIONS 24 Nov). **Continue exactly here:** (1) `git switch wip/PD-10 && git merge --ff-only origin/wip/PD-10`; HEAD must be `873dbf6`. (2) Read CI 45461722765: green → `git merge origin/main` (main's later commits are progress-only; on a PROGRESS/SESSION_LOG conflict keep **main's** version, then re-apply the PD-10 tick in `docs/PHASES.md` if lost and the C-81 CARRIED row), then `git push origin HEAD:main` through the hook (it checks CI on the code commit). Red → fix first (KNOWN_ISSUES), push the branch, wait for its CI. (3) Then PD-11 (restyle sweep, full parity sweep, C-78/C-79/C-80) and the PD-C close (H-49).
-- **Tested:** `pnpm gate:task` PASS on `873dbf6` (unit 2075/0, int 1456/0/1, E2E PD-10 12/0, parity 4/0); on `bf7c3b9` (same code but the 2.2% limit): E2E PD-10+PD-09 27/0, perf 3/0, parity 12/0; frame-rate suite **45454984125 GREEN** on the branch (vault 60 fps pour trace; PD-09 convergence); Linux WebKit (`e2e:linux`) PD-10 vault tests 4/4; vault parity 16/16 over 4 repeats.
-- **Not yet tested:** CI 45461722765 (running); one local parity run failed 2 tests on the first run after a fresh build, then 4/4 and 16/16 (not root-caused; watch CI's parity job); real devices (H-13).
-- **Before work:** no new env vars, migrations or seeds.
+- **Checkpoint by talha.syed, 25 Nov 2026 ~01:15 IST (24 Nov ~19:45 UTC; Mac); baton held. Autopilot OFF.** (The 24/25 Nov "UTC" times in earlier notes were IST.)
+- **PD-10 still not on main.** Branch **`wip/PD-10` @ `6386f9a`** (pushed) = `873dbf6` + merge of main's progress commits (`0d0251c`, kept main's PROGRESS/SESSION_LOG) + `6386f9a`: the gate perf fix below. CI on `6386f9a` was **running** at the checkpoint.
+- **Why `6386f9a`:** CI 45465727267 on `873dbf6` (a re-dispatch; 45461722765 was cancelled by it) went red on the perf job only: `[PD-09] adds no long task while it plays` 65.2–71.8 ms vs 65 at 4× (4 of 6 runs), on a src tree identical to `c624207` whose perf job passed → runner variance. Gate's own scripts now get `GATE_SCRIPT_MS` 75 (DECISIONS 24 Nov, TEMPORARY **T-8**, KI-48, CARRIED **C-82** → PD-11 splits the gate's first-frame scene start).
+- **Continue exactly here:** (1) `git switch wip/PD-10 && git merge --ff-only origin/wip/PD-10`; HEAD must be `6386f9a`. (2) `gh run list --branch wip/PD-10 --limit 2`: green → `git merge origin/main` (progress-only; on conflict keep **main's** PROGRESS/SESSION_LOG, keep the branch's DECISIONS/TEMPORARY/KNOWN_ISSUES additions), then `git push origin HEAD:main` (hook checks CI). Red → KNOWN_ISSUES first. (3) PD-11 on `wip/PD-11` from main.
+- **PD-11 plan (lettered steps, one commit each):** A public/auth screens (landing `/s/[code]` still v1: flat white cards, square initials logo, `bg-bg` main; reuse `ShopPageHeader`/`m-cover` w/o back button, `ShopCoin`, `Card variant="placed"`; keep `[data-gate-cover]` + `[data-gate-rise]` for the gate) + global surfaces: mount `LivingBackground` in the root layout (now only on /dev/molten), body ground `--pearl`, `Card` default → placed (48 uses; every-page change → full 5-project E2E); FOLLOWUPS 73/74. B customer screens (shop page C-80, Me, notifications, error/empty; `VaultPage` uses the v1 `ShopLogo`). C portal shells/SideNav, loyalty settings, admin system, TextArea/Select, primitive LOWs. D retire v1 tokens (`--bg`, gold-700/500/300/100, `--gold-gradient`, shadow-1/2/gold, `--dur-fast/base/slow/hero`) + perf trims (FOLLOWUPS 75, 91, 92, 94–97) + C-82. E C-78, C-79/T-7, baselines, parity, Lighthouse, 4× traces, full E2E. F reviews, QA, H-49 set, tick, PD-C close.
+- **Tested this session:** wip push hook (`pnpm check` + sast) PASS on `6386f9a`. **Not yet tested:** CI on `6386f9a`; the gate perf spec with the new limit (CI runs it).
+- **Before work:** no env/migration changes. Local dev data: `pnpm db:seed --reset` was needed for the demo shop photos (seed keeps existing rows; landing data cached 60 s in redis-cache). A `next dev` from 23 Nov still listens on :3000 (PID 20343, this repo).
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov). Then P1 resumes with the P1-B close. P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **PD-C** (PD-07 + PD-08 on main 23 Nov, PD-09 24 Nov; PD-10 in progress on `wip/PD-10`; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-25 (~00:20 UTC), talha.syed (handoff; PD-10 done on `wip/PD-10` `873dbf6`, to main on green CI 45461722765)
+- **Last updated:** 2026-11-25 (~01:15 IST), talha.syed (checkpoint; PD-10 on `wip/PD-10` `6386f9a`, to main on green CI; PD-11 plan in the handoff)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). **PD-09 on main 24 Nov** (CI 45357702882 green). **PD-10 done 24 Nov** on `wip/PD-10` `873dbf6` (to main on green CI 45461722765).
+- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). **PD-09 on main 24 Nov** (CI 45357702882 green). **PD-10 done 24 Nov** on `wip/PD-10` `6386f9a` (to main on green CI; gate perf limit T-8).
 
 ## Next (top 3)
-1. PD-10 to main: CI 45461722765 green → merge main's progress commits into `wip/PD-10`, push to main via the hook (see handoff).
-2. PD-11 (restyle sweep, full parity sweep, C-78/C-79/C-80) then the PD-C close (H-49).
+1. PD-10 to main: CI on `6386f9a` green → merge main's progress commits, push to main via the hook (see handoff).
+2. PD-11 step A (global surfaces + public/auth screens; plan in the handoff), then B–F and the PD-C close (H-49).
 3. Human any time: H-48b, H-45 (🟠), H-38 (branches; add `wip/PD-10` once on main), H-51 (b).
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -55,20 +56,21 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 | C-79 | PD-07 CI (perf 45153452036, main 45153456299) | PD-11 (PD-C close) | pixel7 `@fps` FX stress (≥ 58 fps, p95 ≤ 16.8 ms at 4× CPU) un-quarantined: cause found (runner variance vs. a dock/FX frame cost), fixed if real; TEMPORARY T-7 closed | nightly perf run green on pixel7 + SESSION_LOG |
 | C-80 | PD-08 design review M4 | PD-11 (restyle sweep) | The app's shop page shows the reference's compact Gold Vault line (`MiniVault`, `data-wipe-bar` + a `data-rise` slot, so the wipe fills it 420 / 900 ms) beside or instead of the P1-08 vault card, decided with the page restyle; the offers row (`OfferCard`) comes with P3-05 | E2E: the bar fills during the wipe + screenshots 390/1440 |
 | C-81 | PD-10 design review M3 | P1-16 | `RedeemCode` gets `receivedAt` = the phone's `Date.now()` when the redeem response arrives (not at mount), with `serverNow`/`expiresAt` from that response | E2E: a code shown after a delay counts from the response |
+| C-82 | PD-10 CI 45465727267 | PD-11 (4× traces) | Gilded Gate scene start split across frames so its own scripts stay ≤ `LONG_TASK_MS` 65 at 4× CPU; `GATE_SCRIPT_MS` removed; TEMPORARY T-8 closed | CI perf job green with the 65 ms limit |
 | C-17 | Stryker | P1-18 (human 17 Nov) | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 | C-48 | P0-15 E (human 17 Nov) | P1-18 | P0-15 leftovers: health.backup shows no alert on staging with `BACKUPS_ENABLED=true` (health snapshot); UptimeRobot staging monitors (H-45) + alert on both phones when staging is stopped (AC8); ZAP baseline (weekly) + k6 smoke (twice weekly) wired against staging, zero failed requests during a deploy under k6 (AC2) and rollback under load (AC3); B2 overwrite leaves the locked version (D design HIGH 1); two workers run each scheduled job once (AC6) if not already proven | staging snapshots + workflow runs + SESSION_LOG |
 | C-49 | P0 close (human 17 Nov) | P1-18 + P1 `/phase-complete` | P0's heavy gate and definition of done: `gate:phase` covers P0 + P1; code/security/design reviews of P0-E commits not yet reviewed (at the P1-A close); P0 DoD bullets checked; client demo covers P0 + P1 together (`docs/DEMO_GUIDE.md` + Demo 2). (P0 close lines in PHASES ticked 17 Nov by the human's decision.) | gate:phase summary + SESSION_LOG + DEMO_NOTES |
 
 ## Blockers
 - Human: none blocking (H-48 human part done; staging deploys again). Now: H-45 (UptimeRobot staging monitors, after the `e9aa786` deploy), H-42 tail (delete the old `moz-backups` B2 key). Needed later: at the P0 close H-29 (`backup:verify`), H-13 (real devices), H-23 (drafts to the solicitor), H-14 (send demo notes).
-- Technical: C-40 (quarantined test) blocks the P0 phase gate; C-79 / T-7 (pixel7 @fps FX stress quarantine) is re-checked at the PD-C close with the median of 3. Known risk: wal-g `wal-push` hangs without `ca-certificates` in the Postgres image (wal-g #2550).
+- Technical: C-40 (quarantined test) blocks the P0 phase gate; C-82 / T-8 (gate perf limit 75 ms) closes in PD-11; C-79 / T-7 (pixel7 @fps FX stress quarantine) is re-checked at the PD-C close with the median of 3. Known risk: wal-g `wal-push` hangs without `ca-certificates` in the Postgres image (wal-g #2550).
 
 ## Map of the codebase
 In **`progress/MAP.md`** (read when you need to locate code; add new important paths there).
 
 ## Last verified (25 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- PD-10 `873dbf6`: `pnpm gate:task` PASS (unit 2075/0, int 1456/0, E2E 12/0, parity 4/0); CI 45461722765 running at the handoff.
+- CI 45465727267 on `873dbf6`: red on perf only (gate long task 65.2–71.8 ms vs 65, same tree as green `c624207`) → `6386f9a` (T-8); wip hook `pnpm check` + sast PASS on `6386f9a`.
 - PD-10 frame-rate suite 45454984125 (branch): GREEN (vault @fps pour trace; PD-09 convergence with the p95 rounding).
 - CI 45454982533 on `c624207`: red only on parity `vault-first-view-390` 2.02% vs 2% → limit 2.2% (DECISIONS 24 Nov); every other job green incl. WebKit.
 ## Follow-ups (LOW)

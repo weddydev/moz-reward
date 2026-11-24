@@ -972,3 +972,9 @@ CI 45441098126 on `8379344`: RED on WebKit only: new PD-10 landing test fails on
 
 ## 2026-11-25 — PD — handoff (PD-10 done on its branch)
 PD-10 closed on `wip/PD-10` `873dbf6` (human asked to close it): design review H1/M2/M3/M4 fixed, Linux WebKit landing E2E on animation clocks, rebased onto main; gate:task PASS; frame-rate suite 45454984125 GREEN; CI 45454982533 red only on the first-view parity frame (2.02% vs 2%) → 2.2% (DECISIONS). Handoff by talha.syed (~00:20 UTC): baton free; CI 45461722765 on `873dbf6` running; next: green → merge main's progress commits, push to main; then PD-11. Human tasks: none reported done.
+
+## 2026-11-25 — PD — checkpoint (PD-10 to main pending CI; PD-11 planned)
+Resume: CI 45461722765 on `873dbf6` was healthy (misread IST as UTC); re-dispatch 45465727267 replaced it and went red on perf only: `[PD-09] adds no long task while it plays` 65.2–71.8 ms vs 65 (4/6), same src tree as green `c624207` → runner variance (KI-48).
+Fix `6386f9a` on `wip/PD-10`: gate's own scripts `GATE_SCRIPT_MS` 75 (DECISIONS 24 Nov, T-8, C-82 → PD-11); merge `0d0251c` of main's progress commits underneath. wip hook check + sast PASS; CI running.
+PD-11 surveyed: landing still v1; LivingBackground only on /dev/molten; `Card` default v1 (48 uses); v1 tokens in ~70 files. Plan A–F in the PROGRESS handoff.
+Next: CI on `6386f9a` green → merge origin/main, push main via hook; then PD-11 step A on `wip/PD-11`.
