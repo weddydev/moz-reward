@@ -989,3 +989,12 @@ Resume (light path). Step A: LivingBackground in root layout + pearl ground/them
 gate:task on `9b70acb`: every step PASS (unit 2079/0, int 1456/0, E2E PD-11 9/0); only "working tree unchanged" failed (progress files edited mid-run). Full Chromium E2E (Linux) 325 passed / 0 failed. Screens 390/1440 landing, 390 sign-in + staff sign-in inspected (dev server).
 NOT VERIFIED: CI 45476822891 (shard 2 + WebKit running). Next: read it; green → step B (customer screens).
 
+
+## 2026-11-25 — PD — PD-11 step B (customer screens): built on `wip/PD-11`
+Shop page: mini vault under the cover (C-80; the wipe now also fills/raises parts that stream in after it opened on the loading cover: `lateDelay` + observer in `openWipe`); vault card drops its duplicate gold line. Gold Vault page: PD-10 `GoldVault` hero (`VaultView.perVisit`, sr-only h1, coin tier mark; coin fallback fixed in a 30 px ring box). 403/404/error/placeholder pages: `StateMark` coin / placed disc, placeholder on a placed card. DECISIONS 25 Nov step B.
+gate:task: every step PASS (unit 2081/0, int 1456/0, E2E PD-11 12/0, tree unchanged). Local prod-build E2E vault + shop-page + wipe + portal-pages on chromium + desktop1440: all pass (78 then 24 + 18 after the fixes).
+Screens inspected: shop page 390, vault 390/320/1440, 403 + error 390. C-80 closed (E2E: bar 0 → 0.72, 900 ms).
+NOT VERIFIED: CI on this commit (pushed after step A's CI 45476822891 reports; WebKit still running at commit).
+Step C part 1: SideNav (shop/admin) on the rail's glass with the liquid gold poured down the column (FOLLOWUPS 88). E2E molten-dock + portal-shells at desktop1440: 16 passed; sidebar screen at 1440 inspected.
+Step C part 1b: `.m-btn` gap 8 px (links styled as buttons had the icon flush on the label: shop Directions/Call, header Scan member QR); E2E column-gap assertion; shop-page + molten-controls chromium pass except one local flake (leave on day 1, 3/3 alone; FOLLOWUPS).
+CI 45476822891 (step A): RED on WebKit only: staff offline sign-in (webkit + iphone14) = KI-49 (Sentry chunk fetched after going offline; fixed with `data-monitoring` + `quiet()`, offline specs pass locally webkit + chromium); loyalty-settings iphone14 flaky (FOLLOWUPS). Every other job green.

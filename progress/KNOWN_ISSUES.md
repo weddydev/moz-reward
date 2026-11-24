@@ -93,3 +93,5 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 **KI-40 · wal-g `wal-push` hangs** — the Postgres image lacks `ca-certificates` (wal-g #2550).
 
 **KI-41 · backup-pitr "unprotected WAL" fixture can't be built on gpg ≥ 2.5 (Mac)** — gpg 2.5 writes AEAD even with `--rfc2440`; the case skips there (C-53, DECISIONS 17 Nov).
+
+**KI-49 · Offline sign-in tests fail on WebKit: "requestfailed … chunks/<x>.js WebKit encountered an internal error"** — the chunk is the Sentry browser SDK, loaded after an idle callback; WebKit has no `requestIdleCallback`, so it waits on a 1.5 s timer, and `networkidle` can settle before that timer fires: the SDK's fetch starts after the test cut the network (CI 45476822891, staff + customer offline specs). Fix: `<html data-monitoring>` (`loading` → `on`/`failed`, `off` when disabled; `src/instrumentation-client.ts`) and the offline specs' `quiet()` waits until it isn't `loading` before going offline. Any new test that cuts the network uses the same wait.
