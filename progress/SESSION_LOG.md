@@ -978,3 +978,8 @@ Resume: CI 45461722765 on `873dbf6` was healthy (misread IST as UTC); re-dispatc
 Fix `6386f9a` on `wip/PD-10`: gate's own scripts `GATE_SCRIPT_MS` 75 (DECISIONS 24 Nov, T-8, C-82 → PD-11); merge `0d0251c` of main's progress commits underneath. wip hook check + sast PASS; CI running.
 PD-11 surveyed: landing still v1; LivingBackground only on /dev/molten; `Card` default v1 (48 uses); v1 tokens in ~70 files. Plan A–F in the PROGRESS handoff.
 Next: CI on `6386f9a` green → merge origin/main, push main via hook; then PD-11 step A on `wip/PD-11`.
+
+## 2026-11-25 — PD — PD-10 on main
+CI 45467487343 on `wip/PD-10` `6386f9a` GREEN on every job (check, unit+int, E2E Chromium ×2, WebKit, perf with T-8, parity); 1 confirmed WebKit flake (PD-06 tabs keyboard, 5/5 alone → FOLLOWUPS).
+Merged main's progress commits (`2cb621f`), pushed to main through the hook ("CI green for 6386f9a, only docs/progress changed since").
+Next: PD-11 step A on `wip/PD-11` from main (plan in the PROGRESS handoff).
