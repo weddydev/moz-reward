@@ -51,6 +51,8 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
+  /* The landing cover's ground (PD-11), under the copy's photo, as on the page. */
+  background: var(--photo-ground);
 }
 
 .gate-stage {
@@ -341,6 +343,10 @@
   position: relative;
   z-index: 61;
   pointer-events: none;
+}
+/* The landing cover's logo sits in the cover's corner (PD-11): it rises above the copy where it already is. */
+:root:has(.gilded-gate[data-state="play"][data-morph]) .m-cover > [data-gate-rise].m-cover-logo {
+  position: absolute;
 }
 
 /* Reduced motion (system, unless the user chose full motion; or the user's own toggle): no movement, the gate's

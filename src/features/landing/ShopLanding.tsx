@@ -1,9 +1,11 @@
-import { Clock, Gift, MapPin, Navigation, Phone, Store } from "lucide-react";
+import { Clock, Gift, MapPin, Navigation, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { buttonClasses } from "@/components/ui/button-classes";
 import { Card } from "@/components/ui/Card";
+import { CoverPhoto } from "@/components/ui/CoverPhoto";
 import { Icon } from "@/components/ui/Icon";
 import { Ingot } from "@/components/ui/Ingot";
+import { ShopCoin, ShopImage } from "@/components/ui/ShopImage";
 import { initialsOf } from "@/lib/initials";
 import { openStatus } from "@/lib/open-status";
 import { directionsUrl, telHref } from "@/lib/shop-links";
@@ -20,9 +22,11 @@ const rise = (i: number): { "data-gate-rise": ""; style: React.CSSProperties } =
 });
 
 /**
- * Shop landing, screen 1 (DESIGN §15; P1-02). Server component, no client JS of its own. Mobile: cover with
- * an ivory fade, overlapping logo, stacked CTAs, details. Desktop (≥ 1024px): split hero, cover left, details
- * and CTAs right, cards row below. "Rate your visit" and "Today's offer" stay hidden until P3 provides
+ * Shop landing, screen 1 (DESIGN §15; P1-02; Molten restyle PD-11, extended from the reference's shop cover).
+ * Server component; its only client part is the cover photo's load-error fallback. Mobile: the shop page's
+ * cover (photo under a dark shade, name and area line on it, the logo in a gold ring), then status, description
+ * and the stacked CTAs, then placed cards. Desktop (≥ 1024px): split hero, cover left, status and CTAs right,
+ * cards row below. "Rate your visit" and "Today's offer" stay hidden until P3 provides
  * them. The reward preview (P1-08, C-50) shows once the shop has a programme: a static ingot filled to the
  * first reward, what it is and the gold it needs, and the full-ingot reward.
  */
@@ -47,41 +51,37 @@ export function ShopLanding({
   const today = (new Date(`${todayDate}T12:00:00Z`).getUTCDay() + 6) % 7; // Monday = 0, London calendar
 
   return (
-    <main id="main" data-page="shop-landing" className="bg-bg min-h-dvh">
-      <div className="mx-auto w-full max-w-[1280px] lg:grid lg:grid-cols-2 lg:gap-10 lg:px-10 lg:pt-10">
-        <div className="relative">
-          <div
-            className="relative aspect-[16/10] w-full overflow-hidden lg:aspect-[4/3] lg:rounded-[var(--r-lg)]"
-            data-gate-cover=""
-          >
+    <main id="main" data-page="shop-landing" className="min-h-dvh">
+      <div className="mx-auto w-full max-w-[560px] px-4 pt-4 lg:grid lg:max-w-[1280px] lg:grid-cols-2 lg:items-center lg:gap-10 lg:px-10 lg:pt-10">
+        <header className="m-cover m-cover-landing" data-testid="landing-hero">
+          <div className="m-cover-art" data-gate-cover="">
             <CoverArt coverUrl={shop.coverUrl} page />
           </div>
-          <div className="relative mx-auto -mt-10 max-w-[560px] px-5 lg:hidden" {...rise(0)}>
-            <ShopLogo name={shop.name} logoUrl={shop.logoUrl} />
-          </div>
-        </div>
-
-        <section className="mx-auto flex w-full max-w-[560px] flex-col gap-5 px-5 pt-3 pb-10 lg:mx-0 lg:max-w-none lg:justify-center lg:px-0 lg:pt-0">
-          <div className="hidden lg:block" {...rise(0)}>
-            <ShopLogo name={shop.name} logoUrl={shop.logoUrl} />
-          </div>
-          <div className="flex flex-col gap-2" {...rise(1)}>
-            <h1 className="text-h1 break-words" data-testid="landing-name">
+          <div className="m-cover-text" {...rise(1)}>
+            <h1 className="m-cover-title" data-testid="landing-name">
               {shop.name}
             </h1>
-            <p className="text-body text-ink-2">{areaLine(shop.category, shop.town)}</p>
+            <p className="m-cover-meta">{areaLine(shop.category, shop.town)}</p>
+          </div>
+          <span className="m-cover-logo" aria-hidden="true" data-testid="shop-logo" {...rise(0)}>
+            {shop.logoUrl ? (
+              <ShopImage src={shop.logoUrl} size={LOGO} eager />
+            ) : (
+              <ShopCoin name={shop.name} size={LOGO} />
+            )}
+          </span>
+        </header>
+
+        <section className="flex flex-col gap-5 pt-5 pb-8 lg:py-0">
+          <div className="flex flex-col gap-3" {...rise(2)}>
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={status.tone}>
                 <span data-testid="landing-status">{status.text}</span>
               </Badge>
               {member ? <Badge tone="happy-hour">You&rsquo;re a member</Badge> : null}
             </div>
+            {shop.description ? <p className="text-body text-ink-2">{shop.description}</p> : null}
           </div>
-          {shop.description ? (
-            <p className="text-body text-ink-2" {...rise(2)}>
-              {shop.description}
-            </p>
-          ) : null}
           <div className="flex flex-col gap-3" {...rise(3)}>
             {collect}
           </div>
@@ -89,7 +89,7 @@ export function ShopLanding({
       </div>
 
       <div
-        className={`mx-auto grid w-full max-w-[560px] gap-4 px-5 pb-10 lg:mt-10 lg:max-w-[1280px] lg:gap-6 lg:px-10 ${data.reward ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}
+        className={`mx-auto grid w-full max-w-[560px] gap-4 px-4 pb-10 lg:mt-10 lg:max-w-[1280px] lg:gap-6 lg:px-10 ${data.reward ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}
       >
         {data.reward ? <RewardPreviewCard reward={data.reward} /> : null}
         <Card className="flex flex-col gap-3 p-5" data-testid="landing-hours" {...rise(4)}>
@@ -180,9 +180,17 @@ function RewardPreviewCard({ reward }: { reward: NonNullable<Live["reward"]> }):
   );
 }
 
+/** The cover photo's widths: the page column (560 px phones and tablets, half of the 1280 px row from 1024px). */
+const COVER_SIZES = "(min-width: 1024px) 580px, (min-width: 592px) 560px, 100vw";
+
+/** The cover's logo, in px (the shop page's `.m-cover-logo`). */
+const LOGO = 60;
+
 /**
- * The cover's picture: the uploaded cover, or a quiet foil surface; with the ivory fade at its foot on mobile.
- * Also drawn inside the Gilded Gate (P1-03) for its morph, without test ids or the LCP hint (`page` false).
+ * The cover's picture (PD-11, the shop page's cover language): the uploaded photo, or the dark photo ground when
+ * there is none (or it can't load), under the dark-to-clear shade and the gold glow. Also drawn inside the Gilded
+ * Gate (P1-03) for its morph, without test ids or the high fetch priority (`page` false); the same `sizes`, so
+ * the clone and the page pick the same file.
  */
 export function CoverArt({
   coverUrl,
@@ -194,27 +202,22 @@ export function CoverArt({
   return (
     <>
       {coverUrl ? (
-        // Uploaded covers are already sized WebP/AVIF variants on the CDN (ARCHITECTURE §8).
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <CoverPhoto
           src={coverUrl}
-          alt=""
-          width={1200}
-          height={750}
-          {...(page ? { fetchPriority: "high" as const, "data-testid": "landing-cover" } : {})}
-          className="size-full object-cover"
+          className="m-art-photo"
+          sizes={COVER_SIZES}
+          eager
+          priority={page}
+          {...(page ? { testId: "landing-cover" } : {})}
         />
       ) : (
-        // Quiet surface + foil, not the gold gradient: gold stays ≤ 10% of the screen and belongs to
-        // the Collect CTA (DESIGN §3; design review P1-02). Most new shops have no cover yet.
-        <div
-          className="foil bg-surface-2 relative grid size-full place-items-center"
+        <span
+          className="m-art-ground"
+          aria-hidden="true"
           {...(page ? { "data-testid": "landing-cover-fallback" } : {})}
-        >
-          <Icon icon={Store} size={32} className="text-gold-700" />
-        </div>
+        />
       )}
-      <div className="from-bg pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t to-transparent lg:hidden" />
+      <span className="m-art-shade" aria-hidden="true" />
     </>
   );
 }

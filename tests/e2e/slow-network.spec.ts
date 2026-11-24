@@ -9,7 +9,7 @@ for (const { path, button } of [
   { path: "/sign-in", button: /email me a sign-in link/i },
   { path: "/staff/sign-in", button: /^continue$/i },
 ]) {
-  test(`[P0-13] C-06: ${path} explains the disabled button before hydration`, async ({
+  test(`[P0-13] C-06: ${path} explains the disabled button before hydration [PD-11] without a layout shift`, async ({
     page,
     shoot,
   }) => {
@@ -32,8 +32,16 @@ for (const { path, button } of [
     if (test.info().project.name === "chromium") {
       await shoot(`preparing-${path.replaceAll("/", "-").slice(1)}`);
     }
+    // PD-11 (FOLLOWUPS, PD-A QA): the hint leaving shortens the card at its foot; nothing above it moves.
+    const top = async (): Promise<[number, number]> => {
+      const card = await page.getByTestId("auth-card").boundingBox();
+      const btn = await page.getByRole("button", { name: button }).boundingBox();
+      return [card?.y ?? Number.NaN, btn?.y ?? Number.NaN];
+    };
+    const before = await top();
     release();
     await expect(page.getByRole("button", { name: button })).toBeEnabled();
     await expect(hint).toHaveCount(0);
+    expect(await top()).toEqual(before);
   });
 }

@@ -2,9 +2,6 @@
  * /dev/molten page layout (PD-02 on): the reference's page frame and section layouts, so its parts can be compared
  * with the reference (tests/parity). Product styles live in src/styles/molten.css; this is only the demo page.
  */
-body:has(.m-page) {
-  background: var(--pearl);
-}
 .m-page {
   font:
     16px/1.55 var(--font-manrope),

@@ -178,7 +178,7 @@
     text-size-adjust: 100%;
   }
   body {
-    background: var(--bg);
+    background: var(--pearl);
     color: var(--ink);
     font-family: var(--font-sans);
     font-size: 16px;
@@ -284,6 +284,10 @@
 
 /* ---- UI primitives (DESIGN §6–7) ---- */
 @layer components {
+  /* Card's default radius for placed and dark cards (reference `.pcard`): layered, so `rounded-*` utilities win. */
+  .m-card {
+    border-radius: 24px;
+  }
   /* Press feedback: scale .97, 120ms, springs back (ease-out). Everyday motion stays < 300ms. */
   .pressable {
     transition:

@@ -167,11 +167,13 @@ test("[PD-09] the timeline lasts 3.28 s and the morph grows the cover out of the
   const rise = await page.evaluate(() =>
     [...document.querySelectorAll("[data-gate-rise]")].map((el) => {
       const cs = getComputedStyle(el);
-      return `${cs.position} ${cs.zIndex} ${cs.pointerEvents}`;
+      // The cover's logo keeps its corner (absolute); everything else lifts in place (PD-11).
+      const at = el.classList.contains("m-cover-logo") ? "absolute" : "relative";
+      return `${cs.position === at ? "kept" : cs.position} ${cs.zIndex} ${cs.pointerEvents}`;
     }),
   );
   expect(rise.length).toBeGreaterThan(0);
-  expect(new Set(rise)).toEqual(new Set(["relative 61 none"]));
+  expect(new Set(rise)).toEqual(new Set(["kept 61 none"]));
   expect(
     await page.evaluate(() => {
       const r = document.querySelector("[data-testid=landing-collect]")?.getBoundingClientRect();

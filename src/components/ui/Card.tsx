@@ -4,8 +4,9 @@ import type { HTMLAttributes } from "react";
 
 type CardProps = HTMLAttributes<HTMLDivElement> & {
   /**
-   * `plain` (v1: surface, radius md, shadow-1; until PD-11 restyles the screens), `placed` (Molten: pearl fill,
-   * gold hairline edge, inner bevel, layered lift; DESIGN §6.1) or `dark` (obsidian with a gold outline).
+   * `placed` (the default; Molten: pearl fill, gold hairline edge, inner bevel, layered lift; DESIGN §6.1),
+   * `dark` (obsidian with a gold outline) or `plain` (v1: surface, radius md, shadow-1; retired with the v1
+   * tokens in PD-11).
    */
   variant?: "plain" | "placed" | "dark";
   /** Molten hero cards: the gilded edge (gem, line, echo; DESIGN §6.2). The card must not clip. */
@@ -14,9 +15,13 @@ type CardProps = HTMLAttributes<HTMLDivElement> & {
   lift?: boolean;
 };
 
-/** Surface card. Molten variants come from molten.css; their size, padding and radius come from `className`. */
+/**
+ * Surface card. Molten variants come from molten.css; size and padding come from `className`. Placed and dark
+ * cards take the reference's card radius (`.pcard`, 24 px) (`.m-card`, a components-layer rule, so
+ * a `rounded-*` in `className` wins).
+ */
 export function Card({
-  variant = "plain",
+  variant = "placed",
   gilded = false,
   lift = false,
   className,
@@ -29,6 +34,7 @@ export function Card({
         variant === "plain" && "bg-surface shadow-1 rounded-md",
         variant === "placed" && "m-placed",
         variant === "dark" && "m-dark",
+        variant !== "plain" && "m-card",
         className,
       )}
       data-lift={lift ? "" : undefined}

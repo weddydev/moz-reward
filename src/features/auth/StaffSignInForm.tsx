@@ -3,12 +3,13 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useId, useRef, useState } from "react";
 import { Turnstile } from "@/components/security/Turnstile";
+import { TextField } from "@/components/ui/TextField";
 import { PORTAL_HOME } from "@/features/portal/routes";
 import { authClient } from "@/lib/auth-client";
 import { safeReturnTo } from "@/lib/return-to";
 import { TURNSTILE_HEADER, TURNSTILE_REQUIRED_CODE } from "@/lib/turnstile";
 import { formString, formValue, useHydrated } from "@/lib/use-hydrated";
-import { inputClass, primaryButtonClass } from "./AuthCard";
+import { noticeClass, primaryButtonClass } from "./AuthCard";
 import { withNetworkGuard } from "./network";
 import { PreparingHint } from "./PreparingHint";
 
@@ -172,11 +173,9 @@ export function StaffSignInForm(): React.JSX.Element {
         className="flex flex-col gap-3"
         noValidate
       >
-        <label htmlFor={ids.code} className="text-sm font-semibold">
-          {useBackup ? "Backup code" : "6-digit code from your authenticator app"}
-        </label>
-        <input
+        <TextField
           id={ids.code}
+          label={useBackup ? "Backup code" : "6-digit code from your authenticator app"}
           autoComplete="one-time-code"
           inputMode={useBackup ? "text" : "numeric"}
           pattern={useBackup ? undefined : "[0-9 ]*"}
@@ -184,7 +183,6 @@ export function StaffSignInForm(): React.JSX.Element {
           required
           autoFocus
           name="code"
-          className={`${inputClass} tracking-widest tabular-nums`}
           aria-describedby={error ? ids.error : undefined}
         />
         {errorEl}
@@ -214,38 +212,32 @@ export function StaffSignInForm(): React.JSX.Element {
       noValidate
     >
       {params.get("enrolled") ? (
-        <p role="status" className="bg-gold-100 rounded-md p-3 text-sm">
+        <p role="status" className={`${noticeClass} text-sm`}>
           Two-step verification is on. Please sign in again with your code.
         </p>
       ) : null}
-      <label htmlFor={ids.email} className="text-sm font-semibold">
-        Email
-      </label>
-      <input
+      <TextField
         id={ids.email}
+        label="Email"
         type="email"
         autoComplete="username"
         required
         name="email"
         maxLength={254}
-        className={inputClass}
       />
-      <label htmlFor={ids.password} className="text-sm font-semibold">
-        Password
-      </label>
-      <input
+      <TextField
         id={ids.password}
+        label="Password"
         type="password"
         autoComplete="current-password"
         required
         name="password"
         maxLength={128}
-        className={inputClass}
         aria-describedby={error ? ids.error : undefined}
       />
       {/* Always mounted, so screen readers announce the text when the check starts (a live region that
           appears together with its content is often not read). */}
-      <p role="status" className={check ? "bg-gold-100 rounded-md p-3 text-sm" : "sr-only"}>
+      <p role="status" className={check ? `${noticeClass} text-sm` : "sr-only"}>
         {!check
           ? ""
           : waiting

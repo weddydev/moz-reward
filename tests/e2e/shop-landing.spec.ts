@@ -171,9 +171,11 @@ test("[P1-02] missing cover, logo, hours and contact details; a 60-character nam
   await expect(page.getByTestId("landing-name")).toHaveText(name);
   const fallback = page.getByTestId("landing-cover-fallback");
   await expect(fallback).toBeVisible();
-  // Design review: the no-cover state is a quiet surface, never a gold block (gold ≤ 10%, DESIGN §3).
+  // Design review: the no-cover state is a quiet surface, never a gold block (gold ≤ 10%, DESIGN §3); PD-11: the
+  // shop page's dark photo ground.
   expect(await fallback.evaluate((el) => getComputedStyle(el).backgroundImage)).toBe("none");
-  await expect(page.getByTestId("landing-logo-fallback").first()).toHaveText("TL");
+  // No logo: the metal monogram coin in the cover's gold ring (DESIGN §6.4), never bare initials.
+  await expect(page.locator("#main").getByTestId("shop-coin")).toHaveText("TL");
   // No empty actions row when there is neither Directions nor Call.
   await expect(page.getByTestId("landing-details").getByRole("link")).toHaveCount(0);
   // Footer legal links: 44px hit areas (DESIGN §13).
@@ -190,6 +192,23 @@ test("[P1-02] missing cover, logo, hours and contact details; a 60-character nam
   );
   expect(overflow).toBeLessThanOrEqual(0);
   await shoot("shop-landing-fallbacks");
+});
+
+test("[PD-11] a cover that can't load gives way to the cover's ground (no broken-image glyph)", async ({
+  page,
+  request,
+}) => {
+  const { shopCode } = await seedShop(request, { status: "active", cover: true });
+  await page.route("**/e2e-fixtures/shop-cover.jpg", (route) => route.fulfill({ status: 404 }));
+  await page.goto(`/s/${shopCode}`);
+  await expect(page.getByTestId("landing-name")).toBeVisible();
+  // The photo steps aside (also when it failed before hydration); the dark ground, shade and coin stay.
+  await expect(page.locator("#main [data-gate-cover] img")).toHaveCount(0);
+  const ground = await page
+    .locator("#main [data-gate-cover]")
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(ground).toBe("rgb(42, 32, 20)"); // --photo-ground
+  await expect(page.locator("#main [data-gate-cover] .m-art-shade")).toHaveCount(1);
 });
 
 test("[P1-02] a member sees their state; the anonymous HTML never carries it", async ({

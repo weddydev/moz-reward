@@ -23,12 +23,12 @@ export default async function LinkExpiredPage({
       }
     >
       {staffOnly ? (
-        <Link href="/staff/sign-in" className={`${primaryButtonClass} grid place-items-center`}>
+        <Link href="/staff/sign-in" className={primaryButtonClass}>
           Go to staff sign-in
         </Link>
       ) : (
         <>
-          <Link href="/sign-in" className={`${primaryButtonClass} grid place-items-center`}>
+          <Link href="/sign-in" className={primaryButtonClass}>
             Send me a new link
           </Link>
           <p className="text-ink-2 text-sm">
@@ -37,7 +37,7 @@ export default async function LinkExpiredPage({
         </>
       )}
       {staffOnly ? null : (
-        <Link href="/" className={`${secondaryButtonClass} grid place-items-center`}>
+        <Link href="/" className={secondaryButtonClass}>
           Back to home
         </Link>
       )}

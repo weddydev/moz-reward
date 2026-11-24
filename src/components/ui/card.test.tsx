@@ -23,23 +23,34 @@ beforeAll(() => {
 });
 
 describe("[PD-02] Card variants (DESIGN §6.1–6.2)", () => {
-  it("[PD-02] plain stays the v1 card; placed and dark use the Molten surfaces", () => {
+  it("[PD-11] placed is the default (Molten surface, card radius); plain stays the v1 card; dark", () => {
     render(
       <>
-        <Card data-testid="plain">a</Card>
+        <Card data-testid="default">a</Card>
+        <Card data-testid="plain" variant="plain">
+          a
+        </Card>
         <Card data-testid="placed" variant="placed" lift>
           b
         </Card>
         <Card data-testid="dark" variant="dark">
           c
         </Card>
+        <Card data-testid="own-radius" className="rounded-[20px]">
+          d
+        </Card>
       </>,
     );
+    expect(screen.getByTestId("default").className).toBe("m-placed m-card");
     expect(screen.getByTestId("plain").className).toContain("shadow-1");
+    expect(screen.getByTestId("plain").className).not.toContain("m-card");
     expect(screen.getByTestId("placed").className).toContain("m-placed");
     expect(screen.getByTestId("placed")).toHaveAttribute("data-lift");
     expect(screen.getByTestId("dark").className).toContain("m-dark");
+    expect(screen.getByTestId("dark").className).toContain("m-card");
     expect(screen.getByTestId("dark")).not.toHaveAttribute("data-lift");
+    // `.m-card` is a components-layer rule: the caller's own radius utility comes after it and wins.
+    expect(screen.getByTestId("own-radius").className).toBe("m-placed m-card rounded-[20px]");
   });
 
   it("[PD-02] gilded adds one decorative edge as the last child, hidden from assistive tech", () => {

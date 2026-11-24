@@ -3,12 +3,13 @@
 import { useSearchParams } from "next/navigation";
 import { useId, useRef, useState } from "react";
 import { Turnstile } from "@/components/security/Turnstile";
+import { TextField } from "@/components/ui/TextField";
 import { authClient } from "@/lib/auth-client";
 import { safeReturnTo } from "@/lib/return-to";
 import { LINK_EXPIRED_PATH } from "@/lib/sign-in-link";
 import { TURNSTILE_HEADER } from "@/lib/turnstile";
 import { formValue, useHydrated } from "@/lib/use-hydrated";
-import { inputClass, primaryButtonClass, secondaryButtonClass } from "./AuthCard";
+import { noticeClass, primaryButtonClass, secondaryButtonClass } from "./AuthCard";
 import { networkErrorMessage } from "./network";
 import { PreparingHint } from "./PreparingHint";
 
@@ -94,7 +95,7 @@ export function CustomerSignInForm({
 
   if (state === "sent") {
     return (
-      <div role="status" className="bg-gold-100 rounded-md p-4">
+      <div role="status" className={noticeClass}>
         <p className="font-semibold">Check your email</p>
         <p className="text-ink-2 mt-1">
           We&apos;ve sent a sign-in link to{" "}
@@ -133,18 +134,15 @@ export function CustomerSignInForm({
         className="flex flex-col gap-3"
         noValidate
       >
-        <label htmlFor={emailId} className="text-sm font-semibold">
-          Email
-        </label>
-        <input
+        <TextField
           id={emailId}
+          label="Email"
           type="email"
           inputMode="email"
           autoComplete="email"
           required
           name="email"
           maxLength={254}
-          className={inputClass}
           aria-describedby={error ? errorId : undefined}
           aria-invalid={error ? true : undefined}
         />

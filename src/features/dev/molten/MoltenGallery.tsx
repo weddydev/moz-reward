@@ -1,4 +1,3 @@
-import { LivingBackground } from "@/components/motion/LivingBackground";
 import { Toaster } from "@/components/ui/Toast";
 import { IntroSection } from "./IntroSection";
 import { LabSection } from "./LabSection";
@@ -55,7 +54,6 @@ export function MoltenGallery(): React.JSX.Element {
   const rendered = new Set<string>();
   return (
     <div className="m-page">
-      <LivingBackground />
       <main className="m-wrap">
         {PARITY_PARTS.map((part) => {
           if (part.name === "toast") return null; // the Toaster below

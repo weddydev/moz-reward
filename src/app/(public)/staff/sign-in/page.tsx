@@ -25,11 +25,7 @@ export default async function StaffSignInPage({
   }
   return (
     <AuthCard title="Staff sign in" subtitle="For shop teams and Moz Rewards admins.">
-      <Suspense
-        fallback={
-          <div className="bg-surface-2 h-48 animate-pulse rounded-md motion-reduce:animate-none" />
-        }
-      >
+      <Suspense fallback={<div className="skeleton h-48 rounded-2xl" />}>
         <StaffSignInForm />
       </Suspense>
     </AuthCard>

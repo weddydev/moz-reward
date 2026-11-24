@@ -4,6 +4,7 @@
  */
 export const colourTokens = {
   bg: "#fbf8f1",
+  pearl: "#fffcf5",
   surface: "#ffffff",
   ink: "#1a140a",
   "ink-2": "#5b4f3c",

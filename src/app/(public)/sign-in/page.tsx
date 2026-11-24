@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AuthCard } from "@/features/auth/AuthCard";
+import { AuthCard, noticeClass } from "@/features/auth/AuthCard";
 import { CustomerSignInForm } from "@/features/auth/CustomerSignInForm";
 import { safeReturnTo } from "@/lib/return-to";
 import { shopCodeFromReturnTo } from "@/lib/shop-return";
@@ -19,7 +19,7 @@ async function ShopContext({ searchParams }: { searchParams: SearchParams }) {
   const shopName = code ? await findActiveShopName(code) : null;
   if (!shopName) return null;
   return (
-    <p className="bg-gold-100 rounded-md p-3" data-testid="shop-context">
+    <p className={noticeClass} data-testid="shop-context">
       Sign in to collect gold at <span className="font-semibold">{shopName}</span>.
     </p>
   );
@@ -43,11 +43,7 @@ export default function SignInPage({
       <Suspense fallback={null}>
         <ShopContext searchParams={searchParams} />
       </Suspense>
-      <Suspense
-        fallback={
-          <div className="bg-surface-2 h-28 animate-pulse rounded-md motion-reduce:animate-none" />
-        }
-      >
+      <Suspense fallback={<div className="skeleton h-28 rounded-2xl" />}>
         <SignInForm />
       </Suspense>
     </AuthCard>

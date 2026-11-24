@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { FxCanvas } from "@/components/motion/FxCanvas";
 import { GooFilter } from "@/components/motion/GooFilter";
+import { LivingBackground } from "@/components/motion/LivingBackground";
 import { CookieNotice } from "@/features/consent/CookieNotice";
 import { ApplyPreferences } from "@/features/preferences/ApplyPreferences";
 import { loadAccountPreferences } from "@/features/preferences/load";
@@ -23,7 +24,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: colourTokens.bg,
+  themeColor: colourTokens.pearl,
 };
 
 /** Streams in after the shell: the profile lookup never delays first paint. */
@@ -62,6 +63,8 @@ export default async function RootLayout({
         >
           Skip to content
         </a>
+        {/* The Molten ground behind every page: drifting glows and grain (DESIGN §6.1; PD-11). */}
+        <LivingBackground />
         <Suspense fallback={null}>
           <AccountPreferences />
         </Suspense>

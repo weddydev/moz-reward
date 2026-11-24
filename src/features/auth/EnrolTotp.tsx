@@ -3,12 +3,13 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import QRCode from "qrcode";
 import { useId, useState } from "react";
+import { TextField } from "@/components/ui/TextField";
 import { PORTAL_HOME } from "@/features/portal/routes";
 import { authClient } from "@/lib/auth-client";
 import { safeReturnTo } from "@/lib/return-to";
 import { formString, formValue, useHydrated } from "@/lib/use-hydrated";
 import { colourTokens } from "@/styles/tokens";
-import { inputClass, primaryButtonClass, secondaryButtonClass } from "./AuthCard";
+import { primaryButtonClass, secondaryButtonClass } from "./AuthCard";
 import { withNetworkGuard } from "./network";
 
 type Enrolment = { qr: string; secret: string; backupCodes: string[] };
@@ -93,16 +94,13 @@ export function EnrolTotp(): React.JSX.Element {
           Staff and admin accounts need two-step verification. You&apos;ll need an authenticator app
           such as Google Authenticator, Microsoft Authenticator or 1Password.
         </p>
-        <label htmlFor={ids.password} className="text-sm font-semibold">
-          Confirm your password
-        </label>
-        <input
+        <TextField
           id={ids.password}
+          label="Confirm your password"
           type="password"
           autoComplete="current-password"
           required
           name="password"
-          className={inputClass}
           aria-describedby={error ? ids.error : undefined}
         />
         {error ? (
@@ -170,18 +168,15 @@ export function EnrolTotp(): React.JSX.Element {
         className="flex flex-col gap-3"
         noValidate
       >
-        <label htmlFor={ids.code} className="text-sm font-semibold">
-          6-digit code
-        </label>
-        <input
+        <TextField
           id={ids.code}
+          label="6-digit code"
           autoComplete="one-time-code"
           inputMode="numeric"
           pattern="[0-9 ]*"
           maxLength={7}
           required
           name="code"
-          className={`${inputClass} tracking-widest tabular-nums`}
           aria-describedby={error ? ids.error : undefined}
         />
         {error ? (

@@ -17,7 +17,9 @@ export function ShopImage({
   size,
   sizes,
   eager = false,
+  priority = false,
   unoptimized = false,
+  testId,
 }: {
   src: string;
   className?: string;
@@ -26,9 +28,16 @@ export function ShopImage({
   /** For a cover: the widths it is shown at (next/image `sizes`). */
   sizes?: string;
   eager?: boolean;
+  /** The page's largest image (the landing cover, its LCP): fetched at high priority. */
+  priority?: boolean;
   unoptimized?: boolean;
+  testId?: string;
 }): React.JSX.Element {
-  const loading = eager ? "eager" : "lazy";
+  const loading = eager || priority ? "eager" : "lazy";
+  const extra = {
+    ...(priority ? { fetchPriority: "high" as const } : {}),
+    ...(testId ? { "data-testid": testId } : {}),
+  };
   if (OPTIMISED_PHOTO.test(src)) {
     return size === undefined ? (
       <Image
@@ -39,6 +48,7 @@ export function ShopImage({
         loading={loading}
         unoptimized={unoptimized}
         className={className}
+        {...extra}
       />
     ) : (
       <Image
@@ -49,6 +59,7 @@ export function ShopImage({
         loading={loading}
         unoptimized={unoptimized}
         className={className}
+        {...extra}
       />
     );
   }
@@ -62,6 +73,7 @@ export function ShopImage({
       loading={loading}
       decoding="async"
       className={className}
+      {...extra}
     />
   );
 }

@@ -2542,6 +2542,54 @@ html:root.rm .m-cover > .m-cover-back {
   }
 }
 
+/* The shop landing's cover (PD-11; extended from the shop page's): the same look, drawn by a layer
+   (`.m-cover-art`: photo or ground, shade and glow) instead of the cover's own pseudo-elements, because that
+   layer is the Gilded Gate's morph target: it hides while the gate's copy of it lands, and the copy must carry
+   the shade too. No stacking context of its own (no isolation), so the name and logo can rise above the copy. */
+.m-cover.m-cover-landing {
+  isolation: auto;
+  padding-top: 24px;
+}
+.m-cover.m-cover-landing::before,
+.m-cover.m-cover-landing::after {
+  content: none;
+}
+.m-cover > .m-cover-art {
+  position: absolute;
+  inset: 0;
+  z-index: auto;
+  border-radius: inherit;
+  overflow: hidden;
+  background: var(--photo-ground);
+}
+.m-art-photo,
+.m-art-ground,
+.m-art-shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.m-art-photo {
+  object-fit: cover;
+  object-position: center;
+}
+.m-art-ground {
+  background: var(--photo-ground);
+}
+.m-art-shade {
+  pointer-events: none;
+  background:
+    radial-gradient(60% 60% at 80% 20%, rgba(255, 214, 120, 0.45), transparent 70%),
+    var(--cover-shade);
+}
+@media (min-width: 1024px) {
+  .m-cover.m-cover-landing {
+    aspect-ratio: 4 / 3;
+    padding-top: 24px;
+  }
+}
+
 /* ---------- offer card (PD-08; reference `.offer-row`, `.offer`) ---------- */
 .m-offer-row {
   display: flex;
