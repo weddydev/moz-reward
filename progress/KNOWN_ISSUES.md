@@ -69,6 +69,11 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 **KI-45 · `jobs.test.ts` "close() waits for in-flight jobs": expected 'active' to be 'completed'** — seen once, 24 Nov (gate:task PD-09 run 5; the 4 runs before passed 1456/0).
 - Known: the processor had finished (`finished` true) but the job's state still read `active` after `worker.close()` + `connection.quit()`; 13/13 three times alone. Not root-caused (BullMQ completion write vs close under a loaded parallel run?). If it shows again: quarantine it (TESTING §7) and look at BullMQ's `whenCurrentJobsFinished` / `moveToCompleted` order.
 
+**KI-47 · Parity spec: "never happened: …lands", or a frame far later than the spec says** — two harness traps (PD-10, CI 45404530673).
+- The page clock belongs to the **context**: both parity pages share one, so `page.clock.runFor` on each page runs it twice. Run once per context (`vault.spec` `run`).
+- An animation paused at its end with `fill: none` (`freezeTimed(p, true)`) is neither current nor in effect, so `document.getAnimations()` drops it and nothing can resume it: keep the list (`window.__frozen`) and resume from it (`vault.spec` `release`).
+- Also: `pnpm test:parity <spec>` needs `--project=x` (the `=` form); `--project x <spec>` reads the spec as a project name (fixed in `scripts/e2e.ts`).
+
 ## CSS / build surprises
 
 **KI-30 · An inline `svg` is taller than expected (e.g. 46 vs 52 px)** — Tailwind preflight makes every `svg` `display:block`; set `display:inline; vertical-align:baseline` explicitly (stars, PD-06).
