@@ -1,5 +1,5 @@
 import { burst } from "@/lib/motion/fx";
-import { GATE } from "@/lib/motion/gilded-gate";
+import { GATE } from "@/lib/motion/gate-constants";
 import { play } from "@/lib/sound";
 
 /** The ignite burst (DESIGN §8.1 step 3): 22 coins up and 46 sparks from the coin's centre. */

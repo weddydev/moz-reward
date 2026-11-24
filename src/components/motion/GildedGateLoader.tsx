@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { GATE } from "@/lib/motion/gilded-gate";
+import { GATE } from "@/lib/motion/gate-constants";
 
 /**
  * Loads the gate's sound chunk only when the pre-paint script actually plays the gate (P1-03 AC: never loaded
