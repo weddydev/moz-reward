@@ -37,18 +37,26 @@ async function until(page: Page, what: string, test: () => boolean): Promise<voi
   }
 }
 
-/** Both pages, the same page-clock time. */
+/**
+ * Both pages, the same page-clock time. The clock belongs to the browser context, which both pages share: it runs
+ * once per context (once per page ran it twice, so "500 ms into the pour" was 1,000 ms on both).
+ */
 async function run(pages: readonly Page[], ms: number): Promise<void> {
-  for (const p of pages) await p.clock.runFor(ms);
+  const clocks = new Map(pages.map((p) => [p.context(), p] as const));
+  for (const p of clocks.values()) await p.clock.runFor(ms);
 }
 
 /**
  * Lets paused animations go on: those past their end finish (their `finished` resolves, so the app's pour lands),
- * the others play on (a paused one at its end would otherwise rewind on `play()`).
+ * the others play on (a paused one at its end would otherwise rewind on `play()`). The ones `freezeTimed` paused
+ * at their end with `fill: none` (the pour's fill, stream and glint) are no longer in `document.getAnimations()`,
+ * so its own list is read too.
  */
 async function release(page: Page): Promise<void> {
   await page.evaluate(() => {
-    for (const a of document.getAnimations()) {
+    const frozen: unknown = Reflect.get(window, "__frozen");
+    const kept = Array.isArray(frozen) ? (frozen as Animation[]) : [];
+    for (const a of new Set([...document.getAnimations(), ...kept])) {
       if (a.playState !== "paused") continue;
       const end = a.effect?.getComputedTiming().endTime;
       if (typeof end === "number" && Number.isFinite(end) && Number(a.currentTime) >= end)
@@ -129,6 +137,19 @@ test.describe("[PD-10] Gold Vault parity", () => {
       for (const p of both) await fireTimed(p, "vault", FILL);
       await run(both, 1_600);
       for (const p of both) await freezeTimed(p);
+      // The reference starts its glint on the first frame after its tween reaches the top (up to 16 ms past
+      // 1.5 s), the app's Web Animation at 1.5 s exactly: 100 ms into the fast ease-out that frame is ~15 device
+      // px (2.08% at 1440). Judge the glint at the same age on both: the app's set to the reference's own time.
+      const glintAge = await ref.evaluate(() =>
+        Number(document.querySelector("#glintR")?.getAnimations()[0]?.currentTime ?? Number.NaN),
+      );
+      await page.evaluate((age) => {
+        const a = document
+          .querySelector('[data-parity="vault"] [data-ingot-part="glint"]')
+          ?.getAnimations()[0];
+        if (a && Number.isFinite(age))
+          a.currentTime = (a.effect?.getComputedTiming().delay ?? 0) + age;
+      }, glintAge);
       await compare(ref, page, "vault", "full", FRAME_DIFF);
 
       // Unlocked: 250 ms after landing the reward moment starts (rays, lift, ring, card flip, toast); at rest.

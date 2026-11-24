@@ -137,8 +137,10 @@ function main(): void {
       "test",
       ...(visual ? ["--grep", "@visual"] : []),
       ...(lighthouse ? ["--project", "lighthouse"] : []),
-      ...(parity && !args.includes("--project")
-        ? ["--project", "parity-chromium", "--project", "parity-webkit"]
+      // `=` form: `--project` takes several values, so a spec path after `--project parity-webkit` was read as a
+      // project name. A caller's own `--project x` or `--project=x` replaces the pair.
+      ...(parity && !args.some((a) => a === "--project" || a.startsWith("--project="))
+        ? ["--project=parity-chromium", "--project=parity-webkit"]
         : []),
       ...pwArgs,
     ],

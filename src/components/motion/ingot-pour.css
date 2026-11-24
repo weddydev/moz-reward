@@ -32,6 +32,17 @@
 .m-ingot-wave {
   animation: m-ingot-wave 2.2s linear infinite;
 }
+/* Reduced motion: the wave holds still. Its loop is one 80-unit period, so this is the reference's `.rm` end
+   state; the globals.css net would otherwise play it once over 150 ms, an 80 px jolt, whenever the setting flips. */
+html:root.rm .m-ingot-wave,
+:root[data-reduce-motion="true"] .m-ingot-wave {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-reduce-motion="false"]) .m-ingot-wave {
+    animation: none;
+  }
+}
 @keyframes m-ingot-wave {
   from {
     transform: translateX(0);
@@ -42,11 +53,12 @@
 }
 .m-ingot-flow {
   stroke-dasharray: 6 14;
-  animation: m-ingot-flow 0.5s linear infinite;
 }
-/* The stream shows only while a pour runs: its dash sleeps the rest of the time. */
-.m-ingot-box:not([data-ingot-state="run"]) .m-ingot-flow {
-  animation-play-state: paused;
+/* The stream shows only while a pour runs, so its dash flows only then. Removed (not paused) the rest of the time:
+   reduced motion makes the endless dash one 150 ms run, and a pause left it half-played on the element after a
+   mid-pour switch (vault.spec "Reduce animations switched on in Me"). */
+.m-ingot-box[data-ingot-state="run"] .m-ingot-flow {
+  animation: m-ingot-flow 0.5s linear infinite;
 }
 @keyframes m-ingot-flow {
   to {

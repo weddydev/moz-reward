@@ -342,18 +342,25 @@ export async function fireTimed(page: Page, part: string, target: string): Promi
   );
 }
 
-/** Pauses every animation at its own age (see `tagAnimations`); "rest" sends finite ones to their end. */
+/**
+ * Pauses every animation at its own age (see `tagAnimations`); "rest" sends finite ones to their end. The paused
+ * ones are kept in `window.__frozen` (see `frozenAnimations`): one paused at its end with `fill: none` is neither
+ * current nor in effect, so `document.getAnimations()` no longer lists it and only that list can resume it.
+ */
 export async function freezeTimed(page: Page, rest = false): Promise<void> {
   await page.evaluate((toEnd) => {
     void document.documentElement.getBoundingClientRect();
     const trigger = Number(Reflect.get(window, "__trigger") ?? 0);
     const now = performance.now();
+    const frozen: Animation[] = [];
+    Reflect.set(window, "__frozen", frozen);
     for (const a of document.getAnimations()) {
       if (a.timeline !== document.timeline) {
         a.cancel();
         continue;
       }
       a.pause();
+      frozen.push(a);
       const end = a.effect?.getComputedTiming().endTime;
       const finite = typeof end === "number" && Number.isFinite(end);
       if (toEnd) {

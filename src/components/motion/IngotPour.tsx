@@ -235,6 +235,28 @@ export function IngotPour({
     if (delay === 0) writeCount(count?.current, step.from);
     let raf = 0;
     let lastSplash = -Infinity;
+    // Lands when the liquid reaches its level (the reference: number, message, `busy` off, unlock 250 ms later),
+    // while the stream fade and the glint still play on; `done` waits for them. Set from the frame loop (the
+    // count's clock) or, without frames (hidden tab), from the fill's own end.
+    let landed = false;
+    let fullFired = false;
+    const fireFull = (): void => {
+      if (fullFired) return;
+      fullFired = true;
+      fullRef.current?.();
+    };
+    const landNow = (): void => {
+      if (landed) return;
+      landed = true;
+      writeCount(count?.current, step.to);
+      landedRef.current?.(step.to);
+      if (step.kind === "fill") later(fireFull, VAULT.unlock.delayMs);
+      const next = queue[0];
+      if (next)
+        later(() => {
+          start(next, queue.slice(1));
+        }, VAULT.unlock.delayMs + VAULT.unlock.holdMs);
+    };
     const t0 = performance.now();
     const frame = (): void => {
       // The later of the frame clock and the fill's own: the same in a browser, and a finish() still lands the
@@ -259,7 +281,10 @@ export function IngotPour({
             life: POUR.splash.life,
           });
         }
-        if (k >= 1) return;
+        if (k >= 1) {
+          if (!over) landNow();
+          return;
+        }
       }
       raf = requestAnimationFrame(frame);
     };
@@ -268,8 +293,9 @@ export function IngotPour({
     const finishAll = (): void => {
       for (const a of running) if (a.playState !== "finished") a.finish();
     };
-    // One way out of a step. Naturally: the count lands, `onFull` 250 ms after a fill, the next queued step after
-    // the hold. Skipped (`instant`): everything queued lands now and `onFull` is called at once.
+    // One way out of a step. Naturally: it lands (above), then once every part has played it is `done`, or the
+    // next queued step starts after the hold. Skipped (`instant`): everything queued lands now and `onFull` is
+    // called at once (a step already landed is not landed again).
     let over = false;
     const end = (instant: boolean): void => {
       if (over) return;
@@ -278,19 +304,16 @@ export function IngotPour({
       if (instant) {
         finishAll();
         clearTimers();
-        settle([step, ...queue]);
+        if (!landed) {
+          settle([step, ...queue]);
+          return;
+        }
+        if (step.kind === "fill") fireFull();
+        settle(queue);
         return;
       }
-      writeCount(count?.current, step.to);
-      landedRef.current?.(step.to);
-      if (step.kind === "fill") later(() => fullRef.current?.(), VAULT.unlock.delayMs);
-      const next = queue[0];
-      if (next) {
-        later(() => {
-          start(next, queue.slice(1));
-        }, VAULT.unlock.delayMs + VAULT.unlock.holdMs);
-        return;
-      }
+      landNow();
+      if (queue[0]) return;
       setPlay(null);
       setPhase("done");
     };
@@ -320,6 +343,12 @@ export function IngotPour({
     document.addEventListener("visibilitychange", onHidden);
     el.addEventListener("pointerdown", skip, { passive: true });
     let live = true;
+    void fill?.finished.then(
+      () => {
+        if (live && !over && playId.current === play.id) landNow();
+      },
+      () => undefined,
+    );
     void Promise.allSettled(running.map((a) => a.finished)).then(() => {
       if (live && playId.current === play.id) end(false);
     });

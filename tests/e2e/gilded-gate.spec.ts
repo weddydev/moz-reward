@@ -543,6 +543,9 @@ test("[P1-03] /dev/motion replays the gate for a shop code", async ({ page, requ
   await page.getByRole("button", { name: "Replay as an NFC tap" }).click();
   await expect(page).toHaveURL(new RegExp(`/s/${shopCode}\\?src=nfc$`));
   expect((await gateLog(page)).states[0]?.s).toBe("play");
+  // The guard's closing axe scan reads the landing: let the replayed gate hand off first (its settle wait caps at
+  // 3 s, and on CI's iPhone WebKit the gate plus the landing's fade-in ran past it: low contrast, CI 45404530673).
+  await expect.poll(() => gateState(page), { timeout: 8000 }).toBe("done");
 });
 
 test("[PD-09] long names wrap by word and fit at 320; no logo: the coin carries the initials", async ({

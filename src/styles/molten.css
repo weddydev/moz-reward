@@ -2815,6 +2815,8 @@ html:root.rm .m-cover > .m-cover-back {
     Georgia,
     serif;
   color: var(--gold-light);
+  /* The reference's greedy wrap ("Your reward is / ready" at 390), not the headings' balance (globals.css). */
+  text-wrap: wrap;
 }
 .m-reward-card p {
   margin: 2px 0 0;
