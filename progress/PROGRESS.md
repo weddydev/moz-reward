@@ -7,31 +7,28 @@ Baton: held by talha.syed since 2026-11-24 16:27 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handoff by Syedbadeshah76, 24 Nov 2026 ~13:30 UTC (WSL laptop); baton free. Autopilot OFF.**
-- **Finished:** PD-09 (on main since ~09:30, CI 45357702882 green). Nothing else closed.
-- **Half-done: PD-10** on **`wip/PD-10` @ `3826a87`** (pushed, see below; one WIP commit on top of main `51ef92a`). Built: `Ingot` reference geometry/stream/splash/glint/top face; `IngotPour` reference timing + overflow (`src/lib/motion/ingot.ts`); `GoldVault`, `RewardUnlocked`, `RedeemCode` (countdown on `expiresAt` + `serverNow`, expired state) in `src/components/ui/`; `/dev/molten` `VaultSection` (replaces `VaultButtons`); parity `tests/parity/vault.spec.ts` (rest, mid-pour 500 ms, full, unlocked, redeemed at each viewport); vault tokens registered (`tokens.ts`).
-- **Continue PD-10 exactly here:** (1) check CI on `3826a87` (`gh run list --branch wip/PD-10`); (2) write the missing component tests for `GoldVault`, `RewardUnlocked`, `RedeemCode` (brief: "component tests"; incl. reduced-motion end states, countdown at zero, interrupted pour); (3) `pnpm test:parity` vault spec + `tests/e2e/vault.spec.ts` (live-region text unchanged, 60 fps pour trace); (4) `pnpm gate:task`, screenshots 320/390/1440, design review (motion change), then tick and to main.
-- **Tested:** `pnpm check` on the PD-10 tree: typecheck, lint, format, titles, unit **2057/0** (after registering the new vault tokens). Scheduled run **45397054403** on main (12:48 UTC) **RED**: only `[desktop1440] [PD-09] convergence at 4× CPU, lite tier @fps` — p95 16.800000000000068 vs ≤ 16.8 (float noise), retry 33.3 (one real dropped frame); every other job green.
-- **Not yet tested:** PD-10 parity, E2E, gate:task, CI (pushed at this handoff); the red @fps convergence spec (not investigated: KNOWN_ISSUES KI-03/KI-42 first, then an epsilon on the bound + decide noise vs. regression by the median of 3 on CI); real iPhone/Android (H-13).
-- **Pushed with `--no-verify` (human-approved, DECISIONS 24 Nov):** `wip/PD-10` `3826a87`, because Docker wasn't reachable from WSL and the hook's Semgrep needs it; `pnpm check` had passed on it. Its CI run **45404530673** (incl. Semgrep) was running at the handoff: read it first.
-- **Before work (WSL laptop):** Docker is **not reachable from WSL** (KI-46: WSL integration was found off and switched back on in the settings file; still no answer at the handoff). Fix it in Docker Desktop's UI (Settings → Resources → WSL integration → Ubuntu-24.04) before the next commit or push. No new env vars, migrations or seeds.
+- **Checkpoint by talha.syed, 24 Nov 2026 ~17:10 UTC (Mac); baton held by talha.syed. Autopilot OFF.**
+- **PD-10 on `wip/PD-10` @ `ebe9b14`** (3 commits on the handoff's `3826a87`; branch sits on main `51ef92a`, so main's later progress-only commits merge cleanly). Done this session: (a) CI 45404530673 red root-caused: vault parity "first pour never lands" = two harness traps (shared context clock ran twice per step; animations paused at their end drop out of `getAnimations()`) → KI-47; iPhone gate-replay axe contrast = the scan ran mid-hand-off → the test waits for `done`. (b) Real app bug found by parity: `IngotPour` landed only after the glint (~700 ms late: line, `busy`, unlock) → now lands at the fill's end, `done` after the glint (E2E + component tests fail on the old code). (c) Reward heading greedy wrap (reference), stream dash only while pouring, wave still in reduced motion (fixed a pre-existing vault E2E race). (d) Component tests `src/components/ui/vault.test.tsx` 15/0. (e) `test:parity <spec>` arg bug fixed. (f) Frame-rate p95 median rounded to 0.01 ms (the red scheduled run's 16.800000000000068).
+- **Tested:** `pnpm gate:task` PASS on `5c7536d` (unit 2072/0, int 1456/0/1, PD-10 E2E 6/0, parity 4/0 both browsers); vault.spec desktop1440 48/48 (×3), WebKit/iPhone changed tests 4/4; `ebe9b14` adds only the p95 rounding (typecheck + lint).
+- **Not yet tested:** CI on `8379344` (45441098126, running at this checkpoint) and on `ebe9b14` (not pushed yet: push once 45441098126 reports, KI-14); the vault **60 fps pour trace** (`[P1-08] … @fps`, CI only: dispatch `scheduled.yml` suite `perf` on `wip/PD-10` after the push; it also re-checks the PD-09 convergence, whose retry read 33.3 ms once in 45397054403); real devices (H-13).
+- **Continue PD-10 exactly here:** (1) read CI 45441098126; push `wip/PD-10` (`ebe9b14`); `gh workflow run scheduled.yml --ref wip/PD-10 -f suite=perf`; (2) screenshots 320/390/1440 of `/dev/molten` vault (rest, unlocked, code) and `/vault/<id>`, inspected; (3) `design-reviewer` on the PD-10 diff (motion change; `review-animations`); (4) walk the acceptance criteria, tick PD-10, closing push to main via the hook after CI green.
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov). Then P1 resumes with the P1-B close. P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **PD-C** (PD-07 + PD-08 on main 23 Nov, PD-09 24 Nov; PD-10 in progress on `wip/PD-10`; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-24 (~13:30 UTC), Syedbadeshah76 (handoff; PD-10 half-done on `wip/PD-10` `3826a87`)
+- **Last updated:** 2026-11-24 (~17:10 UTC), talha.syed (checkpoint; PD-10 on `wip/PD-10` `ebe9b14`, gate PASS, design review + pour trace left)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). **PD-09 on main 24 Nov** (CI 45357702882 green). **PD-10 in progress** (`wip/PD-10` `3826a87`). Scheduled run 45397054403 red on the PD-09 @fps convergence lite tier (see handoff).
+- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). **PD-09 on main 24 Nov** (CI 45357702882 green). **PD-10 in progress** (`wip/PD-10` `ebe9b14`, gate:task PASS; design review + @fps pour trace left). Scheduled run 45397054403's float failure fixed on the branch (p95 rounding).
 
 ## Next (top 3)
-1. Red scheduled run 45397054403 first: PD-09 @fps convergence lite tier on desktop1440 (16.800000000000068, retry 33.3): noise or real (KI-03/KI-42), fix the float bound, re-run the perf suite on CI.
-2. Finish PD-10 on `wip/PD-10` (component tests, parity, vault E2E + pour trace, gate:task, screenshots, design review) → main.
-3. PD-11 (restyle sweep, parity close) then the PD-C close (H-49). Human any time: H-48b, H-45 (🟠), H-38 (branches), H-51 (b).
+1. Finish PD-10 on `wip/PD-10` (push `ebe9b14`, perf suite dispatch for the @fps pour trace + PD-09 convergence, screenshots, design review, tick) → main.
+2. PD-11 (restyle sweep, parity close) then the PD-C close (H-49).
+3. Human any time: H-48b, H-45 (🟠), H-38 (branches; add `wip/PD-09`), H-51 (b).
 
 ## CARRIED (a task can't be ticked while a row targets it)
 Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026, human-approved, to keep this file light): read it at every phase close and when a P2–P5 task starts, and move a phase's rows back here when that phase starts. The same rule applies there: a task can't be ticked while a row targets it.
@@ -69,9 +66,9 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (24 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- PD-10 WIP `3826a87`: `pnpm check` green (unit 2057/0); parity/E2E/gate NOT VERIFIED.
-- Scheduled 45397054403 on main: RED, one spec (PD-09 @fps convergence lite, desktop1440).
-- PD-09 `124b276`: CI 45357702882 GREEN (every job incl. WebKit + iPhone); frame-rate suite 45352014187 GREEN.
+- PD-10 `5c7536d`: `pnpm gate:task` PASS (unit 2072/0, int 1456/0, E2E PD-10 6/0, parity PD-10 4/0 Chromium + WebKit).
+- PD-10 CI 45404530673 on `3826a87` RED (vault parity harness + gate-replay axe timing) → fixed in `8379344`; its CI 45441098126 running.
+- Scheduled 45397054403 on main: RED, PD-09 @fps convergence (float 16.800000000000068; retry 33.3) → rounding on `wip/PD-10`; NOT re-verified on CI yet.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 

@@ -961,3 +961,9 @@ PD-10 (Syedbadeshah76, WSL) built, not finished: Ingot reference geometry + pour
 Scheduled run 45397054403 on main RED: only PD-09 @fps convergence lite tier on desktop1440 (16.800000000000068 vs 16.8, retry 33.3); not investigated, first item for the next session. Docker Desktop was down (KI-46): gitleaks 8.30.1 installed in `~/.local/bin` (checksum OK), Docker Desktop started from WSL.
 Handoff by Syedbadeshah76 (~13:30 UTC): baton free; autopilot off; PD-10 half-done on `wip/PD-10` `3826a87`; next: red scheduled run, then finish PD-10.
 Docker from WSL still down after restarts (Desktop's WSL integration found off; switched on in settings-store.json, human stopped that step; KI-46 open). `wip/PD-10` `3826a87` pushed with `--no-verify` on the human's choice (DECISIONS 24 Nov); its CI run is the first thing to read.
+
+## 2026-11-24 — PD — PD-10 vault pour, reward, redeem code: gate PASS, not ticked (wip/PD-10 `ebe9b14`)
+Resume (talha.syed, Mac): pulled the WSL handoff; baton taken; no human tasks reported done. CI 45404530673 on `3826a87` red: vault parity "first pour never lands" (harness: context clock run per page = twice; end-paused `fill: none` animations leave `getAnimations()`, KI-47) + iPhone gate-replay axe contrast mid-hand-off (test now waits for `done`).
+App fixes found by parity: IngotPour landed after the glint (~700 ms late) → lands at the fill's end; reward heading greedy wrap; dash only while pouring; wave still in reduced motion (pre-existing vault E2E race). `test:parity <spec>` arg bug fixed; frame-rate p95 rounded to 0.01 ms.
+Tests: vault component tests 15/0 (3 fail on the old IngotPour); gate:task PASS on `5c7536d` (unit 2072/0, int 1456/0, E2E 6/0, parity 4/0 both browsers).
+NOT VERIFIED: CI 45441098126 (`8379344`) running; `ebe9b14` not pushed; @fps pour trace; screenshots; design review.
