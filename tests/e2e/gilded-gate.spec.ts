@@ -555,7 +555,16 @@ test("[PD-09] long names wrap by word and fit at 320; no logo: the coin carries 
   await page.setViewportSize({ width: 320, height: 720 });
   await page.goto(`/s/${shopCode}?src=qr`);
   expect(await gateState(page)).toBe("play");
-  // 50 letters: the stagger shrinks so the last letter lands by 3.2 s (gateTimeline).
+  // The scene starts in the first frame (WebKit on Linux CI can take a second to draw it, KI-10): wait for the
+  // last letter's beat, then seek. 50 letters: the stagger shrinks so it lands by 3.2 s (gateTimeline).
+  await expect
+    .poll(() =>
+      page
+        .locator("#gilded-gate .gate-ch")
+        .last()
+        .evaluate((c) => c.getAnimations().length),
+    )
+    .toBeGreaterThan(0);
   await seek(page, 3199);
   const layout = await page.evaluate(() => {
     const words = [...document.querySelectorAll("#gilded-gate .gate-word")];
@@ -593,7 +602,7 @@ test.describe("[PD-09] font blocked", () => {
   test.use({
     // One pattern: a two-item array would read as Playwright's [value, options] fixture form.
     guardAllow: [
-      /^(requestfailed: GET \S+\.woff2 net::ERR_FAILED|console: Failed to load resource: net::ERR_FAILED)/,
+      /^(requestfailed: GET \S+\.woff2 (net::ERR_FAILED|Blocked by Web Inspector)|console: Failed to load resource: net::ERR_FAILED)/,
     ],
   });
 
