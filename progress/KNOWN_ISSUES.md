@@ -61,6 +61,9 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 **KI-22 · "Settled" check never passes on touch projects** — touch-only idle motion (card sway) never settles; assert the target state, not "no animation" (PD-06).
 
+**KI-45 · `jobs.test.ts` "close() waits for in-flight jobs": expected 'active' to be 'completed'** — seen once, 24 Nov (gate:task PD-09 run 5; the 4 runs before passed 1456/0).
+- Known: the processor had finished (`finished` true) but the job's state still read `active` after `worker.close()` + `connection.quit()`; 13/13 three times alone. Not root-caused (BullMQ completion write vs close under a loaded parallel run?). If it shows again: quarantine it (TESTING §7) and look at BullMQ's `whenCurrentJobsFinished` / `moveToCompleted` order.
+
 ## CSS / build surprises
 
 **KI-30 · An inline `svg` is taller than expected (e.g. 46 vs 52 px)** — Tailwind preflight makes every `svg` `display:block`; set `display:inline; vertical-align:baseline` explicitly (stars, PD-06).
