@@ -55,6 +55,8 @@ test("[P1-09] member shop page: cover, status, directions and call, vault card, 
     "https://www.google.com/maps/dir/?api=1&destination=51.5245%2C-0.0754",
   );
   await expect(page.getByTestId("shop-call")).toHaveAttribute("href", "tel:+442071234567");
+  // [PD-11] A link styled as a button keeps its icon 8 px from the label, as a Button's own label does.
+  await expect(page.getByTestId("shop-directions")).toHaveCSS("column-gap", "8px");
 
   const vault = page.getByTestId("shop-vault");
   await expect(vault.getByRole("img", { name: "720 of 1,000 gold, 72%" })).toBeAttached();

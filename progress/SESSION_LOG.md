@@ -996,3 +996,4 @@ gate:task: every step PASS (unit 2081/0, int 1456/0, E2E PD-11 12/0, tree unchan
 Screens inspected: shop page 390, vault 390/320/1440, 403 + error 390. C-80 closed (E2E: bar 0 → 0.72, 900 ms).
 NOT VERIFIED: CI on this commit (pushed after step A's CI 45476822891 reports; WebKit still running at commit).
 Step C part 1: SideNav (shop/admin) on the rail's glass with the liquid gold poured down the column (FOLLOWUPS 88). E2E molten-dock + portal-shells at desktop1440: 16 passed; sidebar screen at 1440 inspected.
+Step C part 1b: `.m-btn` gap 8 px (links styled as buttons had the icon flush on the label: shop Directions/Call, header Scan member QR); E2E column-gap assertion; shop-page + molten-controls chromium pass except one local flake (leave on day 1, 3/3 alone; FOLLOWUPS).

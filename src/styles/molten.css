@@ -323,6 +323,8 @@ html:root.rm *::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* A link styled as a button (icon and label as direct children) spaces them like a Button's \`.m-txt\`. */
+  gap: 8px;
   max-width: 100%;
   min-height: var(--h);
   padding: 0 28px;
