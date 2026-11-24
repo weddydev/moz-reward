@@ -69,7 +69,7 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 ## Last verified (25 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
 - PD-11 A `9b70acb`: gate:task every step PASS (unit 2079/0, int 1456/0, E2E PD-11 9/0 Linux Chromium); full Chromium E2E (Linux) 325/0/18 skipped.
-- CI 45476822891 on `9b70acb`: every job green except WebKit (still running at the step B commit).
+- CI 45476822891 on `9b70acb`: RED on WebKit only (offline sign-in specs, KI-49, fixed on `wip/PD-11`; loyalty-settings iphone14 flaky → FOLLOWUPS); every other job green.
 - PD-11 B (wip/PD-11): gate:task every step PASS (unit 2081/0, int 1456/0, E2E PD-11 12/0); vault/shop/wipe/portal specs pass locally (chromium + desktop1440). C-80 closed.
 - CI 45467487343 on `6386f9a` (PD-10 + T-8): GREEN on every job; PD-10 on main `2cb621f`.
 ## Follow-ups (LOW)

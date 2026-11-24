@@ -1,4 +1,5 @@
 import { expect, newClientContext, openSignInLink, test, uniqueEmail } from "./support/test";
+import type { Page } from "@playwright/test";
 
 const SEND = "Email me a sign-in link";
 
@@ -59,6 +60,17 @@ test("[P0-06] submitting three times at once sends one email", async ({ page, ma
   expect(await mail.countTo(email)).toBe(1);
 });
 
+/**
+ * Page fully loaded before the network is cut: fonts, the deferred monitoring chunk (an idle callback, or a
+ * 1.5 s timer in WebKit: networkidle can settle before it fires, CI 45476822891), then the network quiet. A
+ * late request cut by the offline switch would fail on its own (CI 43002131604: a chunk on pixel7).
+ */
+async function quiet(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  await expect(page.locator("html")).not.toHaveAttribute("data-monitoring", "loading");
+  await page.waitForLoadState("networkidle");
+}
+
 test.describe("offline", () => {
   test.use({
     // One regex: Playwright reads a two-element array in test.use() as a [value, options] tuple.
@@ -76,8 +88,7 @@ test.describe("offline", () => {
     await expect(page.getByRole("button", { name: SEND })).toBeEnabled();
     // Page fully loaded first: a font or a late JS chunk still downloading when we go offline would fail on
     // its own (CI 43002131604: a chunk request was cut on pixel7), so wait for the network to go quiet too.
-    await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    await page.waitForLoadState("networkidle");
+    await quiet(page);
     await context.setOffline(true);
     await page.getByRole("button", { name: SEND }).click();
     await expect(page.locator("form").getByRole("alert")).toHaveText(/offline|couldn't reach/i);
@@ -101,8 +112,7 @@ test.describe("offline (staff)", () => {
     await page.getByLabel("Email").fill(uniqueEmail("e2e-staff-offline"));
     await page.getByLabel("Password").fill("correct horse battery");
     await expect(page.getByRole("button", { name: "Continue" })).toBeEnabled();
-    await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    await page.waitForLoadState("networkidle"); // see the customer test above
+    await quiet(page);
     await context.setOffline(true);
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.locator("form").getByRole("alert")).toHaveText(/offline|couldn't reach/i);
