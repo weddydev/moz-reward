@@ -29,6 +29,17 @@
 .m-ingot-box[data-lifted] .m-ingot {
   transform: translateY(-12px) scale(1.03);
 }
+/* Reduced motion: the lifted end state shows at once. `.rm` shortens every transition to .12 s with !important
+   (molten.css, specificity 0,3,1): this beats it (0,4,1), so the ingot doesn't slide up. */
+html:root.rm .m-ingot-box .m-ingot,
+:root[data-reduce-motion="true"] .m-ingot-box .m-ingot {
+  transition-duration: 0s !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-reduce-motion="false"]) .m-ingot-box .m-ingot {
+    transition-duration: 0s !important;
+  }
+}
 .m-ingot-wave {
   animation: m-ingot-wave 2.2s linear infinite;
 }

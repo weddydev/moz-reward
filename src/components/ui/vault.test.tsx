@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, render, screen } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VAULT } from "@/lib/motion/vault";
 import { GoldVault } from "./GoldVault";
@@ -327,6 +328,19 @@ describe("[PD-10] Gold Vault", () => {
     expect(screen.getByTestId("vault-line")).toHaveTextContent("200 gold to go");
     expect(document.querySelector(".ingot-pour")).toHaveAttribute("data-ingot-state", "done");
   });
+  it("[PD-10] reduced motion: unlocking shows the lifted end state with no ring pulse", () => {
+    const props = { shop: SHOP, title: "t", gold: 1_000, size: 1_000, seenKey: "t-rm-unlock" };
+    const { rerender } = render(<GoldVault {...props} />);
+    document.documentElement.classList.add("rm");
+    started = [];
+    rerender(<GoldVault {...props} unlocked />);
+    expect(started.filter((a) => a.target.classList.contains("m-vring"))).toHaveLength(0);
+    // Motion on, the same unlock pulses the ring.
+    document.documentElement.classList.remove("rm");
+    rerender(<GoldVault {...props} />);
+    rerender(<GoldVault {...props} unlocked />);
+    expect(started.filter((a) => a.target.classList.contains("m-vring"))).toHaveLength(1);
+  });
 });
 
 describe("[PD-10] Reward unlocked", () => {
@@ -396,6 +410,30 @@ describe("[PD-10] Redeem code", () => {
       vi.advanceTimersByTime(61_000);
     });
     expect(screen.getByRole("timer")).toHaveAccessibleName("Code expires in 13:59");
+  });
+
+  it("[PD-10] the clock is read when the response arrived (receivedAt), not at mount: 5 minutes later shows 10:00", () => {
+    vi.useFakeTimers({ now: T0 + 3_600_000 + 300_000 }); // a phone an hour fast, mounted 5 min after receipt
+    render(
+      <RedeemCode
+        code="481927"
+        expiresAt={T0 + VAULT.redeem.validMs}
+        serverNow={T0}
+        receivedAt={T0 + 3_600_000}
+      />,
+    );
+    act(() => {
+      vi.advanceTimersByTime(VAULT.redeem.tickMs);
+    });
+    expect(screen.getByRole("timer")).toHaveAccessibleName("Code expires in 9:59");
+  });
+
+  it("[PD-10] the first render reads only its props (the same on server and client): no clock in it", () => {
+    vi.useFakeTimers({ now: T0 + 999_999_999 });
+    const html = renderToStaticMarkup(
+      <RedeemCode code="481927" expiresAt={T0 + VAULT.redeem.validMs} serverNow={T0} />,
+    );
+    expect(html).toContain("15:00");
   });
 
   it("[PD-10] at zero: the expired state, onExpire once, the ticking stops", () => {

@@ -4,7 +4,7 @@ import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "re
 import { Ingot, type IngotProps } from "@/components/ui/Ingot";
 import { cx } from "@/lib/cx";
 import { ingotFill, levelY } from "@/lib/loyalty/ingot";
-import { anim } from "@/lib/motion/anim";
+import { anim, reducedMotionNow } from "@/lib/motion/anim";
 import { burst } from "@/lib/motion/fx";
 import {
   levelAt,
@@ -123,7 +123,7 @@ export function IngotPour({
   };
   const start = (step: PourStep, queue: PourStep[], delay = 0): void => {
     playId.current += 1;
-    if (step.kind === "add" || step.kind === "fill")
+    if (step.kind === "pour" || step.kind === "add" || step.kind === "fill")
       setStampText(`+${formatCount(step.to - step.from)}`);
     setShown(step.to);
     setPhase("run");
@@ -380,7 +380,9 @@ export function IngotPour({
     if (unlocked === wasUnlocked.current) return;
     wasUnlocked.current = unlocked;
     if (!unlocked) return;
-    anim(ring.current, ringKeyframes(), { duration: VAULT.unlock.ring.ms, fill: "none" });
+    // Reduced motion: no ring pulse (its scale is movement; DESIGN §7.2), the lifted end state just shows.
+    if (!reducedMotionNow())
+      anim(ring.current, ringKeyframes(), { duration: VAULT.unlock.ring.ms, fill: "none" });
     const svg = ref.current?.querySelector("svg");
     if (!svg) return;
     const r = svg.getBoundingClientRect();

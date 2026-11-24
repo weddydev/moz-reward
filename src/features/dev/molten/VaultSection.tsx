@@ -26,7 +26,11 @@ const CODE = "481927";
 export function VaultSection(): React.JSX.Element {
   const [gold, setGold] = useState(START);
   const [unlocked, setUnlocked] = useState(false);
-  const [code, setCode] = useState<{ expiresAt: number; serverNow: number } | null>(null);
+  const [code, setCode] = useState<{
+    expiresAt: number;
+    serverNow: number;
+    receivedAt: number;
+  } | null>(null);
   const busy = useRef(false);
   const timer = useRef(0);
 
@@ -63,7 +67,12 @@ export function VaultSection(): React.JSX.Element {
           unoptimized
         >
           {code ? (
-            <RedeemCode code={CODE} expiresAt={code.expiresAt} serverNow={code.serverNow} />
+            <RedeemCode
+              code={CODE}
+              expiresAt={code.expiresAt}
+              serverNow={code.serverNow}
+              receivedAt={code.receivedAt}
+            />
           ) : (
             <div className="m-code">
               <Button
@@ -74,7 +83,12 @@ export function VaultSection(): React.JSX.Element {
                   window.clearTimeout(timer.current);
                   timer.current = window.setTimeout(() => {
                     const now = Date.now();
-                    setCode({ expiresAt: now + VAULT.redeem.validMs, serverNow: now });
+                    // The demo's "response": received now (P1-16 takes `receivedAt` where the redeem response arrives).
+                    setCode({
+                      expiresAt: now + VAULT.redeem.validMs,
+                      serverNow: now,
+                      receivedAt: now,
+                    });
                   }, VAULT.redeem.codeDelayMs);
                   return false; // sparks only: the label doesn't roll (the reference's Redeem)
                 }}

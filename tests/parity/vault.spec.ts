@@ -6,8 +6,8 @@ import { PARITY_PARTS, parityLimit } from "../../src/features/dev/molten/parity-
 
 /**
  * Gold Vault parity (PD-10): the reference vault against the app's (`/dev/molten`: `GoldVault`, `IngotPour`,
- * `RewardUnlocked`, `RedeemCode`), driven the same way on both under the paused page clock: at rest after the
- * first-view pour, mid-pour (500 ms into "Add a visit"), full (100 ms after "Fill the vault" lands, glint and
+ * `RewardUnlocked`, `RedeemCode`), driven the same way on both under the paused page clock: 1 s into the first-view pour (stamp shown), at rest after
+ * it, mid-pour (500 ms into "Add a visit"), full (100 ms after "Fill the vault" lands, glint and
  * stream fade running), unlocked (the reward moment at rest) and redeemed (the code's digits and countdown).
  * The reference's pour is a requestAnimationFrame tween on the page clock; the app's is Web Animations, which run
  * on the real timeline: each capture pauses every animation at its own age (`freezeTimed`), and between moments
@@ -66,6 +66,23 @@ async function release(page: Page): Promise<void> {
   });
 }
 
+/**
+ * The reference starts its glint on the first frame after its tween reaches the level (up to 16 ms late), the
+ * app's Web Animation exactly when the fill ends: 100 ms into the fast ease-out that frame is ~15 device px (2.08%
+ * at 1440). Judges the glint at the same age on both: the app's set to the reference's own time.
+ */
+async function alignGlint(ref: Page, page: Page): Promise<void> {
+  const age = await ref.evaluate(() =>
+    Number(document.querySelector("#glintR")?.getAnimations()[0]?.currentTime ?? Number.NaN),
+  );
+  await page.evaluate((a0) => {
+    const a = document
+      .querySelector('[data-parity="vault"] [data-ingot-part="glint"]')
+      ?.getAnimations()[0];
+    if (a && Number.isFinite(a0)) a.currentTime = (a.effect?.getComputedTiming().delay ?? 0) + a0;
+  }, age);
+}
+
 /** The app's pour has landed and nothing waits (the reference's tween ends on the page clock). */
 const appLanded = (): boolean =>
   document.querySelector('[data-parity="vault"] .ingot-pour')?.getAttribute("data-ingot-state") ===
@@ -118,7 +135,15 @@ test.describe("[PD-10] Gold Vault parity", () => {
           document.querySelector('[data-parity="vault"] .ingot-pour[data-ingot-state="run"]') !==
           null,
       );
-      await run(both, 2_500);
+      // First view, 1 s into the pour (after its 200 ms wait): landed at 720 (the count still), the "+720" stamp
+      // fully shown, the stream fading, the glint 100 ms in. Not mid-fill: there the reference's frame-snapped tween
+      // (a few ms off the exact time) reads as another count in large digits (2.4–2.6%).
+      await run(both, 1_200);
+      for (const p of both) await freezeTimed(p);
+      await alignGlint(ref, page);
+      await compare(ref, page, "vault", "first-view", FRAME_DIFF);
+      for (const p of both) await release(p);
+      await run(both, 1_300);
       for (const p of both) await freezeTimed(p, true);
       await compare(ref, page, "vault", "rest", REST_DIFF);
 
@@ -137,19 +162,7 @@ test.describe("[PD-10] Gold Vault parity", () => {
       for (const p of both) await fireTimed(p, "vault", FILL);
       await run(both, 1_600);
       for (const p of both) await freezeTimed(p);
-      // The reference starts its glint on the first frame after its tween reaches the top (up to 16 ms past
-      // 1.5 s), the app's Web Animation at 1.5 s exactly: 100 ms into the fast ease-out that frame is ~15 device
-      // px (2.08% at 1440). Judge the glint at the same age on both: the app's set to the reference's own time.
-      const glintAge = await ref.evaluate(() =>
-        Number(document.querySelector("#glintR")?.getAnimations()[0]?.currentTime ?? Number.NaN),
-      );
-      await page.evaluate((age) => {
-        const a = document
-          .querySelector('[data-parity="vault"] [data-ingot-part="glint"]')
-          ?.getAnimations()[0];
-        if (a && Number.isFinite(age))
-          a.currentTime = (a.effect?.getComputedTiming().delay ?? 0) + age;
-      }, glintAge);
+      await alignGlint(ref, page);
       await compare(ref, page, "vault", "full", FRAME_DIFF);
 
       // Unlocked: 250 ms after landing the reward moment starts (rays, lift, ring, card flip, toast); at rest.

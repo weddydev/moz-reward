@@ -1,4 +1,4 @@
-import { type APIRequestContext, type Page, type TestInfo } from "@playwright/test";
+import { type APIRequestContext, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { throttleCpu, LONG_TASK_MS, medianFrameRate } from "./support/cpu-throttle";
 import { expect, test, testApiHeaders } from "./support/test";
 
@@ -527,59 +527,89 @@ test.describe("[P1-08] ingot visual snapshots (static mode)", { tag: "@visual" }
   }
 });
 
-test("[PD-10] the pour lands when the liquid reaches its level, not after the glint: line at once, unlock 250 ms later", async ({
-  page,
-}) => {
+/**
+ * The /dev/molten vault on screen with its first-view pour landed: a tap on the ingot skips it (the product's
+ * skip), so a runner that draws a frame a second (Linux WebKit, KI-10) doesn't spend the pour's 1.8 s on it.
+ */
+async function moltenVaultSettled(page: Page): Promise<Locator> {
   await page.goto("/dev/molten");
   await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
   const vault = page.locator('[data-parity="vault"]');
   await vault.scrollIntoViewIfNeeded();
-  await expect(vault.locator(".ingot-pour")).toHaveAttribute("data-ingot-state", "done");
-  // When the line changes, the glint (700 ms from the landing, as the reference's) must still be crossing.
-  await page.evaluate(() => {
-    const w = window as unknown as { __land: { line: number; glint: boolean; unlocked: number }[] };
-    w.__land = [];
-    const root = document.querySelector('[data-parity="vault"]');
-    const line = root?.querySelector('[data-testid="vault-line"]');
-    if (!root || !line) throw new Error("no vault");
-    new MutationObserver(() => {
-      const glint = root
-        .querySelector('[data-ingot-part="glint"]')
-        ?.getAnimations()
-        .some((a) => a.playState === "running");
-      w.__land.push({ line: performance.now(), glint: glint === true, unlocked: 0 });
-    }).observe(line, { childList: true, characterData: true, subtree: true });
-    new MutationObserver(() => {
-      const last = w.__land.at(-1);
-      if (root.hasAttribute("data-unlocked") && last && !last.unlocked)
-        last.unlocked = performance.now();
-    }).observe(root, { attributes: true, attributeFilter: ["data-unlocked"] });
-  });
-  const lands = (): Promise<{ line: number; glint: boolean; unlocked: number }[]> =>
-    page.evaluate(() => (window as unknown as { __land: [] }).__land);
+  const box = vault.locator(".ingot-pour");
+  await expect(box).not.toHaveAttribute("data-ingot-state", "pending", { timeout: 15_000 });
+  await box.dispatchEvent("pointerdown");
+  await expect(box).toHaveAttribute("data-ingot-state", "done");
+  return vault;
+}
+
+test("[PD-10] the pour lands when the liquid reaches its level, not after the glint: line, then unlock 250 ms later", async ({
+  page,
+}) => {
+  const vault = await moltenVaultSettled(page);
+  const box = vault.locator(".ingot-pour");
+  /**
+   * Holds the glint (it starts where the fill ends and runs 700 ms) and finishes only the fill: the landing must
+   * not wait for the glint. Driven on the animations' own clocks, so a runner that starves frames (Linux WebKit,
+   * KI-10; CI 45441098126) can't blur it.
+   */
+  const holdGlintFinishFill = (): Promise<boolean> =>
+    page.evaluate(async () => {
+      const root = document.querySelector('[data-parity="vault"]');
+      const of = (part: string): Animation | undefined =>
+        root?.querySelector(`[data-ingot-part="${part}"]`)?.getAnimations()[0];
+      for (let i = 0; i < 200 && !(of("glint") && of("fill")); i++)
+        await new Promise((r) => setTimeout(r, 10));
+      const glint = of("glint");
+      const fill = of("fill");
+      if (!glint || !fill) return false;
+      glint.pause();
+      fill.finish();
+      return true;
+    });
+  const glintHeld = (): Promise<string | undefined> =>
+    page.evaluate(
+      () =>
+        document
+          .querySelector('[data-parity="vault"] [data-ingot-part="glint"]')
+          ?.getAnimations()[0]?.playState,
+    );
+
   await vault.getByRole("button", { name: "Add a visit (+80)" }).click();
+  expect(await holdGlintFinishFill()).toBe(true);
   await expect(page.getByTestId("vault-line").first()).toHaveText(/^200 gold to go/);
-  expect((await lands())[0]?.glint).toBe(true);
-  await expect(vault.locator(".ingot-pour")).toHaveAttribute("data-ingot-state", "done");
+  expect(await glintHeld()).toBe("paused");
+  await expect(box).toHaveAttribute("data-ingot-state", "run"); // done waits for the glint
+  await page.evaluate(() => {
+    for (const a of document
+      .querySelector('[data-parity="vault"] .ingot-pour')
+      ?.getAnimations({ subtree: true }) ?? [])
+      if (Number.isFinite(a.effect?.getComputedTiming().endTime)) a.finish();
+  });
+  await expect(box).toHaveAttribute("data-ingot-state", "done");
+
   await vault.getByRole("button", { name: "Fill the vault" }).click();
+  expect(await holdGlintFinishFill()).toBe(true);
+  // The unlock comes 250 ms after the landing, with the glint still held.
   await expect(vault).toHaveAttribute("data-unlocked", "");
-  const fill = (await lands()).at(-1);
-  expect(fill?.glint).toBe(true);
-  // The reference unlocks 250 ms after its landing (a frame or two either way for the observers).
-  expect((fill?.unlocked ?? 0) - (fill?.line ?? 0)).toBeGreaterThan(200);
-  expect((fill?.unlocked ?? 0) - (fill?.line ?? 0)).toBeLessThan(400);
+  expect(await glintHeld()).toBe("paused");
+  await expect(page.getByTestId("vault-line").first()).toHaveText("Your reward is ready.");
 });
 
 test("[PD-10] the redeem code fits the reward card at 320: digits and ring inside, the ring wraps under", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 800 });
-  await page.goto("/dev/molten");
-  await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
-  const vault = page.locator('[data-parity="vault"]');
-  await vault.scrollIntoViewIfNeeded();
-  await expect(vault.locator(".ingot-pour")).toHaveAttribute("data-ingot-state", "done");
+  const vault = await moltenVaultSettled(page);
   await vault.getByRole("button", { name: "Fill the vault" }).click();
+  await vault.locator(".ingot-pour").dispatchEvent("pointerdown"); // lands the fill at once (skip)
+  await expect(vault).toHaveAttribute("data-unlocked", "");
+  // The card flips in over ~1 s: finish it, so a runner drawing a frame a second (KI-10) can press a still button.
+  await expect(vault.getByTestId("reward-card")).toBeVisible();
+  await vault.evaluate((v) => {
+    for (const a of v.getAnimations({ subtree: true }))
+      if (Number.isFinite(a.effect?.getComputedTiming().endTime)) a.finish();
+  });
   await vault.getByRole("button", { name: "Redeem" }).click();
   await expect(page.getByRole("timer")).toBeVisible();
   const fit = await page.evaluate(() => {
@@ -593,4 +623,23 @@ test("[PD-10] the redeem code fits the reward card at 320: digits and ring insid
     };
   });
   expect(fit).toEqual({ inside: true, wrapped: true });
+});
+
+test("[PD-10] reduced motion: the unlock lands lifted at once, no ring pulse and no lift transition", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/dev/molten");
+  await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
+  await expect(page.locator("html")).toHaveClass(/\brm\b/);
+  const vault = page.locator('[data-parity="vault"]');
+  await vault.scrollIntoViewIfNeeded();
+  await expect(vault.locator(".ingot-pour")).toHaveAttribute("data-ingot-state", "done");
+  await vault.getByRole("button", { name: "Fill the vault" }).click();
+  await expect(vault).toHaveAttribute("data-unlocked", "");
+  const motion = await vault.evaluate((v) => ({
+    ring: v.querySelector(".m-vring")?.getAnimations().length ?? -1,
+    lift: getComputedStyle(v.querySelector(".m-ingot") ?? v).transitionDuration,
+  }));
+  expect(motion).toEqual({ ring: 0, lift: "0s" });
 });

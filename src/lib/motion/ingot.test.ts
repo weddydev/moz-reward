@@ -84,9 +84,13 @@ describe("[PD-10] pour steps (what a change of gold plays)", () => {
 describe("[PD-10] pour timeline (reference timing)", () => {
   const parts = (t: ReturnType<typeof pourTimeline>) => t.map((p) => p.part);
 
-  it("first view: 200 ms after it shows, 0 → level in 900 ms with the stream; glint after; no stamp", () => {
+  it("first view: 200 ms after it shows, 0 → level in 900 ms with the stream; glint after; the '+N' stamp (reference `pour()` always stamps)", () => {
     const t = pourTimeline({ kind: "pour", fromY: y(0), toY: y(720) }, POUR.view.delayMs);
-    expect(parts(t)).toEqual(["fill", "stream", "glint"]);
+    expect(parts(t)).toEqual(["fill", "stream", "glint", "stamp"]);
+    expect(t.find((p) => p.part === "stamp")?.options).toMatchObject({
+      duration: 1_400,
+      delay: 200,
+    });
     const fill = t.find((p) => p.part === "fill");
     expect(fill?.options).toMatchObject({ duration: 900, delay: 200, easing: POUR_EASING });
     expect(fill?.keyframes[0]?.transform).toBe(`translateY(${String(INGOT_BOX.bottom)}px)`);

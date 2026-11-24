@@ -9,14 +9,17 @@ import { clockSkew, countdown, digitKeyframes, VAULT } from "@/lib/motion/vault"
  * A redeem code at the till (DESIGN §8.6 v2; PD-10, reference `.code`, `.digits`, `.ring-cd`): the digits flip in
  * one by one (rotateX −90° → 0, 380 ms spring, 60 ms apart) and a gold ring depletes over the code's 15 minutes
  * with the time left as `m:ss`. The countdown runs on the server's clock: `expiresAt` and `serverNow` come from
- * the server, and the phone's clock only measures time passing since then (a phone set wrong still shows the
- * right time left). At zero the code shows as expired (digits dimmed, ring empty) and `onExpire` is called once.
+ * the server, `receivedAt` is the phone's clock when that response arrived (taken where it is received, so a later
+ * mount, a back navigation or a cached page still counts from the right moment), and the phone's clock only
+ * measures time passing since then (a phone set wrong still shows the right time left). The first render reads
+ * only the props (the same on the server and the client); the clock is read from the first tick. At zero the code shows as expired (digits dimmed, ring empty) and `onExpire` is called once.
  * Reduced motion: the digits appear without flipping. Visual only until P1-16 wires it to a real code.
  */
 export function RedeemCode({
   code,
   expiresAt,
   serverNow,
+  receivedAt,
   onExpire,
 }: {
   code: string;
@@ -24,11 +27,12 @@ export function RedeemCode({
   expiresAt: number;
   /** The server's time when it sent the code (epoch ms). */
   serverNow: number;
+  /** The phone's `Date.now()` when that response arrived; P1-16 passes it (/dev/molten: the mount). */
+  receivedAt?: number;
   onExpire?: () => void;
 }): React.JSX.Element {
   const digits = useRef<HTMLDivElement>(null);
-  const [skew] = useState(() => clockSkew(serverNow, Date.now()));
-  const [left, setLeft] = useState(() => countdown(expiresAt, Date.now() + skew));
+  const [left, setLeft] = useState(() => countdown(expiresAt, serverNow));
   const expireRef = useRef(onExpire);
   useLayoutEffect(() => {
     expireRef.current = onExpire;
@@ -48,6 +52,7 @@ export function RedeemCode({
   }, [code]);
 
   useEffect(() => {
+    const skew = clockSkew(serverNow, receivedAt ?? Date.now());
     const tick = (): boolean => {
       const c = countdown(expiresAt, Date.now() + skew);
       setLeft(c);
@@ -61,7 +66,7 @@ export function RedeemCode({
     return () => {
       window.clearInterval(id);
     };
-  }, [expiresAt, skew]);
+  }, [expiresAt, serverNow, receivedAt]);
 
   return (
     <div className="m-code" data-expired={left.expired ? "" : undefined} data-testid="redeem-code">

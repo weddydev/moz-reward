@@ -134,7 +134,9 @@ export function pourTimeline(
     ],
     options: { duration: POUR.glint.ms, delay: delay + ms, easing: EASE_OUT, fill: "none" },
   });
-  if (step.kind === "add" || step.kind === "fill") {
+  // The reference's `pour()` always stamps "+N" (its first view shows "+720"); the app's quiet later-view rise
+  // and a drain don't.
+  if (step.kind === "pour" || step.kind === "add" || step.kind === "fill") {
     parts.push({
       part: "stamp",
       keyframes: [
