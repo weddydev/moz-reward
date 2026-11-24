@@ -7,29 +7,27 @@ Baton: held by Syedbadeshah76 since 2026-11-24 05:51 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handed over by talha.syed, 23 Nov 2026 17:55 UTC (Mac). Baton free. Autopilot is OFF. Nothing half-done; no wip branch in use.**
-- **Finished this session:** PD-07 (floating dock) and PD-08 (wallet stack, gold wipe into the shop, shop photos) on main; the human-approved process changes on main `a7fdbef` (parallel CI jobs, `pnpm e2e:confirm-flakes`, @fps median of 3, branch from main + `--force-with-lease` on `wip/*`, early checkpoint push, `gate:task` without the local changed-spec run, the hook pushes main on CI's verdict without re-running the gate, `e2e:linux` debug-only, /clear at each task end, one CLAUDE.md backup per day, CLAUDE.md tidy-up with situational rules in TESTING §10, P2–P5 CARRIED rows in `progress/CARRIED_LATER.md`). DECISIONS 23 Nov has each.
-- **Tested:** CI 45223748873 on `a7fdbef` (branch `wip/process-fixes`) GREEN on every job: checks, tests, parity 10/0, perf, Chromium 2 shards, WebKit every spec 556/0/118, no confirmed flakes. PD-08: gate:task PASS (unit 2013/0, int 1456/0, task E2E 24/0, perf 3/0, changed specs 560/0, parity 10/0), CI 45211398059 green. Flake confirmation proven locally (fail path red, pass path 5/5 green); @fps median proven (vault pour). At handoff: `pnpm check` PASS (unit 2018/0) on main `f6c0e5b` (code = `a7fdbef`).
-- **Not yet tested / check first:** main's own CI 45229795870 on `a7fdbef` (running at handoff; the same code is green on its branch) and the staging deploy that follows it (PD-07 + PD-08 + process changes not yet on staging). Red → fix first.
-- **Next:** PD-09 · Gilded Gate 2.0 (PD-C; `docs/phases/PD.md`): create `wip/PD-09` from main, push it once at the first working step (early checkpoint push). Nothing to do first: no new env vars, migrations or seeds this session (the Windows laptop: `/resume` runs `pnpm install` after the pull; new scripts only).
-- Leftover branches: H-38 (deleting them needs the human's OK). PD-08 follow-ups for PD-11 in FOLLOWUPS; C-80 → PD-11. Laptop Linux WebKit stalls: WebKit evidence is CI only.
-
+- **Checkpoint by Syedbadeshah76, 24 Nov 2026 ~07:50 UTC (WSL laptop); baton held. Autopilot OFF.** Branch **`wip/PD-09`, HEAD = the checkpoint commit on top of code `7e5b701` (CI runs on `3cb2407`, same code + a KNOWN_ISSUES line)** (see `git log`). PD-09 code + tests are DONE; **not ticked yet**: waiting on CI.
+- **Check first:** CI **45352009042** (push, every spec incl. WebKit) and the perf suite **45352014187** (`scheduled.yml` dispatched with `suite=perf` on `wip/PD-09`: @perf + @fps on CI's runner). Both green → tick PD-09 in `docs/PHASES.md`, PROGRESS Now/Next, then push the same commit to main (free mode, the hook takes CI's verdict). Red → fix first (perf: see below).
+- **Gate (laptop):** every step PASS in one run or another, never all in one run: run 6 (`3cb2407`): check/unit 2035/0/int 1456/0/build/sast/task E2E 15/0 PASS, perf FAIL only on one rendering-only frame **66.6 ms vs 65** (Pixel 7, last frame of the hand-off) on a host whose CPU score swung 12.8k–23.7k in the same step (reference 17.5k; other runs: skipped "no verdict"). Parity PD-09 then run by hand: 8/0 Chromium + WebKit. Human rule "small overshoots don't block": CI's perf runner decides; if CI also shows > 65 ms there, cut the hand-off's last-frame cost (cancel the gate's subtree animations at `end()`, FOLLOWUPS L5) before widening anything.
+- **Not yet tested:** WebKit E2E (CI), @fps convergence p95 (lite ≤ 16.8, full ≤ 20: only CI), real iPhone/Android (H-13). KI-45 (jobs close() flake) seen once in gate run 5.
+- **Before work:** nothing new (no env vars, migrations or seeds). Next after PD-09: PD-10 (Vault pour, reward unlocked, redeem code).
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov). Then P1 resumes with the P1-B close. P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **PD-C** (PD-07 + PD-08 on main 23 Nov; next PD-09; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-23, talha.syed (handoff: PD-08 + process changes on main; next PD-09; baton free)
+- **Last updated:** 2026-11-24 (~07:50 UTC), Syedbadeshah76 (checkpoint: PD-09 built on `wip/PD-09`, CI pending, not ticked)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). Next PD-09 (PD-C).
+- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). **PD-09 built on `wip/PD-09`** (24 Nov; CI pending, not ticked). Next PD-10.
 
 ## Next (top 3)
-1. Main CI 45229795870 + staging deploy of `a7fdbef` green (check first).
-2. PD-09 · Gilded Gate 2.0 (PD-C).
+1. CI 45352009042 + perf 45352014187 on `wip/PD-09` → tick PD-09, push to main.
+2. PD-10 · Vault pour, reward unlocked, redeem code (PD-C).
 3. Human any time: H-48b, H-45 (🟠), H-38 (branches), H-51 (b); H-49 at the PD-C close.
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -66,12 +64,11 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 ## Map of the codebase
 In **`progress/MAP.md`** (read when you need to locate code; add new important paths there).
 
-## Last verified (23 Nov 2026)
+## Last verified (24 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- CI 45223748873 on `a7fdbef` GREEN on every job (parallel layout; WebKit every spec 556/0/118; no confirmed flakes); `pnpm check` PASS on main `f6c0e5b` at handoff (unit 2018/0).
-- PD-08: gate:task PASS (unit 2013/0, int 1456/0, task E2E 24/0, perf 3/0, changed specs 560/0, parity 10/0); CI 45211398059 on `c41a066` green; Lighthouse wallet-50 LCP 1.06 s, CLS 0, JS 183.7 KB (accepted).
-- Main CI 45229795870 + staging deploy of `a7fdbef`: running at handoff (NOT VERIFIED).
-
+- PD-09 gate run 6 on `3cb2407`: unit 2035/0, int 1456/0, task E2E Linux Chromium 15/0, perf 1/1/1 (one 66.6 ms render frame, host score unstable).
+- Parity PD-09 8/0 Chromium + WebKit (frames 700/1150/1450/2300/rest, particle canvas, curves, static 390/1440).
+- Main `a7fdbef` CI 45229795870 + staging deploy 45234729542 green (checked at resume).
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 
