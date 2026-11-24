@@ -94,3 +94,7 @@ _CLAUDE.md §4 findings policy: LOW findings and nits get one line here, are not
 - [PD-11, PD-09 design review L5, 24 Nov] `gateScript`'s `end()` cancels only the panel's animations; ~40 scene animations (forwards fill) stay on the hidden gate: cancel `g.getAnimations({subtree:true})` (update the unit mock).
 - [PD-11, PD-09 design review L6, 24 Nov] Long-word fit assumes 0.62 em per Fraunces letter; wide glyphs (M, W, m) could clip a nowrap word at 320: measure `.gate-word` `scrollWidth` before first paint, or use ~0.72.
 - [PD-11, PD-09 design review L7, 24 Nov] The ignite FX burst is a `setTimeout` after hydration: skip it when it fires > ~80 ms past 1250 ms on the gate's clock.
+- [PD-11, PD-10 design review L5, 24 Nov] The vault's 40 s rays loop keeps turning off screen / tab hidden (only the ingot box has `usePauseOffscreen`): put it on GoldVault's `<section>`.
+- [PD-11, PD-10 design review L6, 24 Nov] `Ingot.tsx` ~100: the stream sits under the outline, so the 2 px mould edge at y=62 crosses the flowing dash (reference: stream on top): draw it after the outline clipped above the surface, or record it in the PD-10 DECISIONS entry.
+- [PD-11, PD-10 design review L7, 24 Nov] `.m-digits` at 320: 200 px of digits in a 194 px box leaves 14 px right padding vs 20 left: `gap: 3px` below ~340 px.
+- [P1-15, PD-10 design review L8, 24 Nov] The reward card arrives ~1.75 s after the tap (outside the 500 ms input exemption): on the real vault page reserve its space or keep it last, else CLS (≤ 0.05).
