@@ -126,6 +126,16 @@ test("[PD-09] the timeline lasts 3.28 s and the morph grows the cover out of the
   // loops on the page underneath (PD-04: the molten button's flowing fill; the gilded edge, the living
   // background) never end, so their Infinity is not part of it (CI 45006025356). The scene's shine may run on
   // past the hand-off: it goes with the hidden gate.
+  // The scene starts in the first frame after the inline script: wait for its beats.
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document.querySelector("#gilded-gate .gate-stage")?.getAnimations({ subtree: true })
+            .length ?? 0,
+      ),
+    )
+    .toBeGreaterThan(20);
   const ends = await page.evaluate(() => {
     const scene = document.querySelector("#gilded-gate .gate-stage");
     const all = document.getAnimations().map((a) => ({
@@ -598,6 +608,14 @@ test.describe("[PD-09] font blocked", () => {
     await watchGate(page);
     await page.goto(`/s/${shopCode}?src=qr`);
     expect(await gateState(page)).toBe("play");
+    await expect
+      .poll(() =>
+        page
+          .locator("#gilded-gate .gate-ch")
+          .first()
+          .evaluate((c) => c.getAnimations().length),
+      )
+      .toBeGreaterThan(0);
     const forge = await page.evaluate(() =>
       [...document.querySelectorAll("#gilded-gate .gate-ch")].map((c) => {
         const a = c.getAnimations()[0];

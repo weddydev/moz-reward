@@ -321,7 +321,13 @@ describe("[PD-09] gateSceneScript (inlined after the gate markup)", () => {
       },
     };
     expect(() => {
-      runInNewContext(script, { document: { getElementById: () => gate }, Math });
+      runInNewContext(script, {
+        document: { getElementById: () => gate },
+        Math,
+        requestAnimationFrame: (f: () => void) => {
+          f();
+        },
+      });
     }).not.toThrow();
     expect(readCalls).toBe(1);
   });

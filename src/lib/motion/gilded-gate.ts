@@ -513,8 +513,8 @@ export function playGateScene(
 }
 
 /**
- * The real gate's scene starter, inlined right after the gate markup (so it runs during parse, before first
- * paint, like the morph). Nothing plays under reduced motion: the root then runs `gate-fade`, not `gate-life`,
+ * The real gate's scene starter, inlined right after the gate markup (it runs during parse, like the morph,
+ * and starts the scene in the first frame). Nothing plays under reduced motion: the root then runs `gate-fade`, not `gate-life`,
  * and the CSS shows the end frame. Self-contained: `gateSceneScript` passes `play` and `lib` in.
  */
 export function startGate(
@@ -525,22 +525,36 @@ export function startGate(
 ): void {
   const gate = document.getElementById(id);
   if (!gate || gate.getAttribute("data-state") !== "play") return;
-  const life = gate
-    .getAnimations()
-    .filter((a) => (a as CSSAnimation).animationName === "gate-life")[0];
-  if (!life) return;
-  play(
-    gate,
-    {
-      lite: document.documentElement.classList.contains("lite"),
-      slow: 1,
-      alive: () => gate.getAttribute("data-state") === "play",
-      start: () => (typeof life.startTime === "number" ? life.startTime : null),
-      staggerMs: t.staggerMs,
-      subDelayMs: t.subDelayMs,
-    },
-    lib,
-  );
+  // In the first frame, not during parse: first paint has then done the document's style and layout, so
+  // nothing here forces them inside the parser's task (a long task at 4× CPU, gate 24 Nov). The beats are then
+  // set to the CSS timeline's own start, so they keep its clock.
+  requestAnimationFrame(() => {
+    if (gate.getAttribute("data-state") !== "play") return;
+    const life = gate
+      .getAnimations()
+      .filter((a) => (a as CSSAnimation).animationName === "gate-life")[0];
+    if (!life) return;
+    const { anims } = play(
+      gate,
+      {
+        lite: document.documentElement.classList.contains("lite"),
+        slow: 1,
+        alive: () => gate.getAttribute("data-state") === "play",
+        start: () => (typeof life.startTime === "number" ? life.startTime : null),
+        staggerMs: t.staggerMs,
+        subDelayMs: t.subDelayMs,
+      },
+      lib,
+    );
+    if (life.playState === "running" && typeof life.startTime === "number") {
+      for (const a of anims) a.startTime = life.startTime;
+    } else if (typeof life.currentTime === "number") {
+      for (const a of anims) {
+        a.pause();
+        a.currentTime = life.currentTime;
+      }
+    }
+  });
 }
 
 /** The inline scene script (nonce'd; rendered right after the gate, only with it). */
