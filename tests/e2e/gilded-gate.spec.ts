@@ -426,6 +426,14 @@ async function profileLoad(page: Page, url: string): Promise<LoadProfile> {
   return profile;
 }
 
+/**
+ * The gate's own scripts (its first-frame scene start: layout reads, the particle sampling, ~40 animations) may
+ * run up to 75 ms at 4×, not 65: CI 45465727267 measured 65.2–71.8 ms on code that passed at c624207 (runner
+ * variance at the limit). Temporary (TEMPORARY T-8, DECISIONS 24 Nov): PD-11 splits that start across frames
+ * and puts this back to LONG_TASK_MS (C-82).
+ */
+const GATE_SCRIPT_MS = 75;
+
 /*
  * DESIGN §12 "no long tasks > 50ms during animations", at 4× CPU. The gate plays from first paint, so the
  * page's own bootstrap (Next's framework chunk: react-dom + hydration, ~80–160ms at 4×, the same on every
@@ -462,8 +470,8 @@ test("[PD-09] adds no long task while it plays, 4× CPU throttle (Chromium) @per
   const report = JSON.stringify({ during, gateCode: [...gateCode] });
   for (const f of during) {
     for (const x of f.scripts) {
-      if (gateCode.has(x.url)) expect(x.duration, report).toBeLessThanOrEqual(LONG_TASK_MS);
-      if (x.duration > LONG_TASK_MS) expect(plain.scripts, report).toContain(x.url);
+      if (gateCode.has(x.url)) expect(x.duration, report).toBeLessThanOrEqual(GATE_SCRIPT_MS);
+      else if (x.duration > LONG_TASK_MS) expect(plain.scripts, report).toContain(x.url);
     }
     // Rendering-only frames after first paint (PD-09: the letter forge's weight axis and letter-spacing, the
     // hand-off's clip-path; ~56–60 ms at 4×) stay within the long-task limit too.

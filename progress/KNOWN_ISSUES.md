@@ -4,6 +4,10 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 ## Local gate and containers
 
+**KI-48 · `[PD-09] adds no long task while it plays` red on CI: a script on `/s/<code>?src=qr` 65–72 ms (`Expected: <= 65`)** — quarantined by limit 24 Nov (T-8).
+- Cause: the gate's first-frame scene start (layout reads, particle sampling with `getImageData`, ~40 `animate()` calls) sits at ~60–72 ms at 4× on CI runners; the same tree passed and failed on different runs.
+- Fix: until C-82 (PD-11) the gate's own scripts get `GATE_SCRIPT_MS` 75; don't widen it further: split the start across frames.
+
 **KI-01 · `page.goto` hangs 30–60 s in the Linux container (Mac), in bursts every 1.5–2.5 min; passes alone and on CI** — C-76, fixed 23 Nov.
 - Cause: Docker Desktop hangs every new connect to `host.docker.internal` for ~68 s after ~3,100 connects in ~30 s (browsers open fresh connections per test context).
 - Fix: `scripts/lib/e2e-forwarder.mjs` (pooled keep-alive HTTP forwarder used by `pnpm e2e:linux` / `gate:task`). If stalls come back: check the forwarder is in use and its pool size, not the app. DECISIONS 23 Nov "C-76".

@@ -14,6 +14,11 @@ Consequence / revisit when: …
 
 
 
+## 2026-11-24 — Gilded Gate's own scripts: 75 ms long-task limit until PD-11 splits its start (temporary)
+Decision: `gilded-gate.spec` "[PD-09] adds no long task while it plays" allows the gate's own scripts (the landing document's inline scripts and gate-only chunks) up to 75 ms at 4× CPU (`GATE_SCRIPT_MS`); every other script and frame, and every other `@perf` spec, keeps `LONG_TASK_MS` 65. TEMPORARY T-8, CARRIED C-82 → PD-11.
+Why: CI 45465727267 (PD-10 `873dbf6`) measured the first-frame scene start at 65.2–71.8 ms (4 of 6 runs over) on a source tree byte-identical to `c624207`, whose perf job passed: runner variance on code sitting at the limit (CLAUDE.md "Small overshoots don't block"). The real fix (move the particle sampling and layout reads out of the first-frame task) changes PD-09's scene start and belongs with PD-11's 4× traces.
+Consequence / revisit when: PD-11 splits the start across frames and puts the gate back on `LONG_TASK_MS`; the frame budget (60 fps, DESIGN §12 50 ms target) is unchanged.
+
 ## 2026-11-22 — PD-05 WebKit goo: full liquid on WebKit; the fallback is the lite path
 Decision: WebKit keeps the goo filter and droplets like every full-tier browser. The fallback (no filter, no droplets; the blob keeps its pour curve) is the lite tier's `.lite .m-goo` / `.lite .m-drop` rules, which any device that is lite already gets (DESIGN §7.2), and no WebKit-only branch is added. Reviewed against WebKit parity for the coin switch, liquid choice and seal tiles (static, frames at 0/42/76/100%, curves): all pass on Playwright WebKit; Chromium 22/22 in the Linux container.
 Why: the reference uses the same SVG filter on WebKit and the harness finds no difference, so a WebKit fallback would make Safari look less like the approved demo. The open risk is cost, not look: Safari draws HTML SVG filters on the CPU.
