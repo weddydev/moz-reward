@@ -7,27 +7,28 @@ Baton: held by Syedbadeshah76 since 2026-11-24 05:51 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by Syedbadeshah76, 24 Nov 2026 ~07:50 UTC (WSL laptop); baton held. Autopilot OFF.** Branch **`wip/PD-09`, HEAD `d1f2df4`** (the checkpoint commit on top of code `7e5b701` (CI runs on `3cb2407`, same code + a KNOWN_ISSUES line)** (see `git log`). PD-09 code + tests are DONE; **not ticked yet**: waiting on CI.
-- **Check first:** CI **45352009042** (push, every spec incl. WebKit) and the perf suite **45352014187** (`scheduled.yml` dispatched with `suite=perf` on `wip/PD-09`: @perf + @fps on CI's runner). Both green → tick PD-09 in `docs/PHASES.md`, PROGRESS Now/Next, then push the same commit to main (free mode, the hook takes CI's verdict). Red → fix first (perf: see below).
-- **Gate (laptop):** every step PASS in one run or another, never all in one run: run 6 (`3cb2407`): check/unit 2035/0/int 1456/0/build/sast/task E2E 15/0 PASS, perf FAIL only on one rendering-only frame **66.6 ms vs 65** (Pixel 7, last frame of the hand-off) on a host whose CPU score swung 12.8k–23.7k in the same step (reference 17.5k; other runs: skipped "no verdict"). Parity PD-09 then run by hand: 8/0 Chromium + WebKit. Human rule "small overshoots don't block": CI's perf runner decides; if CI also shows > 65 ms there, cut the hand-off's last-frame cost (cancel the gate's subtree animations at `end()`, FOLLOWUPS L5) before widening anything.
-- **Not yet tested:** WebKit E2E (CI), @fps convergence p95 (lite ≤ 16.8, full ≤ 20: only CI), real iPhone/Android (H-13). KI-45 (jobs close() flake) seen once in gate run 5.
-- **Before work:** nothing new (no env vars, migrations or seeds). Next after PD-09: PD-10 (Vault pour, reward unlocked, redeem code).
+- **Checkpoint by Syedbadeshah76, 24 Nov 2026 ~09:30 UTC (WSL laptop); baton held. Autopilot OFF. Nothing half-done.**
+- **PD-09 closed** (ticked): code `124b276` (wip/PD-09) + this progress commit, pushed to main. CI **45357702882** on `124b276` GREEN on every job (checks, unit/int, Chromium shards, WebKit + iPhone task/changed specs, parity, perf); the frame-rate suite **45352014187** (dispatched `suite=perf` on the branch) GREEN: @fps convergence p95 (lite ≤ 16.8, full ≤ 20) and @perf on CI's runner.
+- **Continue here:** **PD-10** (Vault pour, reward unlocked, redeem code; `docs/phases/PD.md` §PD-10) on a new `wip/PD-10` from main; push it once at the first working step.
+- **Not yet tested:** main's own CI on the closing commit (progress-only on top of the green `124b276`); real iPhone/Android (H-13).
+- **Notes:** PD-09 LOWs (gate `end()` subtree cancel, long-word fit factor, late burst skip) in FOLLOWUPS → PD-11. KI-45 (jobs close() flake) seen once. Laptop perf verdicts here are unreliable (CPU score 12.8k–23.7k vs reference 17.5k): CI's perf jobs decide.
+- **Before work:** nothing new (no env vars, migrations or seeds).
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov). Then P1 resumes with the P1-B close. P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **PD-C** (PD-07 + PD-08 on main 23 Nov; next PD-09; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-24 (~07:50 UTC), Syedbadeshah76 (checkpoint: PD-09 built on `wip/PD-09`, CI pending, not ticked)
+- **Last updated:** 2026-11-24 (~09:30 UTC), Syedbadeshah76 (PD-09 closed, on main; next PD-10)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). **PD-09 built on `wip/PD-09`** (24 Nov; CI pending, not ticked). Next PD-10.
+- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). **PD-09 on main 24 Nov** (CI 45357702882 green). Next PD-10.
 
 ## Next (top 3)
-1. CI 45352009042 + perf 45352014187 on `wip/PD-09` → tick PD-09, push to main.
-2. PD-10 · Vault pour, reward unlocked, redeem code (PD-C).
+1. PD-10 · Vault pour, reward unlocked, redeem code (PD-C).
+2. PD-11 (restyle sweep, parity close) then the PD-C close (H-49).
 3. Human any time: H-48b, H-45 (🟠), H-38 (branches), H-51 (b); H-49 at the PD-C close.
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -66,9 +67,8 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (24 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- PD-09 gate run 6 on `3cb2407`: unit 2035/0, int 1456/0, task E2E Linux Chromium 15/0, perf 1/1/1 (one 66.6 ms render frame, host score unstable).
-- Parity PD-09 8/0 Chromium + WebKit (frames 700/1150/1450/2300/rest, particle canvas, curves, static 390/1440).
-- Main `a7fdbef` CI 45229795870 + staging deploy 45234729542 green (checked at resume).
+- PD-09 `124b276`: CI 45357702882 GREEN (every job incl. WebKit + iPhone); frame-rate suite 45352014187 GREEN (@fps + @perf).
+- PD-09 gate run 6: unit 2035/0, int 1456/0, task E2E Linux Chromium 15/0; parity PD-09 8/0 Chromium + WebKit.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 

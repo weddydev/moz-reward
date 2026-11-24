@@ -83,7 +83,7 @@ Details: [`docs/phases/PD.md`](phases/PD.md) · Spec: [`design/reference/molten/
 
 - [x] PD-07 · Floating dock and Scan button
 - [x] PD-08 · Wallet stack, gold wipe into the shop, shop photos
-- [ ] PD-09 · Gilded Gate 2.0
+- [x] PD-09 · Gilded Gate 2.0
 - [ ] PD-10 · Vault pour, reward unlocked, redeem code
 - [ ] PD-11 · Restyle built screens, full parity sweep, close
 - [ ] PD-C closed with `/subphase-complete` (needs H-49 human parity sign-off)
