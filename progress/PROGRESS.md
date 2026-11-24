@@ -3,33 +3,33 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-24 17:41 UTC
+Baton: free — last held by talha.syed, 2026-11-25 00:20 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Handoff by talha.syed, 24 Nov 2026 ~17:35 UTC (Mac); baton free. Autopilot OFF.**
-- **Finished:** nothing ticked. PD-10 advanced on **`wip/PD-10` @ `18fb555`** (pushed; 5 commits on `3826a87`; base main `51ef92a`, main's later commits are progress-only). This session: CI 45404530673's reds root-caused (parity harness traps → KI-47; gate-replay axe scan mid-hand-off → test waits for `done`); app fixes found by parity: pour lands at the fill's end, not after the glint (~700 ms late before); reward heading greedy wrap; stream dash only while pouring; wave still in reduced motion (cured a vault E2E race); code ring wraps under the digits at 320 (+ E2E); component tests `src/components/ui/vault.test.tsx` 15/0; `test:parity <spec>` arg fix; frame-rate p95 median rounded to 0.01 ms (scheduled 45397054403's 16.800000000000068).
-- **Half-done: PD-10. Continue exactly here:** (1) **CI 45441098126 on `8379344` RED, WebKit only** (559 passed, 2 failed, 1 flaky): the new `[PD-10] the pour lands when the liquid reaches its level…` (`tests/e2e/vault.spec.ts:530`) fails on Linux webkit + iphone14 (glint not seen running when the line changes; unlock − line < 200 ms; passes on Mac WebKit): KNOWN_ISSUES KI-10 first (starved Linux WebKit frames: read the fill/glint animation clocks, not observer timing), reproduce with `pnpm e2e:linux`; the other failure, `molten-fields` slider drag, is C-78 (known). CI 45448474577 on `18fb555` was running at the handoff: read it. (2) Design review = APPROVE WITH FIXES: **H1** (fix before the tick, test first) first-view pour lacks the reference's "+N" stamp ("+720", reference `pour()` always stamps): stamp `kind === "pour"` in `IngotPour.tsx` ~126 / `src/lib/motion/ingot.ts` ~137 (or a DECISIONS deviation) + a parity frame of the first-view pour ~500 ms; **M2** reduced motion: unlock ring still scales (skip or opacity-only, `IngotPour.tsx` ~383) and `.m-ingot` lift transitions .12 s (`transition: none` under `.rm` / `[data-reduce-motion="true"]`, `ingot-pour.css`) + E2E; **M3** `RedeemCode` measures clock skew at mount: take `skew`/`receivedAt` as a prop captured when the response arrives + CARRIED row to P1-16; **M4** one DECISIONS entry for PD-10's deviations (320 ring wrap, rays spin only when unlocked, stream under the liquid, 1.6 s multi-ingot hold, card fades in reduced motion, dimmed expired state, stamp). LOWs L5–L8 in FOLLOWUPS. (3) `gh workflow run scheduled.yml --ref wip/PD-10 -f suite=perf` (vault 60 fps pour trace, CI only; re-checks PD-09 convergence whose retry read 33.3 ms once). (4) `pnpm gate:task`, acceptance walk, tick PD-10, closing push to main via the hook after CI green.
-- **Tested:** `pnpm gate:task` PASS on `5c7536d` (unit 2072/0, int 1456/0/1, PD-10 E2E 6/0, parity PD-10 4/0); on `18fb555`: vault parity 4/4 (Chromium + WebKit, Mac), 320 code-fit E2E 2/2 (desktop1440 + iphone14), pre-push `pnpm check` PASS; vault.spec desktop1440 48/48 (×3); screenshots 320/390/1440 of /dev/molten vault + /vault/<id> inspected; design review run.
-- **Not yet tested:** CI 45448474577 on `18fb555` (running); Linux WebKit landing test (red, above); @fps pour trace; real devices (H-13).
-- **Before work:** no new env vars, migrations or seeds. WSL laptop: Docker from WSL was down at the previous handoff (KI-46 / Docker Desktop WSL integration).
+- **Handoff by talha.syed, 25 Nov 2026 ~00:20 UTC (Mac); baton free. Autopilot OFF.**
+- **Finished: PD-10** (Gold Vault pour, reward unlocked, redeem code), ticked in its closing commit **`wip/PD-10` @ `873dbf6`** (pushed; rebased onto main `7d02512`). Includes the design review fixes (H1 first-view "+720" stamp + parity frame; M2 reduced-motion unlock; M3 `RedeemCode` `receivedAt`, C-81 → P1-16; M4 DECISIONS), the Linux WebKit-proof landing E2E, component tests, the parity harness fixes (KI-47) and the frame-rate p95 rounding.
+- **Half-done: PD-10 is not on main yet.** Its CI **45461722765** on `873dbf6` was running at the handoff (the run before, 45454982533, was red only on the first-view parity frame at 390, 2.02% vs 2% → that frame's limit 2.2%, DECISIONS 24 Nov). **Continue exactly here:** (1) `git switch wip/PD-10 && git merge --ff-only origin/wip/PD-10`; HEAD must be `873dbf6`. (2) Read CI 45461722765: green → `git merge origin/main` (main's later commits are progress-only; on a PROGRESS/SESSION_LOG conflict keep **main's** version, then re-apply the PD-10 tick in `docs/PHASES.md` if lost and the C-81 CARRIED row), then `git push origin HEAD:main` through the hook (it checks CI on the code commit). Red → fix first (KNOWN_ISSUES), push the branch, wait for its CI. (3) Then PD-11 (restyle sweep, full parity sweep, C-78/C-79/C-80) and the PD-C close (H-49).
+- **Tested:** `pnpm gate:task` PASS on `873dbf6` (unit 2075/0, int 1456/0/1, E2E PD-10 12/0, parity 4/0); on `bf7c3b9` (same code but the 2.2% limit): E2E PD-10+PD-09 27/0, perf 3/0, parity 12/0; frame-rate suite **45454984125 GREEN** on the branch (vault 60 fps pour trace; PD-09 convergence); Linux WebKit (`e2e:linux`) PD-10 vault tests 4/4; vault parity 16/16 over 4 repeats.
+- **Not yet tested:** CI 45461722765 (running); one local parity run failed 2 tests on the first run after a fresh build, then 4/4 and 16/16 (not root-caused; watch CI's parity job); real devices (H-13).
+- **Before work:** no new env vars, migrations or seeds.
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov). Then P1 resumes with the P1-B close. P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **PD-C** (PD-07 + PD-08 on main 23 Nov, PD-09 24 Nov; PD-10 in progress on `wip/PD-10`; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-24 (~17:35 UTC), talha.syed (handoff; PD-10 on `wip/PD-10` `18fb555`, Linux WebKit landing test + design review H1/M2–M4 next)
+- **Last updated:** 2026-11-25 (~00:20 UTC), talha.syed (handoff; PD-10 done on `wip/PD-10` `873dbf6`, to main on green CI 45461722765)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). **PD-09 on main 24 Nov** (CI 45357702882 green). **PD-10 in progress** (`wip/PD-10` `18fb555`, gate:task PASS on `5c7536d`; CI red on a Linux WebKit landing test; design review H1 + M2–M4 to fix; @fps pour trace left). Scheduled run 45397054403's float failure fixed on the branch (p95 rounding).
+- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). **PD-09 on main 24 Nov** (CI 45357702882 green). **PD-10 done 24 Nov** on `wip/PD-10` `873dbf6` (to main on green CI 45461722765).
 
 ## Next (top 3)
-1. Finish PD-10 on `wip/PD-10` (`18fb555`): Linux WebKit landing test (CI 45441098126), design review H1 + M2–M4, perf suite dispatch (@fps pour trace + PD-09 convergence), gate, tick → main.
-2. PD-11 (restyle sweep, parity close) then the PD-C close (H-49).
-3. Human any time: H-48b, H-45 (🟠), H-38 (branches; add `wip/PD-09`), H-51 (b).
+1. PD-10 to main: CI 45461722765 green → merge main's progress commits into `wip/PD-10`, push to main via the hook (see handoff).
+2. PD-11 (restyle sweep, full parity sweep, C-78/C-79/C-80) then the PD-C close (H-49).
+3. Human any time: H-48b, H-45 (🟠), H-38 (branches; add `wip/PD-10` once on main), H-51 (b).
 
 ## CARRIED (a task can't be ticked while a row targets it)
 Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026, human-approved, to keep this file light): read it at every phase close and when a P2–P5 task starts, and move a phase's rows back here when that phase starts. The same rule applies there: a task can't be ticked while a row targets it.
@@ -54,6 +54,7 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 | C-78 | CI 45101535248 (PD-B close) | PD phase gate (PD-11) | Linux WebKit: `molten-fields` slider drag's final track press keeps 720 (3/3 there; passed in CI 45090767908 + 45096798286, host WebKit 6/6): root-caused and the WebKit assertion un-quarantined | CI WebKit run + SESSION_LOG |
 | C-79 | PD-07 CI (perf 45153452036, main 45153456299) | PD-11 (PD-C close) | pixel7 `@fps` FX stress (≥ 58 fps, p95 ≤ 16.8 ms at 4× CPU) un-quarantined: cause found (runner variance vs. a dock/FX frame cost), fixed if real; TEMPORARY T-7 closed | nightly perf run green on pixel7 + SESSION_LOG |
 | C-80 | PD-08 design review M4 | PD-11 (restyle sweep) | The app's shop page shows the reference's compact Gold Vault line (`MiniVault`, `data-wipe-bar` + a `data-rise` slot, so the wipe fills it 420 / 900 ms) beside or instead of the P1-08 vault card, decided with the page restyle; the offers row (`OfferCard`) comes with P3-05 | E2E: the bar fills during the wipe + screenshots 390/1440 |
+| C-81 | PD-10 design review M3 | P1-16 | `RedeemCode` gets `receivedAt` = the phone's `Date.now()` when the redeem response arrives (not at mount), with `serverNow`/`expiresAt` from that response | E2E: a code shown after a delay counts from the response |
 | C-17 | Stryker | P1-18 (human 17 Nov) | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 | C-48 | P0-15 E (human 17 Nov) | P1-18 | P0-15 leftovers: health.backup shows no alert on staging with `BACKUPS_ENABLED=true` (health snapshot); UptimeRobot staging monitors (H-45) + alert on both phones when staging is stopped (AC8); ZAP baseline (weekly) + k6 smoke (twice weekly) wired against staging, zero failed requests during a deploy under k6 (AC2) and rollback under load (AC3); B2 overwrite leaves the locked version (D design HIGH 1); two workers run each scheduled job once (AC6) if not already proven | staging snapshots + workflow runs + SESSION_LOG |
 | C-49 | P0 close (human 17 Nov) | P1-18 + P1 `/phase-complete` | P0's heavy gate and definition of done: `gate:phase` covers P0 + P1; code/security/design reviews of P0-E commits not yet reviewed (at the P1-A close); P0 DoD bullets checked; client demo covers P0 + P1 together (`docs/DEMO_GUIDE.md` + Demo 2). (P0 close lines in PHASES ticked 17 Nov by the human's decision.) | gate:phase summary + SESSION_LOG + DEMO_NOTES |
@@ -65,11 +66,11 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 ## Map of the codebase
 In **`progress/MAP.md`** (read when you need to locate code; add new important paths there).
 
-## Last verified (24 Nov 2026)
+## Last verified (25 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- PD-10 `5c7536d`: `pnpm gate:task` PASS (unit 2072/0, int 1456/0, E2E PD-10 6/0, parity PD-10 4/0 Chromium + WebKit).
-- PD-10 CI 45441098126 on `8379344`: RED on WebKit only (new landing test on Linux webkit + iphone14; C-78 slider); every other job green incl. parity. CI 45448474577 on `18fb555` running.
-- Scheduled 45397054403 on main: RED (PD-09 @fps convergence float 16.800000000000068; retry 33.3) → rounding on `wip/PD-10`; not re-verified on CI.
+- PD-10 `873dbf6`: `pnpm gate:task` PASS (unit 2075/0, int 1456/0, E2E 12/0, parity 4/0); CI 45461722765 running at the handoff.
+- PD-10 frame-rate suite 45454984125 (branch): GREEN (vault @fps pour trace; PD-09 convergence with the p95 rounding).
+- CI 45454982533 on `c624207`: red only on parity `vault-first-view-390` 2.02% vs 2% → limit 2.2% (DECISIONS 24 Nov); every other job green incl. WebKit.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 
