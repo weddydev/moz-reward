@@ -2842,6 +2842,10 @@ html:root.rm .m-cover > .m-cover-back {
   display: flex;
   align-items: center;
   gap: 14px;
+  /* At 320 the six digits and the ring (≈ 260 px) don't fit the card (the reference clips the ring there): the
+     ring wraps under the digits. From 390 up they share a row, as the reference. */
+  flex-wrap: wrap;
+  row-gap: 10px;
 }
 .m-digits {
   display: flex;

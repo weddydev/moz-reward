@@ -569,3 +569,28 @@ test("[PD-10] the pour lands when the liquid reaches its level, not after the gl
   expect((fill?.unlocked ?? 0) - (fill?.line ?? 0)).toBeGreaterThan(200);
   expect((fill?.unlocked ?? 0) - (fill?.line ?? 0)).toBeLessThan(400);
 });
+
+test("[PD-10] the redeem code fits the reward card at 320: digits and ring inside, the ring wraps under", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto("/dev/molten");
+  await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
+  const vault = page.locator('[data-parity="vault"]');
+  await vault.scrollIntoViewIfNeeded();
+  await expect(vault.locator(".ingot-pour")).toHaveAttribute("data-ingot-state", "done");
+  await vault.getByRole("button", { name: "Fill the vault" }).click();
+  await vault.getByRole("button", { name: "Redeem" }).click();
+  await expect(page.getByRole("timer")).toBeVisible();
+  const fit = await page.evaluate(() => {
+    const card = document.querySelector('[data-testid="reward-card"]')?.getBoundingClientRect();
+    const parts = [".m-digits", ".m-ring-cd"].map((s) =>
+      document.querySelector(`[data-testid="redeem-code"] ${s}`)?.getBoundingClientRect(),
+    );
+    return {
+      inside: parts.every((r) => card && r && r.left >= card.left && r.right <= card.right),
+      wrapped: (parts[1]?.top ?? 0) >= (parts[0]?.bottom ?? 0),
+    };
+  });
+  expect(fit).toEqual({ inside: true, wrapped: true });
+});
