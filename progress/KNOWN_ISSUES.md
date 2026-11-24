@@ -10,6 +10,7 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 **KI-46 · Commit refused "[gitleaks] neither `gitleaks` nor Docker is available", or a wip push fails on "sast: could not run Docker (spawnSync docker EPIPE)" (WSL laptop)** — 24 Nov.
 - Cause: Docker Desktop (Windows, per-user install) isn't running after a Windows restart; WSL has no Docker of its own (`/usr/bin/docker` is Desktop's CLI shim), so `sudo systemctl start docker` does nothing.
+- 24 Nov, still open: after a Docker Desktop start, its `settings-store.json` had WSL integration **off** (`IntegratedWslDistros: []`, `EnableIntegrationWithDefaultWslDistro: false`; H-51 had turned it on 22 Nov). Claude switched both back on in the file (old file saved as `settings-store.json.bak-2026-11-24` beside it; the human stopped that step midway) and Docker Desktop reports running, but `docker info` from WSL still had no answer at the handoff. Check Docker Desktop → Settings → Resources → WSL integration → Ubuntu-24.04 in the UI first.
 - Fix: start it from WSL: `cd /mnt/c/Users/DELL/AppData/Local/Programs/DockerDesktop && cmd.exe /c start "" "Docker Desktop.exe"`, wait until `docker info` answers (~1 min). Commits alone also work with the pinned gitleaks 8.30.1 binary in `~/.local/bin` (checksum-verified 24 Nov; not on PATH by default: `export PATH="$HOME/.local/bin:$PATH"`). Never `--no-verify`.
 
 **KI-02 · A gate step "TIMED OUT"** — a hung process, never a slow machine.
