@@ -3,11 +3,17 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
-import { GildedGate, GildedGateMorph } from "@/components/motion/GildedGate";
+import {
+  GildedGate,
+  GildedGateMorph,
+  gateTimelineFor,
+  gateVars,
+} from "@/components/motion/GildedGate";
 import { buttonClasses } from "@/components/ui/button-classes";
 import { MARKETING_CONSENT_VERSION, marketingConsentParts } from "@/features/join/consent";
 import { JoinCta } from "@/features/join/JoinCta";
 import { LandingFooter, ShopLanding } from "@/features/landing/ShopLanding";
+import { areaLine } from "@/features/landing/view";
 import { StatePage } from "@/features/portal/StatePage";
 import { normaliseShopCode } from "@/lib/codes";
 import { gateEntrySource } from "@/lib/motion/gilded-gate";
@@ -148,25 +154,31 @@ export default async function ShopLandingPage({
       />
     );
   const gate = gateEntrySource(query.src);
-  const nonce = gate ? ((await headers()).get("x-nonce") ?? undefined) : undefined;
+  const page = (
+    <ShopLanding
+      data={data}
+      collect={collect}
+      member={visitor.kind === "member"}
+      now={new Date()}
+    />
+  );
+  if (!gate) return page;
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const timeline = gateTimelineFor(data.shop.name);
+  // The wrapper carries the per-name timeline to the gate and to the page content that rises at the hand-off.
   return (
-    <>
-      {gate ? (
-        <GildedGate
-          code={code}
-          name={data.shop.name}
-          logoUrl={data.shop.logoUrl}
-          coverUrl={data.shop.coverUrl}
-          nonce={nonce}
-        />
-      ) : null}
-      <ShopLanding
-        data={data}
-        collect={collect}
-        member={visitor.kind === "member"}
-        now={new Date()}
+    <div className="contents" style={gateVars(timeline)}>
+      <GildedGate
+        code={code}
+        name={data.shop.name}
+        sub={areaLine(data.shop.category, data.shop.town)}
+        logoUrl={data.shop.logoUrl}
+        coverUrl={data.shop.coverUrl}
+        timeline={timeline}
+        nonce={nonce}
       />
-      {gate ? <GildedGateMorph nonce={nonce} /> : null}
-    </>
+      {page}
+      <GildedGateMorph timeline={timeline} nonce={nonce} />
+    </div>
   );
 }

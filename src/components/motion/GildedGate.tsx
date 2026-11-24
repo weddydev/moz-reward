@@ -1,37 +1,62 @@
 import "./gilded-gate.css";
 import { CoverArt } from "@/features/landing/ShopLanding";
-import { initialsOf } from "@/lib/initials";
-import { GATE, gateMorphScript, gateOutlinePaths, gateScript } from "@/lib/motion/gilded-gate";
+import {
+  GATE,
+  gateMorphScript,
+  gateSceneScript,
+  gateScript,
+  gateTimeline,
+  gateTitle,
+  type GateTimeline,
+} from "@/lib/motion/gilded-gate";
+import { GateScene } from "./GateScene";
 import { GildedGateLoader } from "./GildedGateLoader";
 
+/** The per-name timeline and the CSS custom properties that carry it (on a wrapper round gate and page). */
+export function gateTimelineFor(name: string): GateTimeline {
+  return gateTimeline(gateTitle(name).letters);
+}
+
+export function gateVars(t: GateTimeline): React.CSSProperties {
+  return {
+    "--gate-total": `${String(t.totalMs)}ms`,
+    "--gate-handoff": `${String(t.handoffMs)}ms`,
+  } as React.CSSProperties;
+}
+
 /**
- * Gilded Gate (P1-03, DESIGN §8.1): server-rendered only for `src=qr|nfc`, before the landing content so its
- * pre-paint script runs before any of the page is painted. Hidden unless that script plays it (see
- * `src/lib/motion/gilded-gate.ts`). Decorative and `aria-hidden`: the shop's name is the page's own h1, and
- * nothing in it takes focus. The page's `[data-gate-cover]` is the morph target; `[data-gate-rise]` items rise
- * with a 40ms stagger as it lands (`--rise-i`). `GildedGateMorph` goes after the landing content.
+ * Gilded Gate 2.0 (P1-03, PD-09, DESIGN §8.1): server-rendered only for `src=qr|nfc`, before the landing content
+ * so its pre-paint script runs before any of the page is painted. Hidden unless that script plays it (see
+ * `src/lib/motion/gilded-gate.ts`); the scene script right after it starts the reference timeline (canvas
+ * particles + Web Animations) during parse. Decorative and `aria-hidden`: the shop's name is the page's own h1,
+ * and nothing in it takes focus. The page's `[data-gate-cover]` is the morph target (the cover grows out of the
+ * coin at the hand-off); `[data-gate-rise]` items rise with a 40ms stagger as it lands (`--rise-i`).
+ * `GildedGateMorph` goes after the landing content; the page wraps both in `gateVars(timeline)`.
  */
 export function GildedGate({
   code,
   name,
+  sub,
   logoUrl,
   coverUrl,
+  timeline,
   nonce,
 }: {
   code: string;
   name: string;
+  sub: string;
   logoUrl: string | null;
   coverUrl: string | null;
+  timeline: GateTimeline;
   nonce: string | undefined;
 }): React.JSX.Element {
-  const { width, height, radius, stroke } = GATE.frame;
-  const [left, right] = gateOutlinePaths(width, height, radius, stroke / 2);
   return (
     <>
       {/* suppressHydrationWarning: the pre-paint script sets data-state before React hydrates. */}
       <div
         id={GATE.id}
         className="gilded-gate"
+        data-gate-host=""
         aria-hidden="true"
         data-testid="gilded-gate"
         suppressHydrationWarning
@@ -45,36 +70,7 @@ export function GildedGate({
           </div>
         </div>
         <div className="gate-stage">
-          {/* The frame is exactly centred; the welcome line hangs below it, so a late font swap can't move it. */}
-          <div className="gate-frame" data-gate-frame="">
-            <span className="gate-glow" />
-            <svg
-              className="gate-outline"
-              viewBox={`0 0 ${String(width)} ${String(height)}`}
-              width={width}
-              height={height}
-              focusable="false"
-            >
-              <path d={left} pathLength={1} />
-              <path d={right} pathLength={1} />
-            </svg>
-            <span className="gate-logo">
-              {logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- CDN variant, same as the landing logo
-                <img
-                  src={logoUrl}
-                  alt=""
-                  width={80}
-                  height={80}
-                  className="size-full object-cover"
-                />
-              ) : (
-                <span className="text-h2 text-ink">{initialsOf(name)}</span>
-              )}
-            </span>
-            <span className="gate-shimmer" />
-          </div>
-          <p className="gate-welcome font-display text-h2 text-ink">Welcome to {name}</p>
+          <GateScene name={name} sub={sub} logoUrl={logoUrl} />
         </div>
       </div>
       <script
@@ -83,22 +79,34 @@ export function GildedGate({
         // eslint-disable-next-line react/no-danger -- our own script; the only data is the JSON-escaped shop code
         dangerouslySetInnerHTML={{ __html: gateScript(code) }}
       />
+      <script
+        nonce={nonce}
+        suppressHydrationWarning
+        // eslint-disable-next-line react/no-danger -- our own functions' source + numeric timings, no request data
+        dangerouslySetInnerHTML={{ __html: gateSceneScript(timeline) }}
+      />
       <GildedGateLoader />
     </>
   );
 }
 
 /**
- * Step 4's morph (P1-03): an inline script placed after the landing markup, so it runs during parse, before
- * any framework JavaScript, and is ready long before 1000ms even on a slow phone.
+ * The hand-off morph (P1-03): an inline script placed after the landing markup, so it runs during parse, before
+ * any framework JavaScript, and is ready long before the hand-off even on a slow phone.
  */
-export function GildedGateMorph({ nonce }: { nonce: string | undefined }): React.JSX.Element {
+export function GildedGateMorph({
+  timeline,
+  nonce,
+}: {
+  timeline: GateTimeline;
+  nonce: string | undefined;
+}): React.JSX.Element {
   return (
     <script
       nonce={nonce}
       suppressHydrationWarning
       // eslint-disable-next-line react/no-danger -- our own functions' source + numeric config, no request data
-      dangerouslySetInnerHTML={{ __html: gateMorphScript() }}
+      dangerouslySetInnerHTML={{ __html: gateMorphScript(timeline.handoffMs) }}
     />
   );
 }

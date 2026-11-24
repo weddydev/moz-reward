@@ -178,6 +178,7 @@ export async function openForMotion(
   await page.clock.install({ time: new Date("2026-01-01T12:00:00Z") });
   await page.clock.pauseAt(new Date("2026-01-01T12:00:01Z"));
   await seedRandom(page);
+  await tagAnimations(page);
   await page.setViewportSize({ width, height });
   await page.goto(url);
   // The app's streamed content sits in a hidden boundary until React reveals it on a timer (PD-04: the first app
@@ -280,5 +281,104 @@ export async function sampleCurves(part: Locator): Promise<Sample[]> {
           return { x: m.e, y: m.f, scale: Math.hypot(m.a, m.b), opacity: Number(cs.opacity) };
         })
     );
+  });
+}
+
+/**
+ * Timer-driven moments (the Gilded Gate intro, PD-09). The reference starts each beat with a timer and
+ * `el.animate()`; the app starts them all at once with delays. Under the paused page clock both are run to the
+ * same instant (`page.clock.runFor`: timers and the canvas's rAF frames), then every animation is paused and set
+ * to its own age: now minus when it was created (`tagAnimations` stamps that), or minus the trigger for one
+ * that wasn't created by `animate()` (CSS). So a beat the reference creates at 1250 ms lines up with the app's
+ * delay of 1250 ms.
+ */
+export async function tagAnimations(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    type Animate = (this: Element, ...args: Parameters<Element["animate"]>) => Animation;
+    const animate: Animate = Reflect.get(Element.prototype, "animate");
+    Element.prototype.animate = function (
+      this: Element,
+      ...args: Parameters<Element["animate"]>
+    ): Animation {
+      const a = animate.apply(this, args);
+      Reflect.set(a, "__born", performance.now());
+      return a;
+    };
+  });
+}
+
+/** The same seeded `Math.random` as `seedRandom`, restarted (both pages then draw the same particles). */
+export async function reseed(page: Page, seed = 1): Promise<void> {
+  await page.evaluate((s) => {
+    let a = s >>> 0;
+    Math.random = () => {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }, seed);
+}
+
+/** Clicks `target` inside `part` (dispatched, as `fire`) and notes the page-clock time as the trigger. */
+export async function fireTimed(page: Page, part: string, target: string): Promise<void> {
+  await page.evaluate(
+    ({ name, sel }) => {
+      const el = document.querySelector(`[data-parity="${name}"]`)?.querySelector(sel);
+      if (!el) throw new Error(`trigger target missing: ${name} ${sel}`);
+      const r = el.getBoundingClientRect();
+      Reflect.set(window, "__trigger", performance.now());
+      el.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          clientX: r.x + r.width / 2,
+          clientY: r.y + r.height / 2,
+        }),
+      );
+    },
+    { name: part, sel: target },
+  );
+}
+
+/** Pauses every animation at its own age (see `tagAnimations`); "rest" sends finite ones to their end. */
+export async function freezeTimed(page: Page, rest = false): Promise<void> {
+  await page.evaluate((toEnd) => {
+    void document.documentElement.getBoundingClientRect();
+    const trigger = Number(Reflect.get(window, "__trigger") ?? 0);
+    const now = performance.now();
+    for (const a of document.getAnimations()) {
+      if (a.timeline !== document.timeline) {
+        a.cancel();
+        continue;
+      }
+      a.pause();
+      const end = a.effect?.getComputedTiming().endTime;
+      const finite = typeof end === "number" && Number.isFinite(end);
+      if (toEnd) {
+        a.currentTime = finite ? end : 0;
+        continue;
+      }
+      const born: unknown = Reflect.get(a, "__born");
+      a.currentTime = Math.max(0, now - (typeof born === "number" ? born : trigger));
+    }
+    for (const c of document.querySelectorAll<HTMLCanvasElement>("canvas#fx, canvas[data-fx]"))
+      c.style.visibility = "hidden";
+  }, rest);
+}
+
+/**
+ * The intro at rest for the static spec: once it has played (its canvas was sized for a run), a tap on the stage
+ * skips it to the rest frame on both pages.
+ */
+export async function settleIntro(page: Page): Promise<void> {
+  await page.waitForFunction(() => {
+    const cv = document.querySelector('[data-parity="intro"] canvas');
+    return cv instanceof HTMLCanvasElement && cv.width !== 300;
+  });
+  await page.evaluate(() => {
+    const stage = document.querySelector('[data-parity="intro"] > div');
+    stage?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1 }));
   });
 }

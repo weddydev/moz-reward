@@ -6,7 +6,9 @@ import {
   gateMorph,
   gateMorphScript,
   type GateMorph,
-  gateOutlinePaths,
+  gateTimeline,
+  gateTitle,
+  gateSceneScript,
   gateScript,
   gateStorageKey,
 } from "./gilded-gate";
@@ -22,14 +24,58 @@ describe("[P1-03] gateEntrySource", () => {
   });
 });
 
-describe("[P1-03] timeline", () => {
-  it("lasts about 1.4 s and the steps follow DESIGN §8.1", () => {
-    expect(GATE.totalMs).toBe(1400);
-    expect(GATE.drawEndMs).toBe(200);
-    expect(GATE.logoEndMs).toBe(700);
-    expect(GATE.shimmerEndMs).toBe(1000);
+describe("[PD-09] timeline (DESIGN §8.1, the reference intro's beats)", () => {
+  it("keeps the reference's beat times", () => {
+    expect(GATE.sparkMs).toBe(520);
+    expect(GATE.convergeAt).toBe(300);
+    expect(GATE.igniteAt).toBe(1250);
+    expect(GATE.orbitAt).toBe(1420);
+    expect(GATE.forge.at).toBe(1480);
+    expect(GATE.shineAt).toBe(2350);
+    expect(GATE.forge).toMatchObject({ leadMs: 120, staggerMs: 40, letterMs: 760 });
+    expect(GATE.shine).toEqual({ durMs: 1200, staggerMs: 45 });
     expect(GATE.reducedMs).toBeLessThanOrEqual(150);
     expect(GATE.riseStepMs).toBe(40);
+  });
+
+  it("hands off once the name has forged: Brew & Bloom (10 letters) at 2720 ms, 3.12 s in all", () => {
+    const t = gateTimeline(10);
+    expect(t.staggerMs).toBe(40);
+    expect(t.forgeEndMs).toBe(1480 + 120 + 9 * 40 + 760);
+    expect(t.subDelayMs).toBe(120 + 10 * 40 + 200);
+    expect(t.handoffMs).toBe(2720);
+    expect(t.totalMs).toBe(3120);
+  });
+
+  it("never hands off before 2.4 s (a one-letter name)", () => {
+    expect(gateTimeline(1).handoffMs).toBe(2400);
+    expect(gateTimeline(0).handoffMs).toBe(2400);
+  });
+
+  it("long names: the stagger shrinks so the last letter lands by 3.2 s (gate ≤ 3.6 s)", () => {
+    expect(gateTimeline(22).staggerMs).toBe(40);
+    for (const n of [23, 40, 80]) {
+      const t = gateTimeline(n);
+      expect(t.staggerMs).toBeLessThan(40);
+      expect(t.forgeEndMs).toBeCloseTo(3200, 9);
+      expect(t.totalMs).toBeLessThanOrEqual(3600);
+    }
+  });
+});
+
+describe("[PD-09] gateTitle (letters forged one by one, wrapped by word)", () => {
+  it("splits into words of letters and counts them (spaces aren't letters)", () => {
+    expect(gateTitle("Brew & Bloom")).toEqual({
+      words: [["B", "r", "e", "w"], ["&"], ["B", "l", "o", "o", "m"]],
+      letters: 10,
+      longestWord: 5,
+    });
+  });
+
+  it("keeps grapheme clusters whole and ignores extra spaces", () => {
+    const t = gateTitle("  Café  👩‍🍳 Ltd ");
+    expect(t.words).toEqual([["C", "a", "f", "é"], ["👩‍🍳"], ["L", "t", "d"]]);
+    expect(t.letters).toBe(8);
   });
 });
 
@@ -50,6 +96,7 @@ function runScript(
   stored: Map<string, string>;
   fire: (type: string, init?: Record<string, unknown>) => void;
   end: (target: "gate" | "child") => void;
+  hide: () => void;
 } {
   const attrs = new Map<string, string>();
   const panel = {
@@ -82,9 +129,11 @@ function runScript(
           getItem: (k: string) => stored.get(k) ?? null,
           setItem: (k: string, v: string) => stored.set(k, v),
         };
+  const docListeners = new Map<string, () => void>();
   const document = {
     hidden: opts.hidden ?? false,
     getElementById: (id: string) => (id === GATE.id && !opts.noGate ? gate : null),
+    addEventListener: (t: string, f: () => void) => docListeners.set(t, f),
   };
   runInNewContext(gateScript(code), {
     document,
@@ -98,6 +147,10 @@ function runScript(
     stored,
     fire: (type, init = {}) => winListeners.get(type)?.({ type, target: document, ...init }),
     end: (target) => gateListeners.get("animationend")?.({ target: target === "gate" ? gate : {} }),
+    hide: () => {
+      document.hidden = true;
+      docListeners.get("visibilitychange")?.();
+    },
   };
 }
 
@@ -138,6 +191,12 @@ describe("[P1-03] gateScript (runs before first paint)", () => {
     expect(r.state()).toBe("play");
     r.fire("scroll", { target: {} }); // an inner scroller (or code scrolling one) is not the page
     expect(r.state()).toBe("play");
+  });
+
+  it("[PD-09] the tab going to the background ends it (it finishes at its end state)", () => {
+    const r = runScript("K7Q42M");
+    r.hide();
+    expect(r.state()).toBe("done");
   });
 
   it("ends itself when the gate's own animation ends, not a child's", () => {
@@ -213,16 +272,6 @@ describe("[P1-03] gateMorph (gate → cover shared element)", () => {
   });
 });
 
-describe("[P1-03] gateOutlinePaths", () => {
-  it("two halves that start together at the top centre and meet at the bottom centre", () => {
-    const [left, right] = gateOutlinePaths(168, 208, 28, 1);
-    expect(left.startsWith("M84 1")).toBe(true);
-    expect(right.startsWith("M84 1")).toBe(true);
-    expect(left.endsWith("H84")).toBe(true);
-    expect(right.endsWith("H84")).toBe(true);
-  });
-});
-
 describe("[P1-03] gateMorphScript (inlined, so its functions must stand alone)", () => {
   it("gateMorph's own source gives the same result in a bare context", () => {
     const bare = runInNewContext(`(${gateMorph.toString()})`, {
@@ -240,12 +289,40 @@ describe("[P1-03] gateMorphScript (inlined, so its functions must stand alone)",
   });
 
   it("parses, and does nothing (no throw) when there is no gate or it isn't playing", () => {
-    const script = gateMorphScript();
+    const script = gateMorphScript(2720);
     expect(script).not.toContain("</script");
     const run = (document: object) => (): void => {
       runInNewContext(script, { document });
     };
     expect(run({ getElementById: () => null })).not.toThrow();
     expect(run({ getElementById: () => ({ getAttribute: () => "done" }) })).not.toThrow();
+  });
+});
+
+describe("[PD-09] gateSceneScript (inlined after the gate markup)", () => {
+  it("parses, holds no closing script tag, and does nothing when there is no gate or it isn't playing", () => {
+    const script = gateSceneScript(gateTimeline(10));
+    expect(script).not.toContain("</script");
+    const run = (document: object) => (): void => {
+      runInNewContext(script, { document, Math });
+    };
+    expect(run({ getElementById: () => null })).not.toThrow();
+    expect(run({ getElementById: () => ({ getAttribute: () => "done" }) })).not.toThrow();
+  });
+
+  it("waits for the CSS timeline (gate-life) and draws nothing under reduced motion (gate-fade)", () => {
+    const script = gateSceneScript(gateTimeline(10));
+    let readCalls = 0;
+    const gate = {
+      getAttribute: () => "play",
+      getAnimations: () => {
+        readCalls++;
+        return [{ animationName: "gate-fade" }];
+      },
+    };
+    expect(() => {
+      runInNewContext(script, { document: { getElementById: () => gate }, Math });
+    }).not.toThrow();
+    expect(readCalls).toBe(1);
   });
 });

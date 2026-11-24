@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { diffRatio } from "./support/diff";
-import { fire, TRIGGERS } from "./support/motion";
+import { fire, settleIntro, TRIGGERS } from "./support/motion";
 import {
   attachPair,
   capture,
@@ -89,6 +89,11 @@ test.describe("[PD-01] static parity", () => {
         if (TRIGGERS[part.name]?.waitFor) {
           await fire(ref, part.name);
           await fire(page, part.name);
+        }
+        // The intro plays once on load: both are skipped to its rest frame (PD-09).
+        if (part.name === "intro") {
+          await settleIntro(ref);
+          await settleIntro(page);
         }
         const a = await shot(ref, part.name);
         const b = await shot(page, part.name);

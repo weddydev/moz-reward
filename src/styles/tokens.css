@@ -196,6 +196,17 @@
   --tgl-ring: inset 0 2px 6px rgba(90, 60, 10, 0.2), inset 0 0 0 1px rgba(178, 128, 28, 0.35);
   --gold-pulse-0: 0 0 0 0 rgba(255, 201, 60, 0.7);
   --gold-pulse-1: 0 0 0 14px rgba(255, 201, 60, 0);
+  /* Gilded Gate 2.0 (PD-09; reference intro `.stage`, `#coinG`, `canvas.night`, `.flash`). */
+  --gate-pearl: #fffdf6;
+  --gate-night: #15100a;
+  --gate-flash: #fff3c4;
+  --gate-coin-0: #fff1bf;
+  --gate-coin-1: #f2c14e;
+  --gate-coin-2: #c8922c;
+  --gate-coin-3: #f5cf6b;
+  --gate-rim: #7c5510;
+  --gate-rim-light: #fff6d6;
+  --gate-ink: #5c3d0a;
   /* Star rating (PD-06; reference `.star svg`, `.stars:hover .star svg`). */
   --star-off: #f1e8d4;
   --star-hover: #f7ebc7;

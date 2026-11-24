@@ -47,7 +47,7 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     title: "Gilded Gate intro",
     anchor: 'id="intro"',
     task: "PD-09",
-    status: "pending",
+    status: "required",
   },
   {
     name: "language",

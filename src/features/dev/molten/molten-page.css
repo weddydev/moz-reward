@@ -654,3 +654,123 @@ body:has(.m-page) {
   gap: 14px;
   padding: 16px 18px;
 }
+
+/* ---------- Gilded Gate intro stage (PD-09; reference `#intro .stage`, `.stage-cap`, `.stage-ui`, `.beat`, `.pill`) ---------- */
+.m-stage {
+  position: relative;
+  height: 580px;
+  border-radius: 34px;
+  overflow: hidden;
+  cursor: pointer;
+  background: radial-gradient(
+    120% 90% at 50% 42%,
+    var(--gate-pearl) 0%,
+    var(--ivory) 52%,
+    var(--champagne) 100%
+  );
+  box-shadow:
+    0 40px 90px -40px rgba(124, 85, 16, 0.45),
+    inset 0 0 0 1px rgba(210, 160, 51, 0.3);
+}
+@media (max-width: 640px) {
+  .m-stage {
+    height: 520px;
+    border-radius: 26px;
+  }
+}
+.m-stage.paused *,
+.m-stage.paused *::before,
+.m-stage.paused *::after {
+  animation-play-state: paused !important;
+}
+.m-stage-cap {
+  position: absolute;
+  left: 20px;
+  top: 18px;
+  z-index: 9;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.m-stage-ui {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.m-beats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.m-beat {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font:
+    700 11px/1 var(--font-manrope),
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  background: rgba(255, 252, 245, 0.7);
+  border: 1px solid rgba(210, 160, 51, 0.25);
+  transition:
+    color 0.2s,
+    background 0.2s,
+    transform 0.3s var(--spring);
+}
+.m-beat.on {
+  color: var(--ink);
+  background: var(--gold-light);
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+.m-stage-btns {
+  display: flex;
+  gap: 8px;
+}
+.m-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(210, 160, 51, 0.45);
+  background: rgba(255, 252, 245, 0.85);
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    transform 0.4s var(--spring),
+    background 0.2s;
+}
+@media (hover: hover) and (pointer: fine) {
+  .m-pill:hover {
+    background: white;
+  }
+}
+.m-pill:active {
+  transform: scale(0.94);
+}
+.m-pill[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--gold-light);
+  border-color: var(--ink);
+}
+@media (max-width: 640px) {
+  .m-beats {
+    display: none;
+  }
+  .m-stage-ui {
+    justify-content: flex-end;
+  }
+}

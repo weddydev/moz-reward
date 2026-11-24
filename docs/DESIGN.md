@@ -222,6 +222,7 @@ Trigger and guarantees unchanged: landing on `/s/[code]` with `src=qr|nfc`, once
 4. 1420 ms **Orbit:** two tilted 3D orbit rings with coins fade in (900 ms spring; 8 s / 13 s loops).
 5. 1480 ms **Forge letters:** "Welcome to" settles its letter-spacing; each letter of the shop name rises from rotateX −85° while its weight goes 150 → 640 (760 ms, 40 ms stagger); the subtitle follows.
 6. 2350 ms **Shine:** light sweeps across the letters (1200 ms, 45 ms stagger); settled by 3800 ms.
+7. **Hand-off** (the app's gate only; the demo stage rests at 3.8 s instead): once the name has forged (≥ 2.4 s; 2.72 s for "Brew & Bloom"; ≤ 3.2 s for any name, the letter stagger shrinks above 22 letters) the cover grows out of the coin (400 ms), the scene and the pearl leave and the page rises (DECISIONS 24 Nov "PD-09").
 - Reduced motion: end state with a ≤ 150 ms fade. Lite tier: fewer particles, same beats.
 
 ### 8.2 Points credited (≈ 1.6s)

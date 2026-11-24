@@ -32,8 +32,8 @@ export function GatePreview(): React.JSX.Element {
   return (
     <Section title="Gilded Gate">
       <p className="text-small text-ink-2 max-w-prose">
-        First-scan entry on a shop landing (≈ 1.4s; tap or any key skips; reduced motion = a 150ms
-        fade). Enter a shop code (seeded demo shops: shop dashboard or{" "}
+        First-scan entry on a shop landing (≈ 3 s, Gilded Gate 2.0; tap or any key skips; reduced
+        motion = a 150ms fade). Enter a shop code (seeded demo shops: shop dashboard or{" "}
         <code>pnpm demo:credentials</code>) and replay it.
       </p>
       <label className="text-small flex max-w-xs flex-col gap-1 font-semibold">

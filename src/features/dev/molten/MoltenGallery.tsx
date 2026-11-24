@@ -1,5 +1,6 @@
 import { LivingBackground } from "@/components/motion/LivingBackground";
 import { Toaster } from "@/components/ui/Toast";
+import { IntroSection } from "./IntroSection";
 import { LabSection } from "./LabSection";
 import { LanguageSection } from "./LanguageSection";
 import { PARITY_PARTS } from "./parity-parts";
@@ -18,6 +19,7 @@ import "./molten-page.css";
  * shop (PD-08).
  */
 const SECTIONS: readonly { parts: readonly string[]; Section: () => React.JSX.Element }[] = [
+  { parts: ["intro"], Section: IntroSection },
   { parts: ["language"], Section: LanguageSection },
   {
     parts: [

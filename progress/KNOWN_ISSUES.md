@@ -25,6 +25,10 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 **KI-07 · Native Windows: bind mounts, `pnpm.cmd` spawns, unkillable process trees, Windows WebKit failures** — not fixed in code: work inside WSL2 (CLAUDE.md, H-51). Windows WebKit is never evidence.
 
+**KI-44 · `pnpm fix:changed` "refusing an unusual path: src/app/(public)/…/[code]/page.tsx"** — fixed 24 Nov (PD-09).
+- Cause: the plain-path guard (for the cmd.exe fallback on native Windows) also ran when no shell is used, and App Router paths carry `( ) [ ]`.
+- Fix: `scripts/fix-changed.ts` checks paths only when the invocation goes through a shell.
+
 ## WebKit (Linux CI + container)
 
 **KI-10 · WebKit-only E2E failure: an animated value reads wrong / "still animating" / opacity 0 or 0.98 after the animation reports done** — C-77, 23 Nov.

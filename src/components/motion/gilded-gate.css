@@ -1,12 +1,16 @@
 /*
- * Gilded Gate (P1-03, DESIGN §8.1). Timings mirror GATE in src/lib/motion/gilded-gate.ts (1.4s in all):
- *   0–200ms    the outline draws from the top centre round to the bottom (stroke-dashoffset)
- *   200–700ms  the logo fades and scales .92 → 1; a soft gold glow breathes once behind it
- *   700–1000ms a diagonal shimmer crosses the gate; "Welcome to {shop}" fades in below
- *   1000–1400ms the gate gives way to the cover (an inline script morphs a cover clone out of it); the ivory
- *              leaves and the page content rises 12px with a 40ms stagger (six items, the last lands at 1400ms)
- * Everything moves with transform and opacity (plus the stroke inside the gate). The gate is hidden unless its
- * pre-paint script sets data-state="play"; it hides itself at the end (visibility), and a skip hides it at once.
+ * Gilded Gate 2.0 (P1-03, PD-09, DESIGN §8.1). The scene's styles are the reference intro's (`.stage` children in
+ * design/reference/molten/index.html), ported verbatim; `playGateScene` (src/lib/motion/gilded-gate.ts) plays
+ * it with Web Animations from the moment it is parsed:
+ *   0–520ms     a gold spark breathes on the night canvas
+ *   300–1250ms  ≈950 particles (420 lite) spiral into the coin
+ *   1250ms      ignite: one flash, the shockwave, the night fades to pearl, the glow, the coin lands, the rays
+ *   1420ms      the orbit rings; 1480ms the letters forge; 2350ms the shine
+ *   hand-off    (--gate-handoff, after the name has forged; gateTimeline) the cover grows out of the coin (inline
+ *               morph script), the scene and the pearl leave, the page rises 12px with a 40ms stagger
+ * The host (`[data-gate-host]`: the real gate, or the /dev/molten stage) says what shows: `data-state="play"`
+ * (everything hidden until its beat), `"done"` (the rest frame) or nothing. The real gate is hidden unless its
+ * pre-paint script plays it; it hides itself at the end (visibility), and a skip hides it at once.
  */
 .gilded-gate {
   display: none;
@@ -16,17 +20,24 @@
   display: block;
   position: fixed;
   inset: 0;
-  z-index: 60; /* over the cookie notice (40) and toasts (50) for its 1.4s */
+  z-index: 60; /* over the cookie notice (40) and toasts (50) while it plays */
+  overflow: hidden;
   /* A swipe scrolls the page under it, and the scroll skips the gate (a pan never becomes a click). */
   -webkit-tap-highlight-color: transparent;
   user-select: none;
-  animation: gate-life 1400ms linear forwards;
+  animation: gate-life var(--gate-total, 3120ms) linear forwards;
 }
 
+/* The pearl the night fades to (the reference stage's own background). */
 .gate-bg {
   position: absolute;
   inset: 0;
-  background: var(--bg);
+  background: radial-gradient(
+    120% 90% at 50% 42%,
+    var(--gate-pearl) 0%,
+    var(--ivory) 52%,
+    var(--champagne) 100%
+  );
 }
 
 /* The morph's cover copy (server-rendered); the inline morph script sizes it onto the real cover and animates
@@ -45,115 +56,281 @@
 .gate-stage {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
+}
+/* A scene host (the real gate's stage, or the /dev/molten card): it sizes the scene. */
+.gate-stage,
+.m-stage {
+  isolation: isolate;
+  container-type: inline-size;
+  /* Where the coin sits and how big it is (the reference: 42% down, 168px). */
+  --gate-y: 42%;
+  --gate-k: 1;
+}
+/* Landscape phones: the coin moves up and shrinks so the name still fits under it. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .gilded-gate .gate-stage {
+    --gate-y: 34%;
+    --gate-k: 0.7;
+  }
 }
 
-.gate-frame {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 168px;
-  height: 208px;
-  flex: none;
-  border-radius: 28px;
-  overflow: hidden;
-}
+/* ---- the scene (reference `.stage` children) ---- */
 
-.gate-outline {
+.gate-rays {
   position: absolute;
-  inset: 0;
-  fill: none;
-  stroke: var(--gold-500);
-  stroke-width: 1.5;
-  stroke-linecap: round;
+  left: 50%;
+  top: var(--gate-y);
+  width: 1500px;
+  height: 1500px;
+  margin: -750px 0 0 -750px;
+  z-index: 1;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 200, 60, 0.34) 0deg 4deg,
+    rgba(255, 200, 60, 0) 4deg 15deg
+  );
+  -webkit-mask: radial-gradient(closest-side, black 8%, transparent 62%);
+  mask: radial-gradient(closest-side, black 8%, transparent 62%);
+  animation: gate-spin 70s linear infinite;
 }
-.gate-outline path {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 0;
-}
-
 .gate-glow {
   position: absolute;
-  width: 160px;
-  height: 160px;
+  left: 50%;
+  top: var(--gate-y);
+  width: calc(460px * var(--gate-k));
+  height: calc(460px * var(--gate-k));
+  margin: calc(-230px * var(--gate-k)) 0 0 calc(-230px * var(--gate-k));
   border-radius: 50%;
-  background: radial-gradient(
-    closest-side,
-    color-mix(in srgb, var(--gold-300) 70%, transparent),
-    transparent
-  );
-  opacity: 0.35;
+  z-index: 2;
+  background: radial-gradient(closest-side, rgba(255, 214, 102, 0.8), rgba(255, 214, 102, 0));
 }
-
-.gate-logo {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 80px;
-  height: 80px;
-  overflow: hidden;
-  border: 4px solid var(--surface);
-  border-radius: var(--r-md);
-  background: var(--gold-100);
-  box-shadow: var(--shadow-2);
+.gate-orbits {
+  position: absolute;
+  left: 50%;
+  top: var(--gate-y);
+  width: 0;
+  height: 0;
+  z-index: 3;
+  perspective: 900px;
 }
-
-.gate-shimmer {
+.gate-orbit {
+  position: absolute;
+  left: -180px;
+  top: -180px;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(178, 128, 28, 0.5);
+  transform: rotateX(74deg) rotateY(-14deg);
+  transform-style: preserve-3d;
+}
+.gate-orbit.gate-o2 {
+  left: -250px;
+  top: -250px;
+  width: 500px;
+  height: 500px;
+  transform: rotateX(78deg) rotateY(16deg);
+  border-color: rgba(178, 128, 28, 0.28);
+}
+.gate-spin {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    105deg,
-    transparent 30%,
-    color-mix(in srgb, var(--surface) 75%, transparent) 50%,
-    transparent 70%
-  );
-  transform: translateX(-100%);
+  animation: gate-orbit-spin 8s linear infinite;
+  transform-style: preserve-3d;
 }
-
-/* Hangs below the centred frame (frame height / 2 + a 20px gap), so its line count never moves the frame. */
+.gate-o2 .gate-spin {
+  animation-duration: 13s;
+  animation-direction: reverse;
+}
+.gate-spin b {
+  position: absolute;
+  left: 50%;
+  top: -14px;
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
+  border-radius: 50%;
+  background: var(--metal);
+  box-shadow:
+    0 0 16px rgba(255, 200, 60, 0.95),
+    inset 0 0 0 2px rgba(255, 246, 214, 0.6);
+}
+.gate-spin b + b {
+  top: auto;
+  bottom: -7px;
+  width: 13px;
+  height: 13px;
+  margin-left: -6px;
+}
+@media (max-width: 640px), (max-height: 520px) and (orientation: landscape) {
+  .gate-orbits {
+    transform: scale(0.68);
+  }
+}
+/* The night: the canvas's own background, so the gate is night from first paint, before anything is drawn. */
+.gate-night {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 6;
+  background: var(--gate-night);
+}
+.gate-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% var(--gate-y),
+    white 0%,
+    var(--gate-flash) 32%,
+    rgba(255, 236, 170, 0) 72%
+  );
+}
+.gate-shock {
+  position: absolute;
+  left: 50%;
+  top: var(--gate-y);
+  width: calc(180px * var(--gate-k));
+  height: calc(180px * var(--gate-k));
+  margin: calc(-90px * var(--gate-k)) 0 0 calc(-90px * var(--gate-k));
+  border-radius: 50%;
+  z-index: 7;
+  border: 3px solid var(--gold-bright);
+  box-shadow:
+    0 0 40px rgba(255, 206, 74, 0.9),
+    inset 0 0 30px rgba(255, 206, 74, 0.6);
+}
+.gate-coin {
+  position: absolute;
+  left: 50%;
+  top: var(--gate-y);
+  width: calc(168px * var(--gate-k));
+  height: calc(168px * var(--gate-k));
+  margin: calc(-84px * var(--gate-k)) 0 0 calc(-84px * var(--gate-k));
+  z-index: 8;
+  overflow: visible;
+  filter: drop-shadow(0 20px 30px rgba(124, 85, 16, 0.4));
+}
+.gate-coin-shine {
+  animation: gate-coin-shine 3.6s var(--ease-io) 2.6s infinite;
+}
+.gate-initials {
+  font:
+    600 64px/1 var(--font-fraunces),
+    "Fraunces Fallback Liberation",
+    "Fraunces Fallback Noto",
+    Georgia,
+    serif;
+  fill: var(--gate-ink);
+}
 .gate-welcome {
   position: absolute;
-  top: calc(50% + 104px + var(--space-20));
-  left: var(--space-24);
-  right: var(--space-24);
-  margin-inline: auto;
-  max-width: 18rem;
+  left: 0;
+  right: 0;
+  top: calc(var(--gate-y) + 104px * var(--gate-k));
+  z-index: 8;
   text-align: center;
-  text-wrap: balance;
-  overflow-wrap: anywhere;
+  padding: 0 16px;
+  pointer-events: none;
+}
+.gate-pre {
+  margin: 0;
+  font:
+    600 13px/1 var(--font-manrope),
+    "Manrope Fallback Liberation",
+    "Manrope Fallback Roboto",
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.gate-title {
+  margin: 8px 0 0;
+  /* The reference's size; a word too long for the stage scales down to fit (no mid-word break). */
+  font:
+    600 min(clamp(40px, 8vw, 76px), calc((100cqw - 32px) / (var(--gate-longest, 1) * 0.62))) / 1
+      var(--font-fraunces),
+    "Fraunces Fallback Liberation",
+    "Fraunces Fallback Noto",
+    Georgia,
+    serif;
+  letter-spacing: -0.03em;
+  perspective: 600px;
+  color: var(--ink);
+}
+.gate-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+.gate-ch {
+  display: inline-block;
+  transform-origin: 50% 100%;
+  font-variation-settings:
+    "opsz" 144,
+    "SOFT" 50,
+    "WONK" 1,
+    "wght" 640;
+  background: var(--metal-text);
+  background-size: 300% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding-bottom: 0.06em;
+}
+.gate-sub {
+  margin: 12px 0 0;
+  font-weight: 600;
+  color: var(--ink-2);
+  font-size: 15px;
 }
 
-/* ---- the timeline (only while playing) ---- */
+/* ---- states: hidden until its beat while playing; the rest frame when done ---- */
 
-.gilded-gate[data-state="play"] .gate-outline path {
-  animation: gate-draw 200ms var(--ease-out) backwards;
+.gate-rays,
+.gate-glow,
+.gate-orbits,
+.gate-night,
+.gate-flash,
+.gate-shock,
+.gate-coin,
+.gate-pre,
+.gate-ch,
+.gate-sub {
+  opacity: 0;
 }
-.gilded-gate[data-state="play"] .gate-glow {
-  animation: gate-glow 500ms var(--ease-in-out) 200ms backwards;
+[data-gate-host][data-state="play"] .gate-night {
+  opacity: calc(1 - var(--gate-rest, 0));
 }
-.gilded-gate[data-state="play"] .gate-logo {
-  animation: gate-logo 500ms var(--ease-out) 200ms backwards;
+[data-gate-host][data-state="done"] {
+  --gate-rest: 1;
 }
-.gilded-gate[data-state="play"] .gate-shimmer {
-  animation: gate-shimmer 300ms var(--ease-in-out) 700ms forwards;
+:is(.gate-rays, .gate-orbits, .gate-coin, .gate-pre, .gate-ch, .gate-sub) {
+  opacity: var(--gate-rest, 0);
 }
-.gilded-gate[data-state="play"] .gate-welcome {
-  animation: gate-welcome 300ms var(--ease-out) 700ms backwards;
+.gate-glow {
+  opacity: calc(var(--gate-rest, 0) * 0.55);
 }
+
+/* ---- the hand-off (real gate only) ---- */
+
 .gilded-gate[data-state="play"] .gate-stage {
-  animation: gate-stage-out 250ms var(--ease-out) 1000ms forwards;
+  animation: gate-stage-out 250ms var(--ease-out) var(--gate-handoff, 2720ms) forwards;
 }
 .gilded-gate[data-state="play"] .gate-bg {
-  animation: gate-bg-out 350ms var(--ease-out) 1000ms forwards;
+  animation: gate-bg-out 350ms var(--ease-out) var(--gate-handoff, 2720ms) forwards;
 }
 
-/* The page under the gate: hidden until step 4, then rises in order (backwards fill: nothing stays applied). */
+/* The page under the gate: hidden until the hand-off, then rises in order (backwards fill: nothing stays). */
 :root:has(.gilded-gate[data-state="play"]) [data-gate-rise] {
-  animation: gate-rise 200ms var(--ease-out) calc(1000ms + var(--rise-i, 0) * 40ms) backwards;
+  animation: gate-rise 200ms var(--ease-out)
+    calc(var(--gate-handoff, 2720ms) + var(--rise-i, 0) * 40ms) backwards;
 }
 
-/* While a clone of the cover morphs out of the gate, the real cover waits underneath, so there is only ever one
+/* While a clone of the cover morphs out of the coin, the real cover waits underneath, so there is only ever one
    cover on screen; when the gate ends (or is skipped) it is simply there, where the clone landed. The rising
    content stays above the clone (the logo overlaps the cover's foot) and lets taps through to the gate, which
    skips it: nothing under the gate can be pressed by accident. */
@@ -166,10 +343,12 @@
   pointer-events: none;
 }
 
-/* Reduced motion (system, unless the user chose full motion; or the user's own toggle): no movement, the
-   gate's end frame fades away in 150ms and the page is simply there. */
+/* Reduced motion (system, unless the user chose full motion; or the user's own toggle): no movement, the gate's
+   rest frame (coin, name, pearl) fades away in 150ms and the page is simply there. The scene script plays
+   nothing then (the root runs gate-fade, not gate-life). */
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-reduce-motion="false"]) .gilded-gate[data-state="play"] {
+    --gate-rest: 1;
     animation: gate-fade 150ms var(--ease-out) forwards;
   }
   :root:not([data-reduce-motion="false"]) .gilded-gate[data-state="play"] *,
@@ -178,6 +357,7 @@
   }
 }
 :root[data-reduce-motion="true"] .gilded-gate[data-state="play"] {
+  --gate-rest: 1;
   animation: gate-fade 150ms var(--ease-out) forwards;
 }
 :root[data-reduce-motion="true"] .gilded-gate[data-state="play"] *,
@@ -190,36 +370,23 @@
     visibility: hidden;
   }
 }
-@keyframes gate-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-}
-@keyframes gate-glow {
-  from {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  55% {
-    opacity: 1;
-    transform: scale(1.05);
-  }
-}
-@keyframes gate-logo {
-  from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-}
-@keyframes gate-shimmer {
+@keyframes gate-spin {
   to {
-    transform: translateX(100%);
+    transform: rotate(360deg);
   }
 }
-@keyframes gate-welcome {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
+@keyframes gate-orbit-spin {
+  to {
+    transform: rotateZ(360deg);
+  }
+}
+@keyframes gate-coin-shine {
+  0% {
+    transform: translateX(-220px);
+  }
+  45%,
+  100% {
+    transform: translateX(220px);
   }
 }
 @keyframes gate-stage-out {

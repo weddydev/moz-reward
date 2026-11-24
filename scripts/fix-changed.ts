@@ -32,6 +32,10 @@ function git(args: string[]): string[] {
 function run(cmd: string, args: string[]): number {
   // pnpm as `node <pnpm.cjs>` (no shell) when started by pnpm; cmd.exe only as the fallback, paths checked above.
   const inv = cmd === "pnpm" ? pnpmInvocation(args) : { cmd, args, shell: false };
+  // Through a shell (the cmd.exe fallback) only plain paths; without one, App Router paths like
+  // `src/app/(public)/s/[code]/page.tsx` are fine (PD-09: they were refused).
+  const bad = inv.shell ? args.find((f) => !/^[\w./@+=-]+$/.test(f)) : undefined;
+  if (bad) throw new Error(`[fix:changed] refusing an unusual path: ${JSON.stringify(bad)}`);
   // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
   const r = spawnSync(inv.cmd, inv.args, { stdio: "inherit", shell: inv.shell });
   return r.status ?? 1;
@@ -49,9 +53,6 @@ function main(): void {
     console.warn("[fix:changed] nothing changed");
     return;
   }
-  // Paths go to the shell on Windows: refuse anything that isn't a plain path (git never gives us one).
-  const bad = [...lint, ...format].find((f) => !/^[\w./@+-]+$/.test(f));
-  if (bad) throw new Error(`[fix:changed] refusing an unusual path: ${JSON.stringify(bad)}`);
   let status = 0;
   if (lint.length) status ||= run("pnpm", ["exec", "eslint", "--fix", "--max-warnings=0", ...lint]);
   if (format.length)
