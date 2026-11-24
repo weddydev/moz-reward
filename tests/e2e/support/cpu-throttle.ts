@@ -53,7 +53,9 @@ export async function medianFrameRate<T extends { fps: number; p95: number }>(
   const runs: T[] = [];
   for (let i = 0; i < FPS_SAMPLES; i++) runs.push(await once());
   const fps = median(runs.map((r) => r.fps));
-  const p95 = median(runs.map((r) => r.p95));
+  // To 0.01 ms: rAF intervals are float differences, so a 16.8 ms frame read 16.800000000000068 and failed
+  // "p95 ≤ 16.8" (scheduled run 45397054403, PD-09 convergence). Far finer than any bound; no bound moves.
+  const p95 = Math.round(median(runs.map((r) => r.p95)) * 100) / 100;
   info.annotations.push({
     type: "frame rate (median of 3)",
     description: `${fps.toFixed(1)} fps, p95 ${p95.toFixed(1)} ms; runs ${runs.map((r) => `${r.fps.toFixed(1)}/${r.p95.toFixed(1)}`).join(", ")}`,
