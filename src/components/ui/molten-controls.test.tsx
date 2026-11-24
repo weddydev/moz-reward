@@ -70,6 +70,60 @@ describe("[PD-04] Molten button", () => {
     expect(screen.getByRole("button", { name: "Collect gold" })).toBe(btn);
   });
 
+  it("[PD-11] idle loops sleep off screen: molten and orbit buttons pause, ghost ones aren't watched (FOLLOWUPS 73)", () => {
+    const seen: Array<(entries: Array<{ isIntersecting: boolean }>) => void> = [];
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        constructor(cb: (entries: Array<{ isIntersecting: boolean }>) => void) {
+          seen.push(cb);
+        }
+        observe(): void {}
+        disconnect(): void {}
+      },
+    );
+    render(
+      <>
+        <Button>Collect</Button>
+        <Button variant="orbit">Details</Button>
+        <Button variant="ghost">Skip</Button>
+      </>,
+    );
+    expect(seen).toHaveLength(2);
+    act(() => {
+      for (const cb of seen) cb([{ isIntersecting: false }]);
+    });
+    expect(screen.getByRole("button", { name: "Collect" })).toHaveAttribute("data-paused");
+    expect(screen.getByRole("button", { name: "Details" })).toHaveAttribute("data-paused");
+    act(() => {
+      seen[0]?.([{ isIntersecting: true }]);
+    });
+    expect(screen.getByRole("button", { name: "Collect" })).not.toHaveAttribute("data-paused");
+    vi.unstubAllGlobals();
+  });
+
+  it("[PD-11] a className change while the result shows keeps the roll (FOLLOWUPS 81)", () => {
+    vi.useFakeTimers();
+    const { rerender } = render(
+      <Button resultLabel="Saved" className="w-40">
+        Save
+      </Button>,
+    );
+    const btn = screen.getByRole("button", { name: "Save" });
+    fireEvent.click(btn);
+    expect(btn).toHaveClass("ok");
+    rerender(
+      <Button resultLabel="Saved" className="w-48">
+        Save
+      </Button>,
+    );
+    expect(btn).toHaveClass("ok", "w-48");
+    act(() => {
+      vi.advanceTimersByTime(BUTTON.labelBackMs);
+    });
+    expect(btn).not.toHaveClass("ok");
+  });
+
   it("[PD-04] double click: one celebration, the roll restarts cleanly from the second click", () => {
     vi.useFakeTimers();
     render(
@@ -219,6 +273,17 @@ describe("[PD-04] heart toggle (IconButton round)", () => {
     expect(btn).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(btn);
     expect(onChange).toHaveBeenCalledWith(true);
+    // The motion follows the value (PD-11): nothing until the parent says it is pressed.
+    expect(calls).toHaveLength(0);
+    rerender(
+      <IconButton
+        variant="round"
+        icon={MoltenHeart}
+        label="Save offer"
+        pressed
+        onPressedChange={onChange}
+      />,
+    );
     expect(calls.some((c) => c.o.duration === HEART.popMs)).toBe(true);
     expect(calls.some((c) => c.o.duration === HEART.ringMs)).toBe(true);
     expect(calls.filter((c) => c.o.duration === HEART.dotsMs)).toHaveLength(HEART.dots);
@@ -234,6 +299,29 @@ describe("[PD-04] heart toggle (IconButton round)", () => {
     expect(btn).toHaveAttribute("aria-pressed", "true");
     const glyph = btn.querySelector("svg:not(.m-defs)");
     expect(glyph?.getAttribute("style")).toMatch(/fill: url\("?#m-metal-/);
+  });
+
+  it("[PD-11] a parent that refuses the toggle gets no burst; a change it makes on its own gets none either", () => {
+    const calls = animateCalls();
+    const onChange = vi.fn();
+    const heart = (pressed: boolean) => (
+      <IconButton
+        variant="round"
+        icon={MoltenHeart}
+        label="Save offer"
+        pressed={pressed}
+        onPressedChange={onChange}
+      />
+    );
+    const { rerender } = render(heart(false));
+    fireEvent.click(screen.getByRole("button", { name: "Save offer" }));
+    expect(onChange).toHaveBeenCalledWith(true);
+    rerender(heart(false));
+    expect(calls).toHaveLength(0);
+    const later = vi.spyOn(performance, "now").mockReturnValue(performance.now() + 5000);
+    rerender(heart(true));
+    later.mockRestore();
+    expect(calls).toHaveLength(0);
   });
 
   it("[PD-04] under reduced motion the heart just fills: no pop, ring or dots", () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { type InputHTMLAttributes, useEffect, useId, useRef } from "react";
+import { useChangeMotion } from "@/components/motion/useChangeMotion";
 import { cx } from "@/lib/cx";
 import { anim, reducedMotionNow } from "@/lib/motion/anim";
 import { SEAL } from "@/lib/motion/controls";
@@ -89,8 +90,10 @@ export function Checkbox({
     }, SEAL.sparkAtMs);
   };
 
+  const requestSeal = useChangeMotion(checked === true, seal);
+
   return (
-    <div className={cx("flex flex-col gap-1", className)}>
+    <div className={cx("m-chk-wrap flex flex-col gap-1", className)}>
       <label
         htmlFor={id}
         className="m-chk select-none"
@@ -104,8 +107,10 @@ export function Checkbox({
           {...(controlled ? { checked } : {})}
           onChange={(e) => {
             const on = e.currentTarget.checked;
+            // Controlled: the seal waits for the parent to take the change (it may refuse; FOLLOWUPS 75/80).
+            if (controlled) requestSeal(on);
             onCheckedChange?.(on);
-            seal(on);
+            if (!controlled) seal(on);
           }}
           disabled={disabled || (controlled && !hydrated)}
           // Named by the label text only: the row <label> also wraps the description.
@@ -129,7 +134,7 @@ export function Checkbox({
         </span>
       </label>
       {error ? (
-        <p id={`${id}-error`} className="text-small text-danger pl-[42px]">
+        <p id={`${id}-error`} className="text-small text-danger m-chk-err">
           {error}
         </p>
       ) : null}

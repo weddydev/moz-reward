@@ -40,7 +40,7 @@ export function GildedEdge(): React.JSX.Element {
     const resize = new ResizeObserver(draw);
     resize.observe(card);
     const view = new IntersectionObserver((entries) => {
-      for (const e of entries) card.classList.toggle("m-paused", !e.isIntersecting);
+      for (const e of entries) card.toggleAttribute("data-paused", !e.isIntersecting);
     });
     view.observe(card);
     const fine = window.matchMedia("(hover: hover) and (pointer: fine)").matches;

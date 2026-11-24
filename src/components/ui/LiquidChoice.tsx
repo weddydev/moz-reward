@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useChangeMotion } from "@/components/motion/useChangeMotion";
 import { useLiquidPour } from "@/components/motion/useLiquidPour";
 import { cx } from "@/lib/cx";
 import { reducedMotionNow } from "@/lib/motion/anim";
@@ -96,23 +97,36 @@ export function LiquidChoice<T extends string>({
     [],
   );
 
+  /** Whether the pending choice came from the keyboard (focus follows it once it is taken). */
+  const byKeyboard = useRef(false);
+  // The sparks and the keyboard's focus follow the value, not the press (FOLLOWUPS 75): a parent that refuses
+  // the choice gets neither, and the focus stays on the chosen option.
+  const requestChoice = useChangeMotion(current, (v) => {
+    const j = options.findIndex((o) => o.value === v);
+    const el = items.current[j];
+    if (!el) return;
+    if (byKeyboard.current) el.focus();
+    if (!sparks || reducedMotionNow()) return;
+    const r = el.getBoundingClientRect();
+    const [x, y] = [r.left + r.width / 2, r.top + r.height / 2];
+    if (sparkTimer.current !== null) window.clearTimeout(sparkTimer.current);
+    sparkTimer.current = window.setTimeout(() => {
+      sparkTimer.current = null;
+      burst(x, y, { type: "spark", count: LIQUID.sparks, speed: LIQUID.sparkSpeed });
+    }, LIQUID.sparkAtMs);
+  });
+
   const choose = (j: number, focus: boolean): void => {
     const o = options[j];
     if (!o || o.disabled || groupDisabled) return;
-    if (focus) items.current[j]?.focus();
-    if (j === index) return;
+    if (j === index) {
+      if (focus) items.current[j]?.focus();
+      return;
+    }
+    byKeyboard.current = focus;
+    requestChoice(o.value);
     if (!controlled) setOwn(o.value);
     onChange?.(o.value);
-    const el = items.current[j];
-    if (sparks && el && !reducedMotionNow()) {
-      const r = el.getBoundingClientRect();
-      const [x, y] = [r.left + r.width / 2, r.top + r.height / 2];
-      if (sparkTimer.current !== null) window.clearTimeout(sparkTimer.current);
-      sparkTimer.current = window.setTimeout(() => {
-        sparkTimer.current = null;
-        burst(x, y, { type: "spark", count: LIQUID.sparks, speed: LIQUID.sparkSpeed });
-      }, LIQUID.sparkAtMs);
-    }
   };
 
   const disabled = options.map((o) => groupDisabled || o.disabled === true);

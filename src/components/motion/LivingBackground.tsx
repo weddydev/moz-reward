@@ -14,7 +14,7 @@ export function LivingBackground(): React.JSX.Element {
     const el = ref.current;
     if (!el) return;
     const sync = (): void => {
-      el.classList.toggle("m-paused", document.hidden);
+      el.toggleAttribute("data-paused", document.hidden);
     };
     sync();
     document.addEventListener("visibilitychange", sync);

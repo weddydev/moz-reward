@@ -31,7 +31,12 @@ test.describe("[P1-05] loyalty programme settings", () => {
     page,
     signInAs,
     shoot,
+    browserName,
+    isMobile,
   }) => {
+    // Six full-page shots (three states × 320/1440) plus four saves: ~24 s locally on iphone14 (DPR 3), past the
+    // 30 s default on CI's CPU-rendered WebKit (CI 45476822891 timed out mid-test, FOLLOWUPS PD-11 step C).
+    test.slow(browserName === "webkit" || isMobile, "full-page phone shots; CPU-rendered WebKit");
     await signInAs("owner");
     await page.goto("/dashboard/loyalty");
     await expect(page.getByRole("heading", { level: 1, name: "Loyalty programme" })).toBeVisible();

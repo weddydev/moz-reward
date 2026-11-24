@@ -1,4 +1,5 @@
 import { expect, test } from "./support/test";
+import { TIER_OVERRIDE_KEY } from "../../src/lib/motion/tier";
 import type { Locator, Page } from "@playwright/test";
 
 /**
@@ -216,7 +217,7 @@ test.describe("[PD-07] floating dock", () => {
     await signInAs("customer");
     await page.goto("/wallet");
     await expect(dock(page)).toBeHidden();
-    await expect(dock(page)).toHaveClass(/m-paused/);
+    await expect(dock(page)).toHaveAttribute("data-paused");
   });
 
   test("[PD-07] shop: five items at 320 px, every label inside its own column", async ({
@@ -291,6 +292,11 @@ test.describe("[PD-11] shop and admin sidebar", () => {
     shoot,
   }) => {
     test.skip((page.viewportSize()?.width ?? 1280) < 1024, "the sidebar is the desktop navigation");
+    // A full-tier device whatever runs the test: CI's 4-core runners are lite, where the glass is dropped
+    // (`.lite .m-side`; CI 45484442092).
+    await page.addInitScript((key) => {
+      window.sessionStorage.setItem(key, "full");
+    }, TIER_OVERRIDE_KEY);
     await signInAs("owner");
     await page.goto("/dashboard");
     const side = rail(page);

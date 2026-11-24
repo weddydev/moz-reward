@@ -136,14 +136,14 @@ test("[PD-02] loops sleep: a card off screen and the background in a hidden tab 
   await card(page).evaluate((el) => {
     window.scrollTo(0, el.getBoundingClientRect().bottom + window.scrollY + 2000);
   });
-  await expect(card(page)).toHaveClass(/m-paused/);
+  await expect(card(page)).toHaveAttribute("data-paused");
   await card(page).scrollIntoViewIfNeeded();
-  await expect(card(page)).not.toHaveClass(/m-paused/);
+  await expect(card(page)).not.toHaveAttribute("data-paused");
   await page.evaluate(() => {
     Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
     document.dispatchEvent(new Event("visibilitychange"));
   });
-  await expect(page.locator("[data-living-background]")).toHaveClass(/m-paused/);
+  await expect(page.locator("[data-living-background]")).toHaveAttribute("data-paused");
 });
 
 test("[PD-02] a fine-pointer hover replays the glint at once", async ({ page, isMobile }) => {

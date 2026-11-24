@@ -31,8 +31,8 @@ function Section({
   children: React.ReactNode;
 }): React.JSX.Element {
   return (
-    <Card className="p-4">
-      <h2 className="text-h2 mb-2">{title}</h2>
+    <Card className="p-4 md:p-6">
+      <h2 className="text-h3 mb-2">{title}</h2>
       {children}
     </Card>
   );
@@ -47,13 +47,13 @@ export function SystemView({ view }: { view: View }): React.JSX.Element {
         reload for the latest.
       </p>
       {view.stale ? (
-        <p role="alert" className="bg-gold-100 text-small rounded-md p-3 font-semibold">
+        <p role="alert" className="m-note font-semibold">
           This snapshot is more than 3 minutes old: the worker may be down. See RUNBOOK “Worker
           down”.
         </p>
       ) : null}
       {view.alerts.length > 0 ? (
-        <p className="text-small bg-warning-tint rounded-md p-3">
+        <p className="m-note block">
           <span className="font-semibold">Alerts raised by this snapshot:</span>{" "}
           {view.alerts.join(", ")}
         </p>

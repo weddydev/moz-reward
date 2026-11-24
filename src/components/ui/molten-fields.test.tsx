@@ -6,9 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CountUp } from "@/components/motion/CountUp";
 import { FIELD, STARS, TABS } from "@/lib/motion/controls";
 import type * as FxModule from "@/lib/motion/fx";
+import { Select } from "./Select";
 import { RATING_CHOICES, StarRating } from "./StarRating";
 import { Tabs } from "./Tabs";
-import { TextField } from "./TextField";
+import { TextArea, TextField } from "./TextField";
 
 const fx = vi.hoisted(() => ({ burst: vi.fn(() => 0) }));
 vi.mock("@/lib/motion/fx", async (orig) => ({
@@ -155,6 +156,17 @@ describe("[PD-06] Tabs", () => {
     const panel = screen.getByRole("tabpanel");
     expect(panel).toHaveAttribute("aria-labelledby", tab("Wallet").id);
     expect(tab("Offers")).toHaveAttribute("aria-controls", panel.id);
+  });
+
+  it("[PD-11] a value that matches no tab leaves the first tab as the one tab stop (FOLLOWUPS 82)", () => {
+    render(
+      <Tabs label="Sections" items={THREE} value="none" onChange={() => {}}>
+        <p>panel</p>
+      </Tabs>,
+    );
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.map((t) => t.tabIndex)).toEqual([0, -1, -1]);
+    expect(tabs.map((t) => t.getAttribute("aria-selected"))).toEqual(["false", "false", "false"]);
   });
 
   it("[PD-06] counts render beside the label", () => {
@@ -305,6 +317,69 @@ describe("[PD-06] TextField", () => {
     expect(field).toHaveAttribute("data-state", "good");
     rerender(<TextField label="Email" valid error="No." />);
     expect(field).toHaveAttribute("data-state", "bad");
+  });
+});
+
+describe("[PD-11] TextArea and Select in the field language (extended: the reference has neither)", () => {
+  const shakes = () =>
+    animate.mock.calls.filter((call) =>
+      String((call as unknown as [Keyframe[]])[0][1]?.transform).includes("translateX(-10px)"),
+    );
+  const OPTIONS = [
+    { value: "cafe", label: "Café" },
+    { value: "barber", label: "Barber" },
+  ];
+
+  it("[PD-11] TextArea: label inside the field, floats by CSS (blank placeholder), beam and hint", () => {
+    render(<TextArea label="Note" hint="Optional." />);
+    const area = screen.getByLabelText("Note");
+    expect(area.tagName).toBe("TEXTAREA");
+    const field = area.closest(".m-field");
+    expect(field).toHaveClass("m-field-area");
+    expect(area).toHaveAttribute("placeholder", " ");
+    expect(field?.querySelector(".m-beam")).not.toBeNull();
+    expect(area).toHaveAccessibleDescription("Optional.");
+    expect(area.closest(".m-field-wrap")?.querySelector(".m-field-msg")).toHaveTextContent(
+      "Optional.",
+    );
+  });
+
+  it("[PD-11] TextArea: a new error turns the field bad and shakes it; the same error does not", () => {
+    const { rerender } = render(<TextArea label="Note" />);
+    rerender(<TextArea label="Note" error="Keep it under 280 characters." />);
+    const area = screen.getByLabelText("Note");
+    expect(area.closest(".m-field")).toHaveAttribute("data-state", "bad");
+    expect(area).toHaveAttribute("aria-invalid", "true");
+    expect(shakes()).toHaveLength(1);
+    rerender(<TextArea label="Note" error="Keep it under 280 characters." />);
+    expect(shakes()).toHaveLength(1);
+  });
+
+  it("[PD-11] Select: label always floated (a select always shows a value), chevron, beam from the tap", () => {
+    render(<Select label="Shop type" options={OPTIONS} />);
+    const select = screen.getByLabelText("Shop type");
+    const field = select.closest<HTMLElement>(".m-field");
+    expect(field).toHaveClass("m-field-select");
+    expect(field).toHaveAttribute("data-placeholder");
+    expect(field?.querySelector(".m-field-chev")).not.toBeNull();
+    vi.spyOn(select, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 200, 58));
+    fireEvent.pointerDown(select, { clientX: 150 });
+    expect(field?.style.getPropertyValue("--ox")).toBe("75%");
+  });
+
+  it("[PD-11] Select: a new error shakes and sits under the field; none on first render", () => {
+    const { rerender } = render(
+      <Select label="Shop type" options={OPTIONS} error="Choose a shop type." />,
+    );
+    expect(shakes()).toHaveLength(0);
+    rerender(<Select label="Shop type" options={OPTIONS} error="Choose one from the list." />);
+    expect(shakes()).toHaveLength(1);
+    const select = screen.getByLabelText("Shop type");
+    expect(select.closest(".m-field")).toHaveAttribute("data-state", "bad");
+    expect(select).toHaveAccessibleDescription("Choose one from the list.");
+    expect(select.closest(".m-field-wrap")?.querySelector(".m-field-err")).toHaveTextContent(
+      "Choose one from the list.",
+    );
   });
 });
 

@@ -9,6 +9,8 @@ import {
   useState,
 } from "react";
 import { useMagnetic, usePress } from "@/components/motion/press";
+import { usePauseOffscreen } from "@/components/motion/usePauseOffscreen";
+import { cx } from "@/lib/cx";
 import { BUTTON } from "@/lib/motion/controls";
 import { celebrate as burstAt, ripple } from "@/lib/motion/press";
 import { buttonClasses, type ButtonSize, type ButtonVariant } from "./button-classes";
@@ -66,6 +68,9 @@ export function onSettled(result: unknown, done: (ok: boolean) => void): void {
   else done(result !== false);
 }
 
+/** A ref that never holds an element: a ghost button has no loop to pause. */
+const NO_ELEMENT = { current: null };
+
 export function Button({
   variant = "molten",
   size = 54,
@@ -83,12 +88,15 @@ export function Button({
   ...rest
 }: Props): React.JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
-  // The visible roll is a class set in the click's own task (as the reference does); `rolled` only moves the
-  // accessible name to the result label while it shows.
+  // The visible roll is a class set in the click's own task (as the reference does); `rolled` moves the
+  // accessible name to the result label while it shows and keeps `ok` in the rendered class list, so a
+  // `className` change mid-roll can't drop it (FOLLOWUPS 81).
   const [rolled, setRolled] = useState(false);
   const celebrating = useRef(false);
   const backTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const flowing = variant === "molten" || variant === "destructive";
+  // Molten, destructive and orbit buttons loop while idle: the loops sleep off screen (FOLLOWUPS 73).
+  usePauseOffscreen(variant === "ghost" ? NO_ELEMENT : ref);
   usePress(ref, { ripple: flowing });
   useMagnetic(ref, { enabled: variant === "molten" });
   useEffect(
@@ -140,7 +148,7 @@ export function Button({
       {...rest}
       ref={ref}
       type={type}
-      className={buttonClasses({ variant, size, block, className })}
+      className={cx(buttonClasses({ variant, size, block, className }), rolled && "ok")}
       disabled={disabled}
       aria-disabled={loading || undefined}
       aria-busy={loading || undefined}

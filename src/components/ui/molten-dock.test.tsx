@@ -182,18 +182,18 @@ describe("[PD-07] Dock", () => {
   it("[PD-07] loops sleep off screen and while the tab is hidden", () => {
     render(<FiveDock active={0} column={0} />);
     const nav = screen.getByRole("navigation");
-    expect(nav).not.toHaveClass("m-paused");
+    expect(nav).not.toHaveAttribute("data-paused");
     act(() => {
       observed[0]?.([{ isIntersecting: false }]);
     });
-    expect(nav).toHaveClass("m-paused");
+    expect(nav).toHaveAttribute("data-paused");
     act(() => {
       observed[0]?.([{ isIntersecting: true }]);
     });
-    expect(nav).not.toHaveClass("m-paused");
+    expect(nav).not.toHaveAttribute("data-paused");
     const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
     fireEvent(document, new Event("visibilitychange"));
-    expect(nav).toHaveClass("m-paused");
+    expect(nav).toHaveAttribute("data-paused");
     hidden.mockRestore();
   });
 

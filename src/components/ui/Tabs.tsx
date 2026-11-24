@@ -133,7 +133,8 @@ export function Tabs<T extends string>({
                 role="tab"
                 aria-selected={selected}
                 aria-controls={`${base}-panel`}
-                tabIndex={selected ? 0 : -1}
+                // The chosen tab holds the tab stop; with none chosen, the first does (FOLLOWUPS 82).
+                tabIndex={i === index ? 0 : -1}
                 // Disabled until hydrated so an early press is never lost (C-20).
                 disabled={!hydrated}
                 onClick={() => {

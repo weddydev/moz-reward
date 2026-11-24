@@ -222,6 +222,42 @@ describe("[PD-05] Liquid choice", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("[PD-11] the sparks follow the value: a parent that refuses the choice gets none, and focus stays put", () => {
+    vi.useFakeTimers();
+    const onChange = vi.fn();
+    render(
+      <LiquidChoice
+        label="Choose your reward"
+        value="coffee"
+        onChange={onChange}
+        options={REWARDS}
+      />,
+    );
+    const coffee = screen.getByRole("radio", { name: /Coffee/ });
+    coffee.focus();
+    fireEvent.keyDown(coffee, { key: "ArrowRight" });
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(onChange).toHaveBeenCalledWith("cake");
+    expect(coffee).toHaveAttribute("aria-checked", "true");
+    expect(coffee).toHaveFocus();
+    expect(fx.burst).not.toHaveBeenCalled();
+  });
+
+  it("[PD-11] arrows accepted: focus moves with the choice and the sparks rise", () => {
+    vi.useFakeTimers();
+    render(<Rewards />);
+    const coffee = screen.getByRole("radio", { name: /Coffee/ });
+    coffee.focus();
+    fireEvent.keyDown(coffee, { key: "ArrowRight" });
+    expect(screen.getByRole("radio", { name: /Cake/ })).toHaveFocus();
+    act(() => {
+      vi.advanceTimersByTime(LIQUID.sparkAtMs);
+    });
+    expect(fx.burst).toHaveBeenCalledTimes(1);
+  });
+
   it("[PD-05] sparks={false}: no sparks", () => {
     vi.useFakeTimers();
     render(
@@ -422,7 +458,20 @@ describe("[PD-05] Seal checkbox", () => {
   it("[PD-05] ticking throws the ring and 10 sparks at 120 ms; unticking neither", () => {
     vi.useFakeTimers();
     const onChange = vi.fn();
-    render(<Checkbox label="Remind me" checked={false} onCheckedChange={onChange} />);
+    function Accepting() {
+      const [on, setOn] = useState(false);
+      return (
+        <Checkbox
+          label="Remind me"
+          checked={on}
+          onCheckedChange={(next) => {
+            setOn(next);
+            onChange(next);
+          }}
+        />
+      );
+    }
+    render(<Accepting />);
     const input = screen.getByRole("checkbox");
     const seal = input.nextElementSibling;
     fireEvent.click(input);
@@ -451,6 +500,33 @@ describe("[PD-05] Seal checkbox", () => {
     document.documentElement.classList.add("rm");
     render(<Checkbox label="B" />);
     fireEvent.click(screen.getByRole("checkbox"));
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.getByRole("checkbox")).toBeChecked();
+    expect(screen.getByRole("checkbox").nextElementSibling).not.toHaveClass("burst");
+    expect(fx.burst).not.toHaveBeenCalled();
+  });
+
+  it("[PD-11] the seal follows the value: a parent that refuses the tick gets no pop, ring or sparks", () => {
+    vi.useFakeTimers();
+    const onChange = vi.fn();
+    render(<Checkbox label="Remind me" checked={false} onCheckedChange={onChange} />);
+    const input = screen.getByRole("checkbox");
+    fireEvent.click(input);
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(onChange).toHaveBeenCalledWith(true);
+    expect(input).not.toBeChecked();
+    expect(input.nextElementSibling).not.toHaveClass("burst");
+    expect(fx.burst).not.toHaveBeenCalled();
+  });
+
+  it("[PD-11] a tick the user didn't make (a template filling the form) seals quietly", () => {
+    vi.useFakeTimers();
+    const { rerender } = render(<Checkbox label="Mystery" checked={false} />);
+    rerender(<Checkbox label="Mystery" checked />);
     act(() => {
       vi.advanceTimersByTime(1000);
     });

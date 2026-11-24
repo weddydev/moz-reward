@@ -161,6 +161,10 @@ test.describe("[P0-09] overlays", () => {
     const region = page.getByRole("region", { name: "Notifications" });
     await page.getByRole("button", { name: "Error toast" }).click();
     await expect(region.getByRole("listitem")).toHaveCount(1);
+    // An error is announced through the assertive alert region (cleared again after a second).
+    await expect(
+      page.getByRole("alert").filter({ hasText: "Something went wrong — please try again." }),
+    ).toHaveCount(1);
     // Hold it open: focus inside a toast pauses its 4 s auto-dismiss, which otherwise can fire during a slow
     // Linux WebKit scan (this one or the end-of-test guard's) and measure the message mid-fade (CI 43206412851).
     await region.getByRole("button", { name: "Dismiss" }).focus();
@@ -173,6 +177,7 @@ test.describe("[P0-09] overlays", () => {
           a.effect?.getTiming().iterations === Infinity,
       ),
     );
+    // The toast itself is scanned here: the guard's closing scan leaves `.m-toast` out (FOLLOWUPS 83).
     expect(await serious(page)).toEqual([]);
     // End on a settled page: dismiss it and wait for it to go before the guard's scan.
     await region.getByRole("button", { name: "Dismiss" }).click();

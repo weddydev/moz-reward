@@ -206,11 +206,7 @@ export function LoyaltySettings({
       </header>
 
       {pending.map((p) => (
-        <div
-          key={p.version}
-          role="status"
-          className="bg-warning-tint text-ink flex items-start gap-3 rounded-md px-4 py-3"
-        >
+        <div key={p.version} role="status" className="m-note">
           <Info aria-hidden="true" className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} />
           <p className="text-small">
             New rewards from version {p.version} apply to members from{" "}

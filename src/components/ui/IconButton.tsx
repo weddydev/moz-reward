@@ -1,6 +1,7 @@
 "use client";
 
 import { type ButtonHTMLAttributes, type MouseEvent, useId, useRef } from "react";
+import { useChangeMotion } from "@/components/motion/useChangeMotion";
 import { cx } from "@/lib/cx";
 import { anim, reducedMotionNow } from "@/lib/motion/anim";
 import { HEART } from "@/lib/motion/controls";
@@ -40,13 +41,18 @@ export function IconButton({
   const toggle = pressed !== undefined;
   const Glyph = icon;
 
+  // The burst follows the value (FOLLOWUPS 80): a parent that refuses the toggle gets none.
+  const requestBurst = useChangeMotion(pressed === true, (on) => {
+    const el = ref.current;
+    if (el) burst(el, on);
+  });
+
   const handleClick = (e: MouseEvent<HTMLButtonElement>): void => {
     onClick?.(e);
     if (!toggle || e.defaultPrevented) return;
     const next = !pressed;
+    requestBurst(next);
     onPressedChange?.(next);
-    const el = ref.current;
-    if (el) burst(el, next);
   };
 
   return (
