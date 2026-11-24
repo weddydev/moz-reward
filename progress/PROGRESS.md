@@ -3,30 +3,31 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-24 17:41 UTC
+Baton: held by talha.syed since 2026-11-24 19:00 UTC
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **talha.syed, 24 Nov 2026 ~18:40 UTC (Mac); baton held. Autopilot OFF.**
-- **PD-10 closed** (ticked) in the closing commit on `wip/PD-10` (rebased onto main): design review H1 (first-view "+720" stamp + parity frame), M2 (reduced-motion unlock: no ring, no lift slide), M3 (`RedeemCode` `receivedAt`; C-81 → P1-16), M4 (DECISIONS) fixed; the Linux WebKit landing test now runs on the animations' clocks. It goes to main through the hook once its CI is green; the frame-rate suite (`scheduled.yml` perf) is dispatched on the branch for the 60 fps pour trace.
-- **Tested:** `pnpm gate:task` PASS on `bf7c3b9` (unit 2075/0, int 1456/0/1, E2E PD-10+PD-09 27/0, perf 3/0, parity 12/0); Linux WebKit (`e2e:linux`) PD-10 vault tests 4/4; reduced-motion E2E 6/6 (desktop + iPhone).
-- **Not yet tested:** CI on the closing commit; the @fps pour trace (dispatched); real devices (H-13).
-- **Next:** PD-11 (restyle sweep, parity close, C-78/C-79/C-80), then the PD-C close (H-49).
+- **Handoff by talha.syed, 25 Nov 2026 ~00:20 UTC (Mac); baton free. Autopilot OFF.**
+- **Finished: PD-10** (Gold Vault pour, reward unlocked, redeem code), ticked in its closing commit **`wip/PD-10` @ `873dbf6`** (pushed; rebased onto main `7d02512`). Includes the design review fixes (H1 first-view "+720" stamp + parity frame; M2 reduced-motion unlock; M3 `RedeemCode` `receivedAt`, C-81 → P1-16; M4 DECISIONS), the Linux WebKit-proof landing E2E, component tests, the parity harness fixes (KI-47) and the frame-rate p95 rounding.
+- **Half-done: PD-10 is not on main yet.** Its CI **45461722765** on `873dbf6` was running at the handoff (the run before, 45454982533, was red only on the first-view parity frame at 390, 2.02% vs 2% → that frame's limit 2.2%, DECISIONS 24 Nov). **Continue exactly here:** (1) `git switch wip/PD-10 && git merge --ff-only origin/wip/PD-10`; HEAD must be `873dbf6`. (2) Read CI 45461722765: green → `git merge origin/main` (main's later commits are progress-only; on a PROGRESS/SESSION_LOG conflict keep **main's** version, then re-apply the PD-10 tick in `docs/PHASES.md` if lost and the C-81 CARRIED row), then `git push origin HEAD:main` through the hook (it checks CI on the code commit). Red → fix first (KNOWN_ISSUES), push the branch, wait for its CI. (3) Then PD-11 (restyle sweep, full parity sweep, C-78/C-79/C-80) and the PD-C close (H-49).
+- **Tested:** `pnpm gate:task` PASS on `873dbf6` (unit 2075/0, int 1456/0/1, E2E PD-10 12/0, parity 4/0); on `bf7c3b9` (same code but the 2.2% limit): E2E PD-10+PD-09 27/0, perf 3/0, parity 12/0; frame-rate suite **45454984125 GREEN** on the branch (vault 60 fps pour trace; PD-09 convergence); Linux WebKit (`e2e:linux`) PD-10 vault tests 4/4; vault parity 16/16 over 4 repeats.
+- **Not yet tested:** CI 45461722765 (running); one local parity run failed 2 tests on the first run after a fresh build, then 4/4 and 16/16 (not root-caused; watch CI's parity job); real devices (H-13).
+- **Before work:** no new env vars, migrations or seeds.
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov). Then P1 resumes with the P1-B close. P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **PD-C** (PD-07 + PD-08 on main 23 Nov, PD-09 24 Nov; PD-10 in progress on `wip/PD-10`; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-25 (~00:10 UTC), talha.syed (PD-10 closed on `wip/PD-10`; to main on green CI)
+- **Last updated:** 2026-11-25 (~00:20 UTC), talha.syed (handoff; PD-10 done on `wip/PD-10` `873dbf6`, to main on green CI 45461722765)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
 - **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
-- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). **PD-09 on main 24 Nov** (CI 45357702882 green). **PD-10 done 24 Nov** (on `wip/PD-10`, to main on green CI). Scheduled run 45397054403's float failure fixed (p95 rounding).
+- **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). **PD-09 on main 24 Nov** (CI 45357702882 green). **PD-10 done 24 Nov** on `wip/PD-10` `873dbf6` (to main on green CI 45461722765).
 
 ## Next (top 3)
-1. PD-10 to main once CI on the closing commit is green; read the dispatched frame-rate suite (vault @fps pour trace, PD-09 convergence).
+1. PD-10 to main: CI 45461722765 green → merge main's progress commits into `wip/PD-10`, push to main via the hook (see handoff).
 2. PD-11 (restyle sweep, full parity sweep, C-78/C-79/C-80) then the PD-C close (H-49).
 3. Human any time: H-48b, H-45 (🟠), H-38 (branches; add `wip/PD-10` once on main), H-51 (b).
 
@@ -65,12 +66,11 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 ## Map of the codebase
 In **`progress/MAP.md`** (read when you need to locate code; add new important paths there).
 
-## Last verified (24 Nov 2026)
+## Last verified (25 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- PD-10 frame-rate suite 45454984125 on the branch: GREEN (vault @fps pour trace; PD-09 convergence). CI 45454982533 red only on the new first-view parity frame at 390 (2.02% vs 2%) → limit 2.2% (DECISIONS).
-- PD-10 `bf7c3b9`: `pnpm gate:task` PASS (unit 2075/0, int 1456/0, E2E 27/0, perf 3/0, parity 12/0 Chromium + WebKit).
-- PD-10 Linux WebKit (`e2e:linux`): vault PD-10 tests 4/4 (CI 45441098126's red landing test rewritten on animation clocks).
-- Scheduled 45397054403 on main: RED (PD-09 @fps float 16.800000000000068) → p95 rounding in PD-10; frame-rate suite dispatched on the branch.
+- PD-10 `873dbf6`: `pnpm gate:task` PASS (unit 2075/0, int 1456/0, E2E 12/0, parity 4/0); CI 45461722765 running at the handoff.
+- PD-10 frame-rate suite 45454984125 (branch): GREEN (vault @fps pour trace; PD-09 convergence with the p95 rounding).
+- CI 45454982533 on `c624207`: red only on parity `vault-first-view-390` 2.02% vs 2% → limit 2.2% (DECISIONS 24 Nov); every other job green incl. WebKit.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 
