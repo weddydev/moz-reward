@@ -14,6 +14,11 @@ Consequence / revisit when: …
 
 
 
+## 2026-11-25 — PD-11 A: Molten ground everywhere; Card placed by default; landing and sign-in extended from the reference
+Decision: `LivingBackground` moves into the root layout (every page; /dev/molten no longer mounts its own) and the body ground is `--pearl` (theme colour too). `Card` defaults to `placed` with the reference `.pcard` radius 24 px as a components-layer `.m-card` (a `rounded-*` utility wins; `plain` stays until the v1 tokens go). The shop landing takes the shop page's cover (PD-08) with the name on it, drawn by an `.m-cover-art` layer (photo or `--photo-ground`, shade, glow) that is also the Gilded Gate's morph target; the cover's logo keeps `position: absolute` while it rises over the gate's copy. Auth screens: a gilded placed card anchored at max(48 px, 12 dvh) from the top, Molten `TextField`s and molten/orbit buttons.
+Why: PD-11 "apply the surfaces to every screen". The reference shows no landing or sign-in screen, so both are extended in its language (labelled extended for H-49). Top anchoring instead of centring stops the pre-hydration hint's removal shifting the card (sign-in CLS 0.016–0.027, PD-A QA).
+Consequence / revisit when: every page now composites the three drifting glows (lite tier unchanged); the design review at the PD-C close judges the landing's desktop split (name on the cover, status and CTAs on the right).
+
 ## 2026-11-24 — Gilded Gate's own scripts: 75 ms long-task limit until PD-11 splits its start (temporary)
 Decision: `gilded-gate.spec` "[PD-09] adds no long task while it plays" allows the gate's own scripts (the landing document's inline scripts and gate-only chunks) up to 75 ms at 4× CPU (`GATE_SCRIPT_MS`); every other script and frame, and every other `@perf` spec, keeps `LONG_TASK_MS` 65. TEMPORARY T-8, CARRIED C-82 → PD-11.
 Why: CI 45465727267 (PD-10 `873dbf6`) measured the first-frame scene start at 65.2–71.8 ms (4 of 6 runs over) on a source tree byte-identical to `c624207`, whose perf job passed: runner variance on code sitting at the limit (CLAUDE.md "Small overshoots don't block"). The real fix (move the particle sampling and layout reads out of the first-frame task) changes PD-09's scene start and belongs with PD-11's 4× traces.

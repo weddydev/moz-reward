@@ -7,9 +7,9 @@ Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 25 Nov 2026 ~02:00 IST (Mac); baton held. Autopilot OFF.**
-- **PD-10 is on main** (`2cb621f`; CI 45467487343 on `6386f9a` green on every job). Gate perf limit 75 ms for the gate's own scripts is temporary (T-8, C-82 → PD-11). One confirmed flake in that run: WebKit `[PD-06] tabs keyboard` (FOLLOWUPS; fix or quarantine before the PD-C close).
-- **Continue exactly here:** start **PD-11** on `wip/PD-11` from main (`git switch -c wip/PD-11 origin/main`), step A.
+- **Checkpoint by talha.syed, 25 Nov 2026 ~02:30 IST (Mac); baton held. Autopilot OFF.**
+- **PD-11 step A done on `wip/PD-11` `9b70acb`** (from main `431d6e1`): LivingBackground in the root layout + pearl ground, `Card` placed by default (`.m-card` 24 px), landing cover restyled (`.m-cover-art` = gate morph target; `CoverPhoto` load-error fallback), auth screens (gilded placed card, TextField, molten buttons, top-anchored). DECISIONS 25 Nov; FOLLOWUPS 73/74 closed. gate:task on `9b70acb`: every step PASS (unit 2079/0, int 1456/0, E2E PD-11 9/0); its "working tree unchanged" step failed only because progress files were edited during the run.
+- **Continue exactly here:** read CI 45476822891 on `9b70acb` (every-page push: WebKit runs every spec; at this checkpoint Chromium shard 1, parity, perf, checks green; shard 2 + WebKit NOT VERIFIED, still running). Local full Chromium E2E (Linux) on `9b70acb`: 325 passed, 0 failed, 18 skipped. Green → step B on `wip/PD-11` (customer screens); red → fix first.
 - **PD-11 plan (lettered steps, one commit each):** A public/auth screens (landing `/s/[code]` still v1: flat white cards, square initials logo, `bg-bg` main; reuse `ShopPageHeader`/`m-cover` w/o back button, `ShopCoin`, `Card variant="placed"`; keep `[data-gate-cover]` + `[data-gate-rise]` for the gate) + global surfaces: mount `LivingBackground` in the root layout (now only on /dev/molten), body ground `--pearl`, `Card` default → placed (48 uses; every-page change → full 5-project E2E); FOLLOWUPS 73/74. B customer screens (shop page C-80, Me, notifications, error/empty; `VaultPage` uses the v1 `ShopLogo`). C portal shells/SideNav, loyalty settings, admin system, TextArea/Select, primitive LOWs. D retire v1 tokens (`--bg`, gold-700/500/300/100, `--gold-gradient`, shadow-1/2/gold, `--dur-fast/base/slow/hero`) + perf trims (FOLLOWUPS 75, 91, 92, 94–97) + C-82. E C-78, C-79/T-7, the PD-06 tabs WebKit flake, baselines, parity, Lighthouse, 4× traces, full E2E. F reviews, QA, H-49 set, tick, PD-C close.
 - **Not yet tested:** real devices (H-13).
 - **Before work:** no env/migration changes. Local dev data: `pnpm db:seed --reset` was needed for the demo shop photos (seed keeps existing rows; landing data cached 60 s in redis-cache). A `next dev` from 23 Nov still listens on :3000 (PID 20343, this repo).
@@ -18,7 +18,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** **PD-C** (PD-07 + PD-08 on main 23 Nov, PD-09 24 Nov; PD-10 on main 25 Nov; PD-11 next; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-25 (~02:00 IST), talha.syed (PD-10 on main `2cb621f`; next PD-11 step A)
+- **Last updated:** 2026-11-25 (~02:30 IST), talha.syed (PD-11 step A on `wip/PD-11` `9b70acb`; next: its CI, then step B)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -27,7 +27,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). **PD-09 on main 24 Nov** (CI 45357702882 green). **PD-10 on main 25 Nov** (`2cb621f`, CI 45467487343 green; gate perf limit T-8 until C-82).
 
 ## Next (top 3)
-1. PD-11 step A on `wip/PD-11` (global surfaces + public/auth screens; plan in the handoff).
+1. CI 45476822891 + full Chromium E2E for PD-11 step A (`wip/PD-11` `9b70acb`); then step B (customer screens).
 2. PD-11 steps B–F, then the PD-C close (`/subphase-complete`, H-49).
 3. Human any time: H-48b, H-45 (🟠), H-38 (branches; `wip/PD-10` now merged), H-51 (b).
 
@@ -69,9 +69,9 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (25 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- CI 45467487343 on `6386f9a` (PD-10 + T-8): GREEN on every job (1 confirmed WebKit flake, PD-06 tabs keyboard, 5/5 alone); PD-10 pushed to main `2cb621f` via the hook.
-- PD-10 frame-rate suite 45454984125 (branch): GREEN (vault @fps pour trace; PD-09 convergence with the p95 rounding).
-- CI 45454982533 on `c624207`: red only on parity `vault-first-view-390` 2.02% vs 2% → limit 2.2% (DECISIONS 24 Nov); every other job green incl. WebKit.
+- PD-11 A `9b70acb`: gate:task every step PASS (unit 2079/0, int 1456/0, E2E PD-11 9/0 Linux Chromium); full Chromium E2E (Linux) 325/0/18 skipped.
+- CI 45476822891 on `9b70acb`: running at checkpoint (Chromium shard 1, parity, perf, checks green).
+- CI 45467487343 on `6386f9a` (PD-10 + T-8): GREEN on every job; PD-10 on main `2cb621f`.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 
