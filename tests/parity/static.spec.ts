@@ -40,6 +40,8 @@ async function shot(page: Page, part: string): Promise<Buffer> {
 }
 
 const required = PARITY_PARTS.filter((p) => p.status === "required");
+/** Required parts with a spec of their own (the Gold Vault and its reward card: tests/parity/vault.spec.ts). */
+const atRest = required.filter((p) => p.ownSpec !== true);
 const pending = PARITY_PARTS.filter((p) => p.status === "pending");
 
 test.describe("[PD-01] static parity", () => {
@@ -76,7 +78,7 @@ test.describe("[PD-01] static parity", () => {
       expect(moved.ratio).toBeGreaterThan(MAX_DIFF);
     });
 
-    for (const part of required) {
+    for (const part of atRest) {
       test(`[${part.task}] ${part.title} matches the reference at ${String(vp.width)}`, async ({
         page,
         context,

@@ -107,7 +107,7 @@ async function recordPours(page: Page): Promise<void> {
 const pours = (page: Page): Promise<Pour[]> =>
   page.evaluate(() => (window as unknown as { __pours: Pour[] }).__pours);
 
-/** Pour animations still running on the ingot's parts. */
+/** Pour animations still running on the ingot's parts (the endless wave on the liquid's surface is not one). */
 const running = (page: Page): Promise<number> =>
   page.evaluate(
     () =>
@@ -116,7 +116,8 @@ const running = (page: Page): Promise<number> =>
         .filter(
           (a) =>
             (a.effect as KeyframeEffect | null)?.target?.closest(".ingot-pour") &&
-            a.playState === "running",
+            a.playState === "running" &&
+            Number.isFinite(a.effect?.getComputedTiming().endTime),
         ).length,
   );
 
@@ -198,7 +199,7 @@ test("[P1-08] gold vault: members only, and a shop without a programme says so",
   await expect(page.getByTestId("vault-not-set-up")).toContainText("Rewards not set up yet");
 });
 
-test("[P1-08] pour: 0.9 s with the stream on the first view, a 0.5 s rise later in the session", async ({
+test("[P1-08] [PD-10] pour: 200 ms after it shows, 0.9 s with the stream on the first view, a 0.5 s rise later in the session", async ({
   page,
   signInAs,
 }) => {
@@ -209,7 +210,9 @@ test("[P1-08] pour: 0.9 s with the stream on the first view, a 0.5 s rise later 
   await expect(ingot(page)).toHaveAttribute("data-ingot-kind", "pour");
   const pourParts = await pours(page);
   expect(pourParts.map((p) => p.part)).toContain("stream");
-  expect(Math.max(...pourParts.map((p) => p.end))).toBe(900);
+  // The reference's timing (PD-10): the liquid lands 200 + 900 ms in, the glint follows for 700 ms.
+  expect(pourParts.find((p) => p.part === "fill")?.end).toBe(1_100);
+  expect(Math.max(...pourParts.map((p) => p.end))).toBe(1_800);
   await expect(ingot(page)).toHaveAttribute("data-ingot-state", "done");
   // The resting picture is the static one: liquid at 72%, nothing hidden or running.
   expect(await running(page)).toBe(0);
@@ -220,7 +223,7 @@ test("[P1-08] pour: 0.9 s with the stream on the first view, a 0.5 s rise later 
   const riseParts = await pours(page);
   expect(riseParts.length).toBeGreaterThan(0);
   expect(riseParts.map((p) => p.part)).not.toContain("stream");
-  expect(Math.max(...riseParts.map((p) => p.end))).toBe(500);
+  expect(riseParts.find((p) => p.part === "fill")?.end).toBe(700);
 });
 
 test("[P1-08] pour never blocks: a tap on a link mid-pour navigates at once, scrolling works", async ({

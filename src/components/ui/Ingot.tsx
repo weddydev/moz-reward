@@ -3,11 +3,12 @@ import { cx } from "@/lib/cx";
 import { INGOT_BOX, ingotFill, levelY, mouldRightX } from "@/lib/loyalty/ingot";
 
 /**
- * The gold ingot (DESIGN §6, §8.3; P1-08): a bevelled trapezoid mould, the liquid clipped to it, a wave on its
- * surface, the gold gradient and a specular highlight. This is the static picture, safe in server components;
- * `IngotPour` (src/components/motion) animates the same parts and always comes to rest on exactly this.
+ * The gold ingot (DESIGN §8.3; P1-08, the reference's `#ingot` since PD-10): its shadow, the top face, the
+ * mould, the liquid clipped to the mould with a wave on its surface, and the outline, path for path and stop for
+ * stop as the reference. This is the static picture, safe in server components; `IngotPour` (src/components/motion)
+ * animates the same parts and always comes to rest on exactly this.
  * Accessible as one image: "720 of 1,000 gold, 72%" (or `decorative` when the text beside it says it all).
- * Empty → an empty mould, no wave; full → a flat top, no wave.
+ * Empty → an empty mould, no liquid; full → the top face turns gold (`topGold`, default: when full).
  */
 export type IngotProps = {
   gold: number;
@@ -15,15 +16,18 @@ export type IngotProps = {
   /** Milestone percents, drawn as ticks beside the mould (the settings preview). */
   marks?: readonly number[];
   decorative?: boolean;
-  /** Adds the pour's stream and glint (hidden at rest); only `IngotPour` sets it. */
+  /** Adds the pour's stream and glint (hidden at rest) and the wave's motion; only `IngotPour` sets it. */
   animated?: boolean;
+  /** The top face in gold (the reference's unlocked vault). Defaults to a full ingot. */
+  topGold?: boolean;
   className?: string;
 };
 
-/** Ten periods of a gentle wave (60 units each), wide enough to drift two periods across the mould. */
-const WAVE = `M-240,0${"q15,-5 30,0q15,5 30,0".repeat(10)}V8H-240Z`;
-const MOULD = "66,14 174,14 192,40 226,124 14,124 48,40";
-const TOP_FACE = "66,14 174,14 192,40 48,40";
+/** The reference's surface: 19 half-waves of 40 units, ±6, wide enough to drift one 80-unit period. */
+const WAVE =
+  "M-320 0 Q-300 -6 -280 0 T-240 0 T-200 0 T-160 0 T-120 0 T-80 0 T-40 0 T0 0 T40 0 T80 0 T120 0 T160 0 T200 0 T240 0 T280 0 T320 0 T360 0 T400 0 T440 0 V220 H-320 Z";
+const MOULD = "M70 62 L250 62 L292 182 L28 182 Z";
+const TOP_FACE = "M84 40 L236 40 L250 62 L70 62 Z";
 
 export function Ingot({
   gold,
@@ -31,17 +35,18 @@ export function Ingot({
   marks = [],
   decorative = false,
   animated = false,
+  topGold,
   className,
 }: IngotProps): React.JSX.Element {
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const fill = ingotFill(gold, size);
   const level = levelY(fill.fraction);
-  const full = fill.fraction >= 1;
   const url = (name: string): string => `url(#${id}-${name})`;
+  const gilded = topGold ?? fill.fraction >= 1;
   return (
     <svg
       viewBox={`0 0 ${String(INGOT_BOX.width)} ${String(INGOT_BOX.height)}`}
-      className={cx("block h-auto w-full overflow-hidden", className)}
+      className={cx("block h-auto w-full overflow-visible", className)}
       data-ingot=""
       data-percent={fill.percent}
       {...(decorative
@@ -49,100 +54,101 @@ export function Ingot({
         : { role: "img", "aria-label": fill.label })}
     >
       <defs>
-        <linearGradient
-          id={`${id}-gold`}
-          gradientUnits="userSpaceOnUse"
-          x1="0"
-          y1="-20"
-          x2="240"
-          y2="140"
-        >
-          <stop offset="0" stopColor="var(--gold-700)" />
-          <stop offset=".35" stopColor="var(--gold-500)" />
-          <stop offset=".55" stopColor="var(--gold-300)" />
-          <stop offset=".75" stopColor="var(--gold-500)" />
-          <stop offset="1" stopColor="var(--gold-700)" />
+        <linearGradient id={`${id}-liquid`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="var(--ingot-liquid-0)" />
+          <stop offset=".3" stopColor="var(--ingot-liquid-1)" />
+          <stop offset=".6" stopColor="var(--ingot-liquid-2)" />
+          <stop offset="1" stopColor="var(--ingot-liquid-3)" />
         </linearGradient>
-        <clipPath id={`${id}-mould`}>
-          <polygon points={MOULD} />
-        </clipPath>
-        {/* In the liquid's own coordinates (it moves with it): the highlight shows on gold only. */}
-        <clipPath id={`${id}-liquid`}>
-          <rect x="0" y="4" width="240" height="140" />
-        </clipPath>
+        <linearGradient id={`${id}-mould`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="var(--ingot-mould-0)" />
+          <stop offset="1" stopColor="var(--ingot-mould-1)" />
+        </linearGradient>
         {animated ? (
           <>
-            <clipPath id={`${id}-top`}>
-              <polygon points={TOP_FACE} />
-            </clipPath>
-            <linearGradient id={`${id}-shine`}>
-              <stop offset="0" stopColor="var(--surface)" stopOpacity="0" />
-              <stop offset=".5" stopColor="var(--surface)" stopOpacity=".9" />
-              <stop offset="1" stopColor="var(--surface)" stopOpacity="0" />
+            {/* On a vertical line (no width) this bounding-box gradient paints nothing in either engine, as in the
+                reference: the visible stream is the flowing dash. Kept verbatim so both draw the same. */}
+            <linearGradient id={`${id}-stream`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="var(--ingot-stream-0)" />
+              <stop offset=".5" stopColor="var(--ingot-stream-1)" />
+              <stop offset="1" stopColor="var(--ingot-stream-2)" />
+            </linearGradient>
+            <linearGradient id={`${id}-glint`} x1="0" x2="1">
+              <stop offset="0" stopColor="var(--ingot-glint)" stopOpacity="0" />
+              <stop offset=".5" stopColor="var(--ingot-glint)" stopOpacity=".8" />
+              <stop offset="1" stopColor="var(--ingot-glint)" stopOpacity="0" />
             </linearGradient>
           </>
         ) : null}
+        <clipPath id={`${id}-clip`}>
+          <path d={MOULD} />
+        </clipPath>
       </defs>
 
-      <polygon points={MOULD} fill="var(--surface-2)" />
-      <polygon points={TOP_FACE} fill="var(--gold-100)" />
+      <ellipse cx="160" cy="194" rx="146" ry="10" fill="var(--ingot-shadow)" fillOpacity=".16" />
+      <path
+        data-ingot-part="top"
+        d={TOP_FACE}
+        fill={gilded ? url("liquid") : "var(--ingot-top)"}
+        stroke="var(--ingot-top-edge)"
+        strokeOpacity=".5"
+      />
+      <path d={MOULD} fill={url("mould")} />
 
+      {/* The pour stream: under the liquid, so its foot always meets the surface (the reference moves the line's
+          end with the level every frame; here the liquid covers what is below it, and nothing runs per frame). */}
       {animated ? (
-        <rect
-          data-ingot-part="stream"
-          x="116"
-          y="0"
-          width="8"
-          height="124"
-          rx="4"
-          fill={url("gold")}
-          opacity="0"
-          style={{ transformBox: "fill-box", transformOrigin: "50% 0%" }}
-        />
+        <g data-ingot-part="stream" opacity="0">
+          <line
+            x1="160"
+            y1="-30"
+            x2="160"
+            y2={INGOT_BOX.bottom}
+            stroke={url("stream")}
+            strokeWidth="9"
+            strokeLinecap="round"
+          />
+          <line
+            className="m-ingot-flow"
+            x1="160"
+            y1="-30"
+            x2="160"
+            y2={INGOT_BOX.bottom}
+            stroke="var(--ingot-flow)"
+            strokeOpacity=".7"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+        </g>
       ) : null}
 
       {fill.fraction > 0 ? (
-        <g clipPath={url("mould")}>
-          <g data-ingot-part="fill" transform={`translate(0 ${String(level)})`}>
-            <rect x="0" y="4" width="240" height="140" fill={url("gold")} />
-            {/* Specular highlight on the front face, drawn where the liquid is. */}
-            <polygon
-              points={`62,${String(50 - level)} 92,${String(50 - level)} 66,${String(112 - level)} 40,${String(112 - level)}`}
-              fill="var(--surface)"
-              opacity=".16"
-              clipPath={url("liquid")}
+        <g clipPath={url("clip")}>
+          <g data-ingot-part="fill" style={{ transform: `translateY(${String(level)}px)` }}>
+            <g data-ingot-part="wave" className={animated ? "m-ingot-wave" : undefined}>
+              <path d={WAVE} fill={url("liquid")} />
+            </g>
+          </g>
+          {animated ? (
+            <rect
+              data-ingot-part="glint"
+              x="-80"
+              y="40"
+              width="46"
+              height="170"
+              fill={url("glint")}
+              transform="skewX(-20)"
+              opacity="0"
             />
-            {full ? null : (
-              <path
-                data-ingot-part="wave"
-                d={WAVE}
-                fill="var(--gold-300)"
-                style={{ transformBox: "fill-box", transformOrigin: "50% 24%" }}
-              />
-            )}
-          </g>
+          ) : null}
         </g>
       ) : null}
 
-      {/* Bevel: the top face's front edge and an inset on the front face. */}
-      <g fill="none" stroke="var(--surface)" strokeLinejoin="round">
-        <polyline points="48,40 192,40" strokeOpacity=".55" strokeWidth="1.5" />
-        <polygon points="60,48 180,48 206,116 34,116" strokeOpacity=".3" strokeWidth="1.2" />
-      </g>
-
-      {animated ? (
-        <g clipPath={url("top")}>
-          <g data-ingot-part="glint" opacity="0">
-            <rect x="20" y="8" width="22" height="38" fill={url("shine")} transform="skewX(-20)" />
-          </g>
-        </g>
-      ) : null}
-
-      <polygon
-        points={MOULD}
+      <path
+        d={MOULD}
         fill="none"
-        stroke="var(--gold-700)"
-        strokeWidth="2.5"
+        stroke="var(--ingot-outline)"
+        strokeWidth="2"
         strokeLinejoin="round"
       />
 

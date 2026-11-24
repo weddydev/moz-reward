@@ -14,10 +14,16 @@ export type ParityPart = {
   status: "pending" | "required";
   /**
    * Compared on a plain white backdrop (its parent's background set to white on both pages): for a part whose
-   * surroundings are built by a later task (the vault's orbit and ghost buttons until PD-10), so only the part
-   * itself is judged, never the stand-in around it.
+   * surroundings are built by a later task (the vault's orbit and ghost buttons were, PD-04 until PD-10), so only
+   * the part itself is judged, never the stand-in around it.
    */
   isolate?: true;
+  /**
+   * Compared by its own spec, never by the generic static one: a part whose rest state comes after a pour run on
+   * the page clock (the Gold Vault) or that exists only during a moment (the reward card, once the vault unlocks):
+   * `tests/parity/vault.spec.ts` compares them at rest, mid-pour, full, unlocked and redeemed.
+   */
+  ownSpec?: true;
   /**
    * Compared at its own content height on both pages (`align-self: start`): for a grid tile whose row-mate is
    * built by a later task, which stretches the row (the Buttons tile until PD-05 built its Coin switch neighbour).
@@ -69,7 +75,6 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     anchor: 'id="fillBtn"',
     task: "PD-04",
     status: "required",
-    isolate: true,
   },
   {
     name: "ghost-button",
@@ -77,7 +82,6 @@ export const PARITY_PARTS: readonly ParityPart[] = [
     anchor: 'id="resetBtn"',
     task: "PD-04",
     status: "required",
-    isolate: true,
   },
   {
     name: "heart-toggle",
@@ -256,13 +260,21 @@ export const PARITY_PARTS: readonly ParityPart[] = [
       why: `Linux Chromium sets the offer cards' detail line and bottom edge 1 px higher than the reference (same CSS; the Mac is under 1%) and draws the dock labels a device pixel apart (the dock's own allowance): 1.09% at 390 (DECISIONS 23 Nov "PD-08 wipe parity")`,
     },
   },
-  { name: "vault", title: "Gold Vault", anchor: 'id="vault"', task: "PD-10", status: "pending" },
+  {
+    name: "vault",
+    title: "Gold Vault",
+    anchor: 'id="vault"',
+    task: "PD-10",
+    status: "required",
+    ownSpec: true,
+  },
   {
     name: "reward",
     title: "Reward unlocked",
     anchor: 'id="reward"',
     task: "PD-10",
-    status: "pending",
+    status: "required",
+    ownSpec: true,
   },
 ];
 

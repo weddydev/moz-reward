@@ -248,6 +248,32 @@
   /* The fallback coin (no photo yet; DESIGN §6.4 "never bare initials"): struck metal with a darker rim. */
   --monogram-face: radial-gradient(circle at 35% 30%, #fff6d6, #f2c14e 45%, #c8922c 75%, #8e6417);
   --monogram-ink: #5a3d0c;
+  /* Gold Vault (PD-10; reference `#ingot` gradients and strokes, `.vault`, `.v-rays`, `.reward-card`, `.digits`). */
+  --ingot-liquid-0: #ffe9a6;
+  --ingot-liquid-1: #f2c14e;
+  --ingot-liquid-2: #c8922c;
+  --ingot-liquid-3: #8e6417;
+  --ingot-mould-0: #f6edd6;
+  --ingot-mould-1: #e2cfa2;
+  --ingot-stream-0: #fff1bf;
+  --ingot-stream-1: #ffc93c;
+  --ingot-stream-2: #c8922c;
+  --ingot-flow: #fff6d6;
+  --ingot-glint: #fff;
+  --ingot-top: #eadbb6;
+  --ingot-top-edge: #b9862a;
+  --ingot-outline: #9a6e1c;
+  --ingot-shadow: #7c5510;
+  --vault-ground: radial-gradient(90% 70% at 50% 30%, #fffdf6, var(--ivory) 60%, var(--champagne));
+  --vault-rays: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 190, 50, 0.4) 0 5deg,
+    rgba(255, 190, 50, 0) 5deg 16deg
+  );
+  --vault-logo-ring: 0 0 0 2px #fff, 0 0 0 3.5px var(--gold);
+  --reward-card-lift:
+    0 24px 50px -20px rgba(21, 16, 10, 0.7), inset 0 0 0 1.5px rgba(255, 206, 74, 0.45);
+  --redeem-digit: #2a2014;
   --molten-danger-flow: linear-gradient(
     115deg,
     #8f2f1f 0%,

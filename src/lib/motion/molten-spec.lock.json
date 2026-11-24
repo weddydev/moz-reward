@@ -19,5 +19,6 @@
   "tabs",
   "text-field",
   "toast",
-  "wallet-stack"
+  "wallet-stack",
+  "vault"
 ]

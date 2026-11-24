@@ -136,8 +136,8 @@ export async function capture(page: Page, part: string): Promise<Buffer> {
       const el = document.querySelector(`[data-parity="${name}"]`);
       if (!el) throw new Error(`no [data-parity="${name}"] on the page`);
       // The reference page chrome (sticky top bar, toasts) belongs to no part and would overlap one.
-      // (Unless the part is the toast stack itself, PD-04.)
-      for (const c of document.querySelectorAll<HTMLElement>("body > .bar, .toasts"))
+      // (Unless the part is the toast stack itself, PD-04; the app's stack too, over the vault's reward, PD-10.)
+      for (const c of document.querySelectorAll<HTMLElement>("body > .bar, .toasts, .m-toasts"))
         if (!c.contains(el)) c.style.visibility = "hidden";
       // Whole pixels on both pages: a part at a fractional page position rasterises its text and edges one device
       // pixel off, which reads as a mismatch everywhere (20 Nov, Language section). Nudge it onto the pixel grid

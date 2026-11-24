@@ -13,3 +13,76 @@
 .ingot-pour svg {
   pointer-events: none;
 }
+
+/* ---------- the reference's ingot box (PD-10; `.ingot-box`, `.ingot`, `.wave`, `.flowline`, `.top-face`, `.vring`, `.stamp`) ---------- */
+.m-ingot-box {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.m-ingot {
+  width: min(440px, 100%);
+  height: auto;
+  overflow: visible;
+  transition: transform 0.7s var(--spring);
+}
+.m-ingot-box[data-lifted] .m-ingot {
+  transform: translateY(-12px) scale(1.03);
+}
+.m-ingot-wave {
+  animation: m-ingot-wave 2.2s linear infinite;
+}
+@keyframes m-ingot-wave {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(80px);
+  }
+}
+.m-ingot-flow {
+  stroke-dasharray: 6 14;
+  animation: m-ingot-flow 0.5s linear infinite;
+}
+/* The stream shows only while a pour runs: its dash sleeps the rest of the time. */
+.m-ingot-box:not([data-ingot-state="run"]) .m-ingot-flow {
+  animation-play-state: paused;
+}
+@keyframes m-ingot-flow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+.m-ingot [data-ingot-part="top"] {
+  transition: fill 0.5s;
+}
+.m-vring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 200px;
+  height: 200px;
+  margin: -100px;
+  border-radius: 50%;
+  border: 3px solid var(--gold-bright);
+  opacity: 0;
+  pointer-events: none;
+}
+.m-stamp {
+  position: absolute;
+  right: 10%;
+  top: 6%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--obsidian);
+  color: var(--gold-light);
+  font:
+    800 16px/1 var(--font-manrope),
+    "Manrope Fallback Liberation",
+    "Manrope Fallback Roboto",
+    system-ui,
+    sans-serif;
+  opacity: 0;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}

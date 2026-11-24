@@ -2673,3 +2673,225 @@ html:root.rm .m-cover > .m-cover-back {
   border-radius: inherit;
   transform-origin: left;
 }
+
+/* ---------- Gold Vault (PD-10; reference `.vault`, `.v-bg`, `.v-rays`, `.v-head`, `.v-shop`, `.v-msg`, `.v-count`, `.v-btns`) ---------- */
+/* The ingot box, ingot, ring and stamp are IngotPour's (src/components/motion/ingot-pour.css). */
+.m-vault {
+  position: relative;
+  border-radius: 30px;
+  padding: 26px;
+  isolation: isolate;
+  min-width: 0;
+  width: 100%;
+  /* The reference's body line height (the app's body is 1.5). */
+  line-height: 1.55;
+  border: 1px solid transparent;
+  background:
+    var(--vault-ground) padding-box,
+    var(--edge) border-box;
+  box-shadow: var(--inner), var(--lift);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.m-v-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  z-index: -1;
+  pointer-events: none;
+}
+.m-v-rays {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 1200px;
+  height: 1200px;
+  margin: -600px 0 0 -600px;
+  z-index: -1;
+  opacity: 0;
+  background: var(--vault-rays);
+  -webkit-mask: radial-gradient(closest-side, black 5%, transparent 60%);
+  mask: radial-gradient(closest-side, black 5%, transparent 60%);
+  transition: opacity 0.8s;
+}
+/* The rays turn only while they show (the reference spins them always, unseen at opacity 0). */
+.m-vault[data-unlocked] .m-v-rays {
+  opacity: 1;
+  animation: m-v-spin 40s linear infinite;
+}
+@keyframes m-v-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.m-v-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+/* The reference's eyebrow keeps a paragraph's default 1em margins. */
+.m-v-shop.m-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+}
+.m-v-logo {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: var(--vault-logo-ring);
+}
+.m-v-title {
+  margin: 0;
+  font:
+    600 30px/1.05 var(--font-fraunces),
+    "Fraunces Fallback Liberation",
+    "Fraunces Fallback Noto",
+    Georgia,
+    serif;
+  letter-spacing: -0.02em;
+}
+.m-v-msg {
+  margin: 4px 0 0;
+  color: var(--ink-2);
+  font-weight: 600;
+  font-size: 14.5px;
+}
+.m-v-count {
+  margin: 0;
+  font:
+    600 44px/1 var(--font-fraunces),
+    "Fraunces Fallback Liberation",
+    "Fraunces Fallback Noto",
+    Georgia,
+    serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.m-v-count small {
+  font:
+    700 16px var(--font-manrope),
+    "Manrope Fallback Liberation",
+    "Manrope Fallback Roboto",
+    system-ui,
+    sans-serif;
+  color: var(--ink-3);
+}
+.m-v-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* ---------- reward card and redeem code (PD-10; reference `.reward`, `.reward-card`, `.r-*`, `.code`, `.digits`, `.ring-cd`) ---------- */
+.m-reward {
+  perspective: 900px;
+}
+.m-reward-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 18px 20px;
+  border-radius: 22px;
+  background: var(--obsidian);
+  color: var(--on-obsidian);
+  transform-origin: 50% 50%;
+  box-shadow: var(--reward-card-lift);
+}
+.m-reward-card h3 {
+  margin: 0;
+  font:
+    600 24px/1.1 var(--font-fraunces),
+    "Fraunces Fallback Liberation",
+    "Fraunces Fallback Noto",
+    Georgia,
+    serif;
+  color: var(--gold-light);
+}
+.m-reward-card p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--on-obsidian-2);
+  font-weight: 600;
+}
+.m-r-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.m-r-img {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  object-fit: cover;
+  flex: none;
+  box-shadow: 0 0 0 1.5px rgba(255, 206, 74, 0.6);
+}
+.m-code {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.m-digits {
+  display: flex;
+  gap: 4px;
+  perspective: 400px;
+}
+.m-digits span {
+  width: 30px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--redeem-digit);
+  display: grid;
+  place-items: center;
+  font:
+    700 22px/1 var(--font-fraunces),
+    "Fraunces Fallback Liberation",
+    "Fraunces Fallback Noto",
+    Georgia,
+    serif;
+  color: var(--gold-light);
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.4);
+}
+.m-ring-cd {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--gold-bright) calc(var(--cd-p, 100) * 1%),
+    rgba(255, 206, 74, 0.15) 0
+  );
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.m-ring-cd span {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--obsidian);
+  display: grid;
+  place-items: center;
+  font:
+    800 10px/1 var(--font-manrope),
+    "Manrope Fallback Liberation",
+    "Manrope Fallback Roboto",
+    system-ui,
+    sans-serif;
+  color: var(--gold-light);
+  font-variant-numeric: tabular-nums;
+}
+/* Expired (not in the reference): the code can't be used, so it dims; the empty ring says 0:00. */
+.m-code[data-expired] .m-digits {
+  opacity: 0.45;
+}

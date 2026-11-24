@@ -1,6 +1,6 @@
 /**
  * Ingot fill maths (P1-08, DESIGN §8.3): pure, shared by the Ingot SVG, the pour, the Wallet's progress label
- * and the Gold Vault page. Geometry is in the SVG's user units (viewBox `0 0 240 140`).
+ * and the Gold Vault page. Geometry is in the SVG's user units (viewBox `0 0 320 210`, the reference's ingot since PD-10).
  */
 
 /** Whole percent of the ingot, rounded down: 999 of 1,000 reads 99%, never a full ingot that isn't. */
@@ -42,21 +42,21 @@ export function ingotFill(gold: number, size: number): IngotFill {
   };
 }
 
-/** The mould in user units: the liquid rises from `BOTTOM` (empty) to `TOP` (full). */
-export const INGOT_BOX = { width: 240, height: 140, top: 14, faceTop: 40, bottom: 124 } as const;
-
 /**
- * The liquid surface's y for a fill fraction: linear in height over the front face (as the eye reads a
- * level), so 72% looks like 72%; the top face fills only when the ingot is full.
+ * The mould in user units (the reference's `#ingot`, viewBox `0 0 320 210`; PD-10): the top face runs from y 40
+ * to 62, the front face from 62 to 182. The liquid rises from `bottom` (empty) to `faceTop` (full); a full
+ * ingot's top face turns gold instead of filling with liquid.
  */
-export const levelY = (fraction: number): number =>
-  fraction >= 1
-    ? INGOT_BOX.top
-    : INGOT_BOX.bottom - (INGOT_BOX.bottom - INGOT_BOX.faceTop) * Math.max(0, fraction);
+export const INGOT_BOX = { width: 320, height: 210, top: 40, faceTop: 62, bottom: 182 } as const;
 
-/** The mould's right edge at height `y` (milestone ticks sit just outside it). */
+/** The liquid surface's y for a fill fraction: the reference's `182 − 120 × v / MAX`, clamped to 0–1. */
+export const levelY = (fraction: number): number =>
+  INGOT_BOX.bottom -
+  (INGOT_BOX.bottom - INGOT_BOX.faceTop) * Math.min(1, Math.max(0, fraction || 0));
+
+/** The mould's right edge at height `y` (milestone ticks sit just outside it): top face 236 → 250, front 250 → 292. */
 export function mouldRightX(y: number): number {
   const { top, faceTop, bottom } = INGOT_BOX;
-  if (y <= faceTop) return 174 + ((Math.max(top, y) - top) * 18) / (faceTop - top);
-  return 192 + ((Math.min(bottom, y) - faceTop) * 34) / (bottom - faceTop);
+  if (y <= faceTop) return 236 + ((Math.max(top, y) - top) * 14) / (faceTop - top);
+  return 250 + ((Math.min(bottom, y) - faceTop) * 42) / (bottom - faceTop);
 }

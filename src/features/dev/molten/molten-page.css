@@ -314,14 +314,6 @@ body:has(.m-page) {
 .m-how b {
   color: var(--ink);
 }
-.m-v-btns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 96px;
-  /* The vault's padding (26 px) and border (1 px): the row wraps where the reference's does. */
-  padding: 0 27px;
-}
 /* The Tabs, Rate your visit and Molten slider tiles' columns (reference: inline styles on their .demo). */
 .m-demo.m-demo-col {
   flex-direction: column;

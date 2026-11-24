@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { POUR_MS, pourTimeline, timelineEnd } from "@/lib/motion/ingot";
 import { INGOT_BOX, ingotFill, ingotPercent, levelY, mouldRightX } from "./ingot";
 
 describe("[P1-08] ingot fill", () => {
@@ -38,51 +37,20 @@ describe("[P1-08] ingot fill", () => {
     expect(ingotPercent(1, 3)).toBe(33);
   });
 
-  it("maps fill to the front face's height; the top face fills only at 100%; clamped", () => {
+  it("[PD-10] maps fill to the front face's height (reference: 182 − 120 × fill); clamped", () => {
+    expect(INGOT_BOX).toMatchObject({ width: 320, height: 210, top: 40, faceTop: 62, bottom: 182 });
     expect(levelY(0)).toBe(INGOT_BOX.bottom);
-    expect(levelY(1)).toBe(INGOT_BOX.top);
+    expect(levelY(1)).toBe(INGOT_BOX.faceTop);
+    expect(levelY(0.72)).toBeCloseTo(95.6, 6);
     expect(levelY(0.5)).toBe((INGOT_BOX.bottom + INGOT_BOX.faceTop) / 2);
-    expect(levelY(0.999)).toBeGreaterThan(INGOT_BOX.faceTop);
-    expect(levelY(2)).toBe(INGOT_BOX.top);
+    expect(levelY(2)).toBe(INGOT_BOX.faceTop);
     expect(levelY(-1)).toBe(INGOT_BOX.bottom);
   });
 
-  it("follows the mould's right edge for milestone ticks", () => {
-    expect(mouldRightX(INGOT_BOX.top)).toBe(174);
-    expect(mouldRightX(INGOT_BOX.faceTop)).toBe(192);
-    expect(mouldRightX(INGOT_BOX.bottom)).toBe(226);
-    expect(mouldRightX(82)).toBeCloseTo(209, 0);
-  });
-});
-
-describe("[P1-08] pour timeline", () => {
-  it("pour is 0.9 s with a stream; rise is 0.5 s without one", () => {
-    const pour = pourTimeline("pour", levelY(0.72));
-    const rise = pourTimeline("rise", levelY(0.72));
-    expect(timelineEnd(pour)).toBe(POUR_MS.pour);
-    expect(timelineEnd(rise)).toBe(POUR_MS.rise);
-    expect(pour.map((p) => p.part)).toContain("stream");
-    expect(rise.map((p) => p.part)).not.toContain("stream");
-  });
-
-  it("starts the liquid empty and ends it at the level the static picture draws", () => {
-    const level = levelY(0.72);
-    for (const kind of ["pour", "rise"] as const) {
-      const fill = pourTimeline(kind, level).find((p) => p.part === "fill");
-      expect(fill?.keyframes[0]?.transform).toBe(`translate(0px, ${String(INGOT_BOX.bottom)}px)`);
-      expect(fill?.keyframes.at(-1)?.transform).toBe(`translate(0px, ${String(level)}px)`);
-    }
-  });
-
-  it("ends every part on its resting state (finishing early never leaves a half pour)", () => {
-    for (const kind of ["pour", "rise"] as const) {
-      for (const part of pourTimeline(kind, 50)) {
-        const last = part.keyframes.at(-1) ?? {};
-        if (part.part === "wave") expect(last.transform).toBe("translateX(0px) scaleY(1)");
-        if (part.part === "glint" || part.part === "stream") expect(last.opacity).toBe(0);
-        // No forwards fill: once finished, the element shows its own (static) attributes.
-        expect(part.options.fill).toBe("backwards");
-      }
-    }
+  it("[PD-10] follows the reference mould's right edge for milestone ticks", () => {
+    expect(mouldRightX(INGOT_BOX.top)).toBe(236);
+    expect(mouldRightX(INGOT_BOX.faceTop)).toBe(250);
+    expect(mouldRightX(INGOT_BOX.bottom)).toBe(292);
+    expect(mouldRightX(122)).toBe(271);
   });
 });

@@ -5,7 +5,6 @@ import { LabSection } from "./LabSection";
 import { LanguageSection } from "./LanguageSection";
 import { PARITY_PARTS } from "./parity-parts";
 import { PhoneSection } from "./PhoneSection";
-import { VaultButtons } from "./VaultButtons";
 import "./molten-page.css";
 
 /**
@@ -13,10 +12,10 @@ import "./molten-page.css";
  * parity harness (`tests/parity/`). Each part carries `data-parity="<name>"`, like its counterpart in the
  * reference copy. Until its PD task builds it, a part is a labelled placeholder (`data-parity-status="pending"`)
  * that no parity spec compares. Built so far: the living background and the Language section (PD-02); the
- * Buttons tile, heart toggle, the vault's orbit and ghost buttons and the toast (PD-04); the Coin switch, Liquid
+ * Buttons tile, heart toggle and the toast (PD-04); the Coin switch, Liquid
  * choice and Gold seal checkbox tiles (PD-05); the Tabs, Rate your visit, Molten slider, Input and Member card tiles
  * (PD-06); the phone frame and its floating dock (PD-07); the phone's wallet stack and the gold wipe into the
- * shop (PD-08).
+ * shop (PD-08); the Gold Vault beside the phone with its demo buttons, reward card and redeem code (PD-10).
  */
 const SECTIONS: readonly { parts: readonly string[]; Section: () => React.JSX.Element }[] = [
   { parts: ["intro"], Section: IntroSection },
@@ -46,8 +45,10 @@ const SECTIONS: readonly { parts: readonly string[]; Section: () => React.JSX.El
     ],
     Section: LabSection,
   },
-  { parts: ["orbit-button", "ghost-button"], Section: VaultButtons },
-  { parts: ["dock", "wallet-stack", "shop"], Section: PhoneSection },
+  {
+    parts: ["dock", "wallet-stack", "shop", "vault", "reward", "orbit-button", "ghost-button"],
+    Section: PhoneSection,
+  },
 ];
 
 export function MoltenGallery(): React.JSX.Element {

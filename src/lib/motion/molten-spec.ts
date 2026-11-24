@@ -14,8 +14,10 @@ import {
   TOAST,
 } from "./controls";
 import { FX } from "./fx";
+import { POUR } from "./ingot";
 import { type Locator } from "./molten-reference";
 import { PRESS } from "./press";
+import { VAULT } from "./vault";
 import { WIPE } from "./wipe";
 
 /**
@@ -49,6 +51,7 @@ export type SpecRow = {
 };
 
 const MOLTEN_CSS = "src/styles/molten.css";
+const INGOT_CSS = "src/components/motion/ingot-pour.css";
 
 const css = (selector: string, prop: string, part?: string): Locator =>
   part === undefined ? { css: selector, prop } : { css: selector, prop, part };
@@ -918,8 +921,203 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
     id: "vault",
     element: "Vault pour / reward / redeem",
     task: "PD-10",
-    status: "pending",
-    values: [],
+    status: "required",
+    values: [
+      {
+        name: "first-view pour",
+        value: "900",
+        ref: js("if (en.isIntersecting && !seen)", /pour\(720, (\d+)\)/g),
+        prod: { value: () => POUR.ms.pour },
+      },
+      {
+        name: "first-view wait",
+        value: "200",
+        ref: js("if (en.isIntersecting && !seen)", /pour\(720, \d+\), (\d+)\)/g),
+        prod: { value: () => POUR.view.delayMs },
+      },
+      {
+        name: "first-view threshold",
+        value: ".45",
+        ref: js("if (en.isIntersecting && !seen)", /threshold: (\.\d+)/g),
+        prod: { value: () => POUR.view.threshold },
+      },
+      {
+        name: "add pour",
+        value: "1000",
+        ref: js("function pour(to, ms =", /ms = (\d+)\)/g),
+        prod: { value: () => POUR.ms.add },
+      },
+      {
+        name: "fill pour",
+        value: "1500",
+        ref: js("$('#fillBtn').addEventListener", /pour\(MAX, (\d+)\)/g),
+        prod: { value: () => POUR.ms.fill },
+      },
+      {
+        name: "drain",
+        value: "600",
+        ref: js("$('#resetBtn').addEventListener", /duration: (\d+), fill/g),
+        prod: { value: () => POUR.ms.drain },
+      },
+      {
+        name: "splash every",
+        value: "140",
+        ref: js("function pour(to, ms =", /lastSplash > (\d+)/g),
+        prod: { value: () => POUR.splash.everyMs },
+      },
+      {
+        name: "splash until",
+        value: ".9",
+        ref: js("function pour(to, ms =", /&& k < (\.\d+)/g),
+        prod: { value: () => POUR.splash.until },
+      },
+      {
+        name: "splash sparks",
+        value: "4",
+        ref: js("function pour(to, ms =", /type: 'spark', count: (\d+), speed: \[60/g),
+        prod: { value: () => POUR.splash.count },
+      },
+      {
+        name: "stream fade",
+        value: "220",
+        ref: js("function pour(to, ms =", /\{ opacity: 0 \}\], \{ duration: (\d+)/g),
+        prod: { value: () => POUR.streamFadeMs },
+      },
+      {
+        name: "glint",
+        value: "700",
+        ref: js(
+          "function pour(to, ms =",
+          /translateX\(460px\)', opacity: 1 \}\], \{ duration: (\d+)/g,
+        ),
+        prod: { value: () => POUR.glint.ms },
+      },
+      {
+        name: "glint travel (px)",
+        value: "460",
+        ref: js("function pour(to, ms =", /translateX\((\d+)px\)', opacity: 1 \}\]/g),
+        prod: { value: () => POUR.glint.dx },
+      },
+      {
+        name: "stamp",
+        value: "1400",
+        ref: js("function pour(to, ms =", /rotate\(-4deg\)' \}\], \{ duration: (\d+)/g),
+        prod: { value: () => POUR.stamp.ms },
+      },
+      {
+        name: "wave",
+        value: "2.2s linear infinite",
+        ref: css(".ingot .wave", "animation", "wave"),
+        prod: {
+          file: INGOT_CSS,
+          css: ".m-ingot-wave",
+          prop: "animation",
+          part: "m-ingot-wave",
+        },
+      },
+      {
+        name: "unlock after landing",
+        value: "250",
+        ref: js("function pour(to, ms =", /setTimeout\(unlock, (\d+)\)/g),
+        prod: { value: () => VAULT.unlock.delayMs },
+      },
+      {
+        name: "ring pulse",
+        value: "900",
+        ref: js("function unlock()", /scale\(3\.2\)' \}\], \{ duration: (\d+)/g),
+        prod: { value: () => VAULT.unlock.ring.ms },
+      },
+      {
+        name: "ring scale",
+        value: "3.2",
+        ref: js("function unlock()", /scale\((\d\.\d)\)' \}\], \{ duration/g),
+        prod: { value: () => VAULT.unlock.ring.to },
+      },
+      {
+        name: "rays",
+        value: ".8s",
+        ref: css(".v-rays", "transition", "opacity"),
+        prod: { file: MOLTEN_CSS, css: ".m-v-rays", prop: "transition", part: "opacity" },
+      },
+      {
+        name: "ingot lift",
+        value: ".7s var(--spring)",
+        ref: css(".ingot", "transition", "transform"),
+        prod: { file: INGOT_CSS, css: ".m-ingot", prop: "transition", part: "transform" },
+      },
+      {
+        name: "ingot lift transform",
+        value: "translateY(-12px) scale(1.03)",
+        ref: css(".vault.unlocked .ingot", "transform"),
+        prod: { file: INGOT_CSS, css: ".m-ingot-box[data-lifted] .m-ingot", prop: "transform" },
+      },
+      {
+        name: "gold leaves",
+        value: "70",
+        ref: js("function unlock()", /type: 'leaf', count: (\d+)/g),
+        prod: { value: () => VAULT.unlock.leaves.count },
+      },
+      {
+        name: "coins",
+        value: "14",
+        ref: js("function unlock()", /type: 'coin', count: (\d+)/g),
+        prod: { value: () => VAULT.unlock.coins.count },
+      },
+      {
+        name: "sparks",
+        value: "30",
+        ref: js("function unlock()", /type: 'spark', count: (\d+)/g),
+        prod: { value: () => VAULT.unlock.sparks.count },
+      },
+      {
+        name: "card flip",
+        value: "700",
+        ref: js("function unlock()", /duration: (\d+), delay: \d+, easing: OUT/g),
+        prod: { value: () => VAULT.unlock.card.ms },
+      },
+      {
+        name: "card flip delay",
+        value: "350",
+        ref: js("function unlock()", /delay: (\d+), easing: OUT/g),
+        prod: { value: () => VAULT.unlock.card.delayMs },
+      },
+      {
+        name: "card flip from (deg)",
+        value: "80",
+        ref: js("function unlock()", /rotateX\((\d+)deg\) translateY/g),
+        prod: { value: () => VAULT.unlock.card.fromDeg },
+      },
+      {
+        name: "code after press",
+        value: "320",
+        ref: js("redeemBtn.addEventListener('click'", /\n {4}\}, (\d+)\);/g),
+        prod: { value: () => VAULT.redeem.codeDelayMs },
+      },
+      {
+        name: "digit flip",
+        value: "380",
+        ref: js("redeemBtn.addEventListener('click'", /duration: (\d+), delay: k/g),
+        prod: { value: () => VAULT.redeem.digitMs },
+      },
+      {
+        name: "digit stagger",
+        value: "60",
+        ref: js("redeemBtn.addEventListener('click'", /delay: k \* (\d+)/g),
+        prod: { value: () => VAULT.redeem.staggerMs },
+      },
+      {
+        name: "code life (min)",
+        value: "15",
+        ref: js("redeemBtn.addEventListener('click'", /Date\.now\(\) \+ (\d+) \* 60/g),
+        prod: { value: () => VAULT.redeem.validMs / 60_000 },
+      },
+      {
+        name: "countdown tick",
+        value: "250",
+        ref: js("cdTimer = setInterval", /if \(!left\) clearInterval\(cdTimer\); \}, (\d+)\)/g),
+        prod: { value: () => VAULT.redeem.tickMs },
+      },
+    ],
   },
   {
     id: "fx-engine",

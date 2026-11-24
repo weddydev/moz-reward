@@ -19,25 +19,39 @@ describe("[P1-08] Ingot", () => {
   it("50%: liquid at half height with a wave on its surface", () => {
     const { container } = render(<Ingot gold={500} size={1_000} />);
     expect(screen.getByRole("img", { name: "500 of 1,000 gold, 50%" })).toBeInTheDocument();
-    expect(part(container, "fill")?.getAttribute("transform")).toBe(
-      `translate(0 ${String(levelY(0.5))})`,
+    expect((part(container, "fill") as SVGElement | null)?.style.transform).toBe(
+      `translateY(${String(levelY(0.5))}px)`,
     );
     expect(part(container, "wave")).not.toBeNull();
+  });
+
+  it("[PD-10] the reference's geometry: viewBox 320 × 210, 72% sits at y 95.6, plain top face", () => {
+    const { container } = render(<Ingot gold={720} size={1_000} />);
+    expect(container.querySelector("svg")).toHaveAttribute("viewBox", "0 0 320 210");
+    expect((part(container, "fill") as SVGElement | null)?.style.transform).toBe(
+      "translateY(95.6px)",
+    );
+    expect(part(container, "top")).toHaveAttribute("fill", "var(--ingot-top)");
   });
 
   it("99%: nearly full and still reads 99%", () => {
     const { container } = render(<Ingot gold={999} size={1_000} />);
     expect(screen.getByRole("img", { name: "999 of 1,000 gold, 99%" })).toBeInTheDocument();
     expect(part(container, "wave")).not.toBeNull();
+    expect(part(container, "top")).toHaveAttribute("fill", "var(--ingot-top)");
   });
 
-  it("100%: full to the top, flat (no wave)", () => {
+  it("[PD-10] 100%: liquid to the front face's top, wave kept (as the reference), top face in gold", () => {
     const { container } = render(<Ingot gold={1_000} size={1_000} />);
     expect(screen.getByRole("img", { name: "1,000 of 1,000 gold, 100%" })).toBeInTheDocument();
-    expect(part(container, "fill")?.getAttribute("transform")).toBe(
-      `translate(0 ${String(INGOT_BOX.top)})`,
+    expect((part(container, "fill") as SVGElement | null)?.style.transform).toBe(
+      `translateY(${String(INGOT_BOX.faceTop)}px)`,
     );
-    expect(part(container, "wave")).toBeNull();
+    expect(part(container, "wave")).not.toBeNull();
+    expect(part(container, "top")?.getAttribute("fill")).toMatch(/^url\(#.+-liquid\)$/);
+    // The pour holds the top face plain until its unlock moment.
+    const { container: held } = render(<Ingot gold={1_000} size={1_000} topGold={false} />);
+    expect(part(held, "top")).toHaveAttribute("fill", "var(--ingot-top)");
   });
 
   it("overflow: a full ingot that never claims more than 100%", () => {

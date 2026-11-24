@@ -15,6 +15,7 @@ import { anim } from "@/lib/motion/anim";
 import { burst } from "@/lib/motion/fx";
 import { circleClip, riseDelay, WIPE, wipePoint, wipeRadius } from "@/lib/motion/wipe";
 import { frauncesItalic } from "@/styles/fonts-italic";
+import { VaultSection } from "./VaultSection";
 
 const ITEMS = [
   { label: "Wallet", Glyph: DockWallet },
@@ -79,7 +80,7 @@ const share = (s: Shop): number => s.gold / s.target;
  * itself while the wallet comes back. Like the reference, the views are shown and hidden by hand and the
  * animations start in the click's own task (the parity harness pauses them right after the event); the shop's
  * content is re-rendered for the tapped card in place (same elements), so the animations hold.
- * The Gold Vault fills the phone's neighbour column in PD-10.
+ * The Gold Vault (`VaultSection`, PD-10) fills the phone's neighbour column.
  */
 export function PhoneSection(): React.JSX.Element {
   const [current, setCurrent] = useState(0);
@@ -347,7 +348,7 @@ export function PhoneSection(): React.JSX.Element {
             </Dock>
           </div>
         </div>
-        <div />
+        <VaultSection />
       </div>
     </section>
   );
