@@ -1,9 +1,10 @@
 # One spec, N times, on CI's Linux browsers (process change, human 25 Nov 2026; TESTING §10 "WebKit debugging").
-# For root-causing a Linux-WebKit-only (or CI-only) failure in ~5–8 min instead of a full CI round: a laptop's
+# For root-causing a Linux-WebKit-only (or CI-only) failure in ~5–8 min instead of a full CI round: a laptop’s
 # WebKit is no evidence (Docker WebKit ~1 fps, DECISIONS 22 Nov). Run it on the branch under test:
 #   gh workflow run spec-repeat.yml --ref wip/<task> -f spec=tests/e2e/<name>.spec.ts -f project=webkit -f repeat=5
 #   (optional: -f grep="<test title part>"  -f perf=true for @perf/@fps specs)
-# Then: gh run list --workflow spec-repeat.yml --limit 1. It is evidence for a hypothesis, not a gate: the task
+# A fix attempt goes to a scratch branch `wip/dbg-<task>-<n>` (no CI run there, so the task branch's own run isn't
+# cancelled, KI-14) and this runs on that ref. Then: gh run list --workflow spec-repeat.yml --limit 1. It is evidence for a hypothesis, not a gate: the task
 # still needs its normal green CI run. Inputs reach the shell only through env vars and are validated first.
 name: Spec repeat
 
