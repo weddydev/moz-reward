@@ -12,7 +12,12 @@ type Seeded = { shopId: string; shopCode: string };
 async function seedVault(
   request: APIRequestContext,
   userId: string | null,
-  member: { progressGold?: number; ingotsCompleted?: number } = {},
+  member: {
+    progressGold?: number;
+    ingotsCompleted?: number;
+    tier?: "bronze" | "silver" | "gold";
+    streakWeeks?: number;
+  } = {},
   programme: boolean | "sample" = "sample",
   name = "Brew & Bloom Café",
 ): Promise<Seeded> {
@@ -161,6 +166,32 @@ test("[P1-08] gold vault: DESIGN sample data, mystery hidden, tiers, shelf, how 
   await expect(page).toHaveURL(`/shops/${shopId}`);
   await page.getByTestId("shop-vault-link").click();
   await expect(page).toHaveURL(`/vault/${shopId}`);
+});
+
+test("[P1-12] gold vault: the streak chip shows the member's streak; the tier reached stays above today's thresholds (C-66)", async ({
+  page,
+  signInAs,
+  shoot,
+}) => {
+  const me = await signInAs("customer");
+  // 2 ingots is Silver under the sample thresholds (Silver 2, Gold 5), but the member reached Gold earlier.
+  const { shopId } = await seedVault(page.request, me.userId, {
+    progressGold: 720,
+    ingotsCompleted: 2,
+    tier: "gold",
+    streakWeeks: 3,
+  });
+  await page.goto(`/vault/${shopId}`);
+  await expect(page.getByTestId("vault-streak")).toHaveText("3-week streak · bonus gold active");
+  const tier = page.getByTestId("vault-tier");
+  await expect(tier.locator("[aria-current]")).toContainText("Gold");
+  await expect(tier).toContainText("You've reached the top tier");
+  for (const width of [390, 320, 1440]) {
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+    await noHorizontalScroll(page);
+    await tier.scrollIntoViewIfNeeded();
+    await shoot(`vault-streak-tier-${String(width)}`);
+  }
 });
 
 test("[P1-08] gold vault: members only, and a shop without a programme says so", async ({

@@ -30,7 +30,7 @@ import { MemberIdCard } from "./MemberIdCard";
 import { MembershipControls } from "./MembershipControls";
 import { type OpenRequestView, RequestPoints } from "./RequestPoints";
 import { SHOP_PAGE_CLASS, ShopPageHeader } from "./ShopPageHeader";
-import { leaveRestoreBy, upcomingClosures, vaultCardText } from "./view";
+import { leaveRestoreBy, type ReceiptRow, upcomingClosures, vaultCardText } from "./view";
 
 type Live = Extract<ShopLandingData, { kind: "live" }>;
 
@@ -41,7 +41,9 @@ type Live = Extract<ShopLandingData, { kind: "live" }>;
  * Gold Vault card (the pour on every view), the member ID and recent receipts on the left; the shop's details
  * and the member's own settings (mute, leave) on the right. A non-member (never joined, or left) sees the
  * join CTA in place of the member sections. Request points or the pending request sits under the mini vault, as
- * in the reference (P1-11). Slots filled by later tasks: recent receipts' rows (P1-12), Show member QR (P1-14), offers carousel (P3-05), rate row (P3-01).
+ * in the reference (P1-11). Recent receipts lists the member's last receipts here (P1-12; the PDF download
+ * arrives with the receipt job). Slots filled by later tasks: Show member QR (P1-14), offers carousel (P3-05),
+ * rate row (P3-01).
  * Server component; the pour and the settings are the only client parts.
  */
 export function MemberShopPage({
@@ -54,6 +56,7 @@ export function MemberShopPage({
   now,
   availability = "live",
   request = null,
+  receipts = [],
 }: {
   shop: { shopId: string; name: string; logoUrl: string | null; muted: boolean };
   /** The shop's public profile (cached landing data); null while the shop is suspended or closed. */
@@ -73,6 +76,8 @@ export function MemberShopPage({
    * the button (the availability note or the Vault card says why).
    */
   request?: { open: OpenRequestView | null } | null;
+  /** P1-12: the member's latest receipts at this shop, newest first. */
+  receipts?: readonly ReceiptRow[];
 }): React.JSX.Element {
   const today = londonDate(now);
   const status = details ? statusLabel(openStatus(details, now), today) : null;
@@ -179,10 +184,33 @@ export function MemberShopPage({
                 <h2 className="text-h2 flex items-center gap-2">
                   <Icon icon={Receipt} className="text-gold-deep" /> Recent receipts
                 </h2>
-                <EmptyState
-                  title="No receipts yet"
-                  message="Each time staff approve your gold, the receipt shows here."
-                />
+                {receipts.length === 0 ? (
+                  <EmptyState
+                    title="No receipts yet"
+                    message="Each time staff approve your gold, the receipt shows here."
+                  />
+                ) : (
+                  <ul className="flex flex-col" aria-label="Recent receipts">
+                    {receipts.map((r) => (
+                      <li
+                        key={r.id}
+                        className="border-line flex items-start justify-between gap-3 border-b py-3 last:border-b-0"
+                        data-testid="shop-receipt"
+                      >
+                        <span className="flex min-w-0 flex-col">
+                          <span className="text-small font-semibold">{r.title}</span>
+                          <span className="text-caption text-ink-2">{r.when}</span>
+                          {r.items ? (
+                            <span className="text-caption text-ink-2 truncate">{r.items}</span>
+                          ) : null}
+                        </span>
+                        <span className="text-small text-gold-deep shrink-0 font-semibold tabular-nums">
+                          {r.gold}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </Card>
             </>
           ) : (

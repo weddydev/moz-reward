@@ -13,12 +13,20 @@ export type OwnVault = {
   joinedAt: Date;
   progressGold: number;
   ingotsCompleted: number;
+  /** When the current ingot started (null = at `joinedAt`, C-60). */
+  ingotStartedAt: Date | null;
+  /** The highest tier reached (never lowered, C-66). */
+  tier: (typeof memberships.$inferSelect)["tier"];
+  streakWeeks: number;
+  /** Monday (London) of the streak's last week; null before the first approved visit. */
+  streakLastWeekStart: string | null;
   /** Every programme version of the shop, oldest first. */
   versions: ProgrammeVersion[];
 };
 
 /**
- * The customer's own Gold Vault at one shop (P1-08, `/vault/[shopId]`): their current membership's counters,
+ * The customer's own Gold Vault at one shop (P1-08, `/vault/[shopId]`): their current membership's counters
+ * (with the stored tier and streak the approvals write, P1-12),
  * the shop's public identity and its programme versions, in one scoped transaction. Null when the caller
  * isn't a current member (never joined, left, or no such shop), so the page answers the same 404 for all of
  * them. RLS is the second wall: memberships_own, shops_public and loyalty_programs_member_read.
@@ -34,6 +42,10 @@ export async function readOwnVault(scope: CustomerScope, shopId: string): Promis
         joinedAt: memberships.joinedAt,
         progressGold: memberships.progressGold,
         ingotsCompleted: memberships.ingotsCompleted,
+        ingotStartedAt: memberships.ingotStartedAt,
+        tier: memberships.tier,
+        streakWeeks: memberships.streakWeeks,
+        streakLastWeekStart: memberships.streakLastWeekStart,
       })
       .from(memberships)
       .innerJoin(shops, eq(shops.id, memberships.shopId))

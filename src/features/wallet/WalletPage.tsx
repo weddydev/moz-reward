@@ -14,6 +14,7 @@ import {
   type WalletView,
   goldText,
   ingotsText,
+  rewardsText,
 } from "./view";
 import { WalletHeader } from "./WalletHeader";
 import { WalletStack } from "./WalletStack";
@@ -21,8 +22,8 @@ import { WalletStack } from "./WalletStack";
 /**
  * The Wallet (P1-07, DESIGN §15 screen 3). Mobile: the reference's header (greeting, bell, the gold total panel),
  * the summary row, the shop cards (pull to refresh). Desktop: greeting with the summary tiles beside it, a 3-column shop grid and a right column with
- * rewards ready and recent activity (rewards and ledger arrive with P1-12/P1-16, C-62; the daily game card
- * with P4-06, C-63). Each card opens the shop page, its logo and name morphing into the page header.
+ * rewards ready and recent activity (from the rewards and ledger tables, C-62; the rewards list with Redeem
+ * comes with P1-16, C-65, and the daily game card with P4-06, C-63). Each card opens the shop page, its logo and name morphing into the page header.
  */
 export function WalletPage({
   view,
@@ -95,7 +96,9 @@ export function WalletPage({
                 Rewards ready ({summary.rewardsReady})
               </h2>
               <p className="text-small text-ink-2">
-                Nothing to redeem yet. Fill an ingot to unlock a shop&rsquo;s reward.
+                {summary.rewardsReady === 0
+                  ? "Nothing to redeem yet. Fill an ingot to unlock a shop\u2019s reward."
+                  : `${rewardsText(summary.rewardsReady)} waiting. Open the shop to see ${summary.rewardsReady === 1 ? "it" : "them"}.`}
               </p>
             </Card>
             <Card className="flex flex-col gap-2 p-5" data-testid="wallet-activity">
@@ -103,7 +106,26 @@ export function WalletPage({
                 <Icon icon={Clock3} className="text-gold-deep" />
                 Recent activity
               </h2>
-              <p className="text-small text-ink-2">Gold you collect will show here.</p>
+              {view.activity.length === 0 ? (
+                <p className="text-small text-ink-2">Gold you collect will show here.</p>
+              ) : (
+                <ul className="flex flex-col" aria-label="Recent activity">
+                  {view.activity.map((a) => (
+                    <li
+                      key={a.requestId}
+                      className="border-line flex items-center justify-between gap-3 border-b py-2 last:border-b-0"
+                    >
+                      <span className="flex min-w-0 flex-col">
+                        <span className="text-small truncate font-semibold">{a.shopName}</span>
+                        <span className="text-caption text-ink-2">{a.date}</span>
+                      </span>
+                      <span className="text-small text-gold-deep shrink-0 font-semibold tabular-nums">
+                        {a.gold}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Card>
           </aside>
         </div>

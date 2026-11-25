@@ -23,6 +23,8 @@ async function seedMembership(
     programme?: boolean;
     details?: boolean;
     member?: Member;
+    /** P1-12: approved visits through the approvals service (needs a programme). */
+    visits?: number;
   },
 ): Promise<{ shopId: string }> {
   const res = await request.post("/api/test/shop", {
@@ -199,6 +201,33 @@ test("[P1-07] wallet: memberships in order with progress, summary, a suspended s
   await expect(
     page.locator('[data-portal-nav="side"]').getByRole("link", { name: "Wallet" }),
   ).toHaveAttribute("aria-current", "page");
+});
+
+test("[P1-12] wallet right column: recent activity and rewards ready from approved visits (C-62)", async ({
+  page,
+  signInAs,
+  shoot,
+}) => {
+  const me = await signInAs("customer");
+  // 800 gold (no milestone recorded yet), then two visits of 100: the first passes the 50% milestone and unlocks
+  // "Free pastry", the second fills the ingot and unlocks its main reward: 2 rewards ready.
+  await seedMembership(page.request, me.userId, {
+    name: "Brew & Bloom Café",
+    programme: true,
+    member: { purchaseCount: 9, progressGold: 800 },
+    visits: 2,
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/wallet");
+  const activity = page.getByTestId("wallet-activity").getByRole("listitem");
+  await expect(activity).toHaveCount(2);
+  for (const row of [activity.nth(0), activity.nth(1)]) {
+    await expect(row).toContainText("Brew & Bloom Café");
+    await expect(row).toContainText("+100 gold");
+  }
+  await expect(page.getByTestId("wallet-rewards-ready")).toContainText("Rewards ready (2)");
+  await expect(page.getByTestId("wallet-rewards-ready")).toContainText("2 rewards waiting");
+  await shoot("wallet-activity-1440");
 });
 
 test("[PD-08] wallet stack: phones stack cards in threes with their header strips in view; Show all opens the rest; the grid from 768px", async ({

@@ -1,6 +1,7 @@
 import { addressLine, statusLabel } from "@/features/landing/view";
 import type { ShopId } from "@/lib/brand";
 import { points } from "@/lib/brand";
+import { formatDate } from "@/lib/format-date";
 import { estimateVisitsToNext, initialMemberState } from "@/lib/loyalty/engine";
 import { ingotPercent } from "@/lib/loyalty/ingot";
 import { ingotTerms, type ProgrammeVersion } from "@/lib/loyalty/programme";
@@ -100,10 +101,14 @@ export type WalletCardInput = {
   lastVisitAt: Date | null;
   progressGold: number;
   ingotsCompleted: number;
+  /** When the current ingot started (null = at `joinedAt`, C-60): its terms are the version in force then. */
+  ingotStartedAt: Date | null;
+  /** Gold reversed beyond the progress there was; future earns pay it off first. */
+  goldShortfall: number;
   versions: readonly ProgrammeVersion[];
   hours: readonly HoursRow[];
   closures: readonly ClosureRow[];
-  /** Gold of the most recent approved awards, oldest first (P1-12 ledger; empty until then, C-62). */
+  /** Gold of the most recent approved awards, oldest first (the ledger's last earns, C-62). */
   recentAwards: readonly number[];
 };
 
@@ -131,11 +136,11 @@ export type WalletCard = {
 } & WalletSortKey;
 
 export function walletCard(input: WalletCardInput, now: Date): WalletCard {
-  // The membership's current ingot started when it joined until P1-12 stores ingot_started_at (C-60).
   const state = {
-    ...initialMemberState(input.joinedAt),
+    ...initialMemberState(input.ingotStartedAt ?? input.joinedAt),
     progress: points(input.progressGold),
     ingotsCompleted: input.ingotsCompleted,
+    shortfall: points(input.goldShortfall),
   };
   const terms = input.versions.length ? ingotTerms(input.versions, state.ingotStartedAt) : null;
   const ingotSize = terms?.ingotSize ?? null;
@@ -184,24 +189,55 @@ export function walletCard(input: WalletCardInput, now: Date): WalletCard {
   };
 }
 
+/** One approved visit in the right column's recent activity. */
+export type WalletActivityRow = {
+  requestId: string;
+  shopId: string;
+  shopName: string;
+  /** "+120 gold" (earn plus any streak bonus of that visit). */
+  gold: string;
+  /** "26 Nov 2026". */
+  date: string;
+};
+
 export type WalletView = {
   cards: WalletCard[];
   /** `gold` and `shops`: the total panel (reference `.total`); the rest: the summary row. */
   summary: { rewardsReady: number; ingotsCompleted: number; gold: number; shops: number };
+  /** The last approved visits across the current memberships, newest first (C-62). */
+  activity: WalletActivityRow[];
 };
 
 /**
- * Cards in Wallet order plus the summary (rewards ready from P1-12/P1-16, C-62). The total gold is the sum of
- * the gold the cards show: a shop without a programme shows none, so none of its stored balance counts.
+ * Cards in Wallet order plus the summary (rewards ready from the rewards table, C-62) and the recent activity.
+ * The total gold is the sum of the gold the cards show: a shop without a programme shows none, so none of its
+ * stored balance counts. An activity row whose shop isn't among the cards (it can't happen: both come from the
+ * current memberships) is dropped rather than shown without a name.
  */
 export function walletView(
   inputs: readonly WalletCardInput[],
   rewardsReady: number,
   now: Date,
+  activity: readonly { shopId: string; requestId: string; gold: number; at: Date }[] = [],
 ): WalletView {
   const cards = sortWallet(inputs.map((i) => walletCard(i, now)));
+  const names = new Map<string, string>(inputs.map((i) => [i.shopId, i.name]));
   return {
     cards,
+    activity: activity.flatMap((a) => {
+      const shopName = names.get(a.shopId);
+      return shopName === undefined
+        ? []
+        : [
+            {
+              requestId: a.requestId,
+              shopId: a.shopId,
+              shopName,
+              gold: `+${a.gold.toLocaleString("en-GB")} gold`,
+              date: formatDate(a.at),
+            },
+          ];
+    }),
     summary: {
       rewardsReady,
       ingotsCompleted: cards.reduce((sum, c) => sum + c.ingotsCompleted, 0),
@@ -210,6 +246,10 @@ export function walletView(
     },
   };
 }
+
+/** "1 reward" / "3 rewards". */
+export const rewardsText = (n: number): string =>
+  `${n.toLocaleString("en-GB")} ${n === 1 ? "reward" : "rewards"}`;
 
 /** "1 ingot filled" / "3 ingots filled". */
 export const ingotsText = (n: number): string =>

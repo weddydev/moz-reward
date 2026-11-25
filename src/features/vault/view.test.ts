@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { type ProgrammeVersion, TEMPLATES } from "@/lib/loyalty/programme";
-import { nextTierText, shelfText, tierFor, vaultGoldText, vaultView } from "./view";
+import {
+  currentStreakWeeks,
+  nextTierText,
+  shelfText,
+  streakText,
+  tierFor,
+  type VaultInput,
+  vaultGoldText,
+  vaultView,
+} from "./view";
 
 const NOW = new Date("2026-11-19T10:00:00Z");
 const DAY = 24 * 60 * 60 * 1000;
@@ -23,8 +32,20 @@ const version = (over: Partial<ProgrammeVersion> = {}): ProgrammeVersion => ({
   ...over,
 });
 
-const view = (progressGold: number, ingotsCompleted = 0, versions = [version()]) =>
-  vaultView({ progressGold, ingotsCompleted, joinedAt: JOINED, versions }, NOW);
+const MEMBER: Omit<VaultInput, "progressGold" | "ingotsCompleted" | "versions"> = {
+  joinedAt: JOINED,
+  ingotStartedAt: null,
+  tier: "bronze",
+  streakWeeks: 0,
+  streakLastWeekStart: null,
+};
+
+const view = (
+  progressGold: number,
+  ingotsCompleted = 0,
+  versions = [version()],
+  member: Partial<VaultInput> = {},
+) => vaultView({ ...MEMBER, progressGold, ingotsCompleted, versions, ...member }, NOW);
 
 describe("[P1-08] Gold Vault view", () => {
   it("is null when the shop has no programme yet", () => {
@@ -108,8 +129,61 @@ describe("[P1-08] Gold Vault view", () => {
   });
 
   it("streak only when the programme has one", () => {
-    expect(view(0)?.streak).toEqual({ bonusGold: 50 });
+    expect(view(0)?.streak).toEqual({ bonusGold: 50, weeks: 0 });
     expect(view(0, 0, [version({ streak: null })])?.streak).toBeNull();
+  });
+
+  it("[P1-12] the tier shown never drops below the highest stored, even when the owner raises the thresholds (C-66)", () => {
+    const raised = version({ tiers: { silver: 4, gold: 8 } });
+    // 2 ingots: Bronze under today's thresholds, but the member reached Silver before the owner raised them.
+    expect(view(0, 2, [raised], { tier: "silver" })?.tier).toMatchObject({
+      name: "Silver",
+      next: { name: "Gold", ingotsToGo: 6 },
+    });
+    expect(view(0, 2, [raised], { tier: "gold" })?.tier).toMatchObject({
+      name: "Gold",
+      next: null,
+    });
+    // Earned above the stored tier (thresholds lowered, not yet re-stored): the higher one shows.
+    expect(view(0, 5, [version()], { tier: "silver" })?.tier.name).toBe("Gold");
+    expect(view(0, 0, [raised], { tier: "bronze" })?.tier.name).toBe("Bronze");
+  });
+
+  it("[P1-12] the current ingot's terms are the version in force when it started (C-60)", () => {
+    const later = version({
+      id: "v2",
+      version: 2,
+      ingotSize: 2_000,
+      activeFrom: new Date(NOW.getTime() - 5 * DAY),
+      rewardsFrom: new Date(NOW.getTime() - 5 * DAY),
+    });
+    expect(view(720, 1, [version(), later])?.ingot.size).toBe(1_000);
+    const restarted = { ingotStartedAt: new Date(NOW.getTime() - DAY) };
+    expect(view(720, 1, [version(), later], restarted)?.ingot.size).toBe(2_000);
+  });
+
+  it("[P1-12] streak: current while its last week is this week or last week, else 0 (C-66)", () => {
+    // NOW is Thu 19 Nov 2026: this week starts Mon 16 Nov, last week Mon 9 Nov.
+    const at = (weeks: number, last: string | null) =>
+      currentStreakWeeks({ streakWeeks: weeks, streakLastWeekStart: last }, NOW);
+    expect(at(3, "2026-11-16")).toBe(3);
+    expect(at(3, "2026-11-09")).toBe(3);
+    expect(at(3, "2026-11-02")).toBe(0);
+    expect(at(0, null)).toBe(0);
+    expect(at(2, null)).toBe(0);
+    expect(
+      view(0, 0, [version()], { streakWeeks: 3, streakLastWeekStart: "2026-11-16" })?.streak,
+    ).toEqual({
+      bonusGold: 50,
+      weeks: 3,
+    });
+    expect(streakText({ bonusGold: 50, weeks: 3 })).toBe("3-week streak · bonus gold active");
+    expect(streakText({ bonusGold: 50, weeks: 1 })).toBe(
+      "Visit 2 weeks running for +50 bonus gold",
+    );
+    expect(streakText({ bonusGold: 1_000, weeks: 0 })).toBe(
+      "Visit 2 weeks running for +1,000 bonus gold",
+    );
   });
 
   it("how it works follows the programme", () => {

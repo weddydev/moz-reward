@@ -8,7 +8,7 @@ import { GoldVault } from "@/components/ui/GoldVault";
 import { Icon } from "@/components/ui/Icon";
 import { MilestoneTrack } from "@/components/ui/MilestoneTrack";
 import { cx } from "@/lib/cx";
-import { nextTierText, shelfText, type VaultView } from "./view";
+import { nextTierText, shelfText, streakText, type VaultView } from "./view";
 
 /**
  * Gold Vault, screen 5 (DESIGN §15; P1-08, Molten PD-11). Mobile: the Molten vault (the shop's eyebrow, the
@@ -94,7 +94,7 @@ function Vault({
               <h2 className="text-h2 flex items-center gap-2">
                 <Icon icon={Gift} className="text-gold-deep" /> Milestone rewards
               </h2>
-              {streak ? <StreakChip bonusGold={streak.bonusGold} /> : null}
+              {streak ? <StreakChip text={streakText(streak)} /> : null}
             </div>
             <MilestoneTrack
               label="Rewards in this ingot"
@@ -196,14 +196,14 @@ function Vault({
   );
 }
 
-function StreakChip({ bonusGold }: { bonusGold: number }): React.JSX.Element {
+function StreakChip({ text }: { text: string }): React.JSX.Element {
   return (
     <span
       className="rounded-pill bg-surface-2 text-small text-ink inline-flex min-h-8 items-center gap-1.5 px-3 py-1"
       data-testid="vault-streak"
     >
       <Icon icon={Flame} size={16} className="text-gold-deep" />
-      Visit 2 weeks running for +{bonusGold} bonus gold
+      {text}
     </span>
   );
 }
