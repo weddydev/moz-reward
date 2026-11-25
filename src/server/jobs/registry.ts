@@ -129,6 +129,10 @@ export const JOBS = {
     "outbox-sweep": defineJob(z.object({}).strict()),
     /** P1-10: keep monthly notifications partitions 3 months ahead (ARCHITECTURE §4). */
     "partitions-ensure": defineJob(z.object({}).strict()),
+    /** P1-11: expire open points requests 24 h after `requested_at` and tell the customer. */
+    "requests-expire": defineJob(z.object({}).strict()),
+    /** P1-11: remind the shop's team once about a request pending for 30 min. */
+    "requests-remind": defineJob(z.object({}).strict()),
   },
 } as const satisfies Record<QueueName, Record<string, JobDef>>;
 

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { VaultView } from "@/features/vault/view";
-import { closureLabel, leaveRestoreBy, longestWord, upcomingClosures, vaultCardText } from "./view";
+import {
+  closureLabel,
+  leaveRestoreBy,
+  longestWord,
+  pendingRequestText,
+  upcomingClosures,
+  vaultCardText,
+} from "./view";
 
 const step = (percent: number, title: string, reached: boolean, main = false) => ({
   percent,
@@ -68,5 +75,29 @@ describe("[P1-09] cover title size", () => {
     expect(longestWord("The Extraordinarily Long-Named Neighbourhood Coffee House Ltd")).toBe(15);
     expect(longestWord("Brew & Bloom Café")).toBe(5);
     expect(longestWord("  ")).toBe(1);
+  });
+});
+
+describe("[P1-11] pending request copy", () => {
+  it("says when it was sent (UK time) and who it waits for", () => {
+    expect(
+      pendingRequestText(
+        { status: "pending", requestedAt: "2026-07-15T16:10:00Z" },
+        "Brew & Bloom",
+      ),
+    ).toEqual({
+      title: "Request sent",
+      body: "Sent at 17:10. Staff at Brew & Bloom will approve it shortly.",
+      expiry: "If it isn’t approved within 24 hours, it expires and you can ask again.",
+    });
+    expect(
+      pendingRequestText(
+        { status: "awaiting_owner", requestedAt: "2026-01-15T09:05:00Z" },
+        "Pedal & Co.",
+      ),
+    ).toMatchObject({
+      title: "Waiting for the owner",
+      body: "Sent at 09:05. It needs the owner of Pedal & Co. to approve it.",
+    });
   });
 });

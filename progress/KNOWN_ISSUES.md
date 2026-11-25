@@ -69,6 +69,9 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 ## Tests in general
 
+**KI-61 · Test API 500 "the web process has no \"system\" database pool"** — P1-11, 25 Nov.
+- Cause: by design (P0-20) the Next.js process has no moz_worker pool, so `/api/test/*` can't run a system-scope job (e.g. `expirePointRequests`); the E2E server runs no worker either. Fix: the test API does the job's DB change with the test factories (`testOwnerDb`) and calls `deliverRealtime` for the hint; the job itself is tested in integration.
+
 **KI-60 · Shared E2E fixtures: never `page.route` for every page, never a cookie as a test switch** — P1-10, 25 Nov.
 - Symptom 1: after a fixture added `page.route("**/api/sse/**")` to every page, Linux WebKit specs far from the change failed (slider drag: pointer never over the input, 3/3; CI 45596050268). Cause: any Playwright route makes WebKit intercept **every** request and turns the HTTP cache off, so every spec's load timing changes.
 - Symptom 2: the replacement cookie (`moz_e2e_realtime=off`) broke `portal-access` on WebKit ("navigation to /portal is interrupted by another navigation to /wallet", CI 45619492506). Cause: specs call `clearCookies()` between roles, the switch vanished, a real stream opened and its refresh raced the next `goto`.

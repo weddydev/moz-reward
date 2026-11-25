@@ -121,6 +121,37 @@ export async function joinOwnMembership(
   );
 }
 
+/**
+ * Locks the caller's current membership of `shopId` (FOR UPDATE) without changing it; false when there is none.
+ * "Leave shop" takes it first, so a points request being sent at the same moment either commits before the
+ * leave (and is cancelled by it) or waits and then finds the membership closed (P1-11, C-68).
+ */
+export async function lockOwnCurrentMembership(
+  scope: CustomerScope,
+  shopId: string,
+  tx: Transaction,
+): Promise<boolean> {
+  const [row] = await withScope(
+    scope,
+    (q) =>
+      q
+        .select({ id: memberships.id })
+        .from(memberships)
+        .where(
+          ownedBy(
+            memberships.userId,
+            scope,
+            eq(memberships.shopId, shopId),
+            isNull(memberships.leftAt),
+          ),
+        )
+        .limit(1)
+        .for("update"),
+    tx,
+  );
+  return Boolean(row);
+}
+
 export type LeaveOutcome =
   /** Left now. `withdrewMarketing`: the member had opted in, so a 'leave' consent row must follow (C-54). */
   | { kind: "left"; membershipId: string; withdrewMarketing: boolean; shopName: string }

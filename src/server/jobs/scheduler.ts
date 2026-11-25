@@ -53,6 +53,22 @@ export const SCHEDULES: readonly ScheduleDef[] = [
     pattern: "17 3 * * *",
     data: {},
   }),
+  // P1-11 (PRODUCT §5, §19): every 5 minutes, so a request closes within 5 min of its 24 h and the shop's
+  // reminder arrives 30–35 min after the request.
+  defineSchedule({
+    id: "requests-expire",
+    queue: "scheduled",
+    name: "requests-expire",
+    pattern: "*/5 * * * *",
+    data: {},
+  }),
+  defineSchedule({
+    id: "requests-remind",
+    queue: "scheduled",
+    name: "requests-remind",
+    pattern: "*/5 * * * *",
+    data: {},
+  }),
 ];
 
 /** The schedule's data in the versioned envelope (re-sealed on every start, so a version bump applies). */

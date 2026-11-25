@@ -1,6 +1,7 @@
 import { PortalShell } from "@/features/portal/PortalShell";
 import { navFor } from "@/features/portal/routes";
 import { CustomerRealtime } from "@/features/realtime/CustomerRealtime";
+import { QueuedRequestSender } from "@/features/shop/RequestPoints";
 import { gatePortalLayout } from "@/server/portal/gate";
 import { shellChrome } from "@/server/portal/shell";
 
@@ -20,6 +21,8 @@ export default async function CustomerLayout({
     <>
       {/* P1-10: realtime hints refresh the signed-in pages (outside the shell: renders nothing visible). */}
       {gate.principal ? <CustomerRealtime /> : null}
+      {/* P1-11: sends "Request points" taps queued while offline, with their keys, once back online. */}
+      {gate.principal ? <QueuedRequestSender /> : null}
       <PortalShell nav={navFor("customer", gate.role ?? null)} chrome={chrome}>
         {children}
       </PortalShell>

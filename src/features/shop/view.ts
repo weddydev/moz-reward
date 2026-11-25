@@ -1,5 +1,5 @@
 import type { VaultView } from "@/features/vault/view";
-import { formatDate } from "@/lib/format-date";
+import { formatDate, formatTime } from "@/lib/format-date";
 import { addLondonDays } from "@/lib/time";
 
 /**
@@ -54,4 +54,26 @@ export const leaveRestoreBy = (now: Date): string => formatDate(addLondonDays(no
 export function longestWord(name: string): number {
   const letters = new Intl.Segmenter("en-GB", { granularity: "grapheme" });
   return Math.max(1, ...name.split(/\s+/).map((w) => [...letters.segment(w)].length));
+}
+
+/**
+ * The pending state's copy (P1-11): when the request reached us (UK time) and who it waits for. A request goes
+ * to the owner when the award is above the staff member's limit (P1-12); either way it expires after 24 h.
+ */
+export function pendingRequestText(
+  open: { status: "pending" | "awaiting_owner"; requestedAt: string },
+  shopName: string,
+): { title: string; body: string; expiry: string } {
+  const at = formatTime(new Date(open.requestedAt));
+  return open.status === "awaiting_owner"
+    ? {
+        title: "Waiting for the owner",
+        body: `Sent at ${at}. It needs the owner of ${shopName} to approve it.`,
+        expiry: "If it isn’t approved within 24 hours, it expires and you can ask again.",
+      }
+    : {
+        title: "Request sent",
+        body: `Sent at ${at}. Staff at ${shopName} will approve it shortly.`,
+        expiry: "If it isn’t approved within 24 hours, it expires and you can ask again.",
+      };
 }

@@ -7,6 +7,7 @@ import { parseShopId } from "@/lib/brand";
 import { requireCustomer } from "@/server/authz";
 import { gateCustomerRoute } from "@/server/portal/gate";
 import { readOwnMemberShop } from "@/server/repos/memberships";
+import { readOwnOpenRequest } from "@/server/repos/point-requests";
 import { ownMemberCard } from "@/server/repos/profiles";
 import { findJoinableShopCode } from "@/server/repos/shops";
 import { readOwnVault } from "@/server/repos/vault";
@@ -39,24 +40,34 @@ export default async function ShopPage({
   const shopId = parseShopId(id);
   if (!shopId) return <PortalNotFound portal="customer" />;
   const scope = await requireCustomer(principal);
-  const [shop, member, vault] = await Promise.all([
+  const [shop, member, vault, open] = await Promise.all([
     readOwnMemberShop(scope, shopId),
     ownMemberCard(scope),
     readOwnVault(scope, shopId),
+    readOwnOpenRequest(scope, shopId),
   ]);
   const now = new Date();
 
   if (shop) {
     if (!member) return <PortalNotFound portal="customer" />;
     const landing = await loadShopLanding(shop.shopCode);
+    const vaultData = vault ? vaultView(vault, now) : null;
+    // P1-11: the button shows where the server would take a request (live shop, programme in force); an open
+    // request shows its pending state wherever it is, until it is decided, expires or the member leaves.
+    const takesRequests = landing.kind === "live" && vaultData !== null;
+    const openView =
+      open && (open.status === "pending" || open.status === "awaiting_owner")
+        ? { status: open.status, requestedAt: open.requestedAt.toISOString() }
+        : null;
     return (
       <MemberShopPage
         shop={{ shopId, name: shop.name, logoUrl: shop.logoUrl, muted: shop.muted }}
         details={landing.kind === "live" ? landing : null}
         availability={landing.kind === "gone" ? landing.status : "live"}
         member={member}
-        vault={vault ? vaultView(vault, now) : null}
+        vault={vaultData}
         welcome={(await searchParams).welcome === "1"}
+        request={openView || takesRequests ? { open: openView } : null}
         now={now}
       />
     );

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateTime, londonDay } from "./format-date";
+import { formatDate, formatDateTime, formatTime, londonDay } from "./format-date";
 
 describe("[P0-06] UK date formatting (CLAUDE.md §5: `7 Nov 2026`, 24h)", () => {
   it("formats dates as day, short month, year in UK time", () => {
@@ -20,5 +20,13 @@ describe("[P0-13] londonDay: daily counters reset at UK midnight", () => {
     expect(londonDay(new Date("2026-07-01T22:59:00Z"))).toBe("2026-07-01"); // 23:59 BST
     expect(londonDay(new Date("2026-12-01T23:59:00Z"))).toBe("2026-12-01"); // GMT
     expect(londonDay(new Date("2027-01-09T00:00:00Z"))).toBe("2027-01-09");
+  });
+});
+
+describe("[P1-11] formatTime: the pending request's time of day", () => {
+  it("is UK time, 24-hour, across BST", () => {
+    expect(formatTime(new Date("2026-01-15T16:05:00Z"))).toBe("16:05");
+    expect(formatTime(new Date("2026-07-15T16:05:00Z"))).toBe("17:05");
+    expect(formatTime(new Date("2026-07-14T23:30:00Z"))).toBe("00:30");
   });
 });

@@ -12,7 +12,11 @@ const id = z.uuid();
 export const REALTIME_EVENT_SCHEMAS = {
   request_created: z.object({ requestId: id, shopId: id }).strict(),
   request_decided: z
-    .object({ requestId: id, shopId: id, outcome: z.enum(["approved", "rejected", "expired"]) })
+    .object({
+      requestId: id,
+      shopId: id,
+      outcome: z.enum(["approved", "rejected", "expired", "cancelled"]),
+    })
     .strict(),
   points_credited: z.object({ shopId: id }).strict(),
   reward_unlocked: z.object({ shopId: id, rewardId: id }).strict(),

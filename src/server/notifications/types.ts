@@ -61,6 +61,16 @@ export const NOTIFICATION_TYPES = {
       .object({ shopId: id, version: z.number().int().min(1), rewardsFrom: z.iso.datetime() })
       .strict(),
   }),
+  /** P1-11 (PRODUCT §19): the customer's points request ran out after 24 h without a decision. */
+  request_expired: defineNotificationType({
+    category: "transactional",
+    payload: z.object({ shopId: id, requestId: id, requestedAt: z.iso.datetime() }).strict(),
+  }),
+  /** P1-11: to the shop's team, once, when a request has waited 30 min (PRODUCT §19 "shop reminder"). */
+  request_reminder: defineNotificationType({
+    category: "transactional",
+    payload: z.object({ shopId: id, requestId: id, requestedAt: z.iso.datetime() }).strict(),
+  }),
 } as const satisfies Record<string, NotificationTypeDef>;
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES;

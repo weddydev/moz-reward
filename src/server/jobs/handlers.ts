@@ -7,6 +7,7 @@ import { deliverAlertEmail } from "@/server/ops/alerts";
 import { deliverRealtime } from "@/server/realtime/publish";
 import { touchHeartbeat } from "@/server/repos/jobs";
 import { ensureNotificationPartitions } from "@/server/repos/notifications";
+import { expirePointRequests, remindPointRequests } from "@/server/services/point-request-jobs";
 import { sweepOutbox } from "./relay";
 import type { JobDef, JOBS, JobRunAs, QueueName } from "./registry";
 import type { Job } from "bullmq";
@@ -68,5 +69,7 @@ export const HANDLERS: Handlers = {
     },
     "outbox-sweep": () => sweepOutbox(),
     "partitions-ensure": () => ensureNotificationPartitions(JOBS_SCOPE, PARTITION_MONTHS_AHEAD),
+    "requests-expire": () => expirePointRequests(JOBS_SCOPE),
+    "requests-remind": () => remindPointRequests(JOBS_SCOPE),
   },
 };

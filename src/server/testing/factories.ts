@@ -4,7 +4,7 @@ import "server-only";
  * (`/api/test/*`, APP_ENV=test only). Every factory builds exactly what it is asked for, with
  * unique, obviously fake data (never real personal data).
  */
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { ShopId } from "@/lib/brand";
 import { generateMemberId, generateShopCode, withUniqueCode } from "@/lib/codes";
 import { newId } from "@/lib/id";
@@ -19,6 +19,7 @@ import {
   loyaltyPrograms,
   memberships,
   opsSnapshot,
+  pointRequests,
   sessions,
   shopClosures,
   shopHours,
@@ -339,4 +340,34 @@ export async function makeOpsSnapshot(now = new Date()): Promise<HealthSnapshot>
     .values({ id: 1, takenAt: now, data: snapshot })
     .onConflictDoUpdate({ target: opsSnapshot.id, set: { takenAt: now, data: snapshot } });
   return snapshot;
+}
+
+/** P1-11: a user's points requests, oldest first (E2E: one request per double tap). */
+export async function userPointRequests(
+  userId: string,
+): Promise<Array<{ id: string; shopId: string; status: string }>> {
+  return db()
+    .select({ id: pointRequests.id, shopId: pointRequests.shopId, status: pointRequests.status })
+    .from(pointRequests)
+    .where(eq(pointRequests.userId, userId))
+    .orderBy(pointRequests.requestedAt);
+}
+
+/**
+ * P1-11: closes the user's open request at a shop as the expiry job would (E2E: the web process has no worker
+ * pool, and the job itself is covered by tests/integration/point-requests.test.ts).
+ */
+export async function expireOpenRequests(userId: string, shopId: string): Promise<string[]> {
+  const rows = await db()
+    .update(pointRequests)
+    .set({ status: "expired", decidedAt: new Date() })
+    .where(
+      and(
+        eq(pointRequests.userId, userId),
+        eq(pointRequests.shopId, shopId),
+        inArray(pointRequests.status, ["pending", "awaiting_owner"]),
+      ),
+    )
+    .returning({ id: pointRequests.id });
+  return rows.map((r) => r.id);
 }

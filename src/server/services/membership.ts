@@ -2,8 +2,14 @@ import "server-only";
 import type { CustomerScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import { AppError } from "@/server/errors";
+import { publishRealtime } from "@/server/realtime/publish";
 import { recordConsentChange } from "@/server/repos/consents";
-import { leaveOwnMembership, setOwnMembershipMuted } from "@/server/repos/memberships";
+import {
+  leaveOwnMembership,
+  lockOwnCurrentMembership,
+  setOwnMembershipMuted,
+} from "@/server/repos/memberships";
+import { cancelOwnOpenRequests } from "@/server/repos/point-requests";
 
 /** Shown when the caller isn't a current member of the shop (never joined, left, or no such shop). */
 export const NOT_A_MEMBER = "You're not a member of this shop.";
@@ -13,15 +19,32 @@ export const NOT_A_MEMBER = "You're not a member of this shop.";
  * the membership is closed (progress frozen, ledger kept, shop hidden) and marketing consent is withdrawn with
  * a 'leave' consent row (C-54). Idempotent: leaving a shop already left changes nothing (`left: false`).
  *
+ * Open points requests are cancelled first (C-68), while the membership is locked and still current, so the
+ * shop's queue gets its `request_decided` hint (a customer may only hint shops it belongs to) and a request
+ * sent at the same moment can't slip in after the cancel.
+ *
  * Everything else that must end with the membership joins this transaction as its table arrives (CARRIED in
- * PROGRESS): open points requests cancelled (P1-11), live redeem codes voided while the rewards themselves
- * stay (P1-16), live offer claim codes voided (P3-06).
+ * PROGRESS): live redeem codes voided while the rewards themselves stay (P1-16), live offer claim codes
+ * voided (P3-06).
  */
 export async function leaveShop(
   scope: CustomerScope,
   shopId: string,
   tx: Transaction,
 ): Promise<{ left: boolean }> {
+  if (await lockOwnCurrentMembership(scope, shopId, tx)) {
+    for (const requestId of await cancelOwnOpenRequests(scope, shopId, tx)) {
+      await publishRealtime(
+        scope,
+        tx,
+        [
+          { kind: "shop", id: shopId },
+          { kind: "user", id: scope.userId },
+        ],
+        { type: "request_decided", data: { requestId, shopId, outcome: "cancelled" } },
+      );
+    }
+  }
   const outcome = await leaveOwnMembership(scope, shopId, tx);
   if (outcome.kind === "not-member") throw new AppError("NOT_FOUND", NOT_A_MEMBER);
   if (outcome.kind === "already-left") return { left: false };

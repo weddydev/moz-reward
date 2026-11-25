@@ -27,7 +27,9 @@ import {
   makeStaff,
   makeUser,
   markSessionMfaVerified,
+  expireOpenRequests,
   setShopStatus,
+  userPointRequests,
 } from "@/server/testing/factories";
 import { testApiAllowed } from "@/server/testing/test-api";
 
@@ -172,6 +174,11 @@ const realtimePublishInput = z.object({ userId: z.uuid() }).strict();
 /** P1-04: move a seeded shop to another state mid-flow (suspended while the join sheet is open). */
 const shopStatusInput = z.object({ shopId: z.uuid(), status: shopInput.shape.status }).strict();
 
+/** P1-11: a user's open request at a shop runs out (what the expiry job does; the E2E server has no worker). */
+const expireRequestInput = z.object({ userId: z.uuid(), shopId: z.uuid() }).strict();
+/** P1-11: a user's points requests (ids and statuses only). */
+const pointRequestsInput = z.object({ userId: z.uuid() }).strict();
+
 type Ctx = { params: Promise<{ action: string }> };
 const invalid = (): Response => NextResponse.json({ error: "invalid input" }, { status: 400 });
 
@@ -190,6 +197,25 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
         event: { type: "notification", data: {} },
       });
       return NextResponse.json({ receivers });
+    }
+    case "expire-request": {
+      const parsed = expireRequestInput.safeParse(body);
+      if (!parsed.success) return invalid();
+      const { userId, shopId } = parsed.data;
+      const ids = await expireOpenRequests(userId, shopId);
+      // What the worker's publish job would do with the expiry's outbox row.
+      for (const requestId of ids) {
+        await deliverRealtime({
+          targets: [{ kind: "user", id: userId }],
+          event: { type: "request_decided", data: { requestId, shopId, outcome: "expired" } },
+        });
+      }
+      return NextResponse.json({ expired: ids.length });
+    }
+    case "point-requests": {
+      const parsed = pointRequestsInput.safeParse(body);
+      if (!parsed.success) return invalid();
+      return NextResponse.json({ requests: await userPointRequests(parsed.data.userId) });
     }
     case "user": {
       const parsed = userInput.safeParse(body ?? {});

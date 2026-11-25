@@ -6,6 +6,7 @@ const CUSTOMER_EVENTS: ReadonlySet<RealtimeEventType> = new Set([
   "points_credited",
   "reward_unlocked",
   "redemption_confirmed",
+  "request_created",
   "request_decided",
   "notification",
 ]);

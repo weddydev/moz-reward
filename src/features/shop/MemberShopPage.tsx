@@ -28,6 +28,7 @@ import { londonDate } from "@/lib/time";
 import type { ShopLandingData } from "@/server/repos/shops";
 import { MemberIdCard } from "./MemberIdCard";
 import { MembershipControls } from "./MembershipControls";
+import { type OpenRequestView, RequestPoints } from "./RequestPoints";
 import { SHOP_PAGE_CLASS, ShopPageHeader } from "./ShopPageHeader";
 import { leaveRestoreBy, upcomingClosures, vaultCardText } from "./view";
 
@@ -39,8 +40,8 @@ type Live = Extract<ShopLandingData, { kind: "live" }>;
  * reference's mini vault: its bar fills in the wipe, C-80); then two columns from 1024px: the
  * Gold Vault card (the pour on every view), the member ID and recent receipts on the left; the shop's details
  * and the member's own settings (mute, leave) on the right. A non-member (never joined, or left) sees the
- * join CTA in place of the member sections. Slots filled by later tasks: Request points and the pending state
- * (P1-11), recent receipts' rows (P1-12), Show member QR (P1-14), offers carousel (P3-05), rate row (P3-01).
+ * join CTA in place of the member sections. Request points or the pending request sits under the mini vault, as
+ * in the reference (P1-11). Slots filled by later tasks: recent receipts' rows (P1-12), Show member QR (P1-14), offers carousel (P3-05), rate row (P3-01).
  * Server component; the pour and the settings are the only client parts.
  */
 export function MemberShopPage({
@@ -52,6 +53,7 @@ export function MemberShopPage({
   join,
   now,
   availability = "live",
+  request = null,
 }: {
   shop: { shopId: string; name: string; logoUrl: string | null; muted: boolean };
   /** The shop's public profile (cached landing data); null while the shop is suspended or closed. */
@@ -66,6 +68,11 @@ export function MemberShopPage({
   now: Date;
   /** A member's shop that is suspended or closed: its state, as on the Wallet card, and what it means. */
   availability?: "live" | "suspended" | "closed";
+  /**
+   * P1-11: the member's open request (or none) when the shop takes requests (live, with a programme); null hides
+   * the button (the availability note or the Vault card says why).
+   */
+  request?: { open: OpenRequestView | null } | null;
 }): React.JSX.Element {
   const today = londonDate(now);
   const status = details ? statusLabel(openStatus(details, now), today) : null;
@@ -136,6 +143,12 @@ export function MemberShopPage({
       {member && vault ? (
         <div data-rise={4}>
           <MiniVault gold={vault.ingot.gold} target={vault.ingot.size} />
+        </div>
+      ) : null}
+
+      {member && request ? (
+        <div data-rise={4}>
+          <RequestPoints shopId={shop.shopId} shopName={shop.name} open={request.open} />
         </div>
       ) : null}
 

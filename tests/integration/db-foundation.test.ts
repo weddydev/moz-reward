@@ -111,6 +111,7 @@ describe("[P0-03] app role moz_app (least privilege)", () => {
     marketing_consents: "IS", // P1-04: append-only consent history (RLS: own insert/read, shop + admin read)
     loyalty_programs: "IS", // P1-05: immutable versions (RLS: team + admin read, owner inserts as themself)
     notifications: "IS", // P1-10: partitioned parent; UPDATE (read_at) by column grant; partitions have no grants
+    point_requests: "IS", // P1-11: member inserts/reads own, team reads; UPDATE (status, decided_at) by column grant (guard: cancel only)
   };
 
   it("has exactly the reviewed grants per table, never TRUNCATE", async () => {

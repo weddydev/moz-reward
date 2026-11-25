@@ -74,10 +74,13 @@ test("[P1-09] member shop page: cover, status, directions and call, vault card, 
   await expect(page.getByTestId("shop-address")).toHaveText("12 High Street, Shoreditch, E1 6AN");
   await expect(page.getByTestId("shop-about")).toContainText("Small-batch coffee");
   await expect(page.getByTestId("shop-mute").getByRole("switch")).not.toBeChecked();
-  // Slots later tasks fill stay out of the page until then (no dead buttons).
-  await expect(page.getByRole("button", { name: /request points|member qr/i })).toHaveCount(0);
+  // Slots later tasks fill stay out of the page until then (no dead buttons). Request points arrived with P1-11.
+  await expect(page.getByRole("button", { name: /member qr/i })).toHaveCount(0);
+  await expect(page.getByTestId("request-points")).toBeVisible();
 
-  // The pour plays on every view of the page (DESIGN §8.2) and lands on the member's level.
+  // The pour plays on every view of the page (DESIGN §8.2) and lands on the member's level. It starts when the
+  // card is in view, which on a 720 px screen is below Request points (P1-11), as in the reference.
+  await page.locator(".ingot-pour").scrollIntoViewIfNeeded();
   await expect(page.locator(".ingot-pour")).toHaveAttribute("data-ingot-state", "done");
 
   for (const width of [390, 320, 1440]) {

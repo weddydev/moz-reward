@@ -4,6 +4,7 @@ import {
   addLondonDays,
   addLondonMonths,
   londonDate,
+  londonDayStart,
   londonInstant,
   londonWall,
   londonWeekStart,
@@ -86,5 +87,31 @@ describe("[P1-06] London weeks and calendar arithmetic", () => {
   it("refuses month or day counts that are not whole numbers", () => {
     expect(() => addLondonMonths(at("2026-01-01T00:00:00Z"), 1.5)).toThrow(RangeError);
     expect(() => addLondonDays(at("2026-01-01T00:00:00Z"), Number.NaN)).toThrow(RangeError);
+  });
+});
+
+describe("[P1-11] London day start (daily request cap)", () => {
+  it("is 00:00 UK time: midnight GMT in winter, 23:00 UTC the evening before in summer", () => {
+    expect(londonDayStart(new Date("2026-01-15T16:55:00Z")).toISOString()).toBe(
+      "2026-01-15T00:00:00.000Z",
+    );
+    expect(londonDayStart(new Date("2026-07-15T16:55:00Z")).toISOString()).toBe(
+      "2026-07-14T23:00:00.000Z",
+    );
+    // 23:30 UTC on 14 Jul is 00:30 BST on 15 Jul: already the next UK day.
+    expect(londonDayStart(new Date("2026-07-14T23:30:00Z")).toISOString()).toBe(
+      "2026-07-14T23:00:00.000Z",
+    );
+  });
+
+  it("handles both clock changes (the day is 23 or 25 hours long)", () => {
+    // 29 Mar 2026: clocks go forward at 01:00 GMT; the day began at 00:00 GMT.
+    expect(londonDayStart(new Date("2026-03-29T20:00:00Z")).toISOString()).toBe(
+      "2026-03-29T00:00:00.000Z",
+    );
+    // 25 Oct 2026: clocks go back at 01:00 UTC; the day began at 00:00 BST = 23:00 UTC on the 24th.
+    expect(londonDayStart(new Date("2026-10-25T20:00:00Z")).toISOString()).toBe(
+      "2026-10-24T23:00:00.000Z",
+    );
   });
 });

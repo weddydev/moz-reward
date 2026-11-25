@@ -5,10 +5,17 @@ import { z } from "zod";
 import { defineAction } from "@/server/actionTemplate";
 import { requireCustomer } from "@/server/authz";
 import { leaveShop, setShopMuted } from "@/server/services/membership";
+import { requestPoints, type RequestPointsResult } from "@/server/services/point-requests";
 
 /** Leave calls per user per hour, and mute toggles per user per hour (P1-09). Both fail closed. */
 const LEAVE_CALLS = { max: 20, windowSec: 60 * 60 } as const;
 const MUTE_CALLS = { max: 60, windowSec: 60 * 60 } as const;
+/**
+ * Request-points calls per user per hour (P1-11). Above the per-shop daily cap (5, in the database) so that
+ * retries of a queued request, which return the first one, are never refused; fails closed (money endpoint,
+ * SECURITY §6).
+ */
+const REQUEST_CALLS = { max: 60, windowSec: 60 * 60 } as const;
 
 const shopId = z.uuid().transform((id) => id.toLowerCase());
 
@@ -65,6 +72,44 @@ export const setShopMutedAction = defineAction({
     afterCommit(() => {
       revalidatePath("/shops/[id]", "page");
     });
+    return result;
+  },
+});
+
+/**
+ * "Request points" (PRODUCT §5, P1-11): the shop page's button and the offline queue's retry. The member is the
+ * session user; the client sends a key per tap (a retry sends the same one) and, as advisory only, the time its
+ * clock showed. Everything else (membership, shop state, programme, one open request, the daily cap, the
+ * receipt time) is decided on the server, in one transaction (`requestPoints`).
+ */
+export const requestPointsAction = defineAction({
+  name: "points.request",
+  input: z
+    .object({
+      shopId,
+      idempotencyKey: z.uuid().transform((k) => k.toLowerCase()),
+      clientRequestedAt: z.iso.datetime({ offset: true }).optional(),
+    })
+    .strict(),
+  authorize: (_input, p) => requireCustomer(p),
+  rateLimit: { ...REQUEST_CALLS, failMode: "closed" },
+  transaction: true,
+  handler: async (input, scope, { tx, afterCommit }): Promise<RequestPointsResult> => {
+    if (!tx) throw new Error("points.request runs in a transaction");
+    const result = await requestPoints(
+      scope,
+      {
+        shopId: input.shopId,
+        idempotencyKey: input.idempotencyKey,
+        clientRequestedAt: input.clientRequestedAt ? new Date(input.clientRequestedAt) : null,
+      },
+      tx,
+    );
+    if (result.outcome === "created") {
+      afterCommit(() => {
+        revalidatePath("/shops/[id]", "page");
+      });
+    }
     return result;
   },
 });

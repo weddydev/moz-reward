@@ -46,6 +46,13 @@ export function londonInstant(wallMs: number): number {
 /** The London calendar date at `now` (YYYY-MM-DD). */
 export const londonDate = (now: Date): string => dateFormat.format(now);
 
+/**
+ * The instant the London day containing `now` began (00:00 UK time; P1-11 daily request cap). Across a clock
+ * change the day is 23 or 25 hours long, so this is never `now` minus a fixed span.
+ */
+export const londonDayStart = (now: Date): Date =>
+  new Date(londonInstant(Date.parse(`${londonDate(now)}T00:00:00Z`)));
+
 /** A calendar date (YYYY-MM-DD) moved by whole days; no time zone involved. */
 export function addDays(isoDate: string, days: number): string {
   const ms = Date.parse(`${isoDate}T00:00:00Z`);
