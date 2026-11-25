@@ -133,6 +133,8 @@ test("[P1-07] wallet: memberships in order with progress, summary, a suspended s
   await expect(page.getByTestId("summary-ingots")).toContainText("4");
   await expect(page.getByTestId("summary-ingots")).toContainText("Ingots filled");
   await expect(page.getByTestId("summary-rewards")).toContainText("0");
+  // The total panel: the gold the cards show (Corner Grocer has no programme), across every shop.
+  await expect(page.getByTestId("wallet-total")).toHaveText("1,320gold across 4 shops");
 
   for (const width of [390, 320, 1440]) {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
@@ -235,6 +237,93 @@ test("[PD-08] wallet stack: phones stack cards in threes with their header strip
   await shoot("wallet-stack-1440");
 });
 
+test("[P1-07] wallet header as the reference (P1-B close design review): greeting, placed bell, the gold total under a turning light", async ({
+  page,
+  signInAs,
+}) => {
+  const me = await signInAs("customer");
+  for (const [name, gold] of [
+    ["Camden Bakehouse", 360],
+    ["Brew & Bloom Café", 720],
+  ] as const) {
+    await seedMembership(page.request, me.userId, {
+      name,
+      programme: true,
+      member: { purchaseCount: 3, progressGold: gold },
+    });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/wallet");
+
+  // `.w-head`: the time of day small, then the name (or the time of day alone) in Fraunces 34.
+  const head = page.getByTestId("wallet-greeting");
+  await expect(head).toHaveText(/^Good (morning|afternoon|evening)/);
+  const big = head.locator(".m-wname");
+  await expect(big).toHaveCSS("font-size", "34px");
+  expect(await big.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/Fraunces/i);
+
+  // One bell on a phone: the page's 44 px placed bell (the top bar leaves its own out on the Wallet).
+  const bell = page.getByTestId("wallet-bell");
+  await expect(bell).toBeVisible();
+  await expect(bell).toHaveAttribute("href", "/notifications");
+  await expect(bell).toHaveAccessibleName("Notifications");
+  const box = await bell.boundingBox();
+  expect([Math.round(box?.width ?? 0), Math.round(box?.height ?? 0)]).toEqual([44, 44]);
+  await expect(bell.locator("i")).toHaveCount(0); // no unread count until P3-07 (C-87)
+  await expect(page.getByRole("link", { name: "Notifications" })).toHaveCount(1);
+
+  // `.total`: obsidian, the number in the metal shine, the conic light turning every 6 s.
+  const total = page.getByTestId("wallet-total");
+  await expect(total).toHaveText("1,080gold across 2 shops");
+  await expect(total).toHaveCSS("border-radius", "22px");
+  const light = await total.evaluate((el) => {
+    const cs = getComputedStyle(el, "::before");
+    return { name: cs.animationName, duration: cs.animationDuration };
+  });
+  expect(light).toEqual({ name: "m-spin", duration: "6s" });
+  await expect(total.locator(".m-t-num")).toHaveCSS("animation-name", "m-textshine");
+
+  // Off screen the loops sleep.
+  const header = page.getByTestId("wallet-header");
+  await expect(header).not.toHaveAttribute("data-paused");
+  await page.setViewportSize({ width: 390, height: 320 });
+  await page.evaluate(() => {
+    window.scrollTo(0, document.documentElement.scrollHeight);
+  });
+  await expect
+    .poll(() => header.evaluate((el) => el.getBoundingClientRect().bottom))
+    .toBeLessThan(0);
+  await expect(header).toHaveAttribute("data-paused");
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+  });
+  await expect(header).not.toHaveAttribute("data-paused");
+
+  // Elsewhere the top bar keeps its bell.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/offers");
+  await expect(page.getByRole("link", { name: "Notifications" })).toBeVisible();
+
+  // From 768px the rail carries notifications, so the page's bell hides.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/wallet");
+  await expect(bell).toBeHidden();
+  await expect(
+    page.getByRole("link", { name: "Notifications" }).filter({ visible: true }),
+  ).toHaveCount(1);
+
+  // Reduced motion: the light and the shine hold still.
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  await expect
+    .poll(() =>
+      total.evaluate(
+        (el) => el.getAnimations({ subtree: true }).filter((a) => a.playState === "running").length,
+      ),
+    )
+    .toBe(0);
+});
+
 test("[P1-07] wallet: no memberships shows the empty state with scan guidance", async ({
   page,
   signInAs,
@@ -251,6 +340,8 @@ test("[P1-07] wallet: no memberships shows the empty state with scan guidance", 
   );
   await expect(cards(page)).toHaveCount(0);
   await expect(page.getByTestId("summary-ingots")).toContainText("0");
+  // No shops, no "0 gold across 0 shops": the empty state says what to do instead.
+  await expect(page.getByTestId("wallet-total")).toHaveCount(0);
   for (const width of [390, 320, 1440]) {
     await page.setViewportSize({ width, height: 844 });
     await noHorizontalScroll(page);

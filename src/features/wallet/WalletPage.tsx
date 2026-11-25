@@ -15,11 +15,12 @@ import {
   goldText,
   ingotsText,
 } from "./view";
+import { WalletHeader } from "./WalletHeader";
 import { WalletStack } from "./WalletStack";
 
 /**
- * The Wallet (P1-07, DESIGN §15 screen 3). Mobile: greeting, summary strip, the shop cards list (pull to
- * refresh). Desktop: greeting with the summary tiles beside it, a 3-column shop grid and a right column with
+ * The Wallet (P1-07, DESIGN §15 screen 3). Mobile: the reference's header (greeting, bell, the gold total panel),
+ * the summary row, the shop cards (pull to refresh). Desktop: greeting with the summary tiles beside it, a 3-column shop grid and a right column with
  * rewards ready and recent activity (rewards and ledger arrive with P1-12/P1-16, C-62; the daily game card
  * with P4-06, C-63). Each card opens the shop page, its logo and name morphing into the page header.
  */
@@ -28,7 +29,7 @@ export function WalletPage({
   greeting,
 }: {
   view: WalletView;
-  greeting: string;
+  greeting: { part: string; name: string | null };
 }): React.JSX.Element {
   const { cards, summary } = view;
   return (
@@ -39,21 +40,20 @@ export function WalletPage({
       <PullToRefresh>
         <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-8">
           <div className="flex min-w-0 flex-col gap-6 lg:gap-8">
-            <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-              <div className="min-w-0">
-                {/* The page is named "Wallet" like every portal page (P0-12); the greeting is its visible title. */}
-                <h1 className="sr-only">Wallet</h1>
-                <p className="text-h1 lg:text-display break-words" data-testid="wallet-greeting">
-                  {greeting}
-                </p>
-                <p className="text-body text-ink-2 mt-1">
-                  Your rewards, shops and gold, all in one place.
-                </p>
-              </div>
-              <SummaryStrip
-                rewardsReady={summary.rewardsReady}
-                ingotsCompleted={summary.ingotsCompleted}
-              />
+            <header className="flex flex-col gap-4">
+              {/* The page is named "Wallet" like every portal page (P0-12); the greeting is its visible title. */}
+              <h1 className="sr-only">Wallet</h1>
+              <WalletHeader
+                part={greeting.part}
+                name={greeting.name}
+                gold={summary.gold}
+                shops={summary.shops}
+              >
+                <SummaryStrip
+                  rewardsReady={summary.rewardsReady}
+                  ingotsCompleted={summary.ingotsCompleted}
+                />
+              </WalletHeader>
             </header>
 
             {cards.length === 0 ? (
@@ -124,7 +124,7 @@ function SummaryStrip({
     { label: "Ingots filled", value: ingotsCompleted, icon: <IngotIcon />, id: "ingots" },
   ];
   return (
-    <ul className="grid grid-cols-2 gap-3 xl:flex xl:shrink-0" aria-label="Summary">
+    <ul className="grid grid-cols-2 gap-3 xl:flex" aria-label="Summary">
       {tiles.map((t) => (
         <li key={t.id}>
           <Card

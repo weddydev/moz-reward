@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell, LogIn, ScanLine } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { TransitionLink } from "@/components/motion";
 import { buttonClasses } from "@/components/ui/button-classes";
 import { Icon } from "@/components/ui/Icon";
@@ -15,11 +16,13 @@ const iconLink =
 /**
  * The bar above the page content (DESIGN §5). Pages render their own title (h1); the header carries the
  * brand and actions. Customer, below 768px: notifications (or Sign in for visitors), the install chip slot
- * (P5-03) and the role switcher; from 768px the rail has all of it, so there is no header. Shop and admin,
+ * (P5-03) and the role switcher (on the Wallet the page's own header carries the bell, as the reference's
+ * `.w-head`); from 768px the rail has all of it, so there is no header. Shop and admin,
  * below 1024px: the brand and the active shop; from 1024px the shop gets the primary action (Scan member QR:
  * desktop has no Scan nav item). Search arrives with the search features (DECISIONS 13 Nov 2026).
  */
 export function PortalHeader({ chrome }: { chrome: ShellProps }): React.JSX.Element | null {
+  const pathname = usePathname();
   if (chrome.portal === "customer") {
     return (
       <header className="pt-safe pl-safe pr-safe md:hidden">
@@ -31,13 +34,15 @@ export function PortalHeader({ chrome }: { chrome: ShellProps }): React.JSX.Elem
             <div data-slot="install-chip" />
             {chrome.signedIn ? (
               <>
-                <TransitionLink
-                  href="/notifications"
-                  aria-label="Notifications"
-                  className={iconLink}
-                >
-                  <Icon icon={Bell} />
-                </TransitionLink>
+                {pathname === "/wallet" ? null : (
+                  <TransitionLink
+                    href="/notifications"
+                    aria-label="Notifications"
+                    className={iconLink}
+                  >
+                    <Icon icon={Bell} />
+                  </TransitionLink>
+                )}
                 <PortalSwitcher portals={chrome.portals} current="customer" compact />
               </>
             ) : (

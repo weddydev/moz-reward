@@ -11,6 +11,7 @@ import {
   ingotPercent,
   ingotsText,
   progressLabel,
+  totalText,
   sortWallet,
   STACK_SIZE,
   stackGroups,
@@ -145,13 +146,20 @@ describe("[P1-07] wallet progress label", () => {
 
 describe("[P1-07] wallet greeting and copy", () => {
   it("greets by London time of day", () => {
-    expect(greeting(new Date("2026-11-18T09:00:00Z"), "Aisha")).toBe("Good morning, Aisha");
-    expect(greeting(new Date("2026-11-18T12:00:00Z"), "Aisha")).toBe("Good afternoon, Aisha");
-    expect(greeting(new Date("2026-11-18T18:00:00Z"), null)).toBe("Good evening");
+    // The reference's header: the time of day small, the first name large (P1-B close design review).
+    expect(greeting(new Date("2026-11-18T09:00:00Z"), "Aisha")).toEqual({
+      part: "Good morning",
+      name: "Aisha",
+    });
+    expect(greeting(new Date("2026-11-18T12:00:00Z"), "Aisha").part).toBe("Good afternoon");
+    expect(greeting(new Date("2026-11-18T18:00:00Z"), null)).toEqual({
+      part: "Good evening",
+      name: null,
+    });
     // BST: 11:30 UTC on 1 Jul is 12:30 in London.
-    expect(greeting(new Date("2026-07-01T11:30:00Z"), "Aisha")).toBe("Good afternoon, Aisha");
+    expect(greeting(new Date("2026-07-01T11:30:00Z"), "Aisha").part).toBe("Good afternoon");
     // Just after midnight in London.
-    expect(greeting(new Date("2026-07-01T23:10:00Z"), null)).toBe("Good morning");
+    expect(greeting(new Date("2026-07-01T23:10:00Z"), null).part).toBe("Good morning");
   });
 
   it("first name from the full name", () => {
@@ -164,6 +172,8 @@ describe("[P1-07] wallet greeting and copy", () => {
     expect(ingotsText(1)).toBe("1 ingot filled");
     expect(ingotsText(12)).toBe("12 ingots filled");
     expect(goldText(720, 1_000)).toBe("720 / 1,000 gold");
+    expect(totalText(1)).toBe("gold across 1 shop");
+    expect(totalText(3)).toBe("gold across 3 shops");
   });
 });
 
@@ -228,11 +238,27 @@ describe("[P1-07] wallet cards", () => {
       NOW,
     );
     expect(view.cards.map((c) => c.name)).toEqual(["High", "Low"]);
-    expect(view.summary).toEqual({ rewardsReady: 2, ingotsCompleted: 5 });
+    expect(view.summary).toEqual({ rewardsReady: 2, ingotsCompleted: 5, gold: 0, shops: 2 });
     expect(walletView([], 0, NOW)).toEqual({
       cards: [],
-      summary: { rewardsReady: 0, ingotsCompleted: 0 },
+      summary: { rewardsReady: 0, ingotsCompleted: 0, gold: 0, shops: 0 },
     });
+  });
+
+  it("view: the total panel sums the gold the cards show (shops with a programme), across every shop", () => {
+    const view = walletView(
+      [
+        input({ progressGold: 360 }),
+        input({ progressGold: 1_400, status: "suspended" }),
+        input({ progressGold: 720 }),
+        // No programme: the card shows no gold, so none counts (a stale balance never inflates the total).
+        input({ progressGold: 50, versions: [] }),
+      ],
+      0,
+      NOW,
+    );
+    expect(view.summary.gold).toBe(2_480);
+    expect(view.summary.shops).toBe(4);
   });
 });
 

@@ -20,3 +20,4 @@ _Moved word for word from PROGRESS.md's CARRIED table on 23 Nov 2026 (human-appr
 | C-71 | P1-09 | P3-06 | Leaving voids the member's live offer claim codes for that shop in `leaveShop`'s transaction | integration |
 | C-72 | P1-09 | P3-11 | Referral bonuses are never re-earned after leaving and rejoining | integration |
 | C-74 | P1-09 | P3-05 | Shop page offers carousel (screen 4 slot; hidden until offers exist) | E2E 390 + 1440 |
+| C-87 | P1-B close design HIGH (Wallet header) | P3-07 | The Wallet bell (`WalletHeader` `unread`) shows the unread notification count: ember badge with its ping (reference `.bell i`), label "Notifications, N new", "99+" above 99; none at 0 | E2E 390 |

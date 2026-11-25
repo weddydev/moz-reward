@@ -58,11 +58,17 @@ export function progressLabel(input: {
   return `${pct} · ${String(n)} more ${n === 1 ? "visit" : "visits"}`;
 }
 
-/** "Good morning" before 12:00, "Good afternoon" before 18:00, else "Good evening" (London time). */
-export function greeting(now: Date, firstName: string | null): string {
+/**
+ * The Wallet header (reference `.w-head`): `part` is "Good morning" before 12:00, "Good afternoon" before 18:00,
+ * else "Good evening" (London time), shown small above the first name; `name` is null when there is none.
+ */
+export function greeting(
+  now: Date,
+  firstName: string | null,
+): { part: string; name: string | null } {
   const hour = new Date(londonWall(now.getTime())).getUTCHours();
   const part = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  return firstName ? `${part}, ${firstName}` : part;
+  return { part, name: firstName };
 }
 
 /** First word of the profile's full name, or null when there is none. */
@@ -169,10 +175,14 @@ export function walletCard(input: WalletCardInput, now: Date): WalletCard {
 
 export type WalletView = {
   cards: WalletCard[];
-  summary: { rewardsReady: number; ingotsCompleted: number };
+  /** `gold` and `shops`: the total panel (reference `.total`); the rest: the summary row. */
+  summary: { rewardsReady: number; ingotsCompleted: number; gold: number; shops: number };
 };
 
-/** Cards in Wallet order plus the summary strip (rewards ready from P1-12/P1-16, C-62). */
+/**
+ * Cards in Wallet order plus the summary (rewards ready from P1-12/P1-16, C-62). The total gold is the sum of
+ * the gold the cards show: a shop without a programme shows none, so none of its stored balance counts.
+ */
 export function walletView(
   inputs: readonly WalletCardInput[],
   rewardsReady: number,
@@ -184,6 +194,8 @@ export function walletView(
     summary: {
       rewardsReady,
       ingotsCompleted: cards.reduce((sum, c) => sum + c.ingotsCompleted, 0),
+      gold: cards.reduce((sum, c) => sum + (c.ingotSize ? c.progressGold : 0), 0),
+      shops: cards.length,
     },
   };
 }
@@ -191,6 +203,10 @@ export function walletView(
 /** "1 ingot filled" / "3 ingots filled". */
 export const ingotsText = (n: number): string =>
   `${n.toLocaleString("en-GB")} ${n === 1 ? "ingot" : "ingots"} filled`;
+
+/** The total panel's label under the number: "gold across 3 shops" / "gold across 1 shop". */
+export const totalText = (shops: number): string =>
+  `gold across ${shops.toLocaleString("en-GB")} ${shops === 1 ? "shop" : "shops"}`;
 
 /** "720 / 1,000 gold". */
 export const goldText = (gold: number, size: number): string =>
