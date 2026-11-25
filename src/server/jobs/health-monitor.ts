@@ -22,9 +22,8 @@ import {
 } from "@/server/repos/ops";
 import { staleOutbox } from "@/server/repos/outbox";
 import { limiterRedis } from "@/server/security/rate-limit";
-import { HEARTBEAT_NAME } from "./handlers";
 import { getQueue } from "./queues";
-import { QUEUE_NAMES } from "./registry";
+import { HEARTBEAT_NAME, QUEUE_NAMES } from "./registry";
 import type { Redis } from "ioredis";
 
 /**

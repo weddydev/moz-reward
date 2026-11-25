@@ -25,59 +25,78 @@ function assertKey(key: string): void {
     throw new Error(`invalid storage key: ${JSON.stringify(key)}`);
 }
 
-let cached: { client: S3Client; bucket: string } | undefined;
+type Bucket = { client: S3Client; bucket: string };
+const cached = new Map<"public" | "private", Bucket>();
 
 /** One S3-compatible provider: MinIO in local/test (TESTING §9), Cloudflare R2 in staging/production. */
-function s3(): { client: S3Client; bucket: string } {
-  if (cached) return cached;
+function s3(which: "public" | "private"): Bucket {
+  const hit = cached.get(which);
+  if (hit) return hit;
   const e = env();
-  if (!e.S3_BUCKET || !e.S3_ENDPOINT || !e.S3_ACCESS_KEY_ID || !e.S3_SECRET_ACCESS_KEY) {
+  const bucket = which === "public" ? e.S3_BUCKET : e.S3_PRIVATE_BUCKET;
+  const keyId = (which === "private" && e.S3_PRIVATE_ACCESS_KEY_ID) || e.S3_ACCESS_KEY_ID;
+  const secret = (which === "private" && e.S3_PRIVATE_SECRET_ACCESS_KEY) || e.S3_SECRET_ACCESS_KEY;
+  if (!bucket || !e.S3_ENDPOINT || !keyId || !secret) {
     throw new Error(
-      "Storage is not configured (S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY)",
+      which === "public"
+        ? "Storage is not configured (S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY)"
+        : "Private storage is not configured (S3_ENDPOINT, S3_PRIVATE_BUCKET and a key)",
     );
   }
-  cached = {
-    bucket: e.S3_BUCKET,
+  const made: Bucket = {
+    bucket,
     client: new S3Client({
       endpoint: e.S3_ENDPOINT,
       region: e.S3_REGION,
       forcePathStyle: e.S3_FORCE_PATH_STYLE,
-      credentials: { accessKeyId: e.S3_ACCESS_KEY_ID, secretAccessKey: e.S3_SECRET_ACCESS_KEY },
+      credentials: { accessKeyId: keyId, secretAccessKey: secret },
     }),
   };
-  return cached;
+  cached.set(which, made);
+  return made;
 }
 
 const signal = (): AbortSignal => AbortSignal.timeout(TIMEOUT_MS);
 
-export const storage: StorageProvider = {
-  async put(key, body, contentType) {
-    assertKey(key);
-    const { client, bucket } = s3();
-    await client.send(
-      new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }),
-      { abortSignal: signal() },
-    );
-  },
-  async get(key) {
-    assertKey(key);
-    const { client, bucket } = s3();
-    try {
-      const res = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }), {
+function provider(which: "public" | "private"): StorageProvider {
+  return {
+    async put(key, body, contentType) {
+      assertKey(key);
+      const { client, bucket } = s3(which);
+      await client.send(
+        new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }),
+        { abortSignal: signal() },
+      );
+    },
+    async get(key) {
+      assertKey(key);
+      const { client, bucket } = s3(which);
+      try {
+        const res = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }), {
+          abortSignal: signal(),
+        });
+        const bytes = await res.Body?.transformToByteArray();
+        return { body: Buffer.from(bytes ?? []), contentType: res.ContentType };
+      } catch (err) {
+        if (err instanceof NoSuchKey) return null;
+        throw err;
+      }
+    },
+    async delete(key) {
+      assertKey(key);
+      const { client, bucket } = s3(which);
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }), {
         abortSignal: signal(),
       });
-      const bytes = await res.Body?.transformToByteArray();
-      return { body: Buffer.from(bytes ?? []), contentType: res.ContentType };
-    } catch (err) {
-      if (err instanceof NoSuchKey) return null;
-      throw err;
-    }
-  },
-  async delete(key) {
-    assertKey(key);
-    const { client, bucket } = s3();
-    await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }), {
-      abortSignal: signal(),
-    });
-  },
-};
+    },
+  };
+}
+
+/** The uploads bucket: its `public/` files are served by the CDN origin (ARCHITECTURE §8). */
+export const storage: StorageProvider = provider("public");
+
+/**
+ * The private bucket (P1-12): files only the app streams after an authorisation check (receipt PDFs). It never
+ * gets a public domain; env refuses it being the same bucket as `storage`.
+ */
+export const privateStorage: StorageProvider = provider("private");

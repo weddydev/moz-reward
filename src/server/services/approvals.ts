@@ -14,6 +14,7 @@ import type { ShopScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import type { ReceiptData, RejectReason, ReversalReason } from "@/server/db/schema";
 import { AppError } from "@/server/errors";
+import { writeOutbox } from "@/server/jobs/outbox";
 import { notify } from "@/server/notifications/notify";
 import { publishRealtime } from "@/server/realtime/publish";
 import {
@@ -351,6 +352,8 @@ async function decide(
     { id: receiptId, membershipId: membership.id, requestId: request.id, number, data },
     tx,
   );
+  // The receipt PDF is rendered by the worker after commit (outbox: a rolled-back approval renders nothing).
+  await writeOutbox(scope, tx, "pdf", "receipt", { receiptId });
 
   await notify(scope, tx, [membership.userId], {
     type: "request_approved",

@@ -20,6 +20,12 @@ export const QUEUES = {
 } as const;
 
 export type QueueName = keyof typeof QUEUES;
+
+/**
+ * The scheduler heartbeat's job name. Lives here, not in handlers.ts: the web's readiness route reads it through
+ * health-monitor.ts, and handlers.ts pulls in every worker handler (P1-12: the PDF renderer is worker-only).
+ */
+export const HEARTBEAT_NAME = "scheduled:heartbeat";
 export const QUEUE_NAMES = Object.keys(QUEUES) as QueueName[];
 
 /**
@@ -80,6 +86,9 @@ const NOTIFICATION_EMAIL = z
   .object({ notificationId: z.uuid(), userId: z.uuid(), createdAt: z.iso.datetime() })
   .strict();
 
+/** P1-12: render one receipt's PDF (ids only; the row is read under the producing scope). */
+const RECEIPT_PDF = z.object({ receiptId: z.uuid() }).strict();
+
 export const JOBS = {
   notifications: {
     /**
@@ -119,7 +128,10 @@ export const JOBS = {
     ),
   },
   images: {},
-  pdf: {},
+  pdf: {
+    /** P1-12: a receipt's PDF into the private bucket (written by the approval, or by a download that found none). */
+    receipt: defineJob(RECEIPT_PDF, { runAs: "tenant" }),
+  },
   "share-cards": {},
   fraud: {},
   scheduled: {

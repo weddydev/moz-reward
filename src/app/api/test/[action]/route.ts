@@ -32,7 +32,7 @@ import {
   userPointRequests,
 } from "@/server/testing/factories";
 import { testApiAllowed } from "@/server/testing/test-api";
-import { approvedVisit } from "@/server/testing/visits";
+import { approvedVisit, storeStubReceiptPdfs } from "@/server/testing/visits";
 
 /**
  * Test-only seeding API (APP_ENV=test). Lets E2E specs create exactly the data they need and sign in
@@ -189,6 +189,9 @@ const expireRequestInput = z.object({ userId: z.uuid(), shopId: z.uuid() }).stri
 /** P1-11: a user's points requests (ids and statuses only). */
 const pointRequestsInput = z.object({ userId: z.uuid() }).strict();
 
+/** P1-12: what the worker's `pdf:receipt` jobs leave behind for a shop's receipts (stub files; no worker in E2E). */
+const receiptPdfsInput = z.object({ shopId: z.uuid() }).strict();
+
 type Ctx = { params: Promise<{ action: string }> };
 const invalid = (): Response => NextResponse.json({ error: "invalid input" }, { status: 400 });
 
@@ -221,6 +224,11 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
         });
       }
       return NextResponse.json({ expired: ids.length });
+    }
+    case "receipt-pdfs": {
+      const parsed = receiptPdfsInput.safeParse(body);
+      if (!parsed.success) return invalid();
+      return NextResponse.json({ stored: await storeStubReceiptPdfs(parsed.data.shopId) });
     }
     case "point-requests": {
       const parsed = pointRequestsInput.safeParse(body);

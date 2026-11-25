@@ -8,8 +8,8 @@ import { deliverRealtime } from "@/server/realtime/publish";
 import { touchHeartbeat } from "@/server/repos/jobs";
 import { ensureNotificationPartitions } from "@/server/repos/notifications";
 import { expirePointRequests, remindPointRequests } from "@/server/services/point-request-jobs";
+import { HEARTBEAT_NAME, type JobDef, type JOBS, type JobRunAs, type QueueName } from "./registry";
 import { sweepOutbox } from "./relay";
-import type { JobDef, JOBS, JobRunAs, QueueName } from "./registry";
 import type { Job } from "bullmq";
 import type { z } from "zod";
 
@@ -33,8 +33,6 @@ export type Handlers = {
 };
 
 const JOBS_SCOPE = systemScope("scheduled background jobs run without a user");
-
-export const HEARTBEAT_NAME = "scheduled:heartbeat";
 
 /** Months of notifications partitions kept ahead (the health monitor alerts below 2). */
 export const PARTITION_MONTHS_AHEAD = 3;
@@ -60,7 +58,11 @@ export const HANDLERS: Handlers = {
     "ops-alert": ({ at, ...alert }) => deliverAlertEmail({ ...alert, at: new Date(at) }),
   },
   images: {},
-  pdf: {},
+  pdf: {
+    // Loaded on first use: pdfkit stays in the worker (nothing the web imports reaches the renderer).
+    receipt: async (payload, _job, { scope }) =>
+      (await import("./receipt-pdf-job")).renderReceiptJob(payload, scope),
+  },
   "share-cards": {},
   fraud: {},
   scheduled: {

@@ -104,13 +104,13 @@ services:
     volumes:
       - miniodata:/data
     healthcheck:
-      # Healthy only once the app bucket exists: creates it on first start (idempotent), so `up --wait` leaves
+      # Healthy only once the app buckets (public + private) exist: creates it on first start (idempotent), so `up --wait` leaves
       # MinIO ready for `pnpm dev` and the tests. Uses the mc binary shipped in the image.
       test:
         - CMD-SHELL
         - >-
           MC_CONFIG_DIR=/tmp/.mc MC_HOST_local=http://moz:moz-minio-local@127.0.0.1:9000
-          mc mb --ignore-existing local/moz-rewards >/dev/null
+          mc mb --ignore-existing local/moz-rewards local/moz-rewards-private >/dev/null
       interval: 2s
       timeout: 5s
       retries: 30
