@@ -69,6 +69,9 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 ## Tests in general
 
+**KI-62 · Every E2E job fails at once: "Vitest cannot be imported in a CommonJS module using require()"** — P1-19, 25 Nov (CI 45652286230).
+- Cause: Playwright's default `testMatch` collects `*.test.ts` as well as `*.spec.ts` under `testDir` (`tests/e2e`), so a Vitest unit file there (`tests/e2e/support/animations.test.ts`) is loaded by Playwright and crashes collection. A run naming spec files locally never loads it. Fix: unit tests of E2E helpers live outside `tests/e2e` (`tests/support/*.test.ts`, in the unit project); check with `pnpm exec playwright test --list`.
+
 **KI-61 · Test API 500 "the web process has no \"system\" database pool"** — P1-11, 25 Nov.
 - Cause: by design (P0-20) the Next.js process has no moz_worker pool, so `/api/test/*` can't run a system-scope job (e.g. `expirePointRequests`); the E2E server runs no worker either. Fix: the test API does the job's DB change with the test factories (`testOwnerDb`) and calls `deliverRealtime` for the hint; the job itself is tested in integration.
 

@@ -11,6 +11,7 @@
  * - a cancelled animation stays in the list as started, with state `cancelled` (`Animation.prototype.cancel`
  *   is wrapped, so the flag is set at once, not on the next frame's event).
  *
+ * Unit test: tests/support/e2e-animations.test.ts (outside tests/e2e, which Playwright collects `*.test.ts` from).
  * Usage: `await recordAnimations(page)` before `goto`, then `await started(page, ".m-bubble")`.
  */
 import type { Locator, Page } from "@playwright/test";

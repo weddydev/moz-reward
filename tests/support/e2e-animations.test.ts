@@ -9,7 +9,7 @@ import {
   toValue,
   translateOf,
   type StartedAnimation,
-} from "./animations";
+} from "../e2e/support/animations";
 
 const effect = (keyframes: object[], timing: object) => ({
   getKeyframes: () => keyframes,
