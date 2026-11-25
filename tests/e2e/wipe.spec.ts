@@ -54,9 +54,14 @@ async function record(page: Page): Promise<void> {
       Element.prototype.animate = function (this: Element, keyframes, options) {
         const first = Array.isArray(keyframes) ? keyframes[0] : null;
         const from = typeof first?.transform === "string" ? first.transform : "";
-        if (this.matches("[data-route-content]") && /^scale\(0\./.test(from)) {
-          const rec = (window as unknown as { __wipe?: Record<string, number> }).__wipe;
-          if (rec) rec.sunk = (rec.sunk ?? 0) + 1;
+        const clipFrom = typeof first?.clipPath === "string" ? first.clipPath : "";
+        const rec = (window as unknown as { __wipe?: Record<string, number> }).__wipe;
+        if (rec && this.matches("[data-route-content]") && /^scale\(0\./.test(from)) {
+          rec.sunk = (rec.sunk ?? 0) + 1;
+        }
+        // The shop opening in a circle, counted the same way (CI 45588327123: 0 circle frames on iphone14).
+        if (rec && this.matches("[data-route-content]") && clipFrom.startsWith("circle(")) {
+          rec.clip = (rec.clip ?? 0) + 1;
         }
         return animate.call(this, keyframes, options);
       };
@@ -171,6 +176,22 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
         __bar: { scales: number[]; timing: string | null; from: string | null };
       };
       w.__bar = { scales: [], timing: null, from: null };
+      // The fill's timing is read when the animation is made, not only on drawn frames: Linux WebKit can draw none
+      // for the whole fill (KI-10), so a frame-only read saw nothing (confirmed flake, CI 45588327123).
+      const animate = Object.getOwnPropertyDescriptor(Element.prototype, "animate")
+        ?.value as Element["animate"];
+      Element.prototype.animate = function (this: Element, keyframes, options) {
+        const made = animate.call(this, keyframes, options);
+        if (!w.__bar.timing && this.matches('[data-testid="mini-vault"] [data-wipe-bar]')) {
+          const effect = made.effect as KeyframeEffect | null;
+          const t = effect?.getTiming();
+          if (effect && t) {
+            w.__bar.timing = `${String(t.delay)}|${String(t.duration)}|${String(t.fill)}`;
+            w.__bar.from = String(effect.getKeyframes()[0]?.transform);
+          }
+        }
+        return made;
+      };
       const until = performance.now() + 6000;
       const tick = (): void => {
         const bar = document.querySelector<HTMLElement>(
