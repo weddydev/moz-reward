@@ -7,16 +7,17 @@ Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-11 closed 25 Nov (talha.syed, Mac); next P1-19** (motion specs assert the animation, takes C-78), then P1-12. Nothing half-done. Autopilot OFF. No wip branch in use (`wip/P1-11`, `wip/fix-gate-morph` are merged).
-- **Main was red and is fixed:** gate `@perf` long task root-caused (parse-time `getAnimations()` in the morph script, KI-48) → `a469c92`, CI 45644813206 green.
-- **Before the P1-C close:** P1-19; Molten fixes C-92/C-93/C-94; C-95 (SSE heartbeat through the staging proxy); two confirmed flakes in FOLLOWUPS (P1-09 shop page, PD-09 timeline morph).
-- **Not yet tested:** C-95 (staging, authenticated stream); P1-11 on staging (rides the P1-C close deploy).
+- **P1-19 in progress (talha.syed, Mac, 25 Nov): branch `wip/P1-19`, pushed HEAD `caaaa07`** (6 commits on main `23baeb8`). Autopilot OFF.
+- **Done on the branch:** shared recorder `tests/e2e/support/animations.ts` (animate/cancel/finish hooks + CSS sweep, hold-at-start, unit test `tests/support/e2e-animations.test.ts`, 37/0); all 9 specs converted (molten-fields, molten-controls, molten-dock, wipe, vault, gilded-gate, fx, ui-states, portal-shells): started-animation checks on every engine, drawn frames / wall clock Chromium-only, upper bounds kept. C-78: WebKit `return` removed, press re-measures the pointer over the input. Gate "plays 3.28 s" fixme (C-83 part) removed. One mutation per spec file failed as required (local evidence, see SESSION_LOG). Product fix found by a spec: MemberCard drops `.live` on pointerleave (return was on the 120 ms follow). KI-62, KI-63 added.
+- **Next step:** read CI on `caaaa07` (run on push) and the 19 spec-repeat runs dispatched on `caaaa07` (9 specs × webkit + iphone14 ×10, plus gate `@perf` desktop1440 ×10; `gh run list --workflow spec-repeat.yml`). Fix any red at the root (debug on CI, `wip/dbg-*`). Then: AC1 grep evidence, KNOWN_ISSUES KI-10/KI-59 note → recorder, FOLLOWUPS 83 (slider flake) and 105 (gate morph: the wait now prints a diagnostic) closed or kept, C-78 row closed, C-83 row trimmed (gate part done), `gate:task`, the AC2 "green full CI with an every-page change", then the closing commit on main.
+- **Open question:** gate `@perf` (desktop1440) long task 93.8 / 70.8 ms on the branch's CI 45654515921 vs main ×10 green (spec-repeat 45658976985). The branch changes no gate code; the branch ×10 run decides variance vs regression.
+- **Not yet tested:** everything above on CI WebKit (runs pending); C-95 (staging, authenticated stream); P1-11 on staging. **Before the P1-C close:** P1-19, P1-12, P1-13, Molten fixes C-92/C-93/C-94, C-95, FOLLOWUPS flakes (P1-09 shop page, PD-09 timeline morph).
 ## Status
 - **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **P1-C** next, from P1-10. P1-B closed 25 Nov (reviews, QA, H-49 approved; Sentry held until P2, C-88). PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-25, talha.syed (P1-11 closed, main CI fixed; next P1-19)
+- **Last updated:** 2026-11-25, talha.syed (P1-19 checkpoint: wip/P1-19 `caaaa07`, CI + spec-repeat pending)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now

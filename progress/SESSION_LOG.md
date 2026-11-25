@@ -1048,3 +1048,9 @@ Built: `point_requests` (0028: one open per membership, unique key, DB-stamped `
 Evidence: integration point-requests 24/0 + authz 9/0 + grants catalog; unit 2161/0; gate:task PASS (`d5c965b`); E2E Chromium + WebKit 24/0, Linux WebKit/iphone14 10/0; screenshots 390/320/1440 inspected; CI 45647684620 green on `6d8d763`.
 Main was red (CI 45633357321, gate `@perf` 68–81 ms): root cause a parse-time `getAnimations()` in the morph script (LoAF: 71.5 of 73 ms forced style/layout, KI-48) → `a469c92`, CI 45644813206 green. CI-only P1-11 fixes: offline spec allows its own cut `_rsc` prefetches; availability via `toContainText`.
 Confirmed flakes → FOLLOWUPS (P1-09 shop page, PD-09 timeline morph), before the P1-C close.
+
+## 2026-11-25 — P1 — P1-19 checkpoint (in progress), talha.syed (Mac)
+Built on `wip/P1-19` (`caaaa07`): shared animation recorder + unit test (37/0); 9 motion specs converted to started-animation checks (frames/wall clock Chromium-only); C-78 press re-measured, WebKit return removed; gate 3.28 s fixme lifted; MemberCard return-spring fix (found by the converted spec).
+Evidence (local, production build): molten-fields slider+RM+card 33/0, molten-controls RM, dock 20/0 phones, wipe 9/9 chromium + 3 projects, vault 57/0, gilded-gate 30/0, fx 31/0, ui-states+portal-shells 51/0 + 38/0; mutations (one per file: bubble transition, RM toast rise, dock pour, wipe rise, ingot finish→pause, gate-life ×0.5, ripple scale, press 400 ms) all FAIL as required.
+CI: 45652286230 red (Playwright collected a Vitest file, KI-62); 45654515921 red (slider reversed/dropped leans, card tilt drawn-poll: fixed; gate @perf 70.8/93.8 ms, open); spec-repeat molten-fields webkit 45652306256 230/10 (all the fixed check). 17 dispatches cancelled by the per-ref group (KI-63, fixed).
+NOT VERIFIED: CI on `caaaa07` and the 19 spec-repeat runs (pending at checkpoint).
