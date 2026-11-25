@@ -275,8 +275,9 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
     // Hold the arriving shop's opening at its first frame, whatever the machine's speed: the switch then lands
     // mid-wipe for sure, and only the switch can end it.
     await page.evaluate((path) => {
-      const w = window as unknown as { __held: number };
+      const w = window as unknown as { __held: number; __heldList: Animation[] };
       w.__held = 0;
+      w.__heldList = [];
       const until = performance.now() + 8000;
       const scan = (): void => {
         const c = [...document.querySelectorAll<HTMLElement>("[data-route-content]")].pop();
@@ -287,6 +288,7 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
               )
             : [];
         for (const a of running) a.pause();
+        w.__heldList.push(...running);
         w.__held += running.length;
         if (w.__held === 0 && performance.now() < until) requestAnimationFrame(scan);
       };
@@ -301,7 +303,31 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
       document.documentElement.setAttribute("data-reduce-motion", "true");
     });
     await expect(page.getByTestId("wipe-stage")).toBeHidden({ timeout: 1_000 });
+    // Let go of what this test froze: an animation paused at 0 ms (a content rise caught before its first tick)
+    // keeps its "from" frame even at reduced motion's 0.001 ms, which no real page can reach, and the guard's
+    // axe scan read the half-shown page as low contrast (CI 45576974690, iphone14; KI-58).
+    await page.evaluate(() => {
+      for (const a of (window as unknown as { __heldList: Animation[] }).__heldList)
+        if (a.playState === "paused") a.play();
+    });
     await settled(page);
+    // The page has fully arrived: its streamed status row is in and shown (a part that streams in under reduced
+    // motion still takes its ≤ 150 ms fade, and one landing after the test ended faded under the axe scan).
+    await expect(page.getByTestId("shop-status")).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          // The badge and every box above it fully shown (no fade left on the way up).
+          for (
+            let el = document.querySelector("[data-testid=shop-status]");
+            el;
+            el = el.parentElement
+          )
+            if (getComputedStyle(el).opacity !== "1") return false;
+          return true;
+        }),
+      )
+      .toBe(true);
   });
 
   test("[PD-08] slow network: the metal holds over the Wallet until the shop commits, then opens", async ({
