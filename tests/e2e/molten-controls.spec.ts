@@ -1,4 +1,11 @@
 import { type Page } from "@playwright/test";
+import {
+  animates,
+  describeAnimations,
+  moves,
+  recordAnimations,
+  started,
+} from "./support/animations";
 import { expect, test } from "./support/test";
 
 /**
@@ -174,6 +181,7 @@ test("[PD-04] reduced motion: the press still works, the heart just fills, the t
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await recordAnimations(page);
   await open(page);
   await expect(page.locator("html")).toHaveClass(/(^|\s)rm(\s|$)/);
   await heart(page).click();
@@ -181,13 +189,23 @@ test("[PD-04] reduced motion: the press still works, the heart just fills, the t
   expect(await heart(page).locator(".m-dot").count()).toBe(0);
   const toast = page.locator("li.m-toast").first();
   await expect(toast).toBeVisible();
-  const moves = await toast.evaluate((el) =>
-    el.getAnimations().some((a) => {
-      const kf = (a.effect as KeyframeEffect | null)?.getKeyframes() ?? [];
-      return kf.some((k) => typeof k.transform === "string" && k.transform !== "none");
-    }),
-  );
-  expect(moves).toBe(false);
+  // Started on the toast (recorded from the page's first script, so one that already ended still counts): a fade,
+  // and nothing that moves. A script animation counts at any length; a CSS one from 1 ms (the reduced-motion rule
+  // shortens CSS animations to 0.001 ms, an instant jump).
+  const onToast = await started(page, "li.m-toast, li.m-toast *");
+  const log = describeAnimations(onToast);
+  expect(
+    describeAnimations(
+      onToast.filter(
+        (a) => moves(a) && (a.source === "script" || a.timing.duration + a.timing.delay >= 1),
+      ),
+    ),
+    `animations that move the toast under reduced motion:\n${log}`,
+  ).toBe("");
+  expect(
+    onToast.some((a) => animates(a, "opacity")),
+    `the toast's fade was started:\n${log}`,
+  ).toBe(true);
 });
 
 test("[PD-04] /dev/molten and /dev/ui at 320, 390 and 1440: no horizontal scroll (screens for inspection)", async ({

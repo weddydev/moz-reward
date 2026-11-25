@@ -1,4 +1,15 @@
 import { type Locator, type Page } from "@playwright/test";
+import {
+  animates,
+  clearAnimations,
+  describeAnimations,
+  moves,
+  recordAnimations,
+  rotationOf,
+  started,
+  sweepOnStyleWrites,
+  toValue,
+} from "./support/animations";
 import { expect, test } from "./support/test";
 
 /**
@@ -123,29 +134,29 @@ test("[PD-06] many tabs scroll inside their own row and keep the chosen one in v
 });
 
 /**
- * Records every script animation started from now on that moves something (its keyframes set `transform`), by
- * the element's class; reduced motion allows fades only (DESIGN §7.2), so the list must stay empty.
+ * Animations started from now on that move or scale something (`moves`), as one line each; reduced motion allows
+ * fades only (DESIGN §7.2), so the list must stay empty. A script animation counts at any length, even 0 ms; a CSS
+ * one counts from 1 ms, since the reduced-motion rule shortens every CSS animation to 0.001 ms (it jumps to its
+ * end state, nothing is seen to move). `fades` proves the recorder saw the step at all.
  */
-async function recordMoves(page: Page): Promise<() => Promise<string[]>> {
-  await page.evaluate(() => {
-    const w = window as unknown as { __moves: string[] };
-    w.__moves = [];
-    const real = Object.getOwnPropertyDescriptor(Element.prototype, "animate")?.value as (
-      this: Element,
-      ...args: Parameters<Element["animate"]>
-    ) => Animation;
-    Element.prototype.animate = function (this: Element, frames, options) {
-      const list = Array.isArray(frames) ? frames : frames ? [frames] : [];
-      if (list.some((k) => "transform" in k))
-        w.__moves.push(this.getAttribute("class") ?? this.tagName);
-      return real.call(this, frames, options);
-    };
-  });
-  return () => page.evaluate(() => (window as unknown as { __moves: string[] }).__moves);
+async function recordMoves(
+  page: Page,
+): Promise<{ moving: () => Promise<string>; fades: () => Promise<number> }> {
+  await clearAnimations(page);
+  return {
+    moving: async () =>
+      describeAnimations(
+        (await started(page)).filter(
+          (a) => moves(a) && (a.source === "script" || a.timing.duration + a.timing.delay >= 1),
+        ),
+      ),
+    fades: async () => (await started(page)).filter((a) => animates(a, "opacity")).length,
+  };
 }
 
 test("[PD-06] tabs under reduced motion: no slide, the number shows at once", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await recordAnimations(page);
   await open(page);
   await expect(page.locator("html")).toHaveClass(/(^|\s)rm(\s|$)/);
   const moves = await recordMoves(page);
@@ -153,8 +164,12 @@ test("[PD-06] tabs under reduced motion: no slide, the number shows at once", as
   await list.getByRole("tab", { name: "Market" }).click();
   const panel = page.getByRole("tabpanel").filter({ hasText: "new listings this week" });
   await expect(panel.locator('[aria-hidden="true"]')).toHaveText("48");
-  // The panel fades in; nothing slides.
-  expect(await moves()).toEqual([]);
+  // The panel fades in; nothing slides (any started animation that moves, even a 0 ms one, fails this).
+  expect(await moves.moving(), "animations that move under reduced motion").toBe("");
+  expect(
+    await moves.fades(),
+    "the panel's fade was started (the recorder saw this step)",
+  ).toBeGreaterThan(0);
 });
 
 const emailField = (page: Page): Locator =>
@@ -377,6 +392,7 @@ test("[PD-06] star rating under reduced motion: every star lights at once, no po
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await recordAnimations(page);
   await open(page);
   await expect(page.locator("html")).toHaveClass(/(^|\s)rm(\s|$)/);
   const moves = await recordMoves(page);
@@ -386,7 +402,11 @@ test("[PD-06] star rating under reduced motion: every star lights at once, no po
   await expect.poll(() => litCount(group)).toBe(5);
   for (const s of await group.locator(".m-star").all()) expect(await running(s)).toBe(0);
   // The word fades in without rising; nothing moves.
-  expect(await moves()).toEqual([]);
+  expect(await moves.moving(), "animations that move under reduced motion").toBe("");
+  expect(
+    await moves.fades(),
+    "the word's fade was started (the recorder saw this step)",
+  ).toBeGreaterThan(0);
   await expect(rateTile(page).getByRole("button", { name: "Post on Google" })).toBeVisible();
   await expect(
     rateTile(page).getByRole("button", { name: "Send to the shop privately" }),
@@ -512,24 +532,26 @@ test("[PD-06] slider keyboard: arrows step 10, Home/End and Page keys jump; each
   await expect.poll(() => notchLog(page)).toBe("240 240 240 480 720 720");
 });
 
-test("[PD-06] slider drag: the coin follows the pointer, the fill grows, the bubble leans and springs back upright", async ({
-  page,
-  isMobile,
-  browserName,
-}) => {
-  test.skip(isMobile, "a mouse drag; touch drags are the browser's own range input");
-  await open(page);
-  await sliderAtRest(page);
-  // The pointer rests on the coin, over the input and where it was measured, before the press (C-77): Linux
-  // WebKit scrolls the page back (39 px) at the first mouse event after `scrollIntoViewIfNeeded`, so a box read
-  // before it sent the press onto the wrapper above the input and the value never moved (2 in 6 runs).
+/**
+ * Puts the pointer over the slider's input at `value`'s place and returns the input's box, once the pointer is
+ * really over the input there and the box is where it was measured (C-77, C-78): Linux WebKit scrolls the page
+ * back (39 px) at the first mouse event after `scrollIntoViewIfNeeded`, so a box read before that sends a press
+ * onto the wrapper above the input and the value never moves.
+ */
+async function pointerOverSlider(
+  page: Page,
+  value: number,
+): Promise<{ x: number; y: number; width: number; height: number }> {
   let measured: { x: number; y: number; width: number; height: number } | null = null;
   await expect
     .poll(
       async () => {
         measured = await spend(page).boundingBox();
         if (!measured) return false;
-        const at = { x: measured.x + 18 + (240 / 720) * (measured.width - 36), y: measured.y + 32 };
+        const at = {
+          x: measured.x + 18 + (value / 720) * (measured.width - 36),
+          y: measured.y + 32,
+        };
         await page.mouse.move(at.x, at.y);
         const top = measured.y;
         return spend(page).evaluate(
@@ -539,39 +561,51 @@ test("[PD-06] slider drag: the coin follows the pointer, the fill grows, the bub
           { ...at, top },
         );
       },
-      { timeout: 5_000 },
+      { timeout: 5_000, message: "the pointer is over the slider's input where it was measured" },
     )
     .toBe(true);
   const box = measured as { x: number; y: number; width: number; height: number } | null;
   if (!box) throw new Error("no slider box");
+  return box;
+}
+
+test("[PD-06] slider drag: the coin follows the pointer, the fill grows, the bubble leans and springs back upright", async ({
+  page,
+  isMobile,
+  browserName,
+}) => {
+  test.skip(isMobile, "a mouse drag; touch drags are the browser's own range input");
+  await recordAnimations(page);
+  await open(page);
+  await sliderAtRest(page);
+  const box = await pointerOverSlider(page, 240);
   const coinX = (v: number): number => box.x + 18 + (v / 720) * (box.width - 36);
   const y = box.y + 32;
-  // Recorded in the page: every lean the slider asks for (each write of the bubble's `--tilt`) and, on every
-  // frame, the lean drawn and the frames that ran while a lean was asked for. Read afterwards, the bubble may
-  // already be upright again (90 ms after the last input, then .5 s), which a slow runner's round trips outlast.
-  // What was drawn is judged by frames, not wall-clock time (C-77): Linux WebKit in CI and in a container runs
-  // no frame at all for the whole drag and its 90 ms settle, so the spring never starts there and nothing can be
-  // seen to lean; it is checked wherever frames ran, the asked-for lean everywhere.
-  await sliderTile(page)
-    .locator(".m-bubble")
-    .evaluate((b) => {
-      const w = window as unknown as LeanProbe;
-      const tilt = (): number => Number.parseFloat(b.style.getPropertyValue("--tilt")) || 0;
-      w.__tilts = [];
-      w.__minLean = 0;
-      w.__leanFrames = [];
-      w.__tiltObs = new MutationObserver(() => {
-        w.__tilts.push(tilt());
-      });
-      w.__tiltObs.observe(b, { attributes: true, attributeFilter: ["style"] });
-      const tick = (t: number): void => {
-        if (tilt() < 0) w.__leanFrames.push(t);
-        const m = new DOMMatrixReadOnly(getComputedStyle(b).transform);
-        w.__minLean = Math.min(w.__minLean, (Math.atan2(m.b, m.a) * 180) / Math.PI);
-        w.__leanRaf = requestAnimationFrame(tick);
-      };
-      w.__leanRaf = requestAnimationFrame(tick);
+  const bubble = sliderTile(page).locator(".m-bubble");
+  // Started, on every engine (TESTING §7): every lean the slider asks for (each write of the bubble's `--tilt`)
+  // and the transform transition each write starts, recorded at the write (`sweepOnStyleWrites`), so a Linux
+  // WebKit that draws no frame during the drag and its 90 ms settle (C-77) still shows what was started.
+  // Drawn, on Chromium only: the lean seen on frames while one was asked for.
+  await sweepOnStyleWrites(bubble);
+  await bubble.evaluate((b, drawn) => {
+    const w = window as unknown as LeanProbe;
+    const tilt = (): number => Number.parseFloat(b.style.getPropertyValue("--tilt")) || 0;
+    w.__tilts = [];
+    w.__minLean = 0;
+    w.__leanFrames = [];
+    w.__tiltObs = new MutationObserver(() => {
+      w.__tilts.push(tilt());
     });
+    w.__tiltObs.observe(b, { attributes: true, attributeFilter: ["style"] });
+    if (!drawn) return;
+    const tick = (t: number): void => {
+      if (tilt() < 0) w.__leanFrames.push(t);
+      const m = new DOMMatrixReadOnly(getComputedStyle(b).transform);
+      w.__minLean = Math.min(w.__minLean, (Math.atan2(m.b, m.a) * 180) / Math.PI);
+      w.__leanRaf = requestAnimationFrame(tick);
+    };
+    w.__leanRaf = requestAnimationFrame(tick);
+  }, browserName === "chromium");
   const probe = (): Promise<LeanProbe> =>
     page.evaluate(() => {
       const w = window as unknown as LeanProbe;
@@ -581,6 +615,7 @@ test("[PD-06] slider drag: the coin follows the pointer, the fill grows, the bub
         __leanFrames: w.__leanFrames,
       } as LeanProbe;
     });
+  await clearAnimations(page);
   await page.mouse.move(coinX(240), y);
   await page.mouse.down();
   for (let i = 1; i <= 6; i++) await page.mouse.move(coinX(240 + i * 40), y);
@@ -597,11 +632,33 @@ test("[PD-06] slider drag: the coin follows the pointer, the fill grows, the bub
     cancelAnimationFrame(w.__leanRaf);
     w.__tiltObs.disconnect();
   });
-  // Drawn: wherever frames ran across 32 ms or more of the lean, the bubble was seen leaning.
-  const leanSpanMs = (seen.__leanFrames.at(-1) ?? 0) - (seen.__leanFrames[0] ?? 0);
-  if (leanSpanMs >= 32)
-    expect(seen.__minLean, `frames over ${String(leanSpanMs)} ms`).toBeLessThan(-1);
-  if (browserName === "chromium") expect(leanSpanMs).toBeGreaterThanOrEqual(32);
+  // Started: a 0.5 s spring transition of the transform towards a lean back (< −1°), then one back upright.
+  const leans = (await started(page, ".m-bubble")).filter(
+    (a) => a.source === "css-transition" && a.name === "transform",
+  );
+  const log = describeAnimations(leans);
+  expect(
+    leans.some((a) => rotationOf(String(toValue(a, "transform"))) < -1),
+    `a transition leaning the bubble back started:\n${log}`,
+  ).toBe(true);
+  const last = leans.at(-1);
+  expect(last, `transitions started:\n${log}`).toBeDefined();
+  expect(
+    Math.abs(rotationOf(String(last ? toValue(last, "transform") : ""))),
+    `the last transition takes it upright:\n${log}`,
+  ).toBeLessThan(0.01);
+  for (const a of leans) {
+    expect(a.timing.duration, `0.5 s spring (DESIGN §7.4):\n${log}`).toBe(500);
+    expect(a.timing.easing, `the spring curve, not a default ease:\n${log}`).toMatch(
+      /^(linear|cubic-bezier)\(/,
+    );
+  }
+  // Drawn (Chromium only): frames ran across 32 ms or more of the lean and the bubble was seen leaning.
+  if (browserName === "chromium") {
+    const leanSpanMs = (seen.__leanFrames.at(-1) ?? 0) - (seen.__leanFrames[0] ?? 0);
+    expect(leanSpanMs, "frames drawn during the lean").toBeGreaterThanOrEqual(32);
+    expect(seen.__minLean, `lean drawn over ${String(leanSpanMs)} ms`).toBeLessThan(-1);
+  }
   await page.mouse.move(box.x + box.width + 20, y);
   await page.mouse.up();
   await expect(spend(page)).toHaveValue("720");
@@ -615,10 +672,10 @@ test("[PD-06] slider drag: the coin follows the pointer, the fill grows, the bub
   expect(fill).toBeCloseTo(1, 3);
   // Upright again once input stops (90 ms, then the .5 s spring).
   await expect.poll(() => lean(page).then(Math.abs), { timeout: 3_000 }).toBeLessThan(0.5);
-  // A press anywhere on the track jumps there. Quarantined on WebKit (C-78, TESTING §7): CI 45101535248 Linux
-  // WebKit kept 720 after the press 3/3 (passed in CI 45090767908 and 45096798286; host WebKit 6/6).
-  if (browserName === "webkit") return;
-  await page.mouse.click(coinX(0), y);
+  // A press anywhere on the track jumps there (C-78): measured again with the pointer over the input at the
+  // press point, as before the drag; the box read before the drag can be stale once the page has moved.
+  const now = await pointerOverSlider(page, 0);
+  await page.mouse.click(now.x + 18, now.y + 32);
   await expect(spend(page)).toHaveValue("0");
 });
 

@@ -37,7 +37,11 @@ export default defineConfig({
           // Projects with different maxWorkers must run in separate groups: unit first, then integration.
           sequence: { groupOrder: 0 },
           environment: "node",
-          include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts"],
+          include: [
+            "src/**/*.test.{ts,tsx}",
+            "scripts/**/*.test.ts",
+            "tests/e2e/support/**/*.test.ts",
+          ],
           setupFiles: ["./tests/setup.ts"],
           restoreMocks: true,
           // Unit tests never touch a database; a placeholder URL keeps env validation honest.
