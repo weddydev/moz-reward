@@ -9,7 +9,8 @@
  * - CSS animations and transitions: swept from `document.getAnimations()` on `animationstart` / `transitionrun`
  *   and on every read;
  * - a cancelled animation stays in the list as started, with state `cancelled` (`Animation.prototype.cancel`
- *   is wrapped, so the flag is set at once, not on the next frame's event).
+ *   is wrapped, so the flag is set at once, not on the next frame's event); `finish()` is wrapped the same way
+ *   (`finishCalled`: cut short by the page, not left to end on its own).
  *
  * Unit test: tests/support/e2e-animations.test.ts (outside tests/e2e, which Playwright collects `*.test.ts` from).
  * Usage: `await recordAnimations(page)` before `goto`, then `await started(page, ".m-bubble")`.
@@ -36,11 +37,15 @@ export type StartedAnimation = {
   name: string;
   /** Short label of the target for messages: `tag#id.class1.class2`. */
   target: string;
+  /** The target's `data-*` attributes (`dataset`), e.g. `{ ingotPart: "fill" }`. */
+  data: Record<string, string>;
   keyframes: Keyframe[];
   timing: Timing;
   /** `performance.now()` when it was seen. */
   startedAt: number;
   state: "running" | "paused" | "finished" | "cancelled";
+  /** The page called `finish()` on it (cut short to its end, not left to end on its own). */
+  finishCalled: boolean;
 };
 
 type EffectLike = { getKeyframes?: () => object[]; getTiming?: () => object } | null | undefined;
@@ -88,6 +93,7 @@ function installRecorder(snapshot: typeof snapshotEffect): void {
     source: StartedAnimation["source"];
     at: number;
     cancelled: boolean;
+    finishCalled: boolean;
   };
   const w = window as unknown as {
     __animRec?: {
@@ -101,12 +107,21 @@ function installRecorder(snapshot: typeof snapshotEffect): void {
   };
   if (w.__animRec) return;
   const list: Rec[] = [];
-  const byAnim = new WeakMap<Animation, Rec>();
+  let byAnim = new WeakMap<Animation, Rec>();
   let hold: { within: string; path: string } | null = null;
   const held: Animation[] = [];
-  const add = (a: Animation, source: Rec["source"]): void => {
-    if (byAnim.has(a)) return;
-    const rec: Rec = { a, seq: list.length, source, at: performance.now(), cancelled: false };
+  // Animations that existed at the last clear: not "started since", unless the page cancels or finishes one.
+  let ignored = new WeakSet<Animation>();
+  const add = (a: Animation, source: Rec["source"], explicit = false): void => {
+    if (byAnim.has(a) || (!explicit && ignored.has(a))) return;
+    const rec: Rec = {
+      a,
+      seq: list.length,
+      source,
+      at: performance.now(),
+      cancelled: false,
+      finishCalled: false,
+    };
     byAnim.set(a, rec);
     list.push(rec);
     const target = (a.effect as KeyframeEffect | null)?.target;
@@ -144,10 +159,20 @@ function installRecorder(snapshot: typeof snapshotEffect): void {
     Animation["cancel"] | undefined;
   if (cancel) {
     Animation.prototype.cancel = function (this: Animation) {
-      add(this, sourceOf(this));
+      add(this, sourceOf(this), true);
       const rec = byAnim.get(this);
       if (rec) rec.cancelled = true;
       cancel.call(this);
+    };
+  }
+  const finish = Object.getOwnPropertyDescriptor(Animation.prototype, "finish")?.value as
+    Animation["finish"] | undefined;
+  if (finish) {
+    Animation.prototype.finish = function (this: Animation) {
+      add(this, sourceOf(this), true);
+      const rec = byAnim.get(this);
+      if (rec) rec.finishCalled = true;
+      finish.call(this);
     };
   }
   window.addEventListener("animationstart", sweep, true);
@@ -174,8 +199,17 @@ function installRecorder(snapshot: typeof snapshotEffect): void {
           source: r.source,
           name: a.animationName ?? a.transitionProperty ?? a.id,
           target: label(el),
+          data:
+            el instanceof HTMLElement || el instanceof SVGElement
+              ? Object.fromEntries(
+                  Object.entries(el.dataset).filter(
+                    (e): e is [string, string] => e[1] !== undefined,
+                  ),
+                )
+              : {},
           ...snapshot(effect),
           startedAt: r.at,
+          finishCalled: r.finishCalled,
           state:
             r.cancelled || play === "idle"
               ? "cancelled"
@@ -189,8 +223,13 @@ function installRecorder(snapshot: typeof snapshotEffect): void {
       return out;
     },
     clear() {
-      sweep();
+      // Forgotten: what exists now isn't "started since"; one the page later cancels or finishes is listed again.
+      ignored = new WeakSet(
+        typeof document.getAnimations === "function" ? document.getAnimations() : [],
+      );
+      for (const r of list) ignored.add(r.a);
       list.length = 0;
+      byAnim = new WeakMap();
     },
     sweep,
     hold(h) {
@@ -226,7 +265,10 @@ export function started(page: Page, selector?: string): Promise<StartedAnimation
   }, selector ?? null);
 }
 
-/** Forgets the animations recorded so far (a spec's next step then reads only its own). */
+/**
+ * Forgets the animations recorded so far, and every animation running now: a spec's next step then reads only
+ * the ones started after this, plus any running one the page cancels or `finish()`es after this.
+ */
 export function clearAnimations(page: Page): Promise<void> {
   return page.evaluate(() => {
     (window as unknown as { __animRec?: { clear: () => void } }).__animRec?.clear();
@@ -272,6 +314,11 @@ export function heldCount(page: Page): Promise<number> {
 }
 export async function releaseHeld(page: Page): Promise<void> {
   await page.evaluate(`(${holder.toString()})().release()`);
+}
+
+/** When the animation ends on its own timeline, in ms: delay + duration × iterations + end delay. */
+export function endTime(a: StartedAnimation): number {
+  return a.timing.delay + a.timing.duration * a.timing.iterations + a.timing.endDelay;
 }
 
 /** Does the animation change `prop` (a camelCase keyframe property, e.g. `transform`, `clipPath`)? */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   animates,
+  endTime,
   fromValue,
   moves,
   rotationOf,
@@ -21,10 +22,12 @@ const anim = (keyframes: StartedAnimation["keyframes"]): StartedAnimation => ({
   source: "script",
   name: "",
   target: "div",
+  data: {},
   keyframes,
   timing: snapshotEffect(null).timing,
   startedAt: 0,
   state: "running",
+  finishCalled: false,
 });
 
 describe("[P1-19] snapshotEffect: the same plain keyframes and timing on every engine", () => {
@@ -181,5 +184,18 @@ describe("[P1-19] rotationOf", () => {
     ["matrix3d(0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)", 90],
   ] as const)("[P1-19] rotationOf(%j) = %d°", (t, deg) => {
     expect(rotationOf(t)).toBeCloseTo(deg, 4);
+  });
+});
+
+describe("[P1-19] endTime", () => {
+  it("[P1-19] delay + duration × iterations + end delay", () => {
+    const a = anim([]);
+    expect(endTime({ ...a, timing: { ...a.timing, delay: 200, duration: 900 } })).toBe(1_100);
+    expect(
+      endTime({ ...a, timing: { ...a.timing, duration: 300, iterations: 2, endDelay: 50 } }),
+    ).toBe(650);
+    expect(endTime({ ...a, timing: { ...a.timing, duration: 300, iterations: Infinity } })).toBe(
+      Infinity,
+    );
   });
 });
