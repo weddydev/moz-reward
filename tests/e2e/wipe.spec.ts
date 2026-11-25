@@ -345,14 +345,22 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
   }) => {
     const me = await signInAs("customer");
     const shopId = await seedShop(page, me.userId);
-    // The Wallet is slow, its prefetch from the shop page too, so nothing commits early (3.5 s from the shop's
-    // load: past the closing copy's 520 ms after the tap, inside the 5 s abandon window).
+    // The Wallet is slow, its prefetch from the shop page too, so nothing commits early: every Wallet request
+    // waits until 3 s after the tap (past the closing copy's 520 ms, inside the 5 s abandon window). Timed from
+    // the tap, not from the request: a prefetch at the shop's load under a busy parallel run used to come back
+    // before the check (KI-56).
+    let tap = (): void => {};
+    const tapped = new Promise<void>((r) => {
+      tap = r;
+    });
     await page.route("**/wallet*", async (route) => {
-      await new Promise((r) => setTimeout(r, 3500));
-      await route.continue();
+      await tapped;
+      await new Promise((r) => setTimeout(r, 3000));
+      await route.continue().catch(() => undefined);
     });
     await page.goto(`/shops/${shopId}`, { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("member-shop-name")).toHaveText("Brew & Bloom Café");
+    tap();
     await page.getByTestId("shop-back").click();
     // The copy has closed and the stage is gone; the shop is still the page, invisible (code review MED-1).
     await expect(page.getByTestId("wipe-stage")).toBeHidden({ timeout: 2_000 });

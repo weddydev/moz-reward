@@ -186,6 +186,10 @@ describe("[P1-07] wallet cards", () => {
     expect(card.progress).toBeCloseTo(0.72);
     expect(card.ingotSize).toBe(1_000);
     expect(card.label).toBe("72% · 3 more visits");
+    // The visible line is the reference's `.wc-meta` (gold of the ingot · the reward it fills towards); the
+    // percent and visits hint stay in the card's accessible name (P1-B close design review).
+    expect(card.meta).toBe("720 / 1,000 · Free drink of your choice");
+    expect(card.reward).toBe("Free drink of your choice");
     expect(card.address).toBe("67 Camden High St, Camden");
   });
 
@@ -195,6 +199,7 @@ describe("[P1-07] wallet cards", () => {
 
   it("no programme: zero progress and the not-set-up label", () => {
     const card = walletCard(input({ versions: [] }), NOW);
+    expect(card.meta).toBe("Rewards not set up yet");
     expect(card.progress).toBe(0);
     expect(card.ingotSize).toBeNull();
     expect(card.label).toBe("Rewards not set up yet");

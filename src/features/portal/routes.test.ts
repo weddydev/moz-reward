@@ -55,6 +55,11 @@ describe("[P0-12] portal route table", () => {
     // Hidden pages are gated routes but never nav items; their parent item shows as active.
     expect(navFor("customer", null).map((r) => r.path)).not.toContain("/me/security");
     expect(activeRoute("/me/security")?.path).toBe("/me");
+    // A shop and its vault open from the Wallet: Wallet stays current there (P1-B close design review).
+    expect(activeRoute("/shops/3f2a")?.path).toBe("/wallet");
+    expect(activeRoute("/vault/3f2a")?.path).toBe("/wallet");
+    expect(activeRoute("/shops")).toBeNull();
+    expect(activeRoute("/vault/")).toBeNull();
     expect(CUSTOMER_ROUTES.map((r) => r.path)).toEqual([
       "/wallet",
       "/offers",

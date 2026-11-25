@@ -24,6 +24,11 @@ type Base = {
    * devices): gated and in the matrix like any route, never a nav item; its parent item shows as active.
    */
   nav?: "mobile-only" | "hidden";
+  /**
+   * A hidden page that isn't under its parent's path (a shop, its vault: opened from the Wallet): the nav item
+   * that stays current on it.
+   */
+  navParent?: `/${string}`;
   /** The raised centre button of the mobile bottom nav (Scan, DESIGN §5). */
   raised?: true;
 };
@@ -96,6 +101,7 @@ export const CUSTOMER_ROUTES: readonly CustomerRoute[] = [
     icon: "Store",
     access: "signed-in",
     nav: "hidden",
+    navParent: "/wallet",
   },
   {
     portal: "customer",
@@ -104,6 +110,7 @@ export const CUSTOMER_ROUTES: readonly CustomerRoute[] = [
     icon: "Store",
     access: "signed-in",
     nav: "hidden",
+    navParent: "/wallet",
   },
   {
     portal: "customer",
@@ -354,7 +361,7 @@ export function navFor(
 /**
  * The route a pathname belongs to, for the active nav state: the longest route path that equals it or is a
  * parent segment of it. A portal root (`/dashboard`, `/admin`) matches only itself, or every page under it
- * would light up "Overview".
+ * would light up "Overview". Otherwise a hidden page's `navParent` (a shop page → Wallet).
  */
 export function activeRoute(pathname: string): PortalRoute | null {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
@@ -366,7 +373,9 @@ export function activeRoute(pathname: string): PortalRoute | null {
     const parent = !roots.includes(r.path) && path.startsWith(`${r.path}/`);
     if ((exact || parent) && (!best || r.path.length > best.path.length)) best = r;
   }
-  return best;
+  if (best) return best;
+  const child = PORTAL_ROUTES.find((r) => r.navParent && underRoute(r.path, path));
+  return child?.navParent ? (routeByPath(child.navParent) ?? null) : null;
 }
 
 /**

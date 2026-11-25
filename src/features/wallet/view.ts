@@ -45,13 +45,15 @@ export { ingotPercent };
  * The card's progress label: "72% · 1 more visit". The visits part only when the estimate is reliable (at least
  * `RELIABLE_ESTIMATE_VISITS` approved visits and an estimate); a shop without a programme says so instead.
  */
+const NOT_SET_UP = "Rewards not set up yet";
+
 export function progressLabel(input: {
   progressGold: number;
   ingotSize: number | null;
   approvedVisits: number;
   visitsToNext: number | null;
 }): string {
-  if (input.ingotSize === null) return "Rewards not set up yet";
+  if (input.ingotSize === null) return NOT_SET_UP;
   const pct = `${String(ingotPercent(input.progressGold, input.ingotSize))}%`;
   const n = input.visitsToNext;
   if (input.approvedVisits < RELIABLE_ESTIMATE_VISITS || n === null || !(n >= 1)) return pct;
@@ -117,7 +119,12 @@ export type WalletCard = {
   progress: number;
   progressGold: number;
   ingotSize: number | null;
+  /** Percent and visits hint ("72% · 1 more visit"): the card's accessible name. */
   label: string;
+  /** The visible line (reference `.wc-meta`): "720 / 1,000 · Free coffee & cake", or the not-set-up text. */
+  meta: string;
+  /** The main reward the current ingot fills towards; null without a programme. */
+  reward: string | null;
   ingotsCompleted: number;
   /** Opening status for live shops with hours; null otherwise. */
   open: { tone: "open" | "closed"; text: string } | null;
@@ -166,6 +173,10 @@ export function walletCard(input: WalletCardInput, now: Date): WalletCard {
       approvedVisits: input.purchaseCount,
       visitsToNext,
     }),
+    meta: terms
+      ? `${input.progressGold.toLocaleString("en-GB")} / ${terms.ingotSize.toLocaleString("en-GB")} · ${terms.mainReward.text}`
+      : NOT_SET_UP,
+    reward: terms?.mainReward.text ?? null,
     ingotsCompleted: input.ingotsCompleted,
     open,
     purchaseCount: input.purchaseCount,

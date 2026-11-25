@@ -121,10 +121,17 @@ test("[P1-07] wallet: memberships in order with progress, summary, a suspended s
 
   const first = cards(page).first();
   await expect(first).toHaveAttribute("href", `/shops/${brew.shopId}`);
-  await expect(first).toContainText("72%");
+  // The meta line is the reference's `.wc-meta` (gold of the ingot · its reward); the percent and the visits
+  // hint are in the accessible name (P1-B close design review).
+  await expect(first.locator(".m-wc-meta")).toHaveText("720 / 1,000 · Free drink of your choice");
   await expect(first.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "72");
-  await expect(first).toHaveAttribute("aria-label", /720 \/ 1,000 gold/);
-  await expect(cards(page).nth(1)).toContainText("50%");
+  await expect(first).toHaveAttribute(
+    "aria-label",
+    /720 \/ 1,000 gold, Free drink of your choice, 72%/,
+  );
+  await expect(cards(page).nth(1).locator(".m-wc-meta")).toHaveText(
+    "500 / 1,000 · Free drink of your choice",
+  );
   await expect(cards(page).nth(2)).toContainText("Rewards not set up yet");
   const paused = cards(page).nth(3);
   await expect(paused).toHaveAttribute("data-availability", "suspended");
@@ -179,6 +186,14 @@ test("[P1-07] wallet: memberships in order with progress, summary, a suspended s
     const shopGroups = (await vtGroups(page)).filter((n) => /^vt-shop(logo|name)-/.test(n));
     expect(shopGroups, `no morph pair for ${vtName("shopname", brew.shopId)}`).toEqual([]);
   }
+  // The shop opens from the Wallet, so the dock keeps Wallet current (its gold stays put; design review MED).
+  const nav = page.locator('[data-portal-nav="bottom"]');
+  await expect(nav.getByRole("link", { name: "Wallet" })).toHaveAttribute("aria-current", "page");
+  await expect(nav).not.toHaveAttribute("data-empty");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(
+    page.locator('[data-portal-nav="side"]').getByRole("link", { name: "Wallet" }),
+  ).toHaveAttribute("aria-current", "page");
 });
 
 test("[PD-08] wallet stack: phones stack cards in threes with their header strips in view; Show all opens the rest; the grid from 768px", async ({

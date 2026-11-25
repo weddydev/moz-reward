@@ -183,7 +183,7 @@ function WalletShopCard({ card, eager }: { card: WalletCard; eager: boolean }): 
       dimmed={unavailable}
       eager={eager}
       progress={card.progress}
-      progressLabel={card.label}
+      progressLabel={card.meta}
       badges={badges}
       render={({ className, children, ...data }) => (
         <TransitionLink
@@ -200,6 +200,7 @@ function WalletShopCard({ card, eager }: { card: WalletCard; eager: boolean }): 
             unavailable ? AVAILABILITY_TEXT[card.availability as "suspended" | "closed"] : null,
             card.open?.text ?? null,
             gold,
+            card.reward,
             card.label,
             card.ingotsCompleted ? ingotsText(card.ingotsCompleted) : null,
           ]
