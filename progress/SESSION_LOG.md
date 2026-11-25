@@ -1005,3 +1005,9 @@ Step E part 1 (`0ff4af8`): full 5-project E2E (C+D) 1460/18 failed → fixed: to
 Step E part 2 (`2c4ece1`, not pushed at checkpoint): tabs flake root cause (CSS transition left running at currentTime 0 on WebKit) → Web Animations + timer net; Linux WebKit 32/32; parity tabs 12/12. `[data-paused]` self-pause limited to `.m-btn` (it froze the Tile's scroll-driven rise on WebKit).
 C-79 evidence (scheduled 45534630037): idle 60.0 fps, stress 55.6–58.1 fps p95 33.3 on pixel7 → real FX per-frame cost (next). Same run: gate convergence @fps failed desktop1440 (to check against C-82's split).
 NOT VERIFIED: CI on `2c4ece1`; C-82 (perf log of 45534612625 not readable until the run ends); C-78.
+
+### 25 Nov 2026 ~10:45 IST — talha.syed (Mac), PD-11 E (checkpoint)
+CI 45537212442 WebKit red → KI-53 real defect: fast shop commit cancelled the Wallet sink after 0–2 frames; fix `dae3b95` (stage copy + `walletCopyAt`, unit test; E2E `gone` invariant fails 31–33 frames without it). KI-10 waits fixed (C-80 bar keyframes, vault 15 s end state, mid-pour ≤ 3 frames).
+Evidence: host wipe + vault 306/0 (4 projects × 3); wipe @perf 4/4; Linux container 1 worker 6/6 + 14/0. C-82 + T-8 closed (perf-budget 8/8 at 65 ms on `2c4ece1`).
+C-79: FX canvas raster ≈ 5.6 ms/frame at 4× (profile idle vs stress); dirty-rect clear no gain (reverted). Gate convergence @fps fails on main too (45397054403) → not C-82's split.
+NOT VERIFIED: CI 45548579038 on `dae3b95` (running). Next step: read it, then C-79 sprite-cache / spark-batch A/B (Handoff (2)).
