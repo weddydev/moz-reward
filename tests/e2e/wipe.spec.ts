@@ -43,6 +43,24 @@ async function record(page: Page): Promise<void> {
       },
       { capture: true, once: true },
     );
+    // Frame-independent too: a sink or rise started on a route's content (its first frame a scale below 1) counts
+    // as a sunk frame, so a busy Linux WebKit that renders few frames during the 520 ms rise can't hide it
+    // (confirmed flake, CI 45582899120: "the wallet came back from the sunk state" saw 0 frames).
+    const hooked = window as unknown as { __wipeHook?: boolean };
+    if (!hooked.__wipeHook) {
+      hooked.__wipeHook = true;
+      const animate = Object.getOwnPropertyDescriptor(Element.prototype, "animate")
+        ?.value as Element["animate"];
+      Element.prototype.animate = function (this: Element, keyframes, options) {
+        const first = Array.isArray(keyframes) ? keyframes[0] : null;
+        const from = typeof first?.transform === "string" ? first.transform : "";
+        if (this.matches("[data-route-content]") && /^scale\(0\./.test(from)) {
+          const rec = (window as unknown as { __wipe?: Record<string, number> }).__wipe;
+          if (rec) rec.sunk = (rec.sunk ?? 0) + 1;
+        }
+        return animate.call(this, keyframes, options);
+      };
+    }
     const until = performance.now() + 8000;
     const tick = (): void => {
       const stage = document.querySelector<HTMLElement>(".m-wipe-stage");
@@ -57,9 +75,9 @@ async function record(page: Page): Promise<void> {
       }
       // The content box (the Wallet sinking, or rising again on the way back while its loading cover shows) or a
       // stage copy of the Wallet sinking on.
-      const sunk = [content, ...clones].some(
-        (el) => el && getComputedStyle(el).transform !== "none",
-      );
+      // Every route content, not only the last: during the swap the old page and the new one can both be in.
+      const contents = [...document.querySelectorAll<HTMLElement>("[data-route-content]")];
+      const sunk = [...contents, ...clones].some((el) => getComputedStyle(el).transform !== "none");
       if (sunk) w.__wipe.sunk = (w.__wipe.sunk ?? 0) + 1;
       if (tap && performance.now() - tap < 600 && !wallet && clones.length === 0) {
         w.__wipe.gone = (w.__wipe.gone ?? 0) + 1;
