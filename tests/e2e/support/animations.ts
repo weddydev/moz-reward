@@ -93,16 +93,32 @@ function installRecorder(snapshot: typeof snapshotEffect): void {
       read: (selector: string | null) => StartedAnimation[];
       clear: () => void;
       sweep: () => void;
+      hold: (h: { within: string; path: string } | null) => void;
+      held: () => number;
+      release: () => void;
     };
   };
   if (w.__animRec) return;
   const list: Rec[] = [];
   const byAnim = new WeakMap<Animation, Rec>();
+  let hold: { within: string; path: string } | null = null;
+  const held: Animation[] = [];
   const add = (a: Animation, source: Rec["source"]): void => {
     if (byAnim.has(a)) return;
     const rec: Rec = { a, seq: list.length, source, at: performance.now(), cancelled: false };
     byAnim.set(a, rec);
     list.push(rec);
+    const target = (a.effect as KeyframeEffect | null)?.target;
+    if (
+      hold &&
+      location.pathname === hold.path &&
+      target instanceof Element &&
+      target.closest(hold.within) &&
+      a.effect?.getTiming().iterations !== Infinity
+    ) {
+      a.pause();
+      held.push(a);
+    }
   };
   const sourceOf = (a: Animation): Rec["source"] =>
     "animationName" in a
@@ -176,6 +192,14 @@ function installRecorder(snapshot: typeof snapshotEffect): void {
       list.length = 0;
     },
     sweep,
+    hold(h) {
+      hold = h;
+    },
+    held: () => held.length,
+    release() {
+      hold = null;
+      for (const a of held.splice(0)) if (a.playState === "paused") a.play();
+    },
   };
 }
 
@@ -221,6 +245,32 @@ export async function sweepOnStyleWrites(target: Locator): Promise<void> {
       rec.sweep();
     }).observe(el, { attributes: true, attributeFilter: ["style", "class"] });
   });
+}
+
+type Holder = {
+  hold: (h: { within: string; path: string } | null) => void;
+  held: () => number;
+  release: () => void;
+};
+const holder = (): Holder => {
+  const rec = (window as unknown as { __animRec?: Holder }).__animRec;
+  if (!rec) throw new Error("recordAnimations(page) was not called before this page loaded");
+  return rec;
+};
+
+/**
+ * From now on, every finite animation started inside `within` while the page is on `path` is paused at its
+ * `animate()` call (or, for CSS, when swept), whatever the machine's speed: a test can then act "mid-animation"
+ * for sure, without racing frames. `heldCount` says how many; `releaseHeld` plays them on and stops holding.
+ */
+export async function holdAnimations(page: Page, within: string, path: string): Promise<void> {
+  await page.evaluate(`(${holder.toString()})().hold(${JSON.stringify({ within, path })})`);
+}
+export function heldCount(page: Page): Promise<number> {
+  return page.evaluate(`(${holder.toString()})().held()`);
+}
+export async function releaseHeld(page: Page): Promise<void> {
+  await page.evaluate(`(${holder.toString()})().release()`);
 }
 
 /** Does the animation change `prop` (a camelCase keyframe property, e.g. `transform`, `clipPath`)? */

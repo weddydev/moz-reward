@@ -1,3 +1,11 @@
+import {
+  clearAnimations,
+  describeAnimations,
+  moves,
+  recordAnimations,
+  started,
+  type StartedAnimation,
+} from "./support/animations";
 import { expect, test } from "./support/test";
 import { TIER_OVERRIDE_KEY } from "../../src/lib/motion/tier";
 import type { Locator, Page } from "@playwright/test";
@@ -40,6 +48,28 @@ async function goldOn(root: Locator, item: Locator, axis: "x" | "y"): Promise<nu
     : blob.y + blob.height / 2 - (box.y + box.height / 2);
 }
 
+/**
+ * The gold rests on `item` (within 1 px), polled: a frame-starved Linux WebKit reports the pour finished while the
+ * box still holds the last frame drawn (KI-10), so a single read after `poured` can be stale.
+ */
+async function goldSettlesOn(root: Locator, item: Locator, axis: "x" | "y"): Promise<void> {
+  await expect
+    .poll(() => goldOn(root, item, axis).then(Math.abs), {
+      message: "the gold rests on the current item",
+    })
+    .toBeLessThanOrEqual(1);
+}
+
+/**
+ * Pours started on the bottom dock's gold since the last `clearAnimations` (script animations that move its
+ * `.m-blob`; the side rail, hidden on phones, has its own).
+ */
+async function pours(page: Page): Promise<StartedAnimation[]> {
+  return (await started(page, '[data-portal-nav="bottom"] .m-blob')).filter(
+    (a) => a.source === "script" && moves(a),
+  );
+}
+
 test.describe("[PD-07] floating dock", () => {
   test("[PD-07] customer: a glass dock 12 px from the edges, Wallet current on the gold", async ({
     page,
@@ -64,7 +94,7 @@ test.describe("[PD-07] floating dock", () => {
     const wallet = bar.getByRole("link", { name: "Wallet" });
     await expect(wallet).toHaveAttribute("aria-current", "page");
     await expect(bar.locator("[aria-current]")).toHaveCount(1);
-    expect(Math.abs(await goldOn(bar, wallet, "x"))).toBeLessThanOrEqual(1);
+    await goldSettlesOn(bar, wallet, "x");
     // The Scan coin rises 13 px above the dock and is named for screen readers.
     const scan = bar.getByRole("link", { name: "Scan" });
     const coin = await scan.boundingBox();
@@ -78,23 +108,37 @@ test.describe("[PD-07] floating dock", () => {
     signInAs,
   }) => {
     test.skip(!isPhone(page), "the dock is the phone navigation");
+    await recordAnimations(page);
     await signInAs("customer");
     await page.goto("/wallet");
     const bar = dock(page);
+    await poured(bar);
+    await clearAnimations(page);
     await bar.getByRole("link", { name: "Offers" }).click();
     await expect(page).toHaveURL(/\/offers$/);
     const offers = bar.getByRole("link", { name: "Offers" });
     await expect(offers).toHaveAttribute("aria-current", "page");
     await poured(bar);
-    expect(Math.abs(await goldOn(bar, offers, "x"))).toBeLessThanOrEqual(1);
-    // Two routes in a row: the gold ends on the last one, never back on the first.
+    // Started (every engine): one pour of the gold, a timed move with its own curve, not a jump.
+    const first = await pours(page);
+    expect(first.length, `one pour to Offers:\n${describeAnimations(first)}`).toBe(1);
+    expect(first[0]?.timing.duration, describeAnimations(first)).toBeGreaterThan(0);
+    await goldSettlesOn(bar, offers, "x");
+    // Two routes in a row: the gold ends on the last one, never back on the first. Market may never become
+    // current when the second tap wins the navigation, so at least one pour started (not a jump).
+    await clearAnimations(page);
     await bar.getByRole("link", { name: "Market" }).click();
     await bar.getByRole("link", { name: "Me" }).click();
     await expect(page).toHaveURL(/\/me$/);
     const me = bar.getByRole("link", { name: "Me" });
     await expect(me).toHaveAttribute("aria-current", "page");
     await poured(bar);
-    expect(Math.abs(await goldOn(bar, me, "x"))).toBeLessThanOrEqual(1);
+    const twice = await pours(page);
+    expect(
+      twice.length,
+      `pours after two taps:\n${describeAnimations(twice)}`,
+    ).toBeGreaterThanOrEqual(1);
+    await goldSettlesOn(bar, me, "x");
   });
 
   test("[PD-07] customer: Back after a dock tap settles the gold on the page you return to", async ({
@@ -114,7 +158,7 @@ test.describe("[PD-07] floating dock", () => {
     const wallet = bar.getByRole("link", { name: "Wallet" });
     await expect(wallet).toHaveAttribute("aria-current", "page");
     await poured(bar);
-    expect(Math.abs(await goldOn(bar, wallet, "x"))).toBeLessThanOrEqual(1);
+    await goldSettlesOn(bar, wallet, "x");
   });
 
   test("[PD-07] customer: Scan opens the scan page; the gold drains while Scan is current", async ({
@@ -277,7 +321,7 @@ test.describe("[PD-07] floating dock", () => {
     await expect(bar.locator(".m-scan")).toHaveCount(0);
     const overview = bar.getByRole("link", { name: "Overview" });
     await expect(overview).toHaveAttribute("aria-current", "page");
-    expect(Math.abs(await goldOn(bar, overview, "x"))).toBeLessThanOrEqual(1);
+    await goldSettlesOn(bar, overview, "x");
   });
 });
 
@@ -294,14 +338,14 @@ test.describe("[PD-07] customer rail", () => {
     const list = side.locator("ul").first();
     const wallet = side.getByRole("link", { name: "Wallet" });
     await expect(wallet).toHaveAttribute("aria-current", "page");
-    expect(Math.abs(await goldOn(list, wallet, "y"))).toBeLessThanOrEqual(1);
+    await goldSettlesOn(list, wallet, "y");
     await shoot("rail-wallet");
     await side.getByRole("link", { name: "Market" }).click();
     await expect(page).toHaveURL(/\/market$/);
     const market = side.getByRole("link", { name: "Market" });
     await expect(market).toHaveAttribute("aria-current", "page");
     await poured(list);
-    expect(Math.abs(await goldOn(list, market, "y"))).toBeLessThanOrEqual(1);
+    await goldSettlesOn(list, market, "y");
   });
 });
 
@@ -324,13 +368,13 @@ test.describe("[PD-11] shop and admin sidebar", () => {
     await expect(side).toHaveCSS("backdrop-filter", /blur\(16px\)/);
     const overview = side.getByRole("link", { name: "Overview" });
     await expect(overview).toHaveAttribute("aria-current", "page");
-    expect(Math.abs(await goldOn(list, overview, "y"))).toBeLessThanOrEqual(1);
+    await goldSettlesOn(list, overview, "y");
     await shoot("side-nav-overview");
     await side.getByRole("link", { name: "Customers" }).click();
     await expect(page).toHaveURL(/\/dashboard\/customers$/);
     const customers = side.getByRole("link", { name: "Customers" });
     await expect(customers).toHaveAttribute("aria-current", "page");
     await poured(list);
-    expect(Math.abs(await goldOn(list, customers, "y"))).toBeLessThanOrEqual(1);
+    await goldSettlesOn(list, customers, "y");
   });
 });
