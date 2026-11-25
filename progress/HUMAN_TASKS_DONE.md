@@ -46,12 +46,14 @@ Finished human tasks, moved out of `progress/HUMAN_TASKS.md` on 23 Nov 2026 so t
 | H-44 | Obsolete Windows secrets file deleted | 21 Nov 2026 | — |
 | H-47 | Scheduled workflow re-enabled | 18 Nov 2026 | — |
 | H-48 | Real staging Sentry DSN | 21–22 Nov 2026 | H-48b (confirm the probe in Sentry) |
+| H-49 | Molten parity approved (human sign-off) | 25 Nov 2026 | — |
 | H-50 | Windows Defender exclusions | 21 Nov 2026 | — |
 
 ## Log
 
 | ID | Task | Done by | Date |
 |---|---|---|---|
+| H-49 | Molten parity sign-off: the human checked `/dev/ui` ("perfect, no issues whatsoever") and `/dev/motion` (motion "perfect"); `/dev/motion` shows the animations on plain placeholder controls, which is expected for the motion lab (the real Molten components are on `/dev/ui` and in the app, seen in demo 1), so not a finding. Approved. Set available in `.artifacts/parity-set/` (parity `PARITY_SET=1` 186/0, Chromium + WebKit, C-84). Closes C-85. | human (talha.syed) | 25 Nov 2026 |
 | H-48 | Staging Sentry DSN: `SENTRY_DSN_STAGING` = the real DSN (ingest.de, project `4512396703694928`), set 13:49 UTC by Claude from the DSN shown on the Client Keys page (the earlier clipboard runs most likely stored the command text, as on 12 Nov). Claude part done 22 Nov (talha.syed, Mac, `talha@`): DSN URL-shaped (length 95) in web-1, web-2, worker; probe event `bdc54839dbbb40f3924fc1b968cc5ce8` accepted (HTTP 200) → human confirmation H-48b | Syedbadeshah76 + Claude | 21 Nov 2026 |
 | H-34 | Sentry closed: Subscription = **Developer**, no payment method on file (the Business trial ends 22 Nov by itself; the checkout page was left without confirming); Organization and Personal auth token lists both empty (the 11 Nov wizard token is gone). The local `.env.sentry-build-plugin` (git-ignored, dead token) may be deleted | Syedbadeshah76 | 21 Nov 2026 |
 | H-42 (old key) | `moz-backups` deleted in the Backblaze dashboard. Re-run of the read-only key check (run `43697242708`) before and after: staging + production host keys authorize OK, bucket-only, prefixed, `listFiles,writeFiles`. **Note:** the dashboard lists only `moz-backups`, not the three CLI-made keys, although they work | Syedbadeshah76 + Claude (check) | 21 Nov 2026 |
