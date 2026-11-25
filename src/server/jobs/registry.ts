@@ -89,6 +89,9 @@ const NOTIFICATION_EMAIL = z
 /** P1-12: render one receipt's PDF (ids only; the row is read under the producing scope). */
 const RECEIPT_PDF = z.object({ receiptId: z.uuid() }).strict();
 
+/** P1-12: the same-device rule for one approved award (ids only; the parties are read under the approver's scope). */
+const AWARD_CHECK = z.object({ receiptId: z.uuid(), requestId: z.uuid() }).strict();
+
 export const JOBS = {
   notifications: {
     /**
@@ -133,7 +136,10 @@ export const JOBS = {
     receipt: defineJob(RECEIPT_PDF, { runAs: "tenant" }),
   },
   "share-cards": {},
-  fraud: {},
+  fraud: {
+    /** P1-12 (PRODUCT §5): flag an award to a customer account seen on the approver's device. */
+    "award-check": defineJob(AWARD_CHECK, { runAs: "tenant" }),
+  },
   scheduled: {
     /** Proves the scheduler and worker are alive; writes job_heartbeats.last_run_at. */
     heartbeat: defineJob(z.object({}).strict()),

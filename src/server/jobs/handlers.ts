@@ -8,6 +8,7 @@ import { deliverRealtime } from "@/server/realtime/publish";
 import { touchHeartbeat } from "@/server/repos/jobs";
 import { ensureNotificationPartitions } from "@/server/repos/notifications";
 import { expirePointRequests, remindPointRequests } from "@/server/services/point-request-jobs";
+import { checkAwardDevice } from "./fraud-award-check";
 import { HEARTBEAT_NAME, type JobDef, type JOBS, type JobRunAs, type QueueName } from "./registry";
 import { sweepOutbox } from "./relay";
 import type { Job } from "bullmq";
@@ -64,7 +65,9 @@ export const HANDLERS: Handlers = {
       (await import("./receipt-pdf-job")).renderReceiptJob(payload, scope),
   },
   "share-cards": {},
-  fraud: {},
+  fraud: {
+    "award-check": (payload, _job, { scope }) => checkAwardDevice(payload, scope),
+  },
   scheduled: {
     heartbeat: async () => {
       await touchHeartbeat(JOBS_SCOPE, HEARTBEAT_NAME);

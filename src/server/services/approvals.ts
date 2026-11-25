@@ -354,6 +354,8 @@ async function decide(
   );
   // The receipt PDF is rendered by the worker after commit (outbox: a rolled-back approval renders nothing).
   await writeOutbox(scope, tx, "pdf", "receipt", { receiptId });
+  // Same-device rule (PRODUCT §5): the award stands; the worker compares sessions after commit and may flag it.
+  await writeOutbox(scope, tx, "fraud", "award-check", { receiptId, requestId: request.id });
 
   await notify(scope, tx, [membership.userId], {
     type: "request_approved",

@@ -67,7 +67,7 @@
 
 | # | Activity and purpose | People | Data | Basis | Controller | Other recipients | Kept for |
 |---|---|---|---|---|---|---|---|
-| 34 | Fraud and abuse prevention | Customers, staff | Device signals (fingerprint hash, browser name, hashed IP), rule results, flags and their evidence; rate-limit counters | LI — assessment in [DPIA.md](DPIA.md) §6 | P | Cloudflare (Turnstile, traffic filtering) | Signals 90 days; flags ⚠ |
+| 34 | Fraud and abuse prevention | Customers, staff | Device signals (fingerprint hash, browser name, hashed IP; until P4-08, session IP and user agent compared server-side, P1-12), rule results, flags and their evidence; rate-limit counters | LI — assessment in [DPIA.md](DPIA.md) §6 | P | Cloudflare (Turnstile, traffic filtering) | Signals 90 days; flags ⚠ |
 | 35 | Review-rule guard | Customers, shops | A flag when a private offer goes to a customer within 14 days of their feedback | Legal obligation; LI | P | — | With moderation records ⚠ |
 | 36 | Audit log | Staff, admins, customers by ID | Who did what to which record, when, hashed IP | LI; legal obligation where it applies | P | — | 2 years (whole months removed) |
 | 37 | Application logs | All users | Request ID, hashed user ID, shop ID, action, timing. Tokens, phones, emails and codes are redacted | LI (security, fault finding) | P | — | 30 days |
