@@ -7,18 +7,18 @@ Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 25 Nov 2026 ~05:00 IST (Mac); baton held. Autopilot OFF.** Session rule from the human (this session only, not standing): go straight through PD-11 C → F without stopping; they asked to clear after E.
-- **On `wip/PD-11`:** C done (`cf4d8ca`, gate PASS), D done (`1742615`, gate PASS: v1 tokens retired, C-82 gate split), E part 1 `0ff4af8` (pushed; full 5-project E2E fixes, H-49 parity set hook `PARITY_SET=1`, pixel7 @fps active with idle control), E part 2 `2c4ece1` (pushed at checkpoint; its CI supersedes the cancelled WebKit job of 45534612625: tabs pill as Web Animations + timer net = root cause of the WebKit tabs flake, Linux WebKit 32/32, parity tabs 12/12; `[data-paused]` self-pause only on `.m-btn`).
-- **Continue exactly here:** (1) read the CI run on `2c4ece1` (45534612625 on `0ff4af8`: Chromium shards, perf-budget, parity green; its WebKit job was cancelled by this push) — red → fix first; check its perf-budget log shows gilded-gate "adds no long task" passed at 65 ms → close C-82 (CARRIED) + T-8 (TEMPORARY → Resolved). (2) **C-79 root cause found** (scheduled run 45534630037): idle control 60.0 fps on the runner, FX stress 55.6–58.1 fps p95 33.3 on pixel7 → a real per-frame FX cost at the 420-particle peak: profile `src/lib/motion/fx.ts` draw loop at 4× (pixel7, DPR 2), cut it, re-dispatch `gh workflow run scheduled.yml --ref wip/PD-11 -f suite=perf`. (3) Same run: gilded-gate "convergence at 4× CPU: p95 ≤ 20 ms" failed on desktop1440 (flaky on pixel7) — check whether D's C-82 split (canvas frame 1, beats frame 2) caused it (compare the nightly on main). (4) C-78 slider track press: local Linux WebKit can't measure it (the slider check fails even at the CI-green baseline `9e52b88`: the Tile's 4 px hover lift moves the input between measure and check) → root-cause on CI (temporarily run the press on WebKit and read the CI trace). (5) Rest of E: Lighthouse (FOLLOWUPS: landing JS 156.5 KB vs band 140), Wallet→shop commit long task (FOLLOWUPS), 4× traces (Gate, wipe, pour, reward, stress), visual baselines darwin + Linux, full parity Chromium + WebKit with `PARITY_SET=1` (H-49 set in `.artifacts/parity-set/`), final full 5-project E2E, gate:task, E closing commit with progress lines. Then F (reviews, QA, H-49, tick, PD-C close).
-- **PD-11 plan (lettered steps):** A ✓ B ✓ C ✓ D ✓ E in progress (above) F reviews, QA, H-49 set, tick, PD-C close.
-- **Not yet tested:** real devices (H-13); CI on `2c4ece1`; C-79/C-82 bounds on CI after the fixes.
-- **Before work:** no env/migration changes. Local Linux WebKit (`pnpm e2e:linux`) differs from CI for the slider drag (see (4)). A `next dev` from 23 Nov still listens on :3000 (PID 20343).
+- **Checkpoint by talha.syed, 25 Nov 2026 ~10:45 IST (Mac); baton held. Autopilot OFF.**
+- **On `wip/PD-11`, pushed HEAD `dae3b95`** (code + tests; CI 45548579038 running at this note). It fixes CI 45537212442 (WebKit red on `5e97ee4`): (a) a real defect (KI-53): a fast commit (16–70 ms) cancelled the Wallet's sink after 0–2 frames → `startWipe` takes a stage copy, `openWipe` sinks it under the metal (`walletCopyAt`, unit test); wipe spec invariant `gone` = 0 (31–33 frames fail without the copy); (b) KI-10 test waits: C-80 bar by keyframes + fill (frames on Chromium only), vault pour end state 15 s, mid-pour reduced motion ≤ 3 frames. C-82 + T-8 closed (perf-budget 8/8 at 65 ms on `2c4ece1`).
+- **Continue exactly here:** (1) read CI 45548579038 on `dae3b95` — red → fix first (local Linux container is only meaningful at `--workers=1`; 5 workers = 44 false failures, KI-02). (2) **C-79** (pixel7 FX stress 55.6–58.1 fps on CI): cause measured with a CDP sampling profile at 4× (pixel7, `/dev/motion`, 200 bursts): engine JS ≈ 1 ms/frame; native "(program)" ≈ 8.5 ms/frame vs 2.9 idle → FX canvas raster ≈ 5.6 ms/frame. A dirty-rect clear changed nothing (reverted). DPR/cap cuts would break parity (reference uses `min(2, dpr)`). Next ideas: per-size device-px sprite cache (no 64 px downscale per draw), batch spark strokes; measure each A/B the same way (profile = `Profiler.start/stop`, self time by function, idle vs stress), then `gh workflow run scheduled.yml --ref wip/PD-11 -f suite=perf`. If nothing moves it: ask the human (frame budget never moves). (3) Gate "convergence at 4× full p95 ≤ 20" fails on main's nightly too (45397054403, `51ef92a`, before PD-11) → not D's split; same family as C-79. (4) C-78 slider press on CI WebKit. (5) Rest of E: Lighthouse (landing 156.5 KB vs 140), Wallet→shop commit long task (FOLLOWUPS 79), 4× traces, visual baselines darwin + Linux, full parity with `PARITY_SET=1`, final full 5-project E2E, gate:task, E closing commit with progress lines. Then F (reviews, QA, H-49, tick, PD-C close).
+- **PD-11 plan:** A ✓ B ✓ C ✓ D ✓ E in progress F reviews, QA, H-49 set, tick, PD-C close.
+- **Not yet tested:** CI on `dae3b95`; real devices (H-13); C-79 on CI.
+- **Before work:** no env/migration changes. A `next dev` from 23 Nov may still listen on :3000 (PID 20343).
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov). Then P1 resumes with the P1-B close. P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **PD-C** (PD-07 + PD-08 on main 23 Nov, PD-09 24 Nov; PD-10 on main 25 Nov; PD-11 next; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-25 (~05:00 IST), talha.syed (PD-11 C + D done, E in progress on `wip/PD-11`; next: CI 45534612625, push `2c4ece1`, C-79 FX cost)
+- **Last updated:** 2026-11-25 (~10:45 IST), talha.syed (PD-11 E: KI-53 wipe fix + WebKit waits `dae3b95`, C-82/T-8 closed; next: CI 45548579038, C-79)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -27,7 +27,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). **PD-09 on main 24 Nov** (CI 45357702882 green). **PD-10 on main 25 Nov** (`2cb621f`, CI 45467487343 green; gate perf limit T-8 until C-82).
 
 ## Next (top 3)
-1. CI 45534612625 → push `2c4ece1`; close C-82/T-8 from the perf log; C-79 FX per-frame cost (pixel7); gate convergence @fps; C-78 on CI.
+1. CI 45548579038 on `dae3b95` (red → fix first); then C-79 FX raster cost (see Handoff (2)); gate convergence @fps; C-78 on CI.
 2. Rest of PD-11 E (Lighthouse, commit long task, 4× traces, baselines, parity + H-49 set, full E2E, gate), then F and the PD-C close (`/subphase-complete`, H-49).
 3. Human any time: H-48b, H-45 (🟠), H-38 (branches), H-51 (b).
 
@@ -60,17 +60,17 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 
 ## Blockers
 - Human: none blocking (H-48 human part done; staging deploys again). Now: H-45 (UptimeRobot staging monitors, after the `e9aa786` deploy), H-42 tail (delete the old `moz-backups` B2 key). Needed later: at the P0 close H-29 (`backup:verify`), H-13 (real devices), H-23 (drafts to the solicitor), H-14 (send demo notes).
-- Technical: C-40 (quarantined test) blocks the P0 phase gate; C-82 / T-8 (gate perf limit 75 ms) closes in PD-11; C-79 / T-7 (pixel7 @fps FX stress quarantine) is re-checked at the PD-C close with the median of 3. Known risk: wal-g `wal-push` hangs without `ca-certificates` in the Postgres image (wal-g #2550).
+- Technical: C-40 (quarantined test) blocks the P0 phase gate; C-79 / T-7 (pixel7 @fps FX stress quarantine) is re-checked at the PD-C close with the median of 3. Known risk: wal-g `wal-push` hangs without `ca-certificates` in the Postgres image (wal-g #2550).
 
 ## Map of the codebase
 In **`progress/MAP.md`** (read when you need to locate code; add new important paths there).
 
 ## Last verified (25 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- PD-11 C `cf4d8ca`: gate:task PASS (unit 2093/0, int 1456/0, E2E PD-11 14/0). D `1742615`: gate:task PASS (unit 2088/0, int 1456/0, E2E PD-11 17/0).
-- Full 5-project E2E on C+D (local, prod build): 1460 passed / 18 failed → all 18 fixed (`0ff4af8`) and the failed specs re-run green on all projects (243/0) except WebKit toast + leave (then fixed: KI-51, KI-52).
-- CI 45484442092 (`9e52b88`): WebKit green (KI-49 verified), shard 2 red only on the sidebar glass spec (lite tier, KI-50, fixed). CI 45534612625 (`0ff4af8`): Chromium shards + perf-budget + parity green; WebKit running.
-- Tabs pill (WebKit flake) Linux WebKit 32/32 after the fix (3 in 4 failing before); parity tabs 12/12.
+- `dae3b95` (wip): unit wipe-stage 5/5; host E2E wipe + vault × 4 projects × 3: 306/0; wipe @perf 4× pixel7 + desktop1440 4/4; Linux container (1 worker) wipe forward/back 6/6, C-80 + vault changed tests 14/0 (container at 5 workers: 44 false failures, KI-02).
+- KI-53 proof: forward wipe with the copy disabled fails `gone` 31–33 frames (iphone14 + pixel7), passes with it.
+- CI 45537212442 (`5e97ee4`): all green except WebKit (1 failed C-80 bar + 4 flaky, all KI-10/KI-53 → fixed in `dae3b95`); perf-budget 8/8 at 65 ms (C-82 closed).
+- C-79 profile (local, 4×): stress 60.0 fps; "(program)" 8.5 ms/frame vs idle 2.9; engine JS ≈ 1 ms/frame.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 
