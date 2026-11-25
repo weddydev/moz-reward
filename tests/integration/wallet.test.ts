@@ -80,7 +80,7 @@ describe("[P1-07] wallet read: fixed query count", () => {
     expect(empty.length).toBe(one.length - 3);
     expect(await loadWallet(scope, NOW)).toEqual({
       cards: [],
-      summary: { rewardsReady: 0, ingotsCompleted: 0 },
+      summary: { rewardsReady: 0, ingotsCompleted: 0, gold: 0, shops: 0 },
     });
   });
 });
@@ -144,7 +144,8 @@ describe("[P1-07] wallet read: what a customer sees", () => {
     });
     // No programme yet.
     expect(view.cards[1]).toMatchObject({ ingotSize: null, label: "Rewards not set up yet" });
-    expect(view.summary).toEqual({ rewardsReady: 0, ingotsCompleted: 4 });
+    // The total panel: only the programme shop's 720 shows as gold (the quiet shop has none), across all 4 (left ones never show).
+    expect(view.summary).toEqual({ rewardsReady: 0, ingotsCompleted: 4, gold: 720, shops: 4 });
   });
 
   it("hides a left membership and never shows another customer's", async () => {
