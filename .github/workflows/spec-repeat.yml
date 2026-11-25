@@ -1,0 +1,106 @@
+# One spec, N times, on CI's Linux browsers (process change, human 25 Nov 2026; TESTING §10 "WebKit debugging").
+# For root-causing a Linux-WebKit-only (or CI-only) failure in ~5–8 min instead of a full CI round: a laptop's
+# WebKit is no evidence (Docker WebKit ~1 fps, DECISIONS 22 Nov). Run it on the branch under test:
+#   gh workflow run spec-repeat.yml --ref wip/<task> -f spec=tests/e2e/<name>.spec.ts -f project=webkit -f repeat=5
+#   (optional: -f grep="<test title part>"  -f perf=true for @perf/@fps specs)
+# Then: gh run list --workflow spec-repeat.yml --limit 1. It is evidence for a hypothesis, not a gate: the task
+# still needs its normal green CI run. Inputs reach the shell only through env vars and are validated first.
+name: Spec repeat
+
+on:
+  workflow_dispatch:
+    inputs:
+      spec:
+        description: "Spec file, e.g. tests/e2e/molten-fields.spec.ts"
+        required: true
+        type: string
+      project:
+        description: "Playwright project"
+        required: true
+        default: webkit
+        type: choice
+        options: [webkit, iphone14, pixel7, desktop1440, chromium]
+      repeat:
+        description: "Repeat each test N times (1–20)"
+        required: true
+        default: "5"
+        type: string
+      grep:
+        description: "Only tests whose title contains this (optional)"
+        required: false
+        default: ""
+        type: string
+      perf:
+        description: "Run @perf/@fps specs (PERF=1 FPS=1, one worker)"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: spec-repeat-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  FORCE_COLOR: "0"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  repeat:
+    name: repeat a spec (${{ inputs.project }} × ${{ inputs.repeat }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: validate inputs
+        env:
+          SPEC: ${{ inputs.spec }}
+          REPEAT: ${{ inputs.repeat }}
+          GREP: ${{ inputs.grep }}
+        run: |
+          [[ "$SPEC" =~ ^tests/e2e/[a-z0-9-]+\.spec\.ts$ ]] || { echo "spec must be tests/e2e/<name>.spec.ts"; exit 1; }
+          [[ -f "$SPEC" ]] || { echo "no such spec on this ref: $SPEC"; exit 1; }
+          [[ "$REPEAT" =~ ^[0-9]+$ ]] && (( REPEAT >= 1 && REPEAT <= 20 )) || { echo "repeat must be 1–20"; exit 1; }
+          [[ ${#GREP} -le 200 ]] || { echo "grep too long"; exit 1; }
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: local env (generated test-only secrets, never real ones)
+        run: pnpm setup:env
+      - name: services (Postgres+PostGIS, Redis, Mailpit, MinIO; health waits)
+        run: pnpm services:up
+      - name: Playwright browser cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-chromium-webkit-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium webkit
+      - name: run the spec N times (no retries, so every failure counts)
+        env:
+          SPEC: ${{ inputs.spec }}
+          PROJECT: ${{ inputs.project }}
+          REPEAT: ${{ inputs.repeat }}
+          GREP: ${{ inputs.grep }}
+          PERF_RUN: ${{ inputs.perf }}
+        run: |
+          args=("$SPEC" --project "$PROJECT" --repeat-each "$REPEAT" --retries 0)
+          [[ -n "$GREP" ]] && args+=(--grep "$GREP")
+          if [[ "$PERF_RUN" == "true" ]]; then export PERF=1 FPS=1; args+=(--workers 1); fi
+          pnpm e2e "${args[@]}"
+      - name: artefacts on failure (small, 7 days)
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: spec-repeat-${{ github.run_id }}
+          path: |
+            playwright-report/
+            .artifacts/e2e/build.log
+          retention-days: 7
+          if-no-files-found: ignore

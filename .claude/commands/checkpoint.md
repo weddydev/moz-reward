@@ -10,6 +10,6 @@ Create a checkpoint so a fresh session (after `/clear`) can continue without sea
 4. Tick finished tasks in `docs/PHASES.md`.
 5. Append one entry to `progress/SESSION_LOG.md` (≤ 5 lines, include the exact next step).
 6. Add any new decisions to `progress/DECISIONS.md`.
-7. Commit these progress updates (`chore(progress): checkpoint`) and push to `origin main` (pull --rebase first if the push is rejected). Keep the baton held — use `/handoff` to release it.
+7. Commit these progress updates (`chore(progress): checkpoint`) and push to `origin main` (pull --rebase first if the push is rejected). **On a task's `wip/` branch, make this commit on main, never on the branch** (`git switch main && git pull --rebase`, or a worktree of main; then switch back): the branch's own commits never touch `progress/PROGRESS.md` (CLAUDE.md, human 25 Nov 2026; P1-10's rebase conflict). Keep the baton held — use `/handoff` to release it.
 8. Run `pnpm clear:check` (CLAUDE.md §1 "Prove it before saying clear"). If it fails, fix what it names (commit, push, update the handoff) and re-run until it passes.
 9. Reply with one short paragraph: what was saved and the next step, then the `clear:check` verdict line, then the "Run `/clear`, then `/resume`." line.

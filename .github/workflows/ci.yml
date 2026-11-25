@@ -168,7 +168,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ["1/2", "2/2"] # one job ran out of 45 min on an every-page push (≈ 700 tests, KI-54)
+        shard: ["1/4", "2/4", "3/4", "4/4"] # 4 since 25 Nov (was 2, ~28 min on an every-page push; KI-54); public repo: minutes are free
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -202,48 +202,6 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-webkit-${{ github.sha }}-${{ strategy.job-index }}
-          path: |
-            playwright-report/
-            .artifacts/e2e/build.log
-          retention-days: 7
-          if-no-files-found: ignore
-
-  perf:
-    name: perf-budget specs alone (@perf, one worker)
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0 # origin/main: the Molten spec ratchet, the WebKit changed specs
-          persist-credentials: false
-      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: local env (generated test-only secrets, never real ones)
-        run: pnpm setup:env
-      - name: services (Postgres+PostGIS, Redis, Mailpit, MinIO; health waits)
-        run: pnpm services:up
-      - name: Playwright browser cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: pw-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      - run: pnpm exec playwright install --with-deps chromium
-      - name: Perf-budget specs alone (@perf, one worker; process audit 21 Nov; alone on its runner)
-        env:
-          PW_JSON_OUT: .artifacts/e2e/results-perf.json
-        run: PERF=1 pnpm e2e --project pixel7 --project desktop1440 --grep @perf --workers 1
-      - name: confirm flaky tests (each re-run alone 5×; red if any fails again — process fix 2)
-        run: pnpm e2e:confirm-flakes
-      - name: artefacts on failure (small, 7 days)
-        if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: e2e-perf-${{ github.sha }}
           path: |
             playwright-report/
             .artifacts/e2e/build.log

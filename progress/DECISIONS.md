@@ -1244,3 +1244,8 @@ Consequence / revisit when: the FOLLOWUPS 80 trim of global code before the phas
 Decision: specs that don't opt in (`test.use({ realtime: true })`) send `x-moz-e2e-realtime: off` from the `extraHTTPHeaders` fixture; the SSE route answers 403 to it only when APP_ENV=test (`src/server/realtime/test-switch.ts`, unit tested for every other env). Shared fixtures never register a Playwright route for every page.
 Why: any Playwright route makes WebKit intercept every request with the HTTP cache off (CI 45596050268); a cookie is wiped by specs that clear cookies between roles (CI 45619492506). KNOWN_ISSUES KI-60.
 Consequence / revisit when: a spec that needs to fake a response routes only inside that spec.
+
+## 2026-11-25 — CI speed: WebKit 4 shards, @perf off the per-push run, spec-repeat workflow, motion specs assert the animation (human)
+Decision: WebKit E2E runs in 4 shards (public repo: minutes free); `@perf` runs in `gate:task`, nightly and `gate:phase` but no longer on every push; `.github/workflows/spec-repeat.yml` runs one spec N times on CI's Linux browsers for root-causing; motion specs assert what was started and where it ended, drawn-frame checks only in Chromium/`@perf`/`@fps`/parity (TESTING §7; conversion task P1-19); a task's wip commits leave PROGRESS.md to main.
+Why: 96 CI runs in 5 days, 35% green, ~26 min each; most failures were frame/timing assertions on Linux runners, each guess costing a full round; PROGRESS.md written on main and the branch caused a rebase conflict. Human: "if you recommend all of this, do it" (25 Nov).
+Consequence / revisit when: a `@perf` regression is now caught by the task's local gate or the next nightly, not by the push; revisit 4 shards and parallel jobs before the repo goes private (C-43).
