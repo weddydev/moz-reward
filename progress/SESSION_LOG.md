@@ -1067,3 +1067,9 @@ Gate `@perf` inline-script bound 68 ms (human, DECISIONS 25 Nov) on main `da8a32
 Step (a) on `wip/P1-12` `a366f43`: migration 0029 (ledger append-only, rewards, receipts, gapless counter, fraud_flags, membership loyalty state, request decisions) + guards/RLS/grants; approvals-db 20/0, affected suites 119/0; DECISIONS 26 Nov.
 NOT VERIFIED: CI 45677907123 on `a366f43` (running at checkpoint). Branch sits on `9180b94`: rebase onto main before the next push.
 Next: step (b) `src/server/services/approvals.ts` + actions + authz + `tests/integration/approvals.test.ts`, write order in the Handoff note.
+
+## 2026-11-26 00:35 — P1 — P1-12 step (b): approvals service
+Done: rebased `wip/P1-12` onto main; approvals repo/service/actions, 4 notification types, realtime `awaiting_owner`, receipt initials; DECISIONS "approvals service: the small calls".
+Commits: 65f0bfe (wip/P1-12)
+Tests: approvals 23/0; approvals authz 77/0 (with service); related int 61/0; pnpm check PASS (unit 2201/0). CI 45681035420 pending; a366f43 CI 45677907123 green.
+Left off: step (c) Wallet/Vault/shop-page reads (C-62, C-66, C-69), then (d) receipt PDF job + outbox write in `decide()`, (e) fraud:award-check, (f) UI + J2 E2E.
