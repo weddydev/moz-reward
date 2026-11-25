@@ -96,13 +96,26 @@ const pdfkitRule = {
   message:
     "pdfkit is worker-only: render PDFs in src/server/jobs/receipt-pdf.ts (a job), never in web code (P1-12).",
 };
-const restrictImports = (...paths) => ({
-  "no-restricted-imports": ["error", { paths: [...paths, pdfkitRule] }],
+/**
+ * P1-12 (COMPLIANCE §2.8, DPIA risk F2): device signals serve fraud and security only. The identity layer's
+ * session comparison is imported by the fraud rule jobs (src/server/jobs/fraud-*.ts) and nothing else.
+ */
+const deviceSignalRule = {
+  name: "@/server/auth/device-signal",
+  message:
+    "Device signals are for fraud rules only (COMPLIANCE §2.8): use them from src/server/jobs/fraud-*.ts (P1-12).",
+};
+/** Restricted in every block below; each is lifted only for the files named in its own block. */
+const OPT_IN_RULES = [pdfkitRule, deviceSignalRule];
+const restrictImportsExcept = (allowed, ...paths) => ({
+  "no-restricted-imports": [
+    "error",
+    { paths: [...paths, ...OPT_IN_RULES.filter((rule) => rule !== allowed)] },
+  ],
 });
+const restrictImports = (...paths) => restrictImportsExcept(null, ...paths);
 /** The same restrictions without pdfkit, for the one renderer module. */
-const restrictImportsAllowPdf = (...paths) => ({
-  "no-restricted-imports": paths.length ? ["error", { paths }] : "off",
-});
+const restrictImportsAllowPdf = (...paths) => restrictImportsExcept(pdfkitRule, ...paths);
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -214,6 +227,17 @@ const eslintConfig = defineConfig([
   {
     files: ["src/server/jobs/**/*.ts", "src/worker/**/*.ts"],
     rules: restrictImports(dbClientRule, testOwnerRule, mintRule, authScopeRule),
+  },
+  // The fraud rule jobs are the only users of the device signal (COMPLIANCE §2.8).
+  {
+    files: ["src/server/jobs/fraud-*.ts"],
+    rules: restrictImportsExcept(
+      deviceSignalRule,
+      dbClientRule,
+      testOwnerRule,
+      mintRule,
+      authScopeRule,
+    ),
   },
   // The receipt renderer is the one module that imports pdfkit (worker only).
   {

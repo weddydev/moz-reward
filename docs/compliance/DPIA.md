@@ -55,7 +55,7 @@ Likelihood (L) and severity (S) are Low, Medium or High **before** safeguards. "
 | ID | Risk to people | L | S | Safeguard | Built in | Residual |
 |---|---|---|---|---|---|---|
 | F1 | A person is wrongly flagged and loses points or their account | M | M | Rules only raise a flag; a person reviews it before any action; the customer is told of a reversal; an unlocked reward is never revoked | P1-12, P4-08 | Low |
-| F2 | Device signals are reused for marketing or analytics | L | H | Used only by fraud and security code; never joined to segments or analytics; disclosed in the Cookie Notice | P4-08, P5-05 | Low |
+| F2 | Device signals are reused for marketing or analytics | L | H | Used only by fraud and security code (an ESLint import rule lets only the fraud rule jobs use the session comparison, P1-12); never joined to segments or analytics; disclosed in the Cookie Notice | P4-08, P5-05 | Low |
 | F3 | A device hash links accounts of people who share a phone (family, shop tablet) | M | L | A shared device raises a flag for review, never an automatic block; the same-device staff award is allowed and flagged | P1-12, P4-08 | Low |
 | F4 | Signals kept too long | L | M | 90-day removal with a boundary test | P2-13 | Low |
 | F5 | People do not know the monitoring happens | M | M | Privacy Policy and Cookie Notice describe it in plain words | P5-05 | Low |
@@ -122,7 +122,7 @@ Likelihood (L) and severity (S) are Low, Medium or High **before** safeguards. "
 ## 6. Legitimate interests assessment: fraud prevention and device signals
 
 1. **Purpose.** Points and rewards have real value to shops and customers. The interest is to stop fake requests, staff collusion, multi-account farming, referral abuse and game cheating. This protects shops and honest customers as well as the platform.
-2. **Necessity.** Account-level rules catch some abuse, but one person with several accounts, or staff awarding their own second account, can only be seen through a device link. The signals are hashed, limited to three items (fingerprint hash, browser name, hashed IP) and kept 90 days.
+2. **Necessity.** Account-level rules catch some abuse, but one person with several accounts, or staff awarding their own second account, can only be seen through a device link. The signals are hashed, limited to three items (fingerprint hash, browser name, hashed IP) and kept 90 days. Before those exist (P4-08), the same-device staff-award rule (P1-12) compares the IP address and browser user agent of the two accounts' recent sessions, which the sign-in service already holds for security: the comparison runs server-side, needs no access to the device, and only a match count leaves it; the flag stores ids only.
 3. **Balance.** People would expect a rewards scheme to check for cheating. The impact is low: a flag leads to human review, not automatic action; nothing is shared with shops or advertisers; the data is not used for any other purpose. Children are in scope, so the safeguards in section 5A apply to everyone equally.
 4. **Outcome (draft).** Legitimate interests can be relied on. Alternative for the solicitor: the "recognised legitimate interest" for preventing crime added by the Data (Use and Access) Act 2025, which needs no balancing test.
 5. **Right to object.** A person can object; the request is handled under [COMPLAINTS_PROCESS.md](COMPLAINTS_PROCESS.md). If fraud checks cannot be switched off for one account without breaking the scheme, the practical result is closing the account, and the notice must say so.
