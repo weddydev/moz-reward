@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPlainClick, lateDelay, sinkOrigin, stageBox } from "./wipe-stage";
+import { isPlainClick, lateDelay, sinkOrigin, stageBox, walletCopyAt } from "./wipe-stage";
 
 const click = {
   button: 0,
@@ -43,5 +43,17 @@ describe("[PD-08] gold wipe stage (app)", () => {
     expect(lateDelay({ rise: 6 }, 1_000, risen)).toBe(0);
     expect(lateDelay({ rise: 6 }, 1_400, risen)).toBeNull();
     expect(lateDelay({ rise: Number.NaN }, 400, risen)).toBeNull();
+  });
+
+  it("[PD-11] the shop commits before the metal covers the screen: a copy of the Wallet keeps sinking under it, on the sink's schedule (600 ms, held after), none once the metal (620 ms) is full", () => {
+    expect(walletCopyAt(0)).toBe(0);
+    expect(walletCopyAt(40)).toBe(40);
+    expect(walletCopyAt(599)).toBe(599);
+    expect(walletCopyAt(610)).toBe(600);
+    expect(walletCopyAt(619)).toBe(600);
+    expect(walletCopyAt(620)).toBeNull();
+    expect(walletCopyAt(2_000)).toBeNull();
+    expect(walletCopyAt(-5)).toBe(0);
+    expect(walletCopyAt(Number.NaN)).toBeNull();
   });
 });

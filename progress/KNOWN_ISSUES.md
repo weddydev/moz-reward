@@ -44,6 +44,12 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 - Cause: Linux WebKit (CI and the container) runs ~1 frame a second, for 1–2 s after a load; the computed style holds the last frame drawn, and a 90 ms window can pass with no frame.
 - Fix: poll settled values to their end state (`expect.poll`, default timeout), never read once after `running == 0`; judge drawn motion by frames; never wall-clock bounds alone. A product bug only if host (macOS) WebKit also fails. DECISIONS 12 Nov, 21 Nov, 23 Nov "Linux WebKit E2E".
 
+- More of KI-10 (CI 45537212442, 25 Nov): "the bar started empty" (first drawn frame already 0.2–0.6 into the 900 ms fill), the pour not `done` within 5 s, reduced motion mid-pour not `done` within 500 ms. Fixes in tests: prove a start state from the animation (`getKeyframes()[0]`, fill `backwards`), not from a frame that may never be drawn; wait for a signature moment's end state well past its length; "at once" in frames (count rAF from the trigger), never ms.
+
+**KI-53 · wipe.spec "the wallet sank" flaky (0 frames), worse on a fast machine** — 25 Nov, CI 45537212442 + host iphone14 1 in 3.
+- Cause: a real product gap, not the runner. A fast server commits the shop's loading cover 16–70 ms after the tap (one worker, host), so the Wallet's 600 ms sink was cancelled after 0–2 frames and the ground showed outside the metal circle; slow parallel workers (200–2,600 ms) hid it.
+- Fix (PD-11): `startWipe` takes a stage copy of the Wallet; `openWipe` sinks it on under the metal when the shop commits before the metal is full (`walletCopyAt`). The spec asserts a per-frame invariant (`gone` = 0: in the first 600 ms every frame shows the Wallet or its copy), which fails 31–33 frames without the copy.
+
 **KI-11 · WebKit: first mouse event after `scrollIntoViewIfNeeded` scrolls the page back (~39 px); the press lands on the wrong element**
 - Fix: re-measure the target's box until the pointer is really over it, then press (slider drag, PD-06).
 

@@ -26,21 +26,43 @@ async function seedShop(page: Page, userId: string): Promise<string> {
   return ((await res.json()) as { shopId: string }).shopId;
 }
 
-/** Counts, frame by frame for 8 s, what the wipe showed: the stage, a circle clip on the content, the copy, a sunk content box. */
+/**
+ * Counts, frame by frame for 8 s, what the wipe showed: the stage, a circle clip on the content, the copy, a sunk
+ * Wallet (its content box, or its copy on the stage once the shop committed), and `gone`: frames in the metal's
+ * first 600 ms after the tap that showed neither the Wallet nor its copy (the Wallet vanishing at once).
+ */
 async function record(page: Page): Promise<void> {
   await page.evaluate(() => {
     const w = window as unknown as { __wipe: Record<string, number> };
-    w.__wipe = { stage: 0, clip: 0, clone: 0, sunk: 0 };
+    w.__wipe = { stage: 0, clip: 0, clone: 0, sunk: 0, gone: 0 };
+    let tap = 0;
+    document.addEventListener(
+      "click",
+      () => {
+        tap = performance.now();
+      },
+      { capture: true, once: true },
+    );
     const until = performance.now() + 8000;
     const tick = (): void => {
       const stage = document.querySelector<HTMLElement>(".m-wipe-stage");
       if (stage && !stage.hidden) w.__wipe.stage = (w.__wipe.stage ?? 0) + 1;
-      if (document.querySelector("[data-wipe-clone]")) w.__wipe.clone = (w.__wipe.clone ?? 0) + 1;
+      const clones = [...document.querySelectorAll<HTMLElement>("[data-wipe-clone]")];
+      if (clones.length > 0) w.__wipe.clone = (w.__wipe.clone ?? 0) + 1;
       const content = [...document.querySelectorAll<HTMLElement>("[data-route-content]")].pop();
+      const wallet = content?.querySelector('[data-testid="wallet-card"]') ? content : null;
       if (content) {
         const cs = getComputedStyle(content);
         if (cs.clipPath.startsWith("circle")) w.__wipe.clip = (w.__wipe.clip ?? 0) + 1;
-        if (cs.transform !== "none") w.__wipe.sunk = (w.__wipe.sunk ?? 0) + 1;
+      }
+      // The content box (the Wallet sinking, or rising again on the way back while its loading cover shows) or a
+      // stage copy of the Wallet sinking on.
+      const sunk = [content, ...clones].some(
+        (el) => el && getComputedStyle(el).transform !== "none",
+      );
+      if (sunk) w.__wipe.sunk = (w.__wipe.sunk ?? 0) + 1;
+      if (tap && performance.now() - tap < 600 && !wallet && clones.length === 0) {
+        w.__wipe.gone = (w.__wipe.gone ?? 0) + 1;
       }
       if (performance.now() < until) requestAnimationFrame(tick);
     };
@@ -100,6 +122,9 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
     expect(into.stage, "the metal stage showed").toBeGreaterThan(0);
     expect(into.clip, "the shop opened in a circle").toBeGreaterThan(0);
     expect(into.sunk, "the wallet sank").toBeGreaterThan(0);
+    // However fast the shop commits (a frame or two on a fast phone), the Wallet never just vanishes under the
+    // opening metal: its copy sinks on on the stage (PD-11).
+    expect(into.gone, "frames with the Wallet gone before the metal covered it").toBe(0);
     // The area line rises with the content; the page's own parts are marked for it.
     await expect(page.locator("[data-rise]").first()).toBeAttached();
 
@@ -116,6 +141,7 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
   test("[PD-11] the shop's mini vault bar fills from empty in the wipe (420 ms in, 900 ms) and rests at the member's gold (C-80)", async ({
     page,
     signInAs,
+    browserName,
   }) => {
     const me = await signInAs("customer");
     const shopId = await seedShop(page, me.userId);
@@ -123,8 +149,10 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
     await expect(card(page)).toBeVisible();
     // Frame by frame: the bar's drawn scaleX, and the timing of the animation that fills it.
     await page.evaluate(() => {
-      const w = window as unknown as { __bar: { scales: number[]; timing: string | null } };
-      w.__bar = { scales: [], timing: null };
+      const w = window as unknown as {
+        __bar: { scales: number[]; timing: string | null; from: string | null };
+      };
+      w.__bar = { scales: [], timing: null, from: null };
       const until = performance.now() + 6000;
       const tick = (): void => {
         const bar = document.querySelector<HTMLElement>(
@@ -132,8 +160,12 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
         );
         if (bar) {
           w.__bar.scales.push(new DOMMatrix(getComputedStyle(bar).transform).a);
-          const t = bar.getAnimations()[0]?.effect?.getTiming();
-          if (t && !w.__bar.timing) w.__bar.timing = `${String(t.delay)}|${String(t.duration)}`;
+          const effect = bar.getAnimations()[0]?.effect as KeyframeEffect | undefined;
+          const t = effect?.getTiming();
+          if (effect && t && !w.__bar.timing) {
+            w.__bar.timing = `${String(t.delay)}|${String(t.duration)}|${String(t.fill)}`;
+            w.__bar.from = String(effect.getKeyframes()[0]?.transform);
+          }
         }
         if (performance.now() < until) requestAnimationFrame(tick);
       };
@@ -144,12 +176,25 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
     await expect(page.getByTestId("mini-vault")).toContainText("720 / 1,000");
     await settled(page);
     const bar = await page.evaluate(
-      () => (window as unknown as { __bar: { scales: number[]; timing: string | null } }).__bar,
+      () =>
+        (
+          window as unknown as {
+            __bar: { scales: number[]; timing: string | null; from: string | null };
+          }
+        ).__bar,
     );
     expect(bar.timing, "the wipe filled the bar").not.toBeNull();
     // The delay counts from the tap, so what is left of the 420 ms when the shop commits; the length is 900.
-    expect(Number(bar.timing?.split("|")[1])).toBe(900);
-    expect(Math.min(...bar.scales), "the bar started empty").toBeLessThan(0.05);
+    const [, duration, fill] = (bar.timing ?? "").split("|");
+    expect(Number(duration)).toBe(900);
+    // It starts empty and is held empty until its delay ends (the fill `backwards`), whatever frames get drawn.
+    expect(bar.from, "the fill starts empty").toBe("scaleX(0)");
+    expect(["backwards", "both"], "held empty before it starts").toContain(fill);
+    // Drawn: Chromium draws every frame. Linux WebKit can draw none for the first second after a commit
+    // (KNOWN_ISSUES KI-10), so its first drawn frame may already be mid-fill; the keyframes above prove it there.
+    if (browserName === "chromium") {
+      expect(Math.min(...bar.scales), "the bar started empty").toBeLessThan(0.05);
+    }
     // It rests at 720 / 1,000 once its fill ends (after the circle's).
     await expect
       .poll(() =>

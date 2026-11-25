@@ -21,7 +21,9 @@ import {
  * fixed stage (`WipeStage`, outside the page content, under the dock and rail), sparks fly at 80 ms and the
  * Wallet sinks. The shop page's content takes it when it commits (`openWipe`, from `RouteContent`): instead of
  * sliding it opens in the same circle 110 ms after the tap (later if the network was slower: the metal simply
- * holds), its `[data-rise]` parts rise and a `[data-wipe-bar]` fills. Back (`wipeBack`) closes a copy of the
+ * holds), its `[data-rise]` parts rise and a `[data-wipe-bar]` fills. A commit before the metal covers the screen
+ * (a fast phone commits the loading cover within a frame or two) leaves a copy of the Wallet on the stage under the
+ * metal, still sinking, so the Wallet never simply vanishes (`walletCopyAt`). Back (`wipeBack`) closes a copy of the
  * shop onto the back button while the Wallet returns (`returnWipe`). Reduced motion: none of this; the normal
  * 150 ms fade runs. Nobody takes the wipe within `WIPE.ttlMs` (navigation failed or went elsewhere): the stage
  * fades away and the Wallet comes back.
@@ -29,6 +31,8 @@ import {
 
 let stage: HTMLElement | null = null;
 let sinking: Animation | null = null;
+/** The Wallet as it was at the tap, for `openWipe` to sink under the metal if the shop commits early. */
+let walletCopy: HTMLElement | null = null;
 let abandonTimer: ReturnType<typeof setTimeout> | undefined;
 
 export function registerWipeStage(el: HTMLElement | null): void {
@@ -64,6 +68,46 @@ export function sinkOrigin(
   return `${String(Math.round(x))}px ${String(Math.round(y))}px`;
 }
 
+/**
+ * Where the Wallet's copy picks up its sink when the shop commits `elapsed` ms after the tap (PD-11): the sink's
+ * own time (600 ms, held at its end after), or null once the metal (620 ms) covers the screen and nothing of the
+ * Wallet could show.
+ */
+export function walletCopyAt(elapsed: number): number | null {
+  if (!Number.isFinite(elapsed) || elapsed >= WIPE.durationMs) return null;
+  return Math.min(Math.max(0, elapsed), WIPE.walletMs);
+}
+
+/**
+ * A stage copy of the page content (`wipeBack`'s shop, `startWipe`'s Wallet): no ids, test ids or wipe parts,
+ * inert and hidden from assistive tech, placed over the content's box on the stage.
+ */
+function stageCopy(
+  content: HTMLElement,
+  rect: DOMRect,
+  box: { top: number; left: number },
+): HTMLElement {
+  const copy = content.cloneNode(true) as HTMLElement;
+  copy.removeAttribute("data-route-content");
+  for (const n of [copy, ...copy.querySelectorAll("*")]) {
+    n.removeAttribute("id");
+    n.removeAttribute("data-testid");
+    n.removeAttribute("data-rise");
+    n.removeAttribute("data-wipe-bar");
+  }
+  copy.setAttribute("data-wipe-clone", "");
+  copy.setAttribute("aria-hidden", "true");
+  copy.inert = true;
+  Object.assign(copy.style, {
+    position: "absolute",
+    left: `${String(rect.left - box.left)}px`,
+    top: `${String(rect.top - box.top)}px`,
+    width: `${String(rect.width)}px`,
+    margin: "0",
+  });
+  return copy;
+}
+
 const contentEl = (): HTMLElement | null => {
   const all = document.querySelectorAll<HTMLElement>("[data-route-content]");
   return all[all.length - 1] ?? null;
@@ -88,6 +132,7 @@ function hideStage(): void {
   for (const a of stage.getAnimations({ subtree: true })) a.cancel();
   stage.hidden = true;
   for (const c of stage.querySelectorAll(":scope > [data-wipe-clone]")) c.remove();
+  walletCopy = null;
   const m = metalEl();
   if (m) m.hidden = false;
 }
@@ -104,6 +149,7 @@ function unsink(content: HTMLElement | null): void {
 function abandon(): void {
   clearTimeout(abandonTimer);
   clearWipe();
+  walletCopy = null;
   const content = contentEl();
   if (content) content.style.opacity = "";
   unsink(content);
@@ -150,15 +196,12 @@ export function startWipe(
   const content = contentEl();
   unsink(content);
   if (content) {
-    content.style.transformOrigin = sinkOrigin(content.getBoundingClientRect(), vp);
-    sinking = anim(
-      content,
-      [
-        { transform: "scale(1)", opacity: 1 },
-        { transform: `scale(${String(WIPE.walletScale)})`, opacity: WIPE.walletOpacity },
-      ],
-      { duration: WIPE.walletMs },
-    );
+    const rect = content.getBoundingClientRect();
+    content.style.transformOrigin = sinkOrigin(rect, vp);
+    // Taken now: by the time the shop commits, the Wallet's DOM is gone. Only placed on the stage if needed.
+    walletCopy = stageCopy(content, rect, box);
+    walletCopy.style.transformOrigin = content.style.transformOrigin;
+    sinking = anim(content, sinkKeyframes(), { duration: WIPE.walletMs });
     // Under the metal the Wallet is invisible: a tap on the gold must not reach its cards (the reference's `open`
     // guard). The dock and rail stay live.
     content.inert = true;
@@ -171,6 +214,11 @@ export function startWipe(
   abandonTimer = setTimeout(abandon, WIPE.ttlMs);
   return true;
 }
+
+const sinkKeyframes = (): Keyframe[] => [
+  { transform: "scale(1)", opacity: 1 },
+  { transform: `scale(${String(WIPE.walletScale)})`, opacity: WIPE.walletOpacity },
+];
 
 const LATE_PARTS = "[data-rise], [data-wipe-bar]";
 /** Parts that stream in later than this after the tap simply appear (the bar's own end: 420 + 900 ms). */
@@ -209,6 +257,16 @@ export function openWipe(
   if (reducedMotionNow()) {
     hideStage();
     return null;
+  }
+  // The Wallet is gone with this commit: while the metal still opens, its copy sinks on under it (PD-11).
+  const copy = walletCopy;
+  walletCopy = null;
+  const sinkAt = walletCopyAt(w.elapsed + performance.now() - now);
+  const metal = metalEl();
+  if (copy && metal && sinkAt !== null) {
+    metal.before(copy);
+    const sink = anim(copy, sinkKeyframes(), { duration: WIPE.walletMs });
+    if (sink) sink.currentTime = sinkAt;
   }
   const rect = el.getBoundingClientRect();
   const x = w.x - rect.left;
@@ -343,23 +401,8 @@ export function wipeBack(
   hideStage();
   const box = placeStage(s);
   const rect = content.getBoundingClientRect();
-  const clone = content.cloneNode(true) as HTMLElement;
-  clone.removeAttribute("data-route-content");
-  for (const n of [clone, ...clone.querySelectorAll("*")]) {
-    n.removeAttribute("id");
-    n.removeAttribute("data-testid");
-  }
-  clone.setAttribute("data-wipe-clone", "");
-  clone.setAttribute("aria-hidden", "true");
-  clone.inert = true;
-  Object.assign(clone.style, {
-    position: "absolute",
-    left: `${String(rect.left - box.left)}px`,
-    top: `${String(rect.top - box.top)}px`,
-    width: `${String(rect.width)}px`,
-    margin: "0",
-    background: "var(--pearl)",
-  });
+  const clone = stageCopy(content, rect, box);
+  clone.style.background = "var(--pearl)";
   const metal = metalEl();
   if (metal) metal.hidden = true;
   s.append(clone);

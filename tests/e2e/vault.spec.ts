@@ -166,7 +166,9 @@ test("[P1-08] gold vault: DESIGN sample data, mystery hidden, tiers, shelf, how 
   await expect(page.getByTestId("vault-rewards")).toContainText("Nothing to redeem yet");
   await expect(page.getByTestId("vault-how")).toContainText("Collect 100 gold on every visit.");
 
-  await expect(ingot(page)).toHaveAttribute("data-ingot-state", "done");
+  // The whole pour (in view + 200 ms, then about 2.4 s) on a runner that may draw ~1 frame a second for the
+  // first seconds after a load (KNOWN_ISSUES KI-10): wait for its end state, longer than the default 5 s.
+  await expect(ingot(page)).toHaveAttribute("data-ingot-state", "done", { timeout: 15_000 });
   for (const width of [390, 320, 1440]) {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
     await noHorizontalScroll(page);
@@ -289,8 +291,36 @@ test.describe("[P1-08] pour edge cases land on the final state at once", () => {
     const { shopId } = await seedVault(page.request, me.userId, { progressGold: 720 });
     await page.goto(`/vault/${shopId}`);
     await expect(ingot(page)).toHaveAttribute("data-ingot-state", "run");
+    // Frames from the system change to the landed state, as `landAfter` counts them (not ms: KI-10).
+    await page.evaluate(() => {
+      const w = window as unknown as { __rmFrames: number };
+      w.__rmFrames = -1;
+      const el = document.querySelector(".ingot-pour");
+      window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener(
+        "change",
+        () => {
+          let frames = 0;
+          const step = (): void => {
+            if (el?.getAttribute("data-ingot-state") === "done") {
+              w.__rmFrames = frames;
+              return;
+            }
+            frames += 1;
+            requestAnimationFrame(step);
+          };
+          step();
+        },
+        { once: true },
+      );
+    });
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await expect(ingot(page)).toHaveAttribute("data-ingot-state", "done", { timeout: 500 });
+    await expect(ingot(page)).toHaveAttribute("data-ingot-state", "done");
+    const frames = await page.evaluate(
+      () => (window as unknown as { __rmFrames: number }).__rmFrames,
+    );
+    // At once: the frames `landAfter` allows (one for the event, one for React's commit, one spare).
+    expect(frames, "frames from the change to the landed ingot").toBeGreaterThanOrEqual(0);
+    expect(frames, "frames from the change to the landed ingot").toBeLessThanOrEqual(3);
     expect(await running(page)).toBe(0);
   });
 });
