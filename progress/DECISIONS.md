@@ -1259,3 +1259,8 @@ Consequence / revisit when: P1-12 extends the guard for staff decisions (approve
 Decision: A tap with no connection (or no answer) is kept in localStorage (`moz:request-queue:v1`, one per shop, ≤ 10, dropped after 24 h) with its idempotency key and the tap time, and `QueuedRequestSender` in the customer layout sends it with the same key on load and on every `online` event. A definitive answer drops it (sent → page refresh; refused → the reason as a toast); no answer, RATE_LIMITED, UNAVAILABLE or UNAUTHENTICATED keeps it. The action allows 60 calls/user/hour (fails closed) so queue retries are never refused by the limiter; the per-shop daily cap is enforced in the database transaction.
 Why: PRODUCT §19 "No signal at counter: request queued and retried"; the same key makes a retry of a request that did arrive return that request, so the queue can never double-request. localStorage is a per-device convenience (it may be empty in a private window: then the tap just shows the offline error).
 Consequence / revisit when: a service worker with Background Sync (P3/PWA work) could send it with the app closed.
+
+## 2026-11-25 — Gilded Gate inline script: 68 ms bound at 4× CPU (human)
+Decision: The gate `@perf` spec's bound for the gate's own inline script becomes 68 ms (`GATE_SCRIPT_MS`); the shared `LONG_TASK_MS` (65) stays for every other throttled check. Human, 25 Nov: "It's okay if it is 66.2 ms."
+Why: spec-repeat 45660389032 measured 65.4 / 66.2 ms in 2 of 10 with gate code identical to main (runner variance at the edge, CLAUDE.md "small overshoots don't block"); 70.8 ms (CI 45654515921) still fails.
+Consequence / revisit when: a trim of the inline script (KI-48) brings it well under 65; then drop the separate bound.

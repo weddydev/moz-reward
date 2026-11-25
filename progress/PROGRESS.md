@@ -7,17 +7,15 @@ Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-19 in progress (talha.syed, Mac, 25 Nov): branch `wip/P1-19`, pushed HEAD `caaaa07`** (6 commits on main `23baeb8`). Autopilot OFF.
-- **Done on the branch:** shared recorder `tests/e2e/support/animations.ts` (animate/cancel/finish hooks + CSS sweep, hold-at-start, unit test `tests/support/e2e-animations.test.ts`, 37/0); all 9 specs converted (molten-fields, molten-controls, molten-dock, wipe, vault, gilded-gate, fx, ui-states, portal-shells): started-animation checks on every engine, drawn frames / wall clock Chromium-only, upper bounds kept. C-78: WebKit `return` removed, press re-measures the pointer over the input. Gate "plays 3.28 s" fixme (C-83 part) removed. One mutation per spec file failed as required (local evidence, see SESSION_LOG). Product fix found by a spec: MemberCard drops `.live` on pointerleave (return was on the 120 ms follow). KI-62, KI-63 added.
-- **Next step:** read CI on `caaaa07` (run on push) and the 19 spec-repeat runs dispatched on `caaaa07` (9 specs × webkit + iphone14 ×10, plus gate `@perf` desktop1440 ×10; `gh run list --workflow spec-repeat.yml`). Fix any red at the root (debug on CI, `wip/dbg-*`). Then: AC1 grep evidence, KNOWN_ISSUES KI-10/KI-59 note → recorder, FOLLOWUPS 83 (slider flake) and 105 (gate morph: the wait now prints a diagnostic) closed or kept, C-78 row closed, C-83 row trimmed (gate part done), `gate:task`, the AC2 "green full CI with an every-page change", then the closing commit on main.
-- **Open question:** gate `@perf` (desktop1440) long task 93.8 / 70.8 ms on the branch's CI 45654515921 vs main ×10 green (spec-repeat 45658976985). The branch changes no gate code; the branch ×10 run decides variance vs regression.
-- **Not yet tested:** everything above on CI WebKit (runs pending); C-95 (staging, authenticated stream); P1-11 on staging. **Before the P1-C close:** P1-19, P1-12, P1-13, Molten fixes C-92/C-93/C-94, C-95, FOLLOWUPS flakes (P1-09 shop page, PD-09 timeline morph).
+- **P1-19 closed (talha.syed, Mac, 25 Nov), on main `f5a2866` + this progress commit.** Autopilot OFF. No wip branch open.
+- **Next step:** P1-12 (security-relevant: `security-reviewer` design check first; incoming C-60, C-62, C-66, C-69), then P1-13. Before the P1-C close: C-92/C-93/C-94 (Molten fixes), C-95 (staging SSE), FOLLOWUPS flakes (shop page, wipe "slow way back"). First, before P1-12: the gate `@perf` 68 ms bound (DECISIONS 25 Nov, FOLLOWUPS).
+- **Not yet tested:** C-95 (staging, authenticated stream); P1-11 on staging.
 ## Status
 - **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **P1-C** next, from P1-10. P1-B closed 25 Nov (reviews, QA, H-49 approved; Sentry held until P2, C-88). PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-25, talha.syed (P1-19 checkpoint: wip/P1-19 `caaaa07`, CI + spec-repeat pending)
+- **Last updated:** 2026-11-25, talha.syed (P1-19 closed on main `f5a2866`)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -26,9 +24,8 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. P1-19 · Motion specs assert the animation (before the P1-C close; takes C-78).
-2. P1-12 · Approve / reject, owner approval, reversals, receipts (security-relevant; C-60, C-62, C-66, C-69); then P1-13.
-3. Human any time: H-45 (🟠), H-38 (branches), H-51 (b); H-48b at P2 start, after the first demo (C-88).
+1. P1-12 · Approve / reject, owner approval, reversals, receipts (security-relevant; C-60, C-62, C-66, C-69); then P1-13.
+2. Human any time: H-45 (🟠), H-38 (branches), H-51 (b); H-48b at P2 start, after the first demo (C-88).
 
 ## CARRIED (a task can't be ticked while a row targets it)
 Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026, human-approved, to keep this file light): read it at every phase close and when a P2–P5 task starts, and move a phase's rows back here when that phase starts. The same rule applies there: a task can't be ticked while a row targets it.
@@ -47,10 +44,9 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 | C-69 | P1-09 | P1-12 | Approvals refuse a left membership (progress frozen); the shop page's Recent receipts card lists the last receipts (empty state today) | integration + E2E |
 | C-70 | P1-09 | P1-16 | Leaving voids live redeem codes in `leaveShop`'s transaction (staff confirm then fails); unredeemed rewards stay with their own validity and reappear on rejoin | integration |
 | C-73 | P1-09 | P1-13 | A rejoin after the 30-day window gets no frozen progress back even if the forfeit job hasn't run yet (forfeit at rejoin, or the join refuses to restore) | integration |
-| C-78 | CI 45101535248 (PD-B close) | P1-19 (moved from PD-11 → P1-18, human 25 Nov; → P1-19 motion specs, 25 Nov) | Linux WebKit: `molten-fields` slider drag's final track press keeps 720 (3/3 there; passed in CI 45090767908 + 45096798286, host WebKit 6/6): root-caused and the WebKit assertion un-quarantined | CI WebKit run + SESSION_LOG |
 | C-79 | PD-07 CI (perf 45153452036, main 45153456299) | P1-18 (moved from PD-11, human 25 Nov) | pixel7 `@fps` FX stress (≥ 58 fps, p95 ≤ 16.8 ms at 4× CPU) un-quarantined: cause found (runner variance vs. a dock/FX frame cost), fixed if real; TEMPORARY T-7 closed | nightly perf run green on pixel7 + SESSION_LOG |
 | C-81 | PD-10 design review M3 | P1-16 | `RedeemCode` gets `receivedAt` = the phone's `Date.now()` when the redeem response arrives (not at mount), with `serverNow`/`expiresAt` from that response | E2E: a code shown after a delay counts from the response |
-| C-83 | PD-11 CI 45548579038 | P1-18 | Linux-WebKit-only failures quarantined on CI WebKit (T-9): `molten-controls` /dev/ui 320 overflow 44 px, `gilded-gate` src=qr ends 6.8 s vs < 4.88 s, `shop-page` leave on day 1 (iphone14): root-caused, fixed, fixmes removed. Also from PD-11 E: gate "convergence at 4× full p95 ≤ 20" (fails on main's nightly 45397054403 too); Wallet→shop commit long task (FOLLOWUPS 79) | CI WebKit green with the tests active + nightly perf |
+| C-83 | PD-11 CI 45548579038 | P1-18 | Linux-WebKit-only failures quarantined on CI WebKit (T-9): `molten-controls` /dev/ui 320 overflow 44 px, `shop-page` leave on day 1 (iphone14): root-caused, fixed, fixmes removed. Also from PD-11 E: gate "convergence at 4× full p95 ≤ 20" (fails on main's nightly 45397054403 too); Wallet→shop commit long task (FOLLOWUPS 79) | CI WebKit green with the tests active + nightly perf |
 | C-86 | P1-B close C-84 reward trace | P1-15 | The reward moment's first play has one long task of 182–288 ms at 4× CPU (repeat plays none): root-caused, fixed, `vault.spec` "[PD-10] the reward moment … @perf" un-quarantined; T-10 closed | @perf spec active and green + SESSION_LOG |
 | C-91 | P1-10 (Lighthouse on main `79b19bc` and `wip/P1-10`, 25 Nov) | P1-18 | Landing `/s/[code]` Lighthouse mobile: LCP 4.21 s (budget 2.50; was 0.80 at P1-02) and JS 163.4 KB gzip (band 140) on main itself, score 82–85: root-caused and back inside budget (FOLLOWUPS 80 trim + the LCP regression) | `pnpm test:lighthouse` landing PASS + SESSION_LOG |
 | C-95 | P1-10 (edge case: proxy buffering) | P1-C close (`/subphase-complete`) | An authenticated `/api/sse/me` stream on staging through Cloudflare + Caddy (`flush_interval -1`) delivers `ready` at once and a heartbeat comment every 25 s (no buffering) | curl/browser trace on staging + SESSION_LOG |
@@ -70,6 +66,7 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (25 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
+- P1-19 `f5a2866` (main): CI 45668197214 green with an every-page change (all specs on WebKit); spec-repeat ×10 0 failures on webkit + iphone14 for all 9 specs (ids in SESSION_LOG); gate:task PASS on `9ad3caf` (unit 2199/0, int 1540/0/1).
 - P1-11 `6d8d763` (on main `a469c92`): CI 45647684620 green (all jobs; 1 confirmed flake → FOLLOWUPS); gate:task PASS on `d5c965b` (unit 2161/0, int 1540/0/1, task E2E 15/0, SAST, bundle).
 - Main `a469c92` (gate morph fix, KI-48): CI 45644813206 + 45646733888 green (perf-budget job included).
 - P1-11 screenshots (390, 320, 1440; Chromium + WebKit) inspected: button, pending, queued states.
