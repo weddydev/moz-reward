@@ -11,6 +11,7 @@ import {
   ingotPercent,
   ingotsText,
   progressLabel,
+  rewardsText,
   totalText,
   sortWallet,
   STACK_SIZE,
@@ -53,6 +54,8 @@ const input = (over: Partial<WalletCardInput> = {}): WalletCardInput => {
     lastVisitAt: null,
     progressGold: 0,
     ingotsCompleted: 0,
+    ingotStartedAt: null,
+    goldShortfall: 0,
     versions: V1,
     hours: [],
     closures: [],
@@ -247,6 +250,7 @@ describe("[P1-07] wallet cards", () => {
     expect(walletView([], 0, NOW)).toEqual({
       cards: [],
       summary: { rewardsReady: 0, ingotsCompleted: 0, gold: 0, shops: 0 },
+      activity: [],
     });
   });
 
@@ -264,6 +268,63 @@ describe("[P1-07] wallet cards", () => {
     );
     expect(view.summary.gold).toBe(2_480);
     expect(view.summary.shops).toBe(4);
+  });
+});
+
+describe("[P1-12] wallet reads from the ledger (C-60, C-62)", () => {
+  it("the current ingot's terms are the version in force when it started, not the join date", () => {
+    const v2: ProgrammeVersion = {
+      ...TEMPLATES.cafe.rules,
+      ingotSize: 2_000,
+      id: "v2",
+      version: 2,
+      activeFrom: new Date(NOW.getTime() - 10 * DAY),
+      rewardsFrom: new Date(NOW.getTime() - 10 * DAY),
+      createdAt: new Date(NOW.getTime() - 10 * DAY),
+    };
+    const versions = [...V1, v2];
+    const joined = input({ progressGold: 500, versions });
+    expect(walletCard(joined, NOW).ingotSize).toBe(1_000);
+    const restarted = input({
+      progressGold: 500,
+      versions,
+      ingotStartedAt: new Date(NOW.getTime() - 5 * DAY),
+    });
+    expect(walletCard(restarted, NOW).ingotSize).toBe(2_000);
+    expect(walletCard(restarted, NOW).meta).toMatch(/^500 \/ 2,000 · /);
+  });
+
+  it("recent activity: newest first with the shop's name and UK date; an unknown shop is dropped", () => {
+    const a = input({ name: "Bean There" });
+    const b = input({ name: "Crumbs" });
+    const view = walletView([a, b], 3, NOW, [
+      { shopId: b.shopId, requestId: "r2", gold: 150, at: new Date("2026-11-17T18:30:00Z") },
+      { shopId: a.shopId, requestId: "r1", gold: 1_100, at: new Date("2026-11-03T09:00:00Z") },
+      { shopId: "gone", requestId: "r0", gold: 10, at: new Date("2026-11-01T09:00:00Z") },
+    ]);
+    expect(view.summary.rewardsReady).toBe(3);
+    expect(view.activity).toEqual([
+      {
+        requestId: "r2",
+        shopId: b.shopId,
+        shopName: "Crumbs",
+        gold: "+150 gold",
+        date: "17 Nov 2026",
+      },
+      {
+        requestId: "r1",
+        shopId: a.shopId,
+        shopName: "Bean There",
+        gold: "+1,100 gold",
+        date: "3 Nov 2026",
+      },
+    ]);
+  });
+
+  it("rewards copy uses plurals", () => {
+    expect(rewardsText(1)).toBe("1 reward");
+    expect(rewardsText(2)).toBe("2 rewards");
+    expect(rewardsText(1_200)).toBe("1,200 rewards");
   });
 });
 

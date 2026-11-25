@@ -77,3 +77,32 @@ export function pendingRequestText(
         expiry: "If it isn’t approved within 24 hours, it expires and you can ask again.",
       };
 }
+
+/** One row of the shop page's Recent receipts card (P1-12, C-69). */
+export type ReceiptRow = {
+  id: string;
+  /** "Receipt 12". */
+  title: string;
+  /** "26 Nov 2026, 14:05" (UK time). */
+  when: string;
+  /** "+120 gold": the visit's gold with any streak bonus. */
+  gold: string;
+  /** "Flat white, Croissant", or null when staff added no items. */
+  items: string | null;
+};
+
+export function receiptRow(receipt: {
+  id: string;
+  number: number;
+  createdAt: Date;
+  data: { goldEarned: number; bonusGold: number; items: readonly string[] };
+}): ReceiptRow {
+  const gold = receipt.data.goldEarned + receipt.data.bonusGold;
+  return {
+    id: receipt.id,
+    title: `Receipt ${receipt.number.toLocaleString("en-GB")}`,
+    when: `${formatDate(receipt.createdAt)}, ${formatTime(receipt.createdAt)}`,
+    gold: `+${gold.toLocaleString("en-GB")} gold`,
+    items: receipt.data.items.length > 0 ? receipt.data.items.join(", ") : null,
+  };
+}

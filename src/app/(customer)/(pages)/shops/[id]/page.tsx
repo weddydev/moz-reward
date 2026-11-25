@@ -2,6 +2,7 @@ import { MARKETING_CONSENT_VERSION, marketingConsentParts } from "@/features/joi
 import { JoinCta } from "@/features/join/JoinCta";
 import { PortalNotFound } from "@/features/portal/StatePage";
 import { MemberShopPage } from "@/features/shop/MemberShopPage";
+import { receiptRow } from "@/features/shop/view";
 import { vaultView } from "@/features/vault/view";
 import { parseShopId } from "@/lib/brand";
 import { requireCustomer } from "@/server/authz";
@@ -9,6 +10,7 @@ import { gateCustomerRoute } from "@/server/portal/gate";
 import { readOwnMemberShop } from "@/server/repos/memberships";
 import { readOwnOpenRequest } from "@/server/repos/point-requests";
 import { ownMemberCard } from "@/server/repos/profiles";
+import { readOwnReceipts } from "@/server/repos/receipts";
 import { findJoinableShopCode } from "@/server/repos/shops";
 import { readOwnVault } from "@/server/repos/vault";
 import { loadShopLanding } from "@/server/services/shop-landing";
@@ -40,11 +42,12 @@ export default async function ShopPage({
   const shopId = parseShopId(id);
   if (!shopId) return <PortalNotFound portal="customer" />;
   const scope = await requireCustomer(principal);
-  const [shop, member, vault, open] = await Promise.all([
+  const [shop, member, vault, open, receipts] = await Promise.all([
     readOwnMemberShop(scope, shopId),
     ownMemberCard(scope),
     readOwnVault(scope, shopId),
     readOwnOpenRequest(scope, shopId),
+    readOwnReceipts(scope, shopId),
   ]);
   const now = new Date();
 
@@ -68,6 +71,7 @@ export default async function ShopPage({
         vault={vaultData}
         welcome={(await searchParams).welcome === "1"}
         request={openView || takesRequests ? { open: openView } : null}
+        receipts={receipts.map(receiptRow)}
         now={now}
       />
     );

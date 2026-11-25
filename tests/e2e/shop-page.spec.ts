@@ -93,6 +93,34 @@ test("[P1-09] member shop page: cover, status, directions and call, vault card, 
   await expect(page).toHaveURL(`/vault/${shopId}`);
 });
 
+test("[P1-12] recent receipts: the member's approved visits, newest first, with time and gold (C-69)", async ({
+  page,
+  signInAs,
+  shoot,
+}) => {
+  const me = await signInAs("customer");
+  // Two visits approved by the owner through the approvals service: 720 → 820 → 920 gold, receipts 1 and 2.
+  const { shopId } = await seedShop(page.request, me.userId, { visits: 2 });
+  await page.goto(`/shops/${shopId}`);
+  const card = page.getByTestId("shop-receipts");
+  const rows = card.getByRole("list", { name: "Recent receipts" }).getByRole("listitem");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText("Receipt 2");
+  await expect(rows.nth(1)).toContainText("Receipt 1");
+  for (const row of [rows.nth(0), rows.nth(1)]) {
+    await expect(row).toContainText("+100 gold");
+    await expect(row).toContainText(/\d{1,2} [A-Z][a-z]{2} \d{4}, \d{2}:\d{2}/);
+  }
+  await expect(card).not.toContainText("No receipts yet");
+  await expect(page.getByTestId("shop-vault-percent")).toHaveText("92%");
+  for (const width of [390, 320, 1440]) {
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+    await noHorizontalScroll(page);
+    await card.scrollIntoViewIfNeeded();
+    await shoot(`shop-receipts-${String(width)}`);
+  }
+});
+
 test("[P1-09] mute notifications: immediate, kept after a reload, and back off again", async ({
   page,
   signInAs,

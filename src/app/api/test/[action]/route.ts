@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { parseShopId } from "@/lib/brand";
-import { addDays, londonDate } from "@/lib/time";
+import { addDays, londonDate, londonWeekStart } from "@/lib/time";
 import { getAuth } from "@/server/auth/auth";
 import { beginStaffLogin } from "@/server/auth/staff-login";
 import { authScope } from "@/server/authz/scope";
@@ -32,6 +32,7 @@ import {
   userPointRequests,
 } from "@/server/testing/factories";
 import { testApiAllowed } from "@/server/testing/test-api";
+import { approvedVisit } from "@/server/testing/visits";
 
 /**
  * Test-only seeding API (APP_ENV=test). Lets E2E specs create exactly the data they need and sign in
@@ -157,9 +158,18 @@ const shopInput = z
         progressGold: z.number().int().min(0).max(100_000).default(0),
         ingotsCompleted: z.number().int().min(0).max(10_000).default(0),
         lastVisitDaysAgo: z.number().int().min(0).max(3650).optional(),
+        /** P1-12: the highest tier reached (stored on the membership, never lowered). */
+        tier: z.enum(["bronze", "silver", "gold"]).optional(),
+        /** P1-12: a streak of this many weeks whose last week is this week (London). */
+        streakWeeks: z.number().int().min(1).max(520).optional(),
       })
       .strict()
       .optional(),
+    /**
+     * P1-12: this many approved visits after the membership is made, each a real request approved by the shop's
+     * owner through the approvals service (ledger, counters, rewards, receipt). Needs a member and a programme.
+     */
+    visits: z.number().int().min(0).max(12).default(0),
     /**
      * P1-07: a loyalty programme (Café classic template, ingot 1,000 gold), version 1, owned by nobody real.
      * P1-08: "sample" = the DESIGN §15 sample rewards (milestones 25/50 and a mystery at 75).
@@ -257,8 +267,18 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
     case "shop": {
       const parsed = shopInput.safeParse(body);
       if (!parsed.success) return invalid();
-      const { status, name, details, cover, memberUserId, member, programme, closureInDays } =
-        parsed.data;
+      const {
+        status,
+        name,
+        details,
+        cover,
+        memberUserId,
+        member,
+        programme,
+        closureInDays,
+        visits,
+      } = parsed.data;
+      if (visits > 0 && (!memberUserId || !programme)) return invalid();
       const shop = await makeShop({
         status,
         ...(name ? { name } : {}),
@@ -291,13 +311,17 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
         await makeProgramme(shop.id, 1_000, programme === "sample" ? SAMPLE_PROGRAMME : {});
       }
       if (memberUserId) {
-        const { lastVisitDaysAgo, ...counters } = member ?? {};
-        await makeMembership(memberUserId, shop.id, {
+        const { lastVisitDaysAgo, streakWeeks, ...counters } = member ?? {};
+        const membership = await makeMembership(memberUserId, shop.id, {
           ...counters,
           ...(lastVisitDaysAgo === undefined
             ? {}
             : { lastVisitAt: new Date(Date.now() - lastVisitDaysAgo * 24 * 60 * 60 * 1000) }),
+          ...(streakWeeks === undefined
+            ? {}
+            : { streakWeeks, streakLastWeekStart: londonWeekStart(new Date()) }),
         });
+        for (let i = 0; i < visits; i += 1) await approvedVisit(membership);
       }
       return NextResponse.json({ shopId: shop.id, shopCode: shop.shopCode });
     }

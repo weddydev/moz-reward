@@ -1,11 +1,13 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import { vaultView } from "@/features/vault/view";
 import { normaliseShopCode } from "@/lib/codes";
 import { newId } from "@/lib/id";
 import { TEMPLATES } from "@/lib/loyalty/programme";
+import { addDays, londonWeekStart } from "@/lib/time";
 import { mintCustomerScope, publicScope } from "@/server/authz/scope";
 import { testOwnerDb as db } from "@/server/db/client";
-import { loyaltyPrograms } from "@/server/db/schema";
+import { loyaltyPrograms, memberships } from "@/server/db/schema";
 import { withScope } from "@/server/repos/_base";
 import { readShopLanding } from "@/server/repos/shops";
 import { readOwnVault } from "@/server/repos/vault";
@@ -16,6 +18,7 @@ import {
   makeUser,
   setShopStatus,
 } from "@/server/testing/factories";
+import { approvedVisit } from "@/server/testing/visits";
 
 /**
  * P1-08: the Gold Vault read (own current membership only) and the landing's reward preview through
@@ -74,6 +77,69 @@ describe("[P1-08] Gold Vault read", () => {
     await makeMembership(me.id, shop.id);
     const vault = await readOwnVault(mintCustomerScope({ userId: me.id }), shop.id);
     expect(vault?.versions).toEqual([]);
+  });
+});
+
+describe("[P1-12] Gold Vault streak and tier from the approvals (C-66)", () => {
+  it("the streak chip shows the member's current streak after an approval extends it", async () => {
+    const [me, shop] = await Promise.all([makeUser(), makeShop({ status: "active" })]);
+    await makeProgramme(shop.id); // Café classic: +50 bonus gold for a streak of 2+ weeks
+    const m = await makeMembership(me.id, shop.id);
+    // Two weeks running up to last week (as earlier approvals left it), then a visit this week.
+    const visitAt = new Date(Date.now() - 60_000);
+    await db()
+      .update(memberships)
+      .set({ streakWeeks: 2, streakLastWeekStart: addDays(londonWeekStart(visitAt), -7) })
+      .where(eq(memberships.id, m.id));
+    const res = await approvedVisit(m, { agoMs: 60_000 });
+    expect(res.bonusGold).toBe(50);
+    const scope = mintCustomerScope({ userId: me.id });
+    const vault = await readOwnVault(scope, shop.id);
+    expect(vault).toMatchObject({ streakWeeks: 3, streakLastWeekStart: londonWeekStart(visitAt) });
+    expect(vaultView(vault!, new Date())?.streak).toEqual({ bonusGold: 50, weeks: 3 });
+    // A member whose last visit week is two weeks back has no current streak: the chip shows the rule.
+    await db()
+      .update(memberships)
+      .set({ streakLastWeekStart: addDays(londonWeekStart(visitAt), -14) })
+      .where(eq(memberships.id, m.id));
+    const lapsed = await readOwnVault(scope, shop.id);
+    expect(vaultView(lapsed!, new Date())?.streak).toEqual({ bonusGold: 50, weeks: 0 });
+  });
+
+  it("the tier reached stays when the owner raises the thresholds", async () => {
+    const [me, shop] = await Promise.all([makeUser(), makeShop({ status: "active" })]);
+    await makeProgramme(shop.id, 200); // 100 gold a visit: an ingot every 2 visits; Silver at 2 ingots
+    const m = await makeMembership(me.id, shop.id);
+    for (let i = 0; i < 4; i += 1) await approvedVisit(m);
+    const scope = mintCustomerScope({ userId: me.id });
+    const before = await readOwnVault(scope, shop.id);
+    expect(before).toMatchObject({ ingotsCompleted: 2, tier: "silver" });
+    expect(vaultView(before!, new Date())?.tier.name).toBe("Silver");
+    // The owner raises Silver to 4 and Gold to 8 ingots from now.
+    const [v1] = await db()
+      .select()
+      .from(loyaltyPrograms)
+      .where(eq(loyaltyPrograms.shopId, shop.id));
+    if (!v1) throw new Error("no v1");
+    const { id: _id, createdAt: _c, ...rest } = v1;
+    const savedAt = new Date(Date.now() - 1_000);
+    await db()
+      .insert(loyaltyPrograms)
+      .values({
+        ...rest,
+        version: 2,
+        tiers: { silver: 4, gold: 8 },
+        activeFrom: savedAt,
+        rewardsFrom: savedAt,
+      });
+    const after = await readOwnVault(scope, shop.id);
+    expect(vaultView(after!, new Date())?.tier).toMatchObject({
+      name: "Silver",
+      next: { name: "Gold", ingotsToGo: 6 },
+    });
+    // The next approval keeps the stored tier too (the engine never lowers it).
+    await approvedVisit(m);
+    expect((await readOwnVault(scope, shop.id))?.tier).toBe("silver");
   });
 });
 

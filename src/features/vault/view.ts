@@ -1,6 +1,6 @@
-import { initialMemberState } from "@/lib/loyalty/engine";
 import { type IngotFill, ingotFill } from "@/lib/loyalty/ingot";
 import { ingotTerms, type ProgrammeVersion, versionActiveAt } from "@/lib/loyalty/programme";
+import { addDays, londonWeekStart } from "@/lib/time";
 
 /**
  * Pure view logic for the Gold Vault page (P1-08, PRODUCT §6, DESIGN §15 screen 5). UK English (DESIGN §14).
@@ -24,7 +24,11 @@ export type VaultStep = {
 export type VaultView = {
   ingot: IngotFill;
   steps: VaultStep[];
-  streak: { bonusGold: number } | null;
+  /**
+   * The programme's streak bonus and the member's current streak in weeks (0 when there is none, or it broke:
+   * no approved visit this week or last); null when the programme has no streak bonus.
+   */
+  streak: { bonusGold: number; weeks: number } | null;
   /** Gold a visit earns under the rules in force now ("about N visits"); null when gold is earned per £1. */
   perVisit: number | null;
   tier: {
@@ -42,6 +46,13 @@ export type VaultInput = {
   progressGold: number;
   ingotsCompleted: number;
   joinedAt: Date;
+  /** When the current ingot started (null = at `joinedAt`, C-60). */
+  ingotStartedAt: Date | null;
+  /** The highest tier the membership reached (stored by approvals, never lowered, C-66). */
+  tier: "bronze" | "silver" | "gold";
+  streakWeeks: number;
+  /** Monday (London, YYYY-MM-DD) of the streak's last week with an approved visit. */
+  streakLastWeekStart: string | null;
   versions: readonly ProgrammeVersion[];
 };
 
@@ -66,14 +77,34 @@ export function tierFor(ingots: number, tiers: { silver: number; gold: number })
   return "Bronze";
 }
 
+const TIER_NAMES = { bronze: "Bronze", silver: "Silver", gold: "Gold" } as const;
+const TIER_ORDER: readonly TierName[] = ["Bronze", "Silver", "Gold"];
+
+/**
+ * The member's current streak in weeks: the stored count while its last week is this week or last week
+ * (London, Monday start), else 0 (a week with no approved visit broke it; the next approval starts at 1).
+ */
+export function currentStreakWeeks(
+  input: { streakWeeks: number; streakLastWeekStart: string | null },
+  now: Date,
+): number {
+  if (input.streakLastWeekStart === null || input.streakWeeks <= 0) return 0;
+  const thisWeek = londonWeekStart(now);
+  return input.streakLastWeekStart === thisWeek ||
+    input.streakLastWeekStart === addDays(thisWeek, -7)
+    ? input.streakWeeks
+    : 0;
+}
+
 /**
  * The Vault for one membership, or null when the shop has no programme yet. The current ingot's terms come
- * from the version it started under; until P1-12 stores `ingot_started_at` that is the join date, as on the
- * Wallet (C-60). Tiers use the version in force now. Milestones repeat in every ingot (PRODUCT §6).
+ * from the version it started under (`ingot_started_at`, else the join date; C-60). Tier thresholds are the
+ * version in force now, but the tier shown is never below the highest one stored on the membership: an owner
+ * raising a threshold never lowers a member (C-66). Milestones repeat in every ingot (PRODUCT §6).
  */
 export function vaultView(input: VaultInput, now: Date): VaultView | null {
   if (input.versions.length === 0) return null;
-  const terms = ingotTerms(input.versions, initialMemberState(input.joinedAt).ingotStartedAt);
+  const terms = ingotTerms(input.versions, input.ingotStartedAt ?? input.joinedAt);
   const current = versionActiveAt(input.versions, now);
   if (!terms || !current) return null;
   const ingot = ingotFill(input.progressGold, terms.ingotSize);
@@ -103,7 +134,9 @@ export function vaultView(input: VaultInput, now: Date): VaultView | null {
 
   const ingots = Math.max(0, input.ingotsCompleted);
   const { silver, gold } = current.tiers;
-  const name = tierFor(ingots, current.tiers);
+  const earned = tierFor(ingots, current.tiers);
+  const stored = TIER_NAMES[input.tier];
+  const name = TIER_ORDER.indexOf(stored) > TIER_ORDER.indexOf(earned) ? stored : earned;
   const ladder = [
     { name: "Bronze" as const, from: 0 },
     { name: "Silver" as const, from: silver },
@@ -123,7 +156,9 @@ export function vaultView(input: VaultInput, now: Date): VaultView | null {
   return {
     ingot,
     steps,
-    streak: current.streak ? { bonusGold: current.streak.bonusGold } : null,
+    streak: current.streak
+      ? { bonusGold: current.streak.bonusGold, weeks: currentStreakWeeks(input, now) }
+      : null,
     perVisit: current.earnMode === "per_visit" ? current.earnRate : null,
     tier: { name, ingots, ladder, next },
     shelf: { completed: ingots, slots: Math.max(SHELF_MIN_SLOTS, ingots + 1) },
@@ -143,6 +178,15 @@ export function shelfText(completed: number, size: number): string {
   if (completed === 0) return `Your first ingot fills at ${gb(size)} gold.`;
   return `${gb(completed)} ${ingotsWord(completed)} collected`;
 }
+
+/**
+ * The streak chip: "3-week streak · bonus gold active" while a streak of 2 weeks or more is current (the next
+ * week's first visit pays the bonus), else the rule ("Visit 2 weeks running for +50 bonus gold").
+ */
+export const streakText = (streak: { bonusGold: number; weeks: number }): string =>
+  streak.weeks >= 2
+    ? `${gb(streak.weeks)}-week streak · bonus gold active`
+    : `Visit 2 weeks running for +${gb(streak.bonusGold)} bonus gold`;
 
 /** "1 more ingot to Silver". */
 export const nextTierText = (next: { name: TierName; ingotsToGo: number }): string =>
