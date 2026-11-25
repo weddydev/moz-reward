@@ -181,6 +181,10 @@ export function keyboardOpen(
 
 /** Tabs (PD-06; reference `.seg*`, `.panel` + "tabs"). The pill and its trail are CSS transitions. */
 export const TABS = {
+  /** The gold pill glides to the chosen tab on the spring; the faint trail behind it takes longer. Web Animations,
+   * not the reference's CSS transition (PD-11: WebKit left a retargeted transition stuck at its start). */
+  pillMs: 600,
+  trailMs: 950,
   /** The new panel slides in from the side you moved toward. */
   panelMs: 380,
   panelShiftPx: 32,

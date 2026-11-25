@@ -175,10 +175,12 @@ svg.m-seam {
 .lite .m-seam .sm-gem {
   filter: none;
 }
-/* Off screen or tab hidden: loops sleep (the element's own and every one inside it). */
-[data-paused],
-[data-paused]::before,
-[data-paused]::after,
+/* Off screen or tab hidden: loops sleep, every one inside the element; a button's own idle loops too (its flow and
+   orbit run on the button and its pseudo-elements). Not other elements' own animations: a gilded Tile carries the
+   attribute and its own scroll-driven rise, which WebKit doesn't resync once resumed (PD-11, Linux WebKit). */
+.m-btn[data-paused],
+.m-btn[data-paused]::before,
+.m-btn[data-paused]::after,
 [data-paused] *,
 [data-paused] *::before,
 [data-paused] *::after {
@@ -1169,8 +1171,9 @@ html:root.rm .m-tile {
   left: 4px;
   width: calc((100% - 8px) / var(--n, 3));
   border-radius: 12px;
+  /* At rest by CSS alone (server render included); the glide between tabs is Web Animations (Tabs.tsx,
+     `TABS.pillMs` / `trailMs`): WebKit left a retargeted CSS transition stuck at its start (PD-11). */
   transform: translateX(calc(var(--i, 0) * 100%));
-  transition: transform 0.6s var(--spring);
 }
 .m-seg-ind {
   background: var(--metal);
@@ -1178,7 +1181,6 @@ html:root.rm .m-tile {
 }
 .m-seg-trail {
   background: rgba(255, 206, 74, 0.28);
-  transition-duration: 0.95s;
 }
 /* Side padding only sets the narrowest column (a row that fits centres each label in its wider column). */
 .m-seg button {

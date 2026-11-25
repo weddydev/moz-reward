@@ -35,7 +35,8 @@ function referenceMismatches(source: string, rows: readonly SpecRow[] = MOLTEN_S
 /** Production custom properties: the token sheet's `:root` plus the file's own. */
 const tokenVars = rootVars(read("src/styles/tokens.css"));
 function prodValue(at: ProdLocator): string {
-  if ("value" in at) return String(at.value());
+  // A value from code is normalised like the CSS ones, with the app's tokens (so `var(--spring)` resolves).
+  if ("value" in at) return normalise(String(at.value()), tokenVars);
   const source = read(at.file);
   const vars = new Map([...tokenVars, ...rootVars(cssOf(source))]);
   const locator =

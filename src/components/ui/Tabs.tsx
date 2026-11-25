@@ -3,7 +3,7 @@
 import { type ReactNode, useEffect, useId, useLayoutEffect, useRef } from "react";
 import { cx } from "@/lib/cx";
 import { anim, reducedMotionNow } from "@/lib/motion/anim";
-import { TABS } from "@/lib/motion/controls";
+import { springEasing, TABS } from "@/lib/motion/controls";
 import { useHydrated } from "@/lib/use-hydrated";
 
 export type TabItem<T extends string> = { value: T; label: string; count?: number };
@@ -60,6 +60,31 @@ export function Tabs<T extends string>({
     shown.current = index;
     if (from === index) return;
     const dir = index > from ? 1 : -1;
+    // The pill and its trail glide from wherever they are now (mid-glide included) to the chosen tab; CSS
+    // already holds them at the new place, so a cancelled or skipped glide still ends right.
+    const seg = scroller.current?.querySelector(".m-seg");
+    if (!reducedMotionNow())
+      for (const [sel, ms] of [
+        [".m-seg-ind", TABS.pillMs],
+        [".m-seg-trail", TABS.trailMs],
+      ] as const) {
+        const el = seg?.querySelector<HTMLElement>(sel);
+        if (!el || typeof el.animate !== "function") continue;
+        const moving = animationsOf(el);
+        const at =
+          moving.length > 0 ? getComputedStyle(el).transform : `translateX(${String(from * 100)}%)`;
+        for (const a of moving) a.cancel();
+        const glide = el.animate(
+          [{ transform: at }, { transform: `translateX(${String(index * 100)}%)` }],
+          { duration: ms, easing: springEasing() },
+        );
+        // A safety net, as for the wipe: WebKit can leave an animation's clock unstarted (a retargeted transition
+        // stuck at its start, CI 45467487343, reproduced on Linux WebKit); a timer still runs, so the pill lands
+        // on the chosen tab once its time is up.
+        window.setTimeout(() => {
+          if (glide.playState === "running") glide.finish();
+        }, ms + 120);
+      }
     for (const a of animationsOf(panel.current)) a.cancel();
     // Reduced motion: a fade only, no slide (DESIGN §7.2).
     anim(

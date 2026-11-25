@@ -64,10 +64,12 @@ function TabsHarness({
 
 /** The panel slides the tabs asked for, as `translateX` start offsets in px. */
 const slides = (): number[] =>
-  animate.mock.calls.map((call) => {
-    const frames = (call as unknown as [Keyframe[]])[0];
-    return Number(/translateX\((-?\d+)px\)/.exec(String(frames[0]?.transform))?.[1]);
-  });
+  animate.mock.calls
+    .filter((_, i) => !(animate.mock.contexts[i] as Element).matches(".m-seg-ind, .m-seg-trail"))
+    .map((call) => {
+      const frames = (call as unknown as [Keyframe[]])[0];
+      return Number(/translateX\((-?\d+)px\)/.exec(String(frames[0]?.transform))?.[1]);
+    });
 
 describe("[PD-06] Tabs", () => {
   it("[PD-06] the pill sits by CSS alone: --n tabs and --i chosen, right in the server render", () => {
@@ -103,7 +105,10 @@ describe("[PD-06] Tabs", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Market" }));
     fireEvent.click(screen.getByRole("tab", { name: "Wallet" }));
     expect(slides()).toEqual([TABS.panelShiftPx, -TABS.panelShiftPx]);
-    const opts = (animate.mock.calls[0] as unknown as [Keyframe[], KeyframeAnimationOptions])[1];
+    const first = animate.mock.calls.find(
+      (_, i) => !(animate.mock.contexts[i] as Element).matches(".m-seg-ind, .m-seg-trail"),
+    );
+    const opts = (first as unknown as [Keyframe[], KeyframeAnimationOptions])[1];
     expect(opts.duration).toBe(TABS.panelMs);
     expect(screen.getByRole("tabpanel")).toHaveTextContent("panel wallet");
   });
@@ -167,6 +172,32 @@ describe("[PD-06] Tabs", () => {
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((t) => t.tabIndex)).toEqual([0, -1, -1]);
     expect(tabs.map((t) => t.getAttribute("aria-selected"))).toEqual(["false", "false", "false"]);
+  });
+
+  it("[PD-11] the pill and its trail glide on the spring (600 / 950 ms) from the old tab to the new, as Web Animations", () => {
+    render(<TabsHarness />);
+    fireEvent.click(screen.getByRole("tab", { name: "Market" }));
+    const glides = animate.mock.calls
+      .map((call, i) => ({
+        call: call as unknown as [Keyframe[], KeyframeAnimationOptions],
+        el: animate.mock.contexts[i] as Element,
+      }))
+      .filter((g) => g.el.matches(".m-seg-ind, .m-seg-trail"));
+    expect(glides.map((g) => [g.el.className, g.call[1].duration])).toEqual([
+      ["m-seg-ind", TABS.pillMs],
+      ["m-seg-trail", TABS.trailMs],
+    ]);
+    expect(glides[0]?.call[0]).toEqual([
+      { transform: "translateX(0%)" },
+      { transform: "translateX(200%)" },
+    ]);
+  });
+
+  it("[PD-11] reduced motion: the pill jumps (no glide)", () => {
+    document.documentElement.classList.add("rm");
+    render(<TabsHarness />);
+    fireEvent.click(screen.getByRole("tab", { name: "Offers" }));
+    expect(animate.mock.contexts.some((el) => (el as Element).matches(".m-seg-ind"))).toBe(false);
   });
 
   it("[PD-06] counts render beside the label", () => {

@@ -356,18 +356,13 @@ export const MOLTEN_SPEC: readonly SpecRow[] = [
         name: "pill",
         value: ".6s var(--spring)",
         ref: css(".seg-ind,.seg-trail", "transition", "transform"),
-        prod: {
-          file: MOLTEN_CSS,
-          css: ".m-seg-ind, .m-seg-trail",
-          prop: "transition",
-          part: "transform",
-        },
+        prod: { value: () => `${String(TABS.pillMs / 1000).replace(/^0/, "")}s var(--spring)` },
       },
       {
         name: "trail",
         value: ".95s",
         ref: css(".seg-trail", "transition-duration"),
-        prod: { file: MOLTEN_CSS, css: ".m-seg-trail", prop: "transition-duration" },
+        prod: { value: () => `${String(TABS.trailMs / 1000).replace(/^0/, "")}s` },
       },
       {
         name: "panel slide",
