@@ -7,17 +7,17 @@ Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-B close in progress, talha.syed, 25 Nov 2026 (Mac); baton held. Autopilot OFF.** Work on **`wip/P1-B-close`, HEAD `8b74a8c`** (worktree `../moz-P1-B-close`; `git switch wip/P1-B-close` in the main checkout works too). CI 45562871999 on it running at this note: read it first.
-- **Done this session:** reviews of `ec5d6cc..e268ee6` (PD-C): code APPROVE WITH FIXES, security PASS WITH FIXES, design PASS WITH FIXES. Fixed in `8b74a8c` (test-first): code HIGH-1 dock after Back, MED-1 hidden shop inert, MED-2 gate face lock; security M1 + L3 image optimiser. C-84: parity `PARITY_SET=1` 186/0 (Chromium + WebKit, H-49 set in `.artifacts/parity-set/`, 152 pairs per browser, 0 over limit); perf/fps 4× 16/0 (FX stress, gate, pour, wipe); baselines darwin + linux (KI-55 fixed); reward trace added, its @perf quarantined (T-10/C-86).
-- **Next (in order), all on `wip/P1-B-close`:** (1) **design review HIGH**: Wallet header to the reference (`index.html` 726–729, CSS 338–352): `.w-head` (small "Good evening" + name in Fraunces 34), 44 px placed bell with ember badge + ring on hover (bell moves out of `PortalHeader` on the Wallet, or the header shows it there; decide), obsidian `.total` panel "N gold across M shops" (conic spin 6 s, paused off screen, still under reduced motion), "Rewards ready"/"Ingots filled" as a secondary row. (2) design MED: card meta `720 / 1,000 · Free coffee & cake` (`wallet/view.ts:45`, `ShopCard.tsx:101`; visits hint into aria-label). (3) design MED: `navParent: "/wallet"` for hidden child routes (shop, vault) so the dock/rail keep Wallet current (`portal/routes.ts:94,359`). Then gate:task, push wip, CI green → main. (4) QA (`qa-engineer`, every changed screen 320/390/1440, Chromium + WebKit). (5) H-49 to the human. (6) staging smoke + Sentry, `pnpm docker:tidy` (2 old test containers `moz-pitr-src`, `moz-walg-test` running 39 h), close lines.
-- **Not yet tested:** CI on `8b74a8c`; the visual baselines were regenerated before the Wallet header change, so regenerate them (darwin, then `pnpm e2e:linux --visual --project chromium --update-snapshots`) after (1)–(3).
+- **P1-B close in progress, talha.syed, 25 Nov 2026 (Mac); baton held. Autopilot OFF.** Work on **`wip/P1-B-close`** (worktree `../moz-P1-B-close`); its HEAD is the commit carrying this note (it merges main `d38cb5e`). CI on it was started by the push of this note: read it first; green → push the same commit to main (pre-push hook), which also deploys staging.
+- **Done this session (all test-first, on the branch):** design HIGH Wallet header as the reference (`56ab5a7`: `WalletHeader.tsx`, CSS moved from /dev/molten into molten.css; one bell on phones, rail from 768px; total panel "N gold across M shops", hidden with no shops; C-87 unread badge → P3-07). Design MEDs (`13e7dab`): card meta "720 / 1,000 · reward" (percent + visits in the accessible name), `navParent: "/wallet"` for shop and vault. CI fixes: gate face lock by face status (`4b8538a`, KI-57: Linux WebKit `fonts.check()` true for a blocked font), wallet integration shape (`cac47ad`), bell hover inside fine-pointer media (P0-09 AC7). KI-56 (wipe "slow way back" timed from the tap). Visual baselines darwin + linux (`5a3459e`). QA (qa-engineer, 30 scenarios × 320/390/1440 × Chromium + WebKit): 1 HIGH + 3 MEDIUM fixed in `6a006c7` (vault back link overflow; paused/closed shop page state + notice; meta line wraps its pill; cover title sized by longest word), 8 LOW → FOLLOWUPS.
+- **Next (in order):** (1) CI on this commit green → main. (2) **H-49 to the human**: the side-by-side set is in the main checkout's `.artifacts/parity-set/` (local only; /dev/molten unchanged since it was made). (3) Staging smoke on the deployed main commit (Wallet header, shop page, vault) + Sentry for the release; `pnpm docker:tidy` (old `moz-pitr-src`, `moz-walg-test` containers). (4) `/subphase-complete` close lines: SESSION_LOG close entry, tick the P1-B close line in PHASES, C-84/C-85 rows closed (C-85 waits on H-49 only).
+- **Not yet tested:** CI on this commit (WebKit has the gate font fix and the QA batch untried on Linux WebKit; host WebKit passed). Local Linux container shows gate letters with no animations at 2.5 s (CI doesn't; KI-57 note), so judge gate timing on CI.
 - **Before work:** no env/migration changes. The worktree needs `.env.local` (copied from the main checkout).
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov). Then P1 resumes with the P1-B close. P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **P1-B close** next (PD-C closed 25 Nov by the human's decision: PD-07..PD-11 done; H-49, reviews and QA moved to the P1-B close as C-85). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-25, talha.syed (P1-B close in progress on `wip/P1-B-close` `8b74a8c`; next: design review HIGH, Wallet header)
+- **Last updated:** 2026-11-25, talha.syed (P1-B close: design HIGH/MEDs + QA fixes on `wip/P1-B-close`; next: CI → main, H-49, staging smoke)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -26,7 +26,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. P1-B close on `wip/P1-B-close`: Wallet header (design HIGH), card meta line + `navParent` (design MED), then QA, H-49, staging (Handoff note).
+1. P1-B close: CI on `wip/P1-B-close` → main, then H-49 (human), staging smoke + Sentry, close lines (Handoff note).
 2. P1-10 after the close.
 3. Human any time: H-48b, H-45 (🟠), H-38 (branches), H-51 (b); H-49 when the set is shared.
 
@@ -54,7 +54,7 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 | C-79 | PD-07 CI (perf 45153452036, main 45153456299) | P1-18 (moved from PD-11, human 25 Nov) | pixel7 `@fps` FX stress (≥ 58 fps, p95 ≤ 16.8 ms at 4× CPU) un-quarantined: cause found (runner variance vs. a dock/FX frame cost), fixed if real; TEMPORARY T-7 closed | nightly perf run green on pixel7 + SESSION_LOG |
 | C-81 | PD-10 design review M3 | P1-16 | `RedeemCode` gets `receivedAt` = the phone's `Date.now()` when the redeem response arrives (not at mount), with `serverNow`/`expiresAt` from that response | E2E: a code shown after a delay counts from the response |
 | C-83 | PD-11 CI 45548579038 | P1-18 | Linux-WebKit-only failures quarantined on CI WebKit (T-9): `molten-controls` /dev/ui 320 overflow 44 px, `gilded-gate` src=qr ends 6.8 s vs < 4.88 s, `shop-page` leave on day 1 (iphone14): root-caused, fixed, fixmes removed. Also from PD-11 E: gate "convergence at 4× full p95 ≤ 20" (fails on main's nightly 45397054403 too); Wallet→shop commit long task (FOLLOWUPS 79) | CI WebKit green with the tests active + nightly perf |
-| C-85 | PD-11 F (human 25 Nov) | P1-B close | Reviews done 25 Nov (code, security, design; fixes `8b74a8c`) except the **design HIGH** (Wallet header) and 2 design MEDs (card meta line, `navParent`); exploratory QA of every changed screen at 320/390/1440 (Chromium + WebKit); H-49 human parity sign-off with the side-by-side set | fixes + QA report + H-49 done |
+| C-85 | PD-11 F (human 25 Nov) | P1-B close | Reviews (code, security, design) and their fixes done 25 Nov (`8b74a8c`, `56ab5a7`, `13e7dab`); exploratory QA done 25 Nov, HIGH + MEDIUMs fixed `6a006c7`, LOWs in FOLLOWUPS. Left: **H-49** human parity sign-off with the side-by-side set | H-49 done |
 | C-86 | P1-B close C-84 reward trace | P1-15 | The reward moment's first play has one long task of 182–288 ms at 4× CPU (repeat plays none): root-caused, fixed, `vault.spec` "[PD-10] the reward moment … @perf" un-quarantined; T-10 closed | @perf spec active and green + SESSION_LOG |
 | C-17 | Stryker | P1-18 (human 17 Nov) | 14 surviving mutants (codes 7, return-to 3, policies 4) reviewed | mutation report |
 | C-48 | P0-15 E (human 17 Nov) | P1-18 | P0-15 leftovers: health.backup shows no alert on staging with `BACKUPS_ENABLED=true` (health snapshot); UptimeRobot staging monitors (H-45) + alert on both phones when staging is stopped (AC8); ZAP baseline (weekly) + k6 smoke (twice weekly) wired against staging, zero failed requests during a deploy under k6 (AC2) and rollback under load (AC3); B2 overwrite leaves the locked version (D design HIGH 1); two workers run each scheduled job once (AC6) if not already proven | staging snapshots + workflow runs + SESSION_LOG |
@@ -69,11 +69,10 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (25 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- CI 45559881992 on main `e268ee6`: green. Main checkout at `8eab40d`.
-- C-84 on `8eab40d` (Mac): parity `PARITY_SET=1` 186 passed (Chromium + WebKit); `@perf|@fps` pixel7 + desktop1440 16/0 (FX 60 fps p95 16.7–16.8; gate convergence both tiers; pour; wipe).
-- `8b74a8c` (worktree): typecheck, unit (portal shell + motion) 207/0; E2E (Linux container, chromium/pixel7/desktop1440) dock, wipe, gate, conformance, vault 146 passed then the 2 fixed specs 6/0; wipe slow-back fails without the fix; visual darwin 10/0 + linux 10/0.
-- Reward trace: 174 frames, fps 54.9–60, p95 16.7–16.8; first play 1 long task 182–288 ms (T-10/C-86).
-
+- `6a006c7` (wip): gate:task PASS (unit 2098/0, int 1456/0, Linux Chromium E2E 95/0, SAST, bundle); visual darwin 10/0 + linux 10/0.
+- Host E2E on the changes: shop-page, vault, wipe, ui-states × chromium/pixel7/desktop1440 141/0; wallet, dock, shells 69/0; wallet, shop-page, vault, gate × webkit/iphone14 78/0 + the reworked long-name test 4/4.
+- Linux WebKit (container) diagnostic: gate `data-face="fallback"` with the font blocked after the KI-57 fix (was null).
+- CI 45566545768 (`4b8538a`): red on wallet integration shape + P0-09 hover rule, both fixed (`cac47ad`, `6a006c7`); parity Chromium, perf, check, gitleaks green.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 

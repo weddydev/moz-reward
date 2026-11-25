@@ -1023,3 +1023,10 @@ Reviews of `ec5d6cc..e268ee6` (PD-C): code APPROVE WITH FIXES (HIGH-1 dock after
 C-84 done: parity `PARITY_SET=1` 186/0 Chromium + WebKit (H-49 set 152 pairs/browser, 0 over limit); 4× `@perf|@fps` 16/0 pixel7 + desktop1440; baselines darwin + linux (KI-55: e2e:linux had written Linux pixels as darwin); reward trace new, its @perf quarantined (T-10, C-86 → P1-15).
 `8b74a8c` evidence: unit 207/0, E2E (Linux container) 146 + 6/0 after 2 test fixes; slow-back E2E red without the fix. CI 45559881992 (main `e268ee6`) green; `pnpm ci:usage` estimate 315% of 2,000 min, public repo, nothing pauses.
 NOT VERIFIED: CI 45562871999 on `8b74a8c` (running); QA, H-49, staging smoke not started.
+
+## 2026-11-25 (~14:00 IST) — P1-B close (part 2), talha.syed (Mac)
+Design HIGH (Wallet header as the reference) `56ab5a7`; design MEDs (meta line, `navParent`) `13e7dab`; CI 45562871999 (`8b74a8c`) WebKit red → KI-57 gate font lock fix `4b8538a` (verified by Linux WebKit diagnostic). CI 45566545768 red → integration shape `cac47ad`, bell hover media `6a006c7`.
+QA (qa-engineer, Chromium + WebKit × 320/390/1440, 30 scenarios, axe clean): HIGH vault back link overflow, MEDIUM paused shop page silent / meta line cut by pill / long cover name split mid-word → all fixed test-first `6a006c7`; 8 LOW → FOLLOWUPS. KI-56 (slow-back spec timed from the tap).
+Evidence: gate:task PASS on `6a006c7`; visual darwin + linux 10/0; host E2E 141/0 + 69/0 (Chromium projects), 78/0 + 4/4 (WebKit projects).
+NOT VERIFIED: CI on the closing commit (pushed with this entry); staging smoke + Sentry (after main); H-49 (human).
+
