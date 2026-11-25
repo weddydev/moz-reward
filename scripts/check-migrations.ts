@@ -155,6 +155,8 @@ export function checkConcurrentMigration(name: string, sql: string): string[] {
  * tests/integration/rls-catalog.test.ts checks the same thing on the live database.
  */
 type RlsTable = {
+  /** `CREATE TABLE … PARTITION OF`: reached through the parent's policies, so it needs RLS but no policy. */
+  partition: boolean;
   enabled: boolean;
   forced: boolean;
   policies: Set<string>;
@@ -228,6 +230,7 @@ export function rlsState(files: readonly { name: string; sql: string }[]): RlsSt
       const created = RLS_PATTERNS.create.exec(stmt)?.[1]?.toLowerCase();
       if (created) {
         tables.set(created, {
+          partition: /\bPARTITION\s+OF\b/i.test(stmt),
           enabled: false,
           forced: false,
           policies: new Set(),
@@ -294,7 +297,7 @@ export function checkRls(files: readonly { name: string; sql: string }[]): strin
     const missing = [
       t.enabled ? null : "ENABLE ROW LEVEL SECURITY",
       t.forced ? null : "FORCE ROW LEVEL SECURITY",
-      t.policies.size > 0 ? null : "no policy",
+      t.policies.size > 0 || t.partition ? null : "no policy",
     ].filter((m): m is string => m !== null);
     if (missing.length > 0) {
       problems.push(

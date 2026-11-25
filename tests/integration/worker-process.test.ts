@@ -2,13 +2,18 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { Redis } from "ioredis";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { systemScope } from "@/server/authz/scope";
+import { TEMPLATES } from "@/lib/loyalty/programme";
+import { mintShopScope, systemScope } from "@/server/authz/scope";
+import { cacheUrl } from "@/server/jobs/connection";
 import { writeOutbox } from "@/server/jobs/outbox";
+import { realtimeChannel } from "@/server/realtime/publish";
 import { transaction } from "@/server/repos/_base";
+import { saveProgramme } from "@/server/services/loyalty-programme";
 import { bundleCli } from "../../scripts/bundle-cli";
 import { testEmail } from "../fixtures/auth";
-import { makeUser } from "../fixtures/factories";
+import { makeMembership, makeShop, makeStaff, makeUser } from "../fixtures/factories";
 import { latestEmailTo } from "../support/mailpit";
 
 /**
@@ -100,4 +105,52 @@ describe("[P0-18] worker process", () => {
     },
     60_000,
   );
+});
+
+describe("[P1-10] worker process: programme change → notices → realtime", () => {
+  it("a reward change's notice job runs in the real worker and publishes to the member's channel", async () => {
+    const worker = startWorker("source");
+    child = worker.proc;
+    await worker.started;
+
+    const shop = await makeShop();
+    const owner = await makeUser();
+    const member = await makeUser();
+    await makeStaff(shop.id, owner.id, "owner");
+    await makeMembership(member.id, shop.id);
+    const scope = mintShopScope({ userId: owner.id, shopId: shop.id, role: "owner" });
+    const rules = TEMPLATES.cafe.rules;
+    await transaction(scope, (tx) => saveProgramme(scope, { baseVersion: 0, rules }, tx));
+
+    const sub = new Redis(cacheUrl());
+    try {
+      const got = new Promise<string>((resolve) => {
+        sub.on("message", (_channel: string, message: string) => {
+          resolve(message);
+        });
+      });
+      await sub.subscribe(realtimeChannel({ kind: "user", id: member.id }));
+      await transaction(scope, (tx) =>
+        saveProgramme(
+          scope,
+          { baseVersion: 1, rules: { ...rules, mainReward: { text: "Free cake" } } },
+          tx,
+        ),
+      );
+      const message = JSON.parse(
+        await Promise.race([
+          got,
+          new Promise<string>((_, reject) =>
+            setTimeout(() => {
+              reject(new Error(`no realtime message:\n${worker.output().slice(-2000)}`));
+            }, 20_000),
+          ),
+        ]),
+      ) as { type: string; data: { notificationId?: string } };
+      expect(message.type).toBe("notification");
+      expect(worker.output()).not.toContain("job.retrying");
+    } finally {
+      sub.disconnect();
+    }
+  }, 60_000);
 });

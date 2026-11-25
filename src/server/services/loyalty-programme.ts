@@ -8,6 +8,7 @@ import {
 import type { ShopScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import { AppError } from "@/server/errors";
+import { writeOutbox } from "@/server/jobs/outbox";
 import {
   insertProgrammeVersion,
   listProgrammeVersions,
@@ -34,7 +35,10 @@ export type SaveProgrammeResult =
  * (`ingotTerms`). `baseVersion` is the version the form was opened on; any other latest version means the form
  * is stale and nothing is saved. Saving identical rules creates no version. `now` is injectable for tests.
  *
- * The 14-day notice to members (PRODUCT §6) goes through the P1-10 dispatch interface (CARRIED C-58).
+ * The 14-day notice to members (PRODUCT §6, C-58): when the main reward or milestones change (`rewardsFrom` is
+ * later than `activeFrom`), a `loyalty-change-notice` job is written in this same transaction; its handler gives
+ * every current member one in-app notice (src/server/notifications/loyalty-notice.ts). A rolled-back save
+ * writes nothing.
  */
 export async function saveProgramme(
   scope: ShopScope,
@@ -61,6 +65,13 @@ export async function saveProgramme(
     activeFrom,
     rewardsFrom,
   });
+  if (saved.rewardsFrom.getTime() > saved.activeFrom.getTime()) {
+    await writeOutbox(scope, tx, "notifications", "loyalty-change-notice", {
+      shopId: scope.shopId,
+      version: saved.version,
+      savedAt: now.toISOString(),
+    });
+  }
   return {
     kind: "saved",
     version: saved.version,

@@ -21,6 +21,10 @@ export const ALERT_KINDS = [
   "auth.admin_ip_denied",
   /** P1-01: no unique public code after every retry (shop code, member ID …); nothing was created. */
   "codes.exhausted",
+  /** P1-10: a notice job could not read what it announces (e.g. the owner lost the role before it ran). */
+  "notifications.undelivered",
+  /** P1-10: fewer than 2 months of notifications partitions exist ahead (ARCHITECTURE §4). */
+  "health.partitions",
   /** Sent once a day at most: the daily alert ceiling was reached; later alerts are in the log only. */
   "alert.ceiling",
 ] as const;

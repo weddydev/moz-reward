@@ -284,3 +284,26 @@ describe("[P1-01] C-34: open moz_app policies need a reason; global markers coun
     ).toHaveLength(1);
   });
 });
+
+describe("[P1-10] partitions: RLS enabled and forced, reached only through the parent's policies", () => {
+  const files = (...sql: string[]) =>
+    sql.map((s, i) => ({ name: `00${String(50 + i)}_x.sql`, sql: s }));
+  const part =
+    "CREATE TABLE notes_202701 PARTITION OF notes FOR VALUES FROM ('2027-01-01') TO ('2027-02-01');";
+
+  it("accepts a partition with ENABLE + FORCE and no policy of its own", () => {
+    expect(
+      checkRls(
+        files(
+          `${part}\nALTER TABLE notes_202701 ENABLE ROW LEVEL SECURITY;\nALTER TABLE notes_202701 FORCE ROW LEVEL SECURITY;`,
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("fails a partition without forced RLS (negative fixture)", () => {
+    expect(checkRls(files(`${part}\nALTER TABLE notes_202701 ENABLE ROW LEVEL SECURITY;`))).toEqual(
+      [expect.stringMatching(/"notes_202701".*FORCE ROW LEVEL SECURITY/)],
+    );
+  });
+});

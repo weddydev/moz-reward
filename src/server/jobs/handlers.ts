@@ -1,8 +1,12 @@
 import "server-only";
 import { sendStaffLockoutEmail } from "@/server/auth/lockout-email";
 import { systemScope, type TenantScope } from "@/server/authz/scope";
+import { log } from "@/server/log";
+import { sendLoyaltyChangeNotices } from "@/server/notifications/loyalty-notice";
 import { deliverAlertEmail } from "@/server/ops/alerts";
+import { deliverRealtime } from "@/server/realtime/publish";
 import { touchHeartbeat } from "@/server/repos/jobs";
+import { ensureNotificationPartitions } from "@/server/repos/notifications";
 import { sweepOutbox } from "./relay";
 import type { JobDef, JOBS, JobRunAs, QueueName } from "./registry";
 import type { Job } from "bullmq";
@@ -31,9 +35,26 @@ const JOBS_SCOPE = systemScope("scheduled background jobs run without a user");
 
 export const HEARTBEAT_NAME = "scheduled:heartbeat";
 
+/** Months of notifications partitions kept ahead (the health monitor alerts below 2). */
+export const PARTITION_MONTHS_AHEAD = 3;
+
 export const HANDLERS: Handlers = {
-  notifications: {},
+  notifications: {
+    publish: (payload) => deliverRealtime(payload),
+    "publish-system": (payload) => deliverRealtime(payload),
+    "loyalty-change-notice": (payload, _job, { scope }) => sendLoyaltyChangeNotices(payload, scope),
+  },
   email: {
+    // P1-10: no P1 notification type has email (all in-app). The template and the recipient re-check (its link
+    // to the shop, before any address is resolved) arrive with P2-11 (CARRIED_LATER).
+    notification: ({ notificationId }) => {
+      log().info({ notificationId }, "notification email skipped: templates arrive with P2-11");
+      return Promise.resolve();
+    },
+    "notification-system": ({ notificationId }) => {
+      log().info({ notificationId }, "notification email skipped: templates arrive with P2-11");
+      return Promise.resolve();
+    },
     "staff-lockout": ({ userId, reason }) => sendStaffLockoutEmail(userId, reason),
     "ops-alert": ({ at, ...alert }) => deliverAlertEmail({ ...alert, at: new Date(at) }),
   },
@@ -46,5 +67,6 @@ export const HANDLERS: Handlers = {
       await touchHeartbeat(JOBS_SCOPE, HEARTBEAT_NAME);
     },
     "outbox-sweep": () => sweepOutbox(),
+    "partitions-ensure": () => ensureNotificationPartitions(JOBS_SCOPE, PARTITION_MONTHS_AHEAD),
   },
 };

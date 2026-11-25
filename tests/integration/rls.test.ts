@@ -140,15 +140,31 @@ describe("[P0-20] catalog: every table has RLS enabled, forced and a policy, unl
       rls: boolean;
       forced: boolean;
       policies: number;
+      partition: boolean;
+      webAccess: boolean;
     }>(sql`
       SELECT c.relname AS name, c.relrowsecurity AS rls, c.relforcerowsecurity AS forced,
              (SELECT count(*)::int FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = c.relname)
-               AS policies
+               AS policies,
+             c.relispartition AS partition,
+             (has_table_privilege('moz_app', c.oid, 'SELECT, INSERT, UPDATE, DELETE')
+               OR has_table_privilege('moz_auth', c.oid, 'SELECT, INSERT, UPDATE, DELETE')) AS "webAccess"
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relname <> 'spatial_ref_sys'`);
     expect(tables.length).toBeGreaterThan(15);
     for (const t of tables) {
       if (globals.has(t.name)) continue;
+      if (t.partition) {
+        // P1-10 (security design check H1): a partition is reached only through its parent's policies. Read
+        // directly it has RLS forced, no policy (deny) and no web-role privileges at all.
+        expect({ name: t.name, rls: t.rls, forced: t.forced, webAccess: t.webAccess }).toEqual({
+          name: t.name,
+          rls: true,
+          forced: true,
+          webAccess: false,
+        });
+        continue;
+      }
       expect({ name: t.name, rls: t.rls, forced: t.forced, hasPolicy: t.policies > 0 }).toEqual({
         name: t.name,
         rls: true,
@@ -597,6 +613,7 @@ describe("[P0-20] re-review (0011): admin writes bound to the admin role; define
       "app_in_shop",
       "app_is_admin",
       "app_shop_role",
+      "ensure_notifications_partitions",
       "record_backup_heartbeat",
       "record_backup_metric",
       "record_host_heartbeat",

@@ -4,7 +4,7 @@ import type { Instrumentation } from "next";
  * Runs once when the Next.js server starts (P0-02, P0-19). Validates the server environment (and, in
  * staging/production, the database role) before any request is served. On failure the process EXITS with a
  * message naming the variable (never its value): Next would otherwise log the error and keep serving 500s.
- * P0-13: then starts Sentry (errors only; off without SENTRY_DSN).
+ * P0-13: then starts Sentry (errors only; off without SENTRY_DSN). P1-10: registers the realtime shutdown drain.
  */
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
@@ -12,6 +12,9 @@ export async function register(): Promise<void> {
   await bootOrExit(runBootChecks);
   const { initSentry } = await import("@/server/observability/sentry");
   initSentry("web");
+  // P1-10 (C-28): realtime streams close with a jittered retry on shutdown.
+  const { registerRealtimeShutdown } = await import("@/server/realtime/process-hub");
+  registerRealtimeShutdown();
 }
 
 /**

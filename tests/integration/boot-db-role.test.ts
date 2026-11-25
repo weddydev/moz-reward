@@ -115,10 +115,26 @@ describe("[P0-19] boot refuses the database owner role, its members and BYPASSRL
       await owner.unsafe(`ALTER ROLE moz_rls LOGIN`);
       try {
         expect(databaseRoleProblem(await databaseRoleFacts(client), false, "moz_app")).toMatch(
-          /moz_rls can log in/,
+          /moz_rls or moz_partitions can log in/,
         );
       } finally {
         await owner.unsafe(`ALTER ROLE moz_rls NOLOGIN`);
+      }
+    } finally {
+      await client.end();
+    }
+  });
+
+  it("[P1-10] refuses to start while moz_partitions (owner of the notifications partitions) can log in", async () => {
+    const client = postgres(process.env.DATABASE_URL ?? "", { max: 1, onnotice: () => {} });
+    try {
+      await owner.unsafe(`ALTER ROLE moz_partitions LOGIN`);
+      try {
+        expect(databaseRoleProblem(await databaseRoleFacts(client), false, "moz_app")).toMatch(
+          /moz_rls or moz_partitions can log in/,
+        );
+      } finally {
+        await owner.unsafe(`ALTER ROLE moz_partitions NOLOGIN`);
       }
     } finally {
       await client.end();

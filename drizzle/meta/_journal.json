@@ -190,6 +190,13 @@
       "when": 1795085745363,
       "tag": "0026_landing_reward_preview",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1795600548030,
+      "tag": "0027_notifications",
+      "breakpoints": true
     }
   ]
 }

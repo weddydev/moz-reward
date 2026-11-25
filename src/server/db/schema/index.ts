@@ -6,3 +6,4 @@ export * from "./outbox";
 export * from "./shop-details";
 export * from "./consents";
 export * from "./loyalty";
+export * from "./notifications";

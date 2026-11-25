@@ -12,13 +12,25 @@ import { env } from "@/server/env";
  * fail fast with a command deadline, so a request never hangs when Redis is down. Keys are namespaced by
  * REDIS_KEY_PREFIX (per test worker).
  */
-export type ConnectionRole = "producer" | "worker" | "limiter" | "cache";
+export type ConnectionRole = "producer" | "worker" | "limiter" | "cache" | "subscriber";
 
 /** Local/test default for the cache instance (infra/docker-compose.dev.yml); required elsewhere (env.ts). */
 const LOCAL_CACHE_URL = "redis://:moz@localhost:6380";
 export const cacheUrl = (): string => env().REDIS_CACHE_URL ?? LOCAL_CACHE_URL;
 
 export function createRedis(role: ConnectionRole): Redis {
+  if (role === "subscriber") {
+    // P1-10: the web process's one shared pub/sub subscriber on redis-cache (ARCHITECTURE §7). It never gives
+    // up: SUBSCRIBEs queue while Redis is down and ioredis re-subscribes every channel on reconnect. Streams
+    // learn of the outage from the connection events (the hub sends `degraded`), not from a failed command.
+    return new Redis(cacheUrl(), {
+      connectionName: "moz:subscriber",
+      maxRetriesPerRequest: null,
+      enableOfflineQueue: true,
+      autoResubscribe: true,
+      connectTimeout: 2_000,
+    });
+  }
   if (role === "limiter" || role === "cache") {
     // On the request path: commands queue briefly while the connection comes up (the first request after
     // start-up must not be refused), but every command has a hard deadline so a request never hangs.

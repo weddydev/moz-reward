@@ -19,6 +19,7 @@ function healthy(): HealthSnapshot {
     queues: [{ name: "email", waiting: 0, active: 0, delayed: 0, failed: 0, lagSec: 0 }],
     outbox: { pending: 0, oldestAgeSec: 0 },
     failedJobs: { unresolved: 0, recent: 0 },
+    partitions: { notificationsMonthsAhead: 3 },
     disk: { path: "/", usedPct: 41 },
     backups: {
       enabled: false,
@@ -354,5 +355,23 @@ describe("[P0-13] health thresholds (ARCHITECTURE §11)", () => {
     s.queues = [];
     s.outbox = { pending: null, oldestAgeSec: null };
     expect(kinds(s)).toEqual([]);
+  });
+});
+
+describe("[P1-10] notifications partitions ahead", () => {
+  it("alerts below 2 months ahead, not at 2 or when unknown", () => {
+    const at = (n: number | null): string[] =>
+      evaluateHealth({ ...healthy(), partitions: { notificationsMonthsAhead: n } }, NOW).map(
+        (a) => a.kind,
+      );
+    expect(at(1)).toContain("health.partitions");
+    expect(at(0)).toContain("health.partitions");
+    expect(at(THRESHOLDS.partitionMonthsAhead)).not.toContain("health.partitions");
+    expect(at(null)).not.toContain("health.partitions");
+  });
+
+  it("reads a snapshot stored before P1-10 (no partitions field)", () => {
+    const { partitions: _drop, ...old } = healthy();
+    expect(healthSnapshotSchema.parse(old).partitions).toEqual({ notificationsMonthsAhead: null });
   });
 });

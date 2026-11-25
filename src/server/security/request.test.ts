@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isAppError } from "@/server/errors";
-import { assertSameOrigin, clientIp } from "./request";
+import { assertReadOrigin, assertSameOrigin, clientIp } from "./request";
 
 const h = (init: Record<string, string>): Headers => new Headers(init);
 
@@ -73,5 +73,41 @@ describe("[P0-05] assertSameOrigin for mutating route handlers", () => {
     expect(rejects(req("POST", { "sec-fetch-site": "cross-site" }))).toBe(true);
     expect(rejects(req("POST", { "sec-fetch-site": "same-site" }))).toBe(true);
     expect(rejects(req("POST", {}))).toBe(true);
+  });
+});
+
+describe("[P1-10] assertReadOrigin for credentialed GET streams (SSE)", () => {
+  const APP = ["https://moz.example"];
+  const req = (headers: Record<string, string>): Request =>
+    new Request("https://moz.example/api/sse/me", { headers });
+  const rejects = (r: Request): boolean => {
+    try {
+      assertReadOrigin(r, APP);
+      return false;
+    } catch (e) {
+      return isAppError(e) && e.code === "FORBIDDEN";
+    }
+  };
+
+  it("accepts the app's own page (same-origin fetch: no Origin, Sec-Fetch-Site same-origin)", () => {
+    expect(rejects(req({ "sec-fetch-site": "same-origin" }))).toBe(false);
+    expect(rejects(req({ origin: "https://moz.example", "sec-fetch-site": "same-origin" }))).toBe(
+      false,
+    );
+  });
+
+  it("accepts a client that sends neither header (older Safari, non-browser: the cookie is the credential)", () => {
+    expect(rejects(req({}))).toBe(false);
+  });
+
+  it("refuses cross-site, same-site (cdn/uploads subdomains), none and foreign or opaque origins", () => {
+    expect(rejects(req({ "sec-fetch-site": "cross-site" }))).toBe(true);
+    expect(rejects(req({ "sec-fetch-site": "same-site" }))).toBe(true);
+    expect(rejects(req({ "sec-fetch-site": "none" }))).toBe(true);
+    expect(rejects(req({ origin: "https://evil.example" }))).toBe(true);
+    expect(rejects(req({ origin: "https://cdn.moz.example", "sec-fetch-site": "same-site" }))).toBe(
+      true,
+    );
+    expect(rejects(req({ origin: "null" }))).toBe(true);
   });
 });

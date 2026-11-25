@@ -7,6 +7,8 @@ import { beginStaffLogin } from "@/server/auth/staff-login";
 import { authScope } from "@/server/authz/scope";
 import { fakeAi } from "@/server/integrations/ai";
 import { fakePushSink } from "@/server/integrations/push";
+import { realtimeHub } from "@/server/realtime/process-hub";
+import { deliverRealtime } from "@/server/realtime/publish";
 import { deleteUserSessions } from "@/server/repos/sessions";
 import {
   ACTOR_ROLES,
@@ -164,6 +166,9 @@ const shopInput = z
   })
   .strict();
 
+/** P1-10: what the worker's publish job does, for E2E (the E2E server runs no worker). Ids only. */
+const realtimePublishInput = z.object({ userId: z.uuid() }).strict();
+
 /** P1-04: move a seeded shop to another state mid-flow (suspended while the join sheet is open). */
 const shopStatusInput = z.object({ shopId: z.uuid(), status: shopInput.shape.status }).strict();
 
@@ -177,6 +182,15 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
   switch (action) {
     case "session":
       return createSession(body);
+    case "realtime-publish": {
+      const parsed = realtimePublishInput.safeParse(body);
+      if (!parsed.success) return invalid();
+      const receivers = await deliverRealtime({
+        targets: [{ kind: "user", id: parsed.data.userId }],
+        event: { type: "notification", data: {} },
+      });
+      return NextResponse.json({ receivers });
+    }
     case "user": {
       const parsed = userInput.safeParse(body ?? {});
       if (!parsed.success) return invalid();
@@ -295,6 +309,12 @@ export async function GET(req: Request, ctx: Ctx): Promise<Response> {
   switch (action) {
     case "push":
       return NextResponse.json(fakePushSink.list());
+    case "realtime-stats":
+      // P1-10: this server process's open streams (leak checks over real sockets).
+      return NextResponse.json({
+        ...realtimeHub().stats(),
+        forUser: realtimeHub().streamsFor(new URL(req.url).searchParams.get("userId") ?? ""),
+      });
     case "sessions": {
       // ?userId= → the client IPs recorded on that user's sessions (P0-19 conformance).
       const userId = new URL(req.url).searchParams.get("userId") ?? "";

@@ -45,6 +45,14 @@ export const SCHEDULES: readonly ScheduleDef[] = [
     pattern: "* * * * *",
     data: {},
   }),
+  defineSchedule({
+    id: "partitions-ensure",
+    queue: "scheduled",
+    name: "partitions-ensure",
+    // Daily, quiet hour (Europe/London); a missed day is harmless with 3 months ahead.
+    pattern: "17 3 * * *",
+    data: {},
+  }),
 ];
 
 /** The schedule's data in the versioned envelope (re-sealed on every start, so a version bump applies). */

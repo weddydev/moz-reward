@@ -47,3 +47,21 @@ export function assertSameOrigin(
       : request.headers.get("sec-fetch-site") === "same-origin";
   if (!ok) throw new AppError("FORBIDDEN", "This request was blocked for your security.");
 }
+
+/**
+ * Same-origin check for credentialed **GET** endpoints that `assertSameOrigin` lets through as safe methods
+ * (P1-10: the SSE streams). A same-origin `fetch` GET sends no Origin, so Sec-Fetch-Site is the real signal:
+ * refuse a foreign Origin, refuse any Sec-Fetch-Site other than `same-origin` (incl. `same-site`: the cdn and
+ * uploads subdomains carry the Lax cookie), allow a request with neither header (older browsers, non-browser
+ * clients; the session cookie is still required). No CORS headers are ever sent.
+ */
+export function assertReadOrigin(
+  request: Request,
+  allowed: readonly string[] = [new URL(env().APP_URL).origin],
+): void {
+  const origin = request.headers.get("origin");
+  const site = request.headers.get("sec-fetch-site");
+  const ok =
+    (origin === null || allowed.includes(origin)) && (site === null || site === "same-origin");
+  if (!ok) throw new AppError("FORBIDDEN", "This request was blocked for your security.");
+}

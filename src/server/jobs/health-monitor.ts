@@ -11,6 +11,8 @@ import {
   type HealthSnapshot,
 } from "@/server/ops/health-rules";
 import { readUsage } from "@/server/ops/usage";
+import { realtimeConnections } from "@/server/realtime/presence";
+import { notificationMonthsAhead } from "@/server/repos/notifications";
 import {
   archiverStatus,
   databaseSizeBytes,
@@ -156,6 +158,14 @@ export async function collectHealth(deps: MonitorDeps = {}): Promise<HealthSnaps
     timed(() => redis().ping()),
     timed(() => cache().ping()),
   ]);
+  const [partitions, sse] = await Promise.all([
+    db.ok
+      ? timed(() => notificationMonthsAhead(SCOPE))
+      : Promise.resolve({ ok: false as const, ms: 0 }),
+    cachePing.ok
+      ? timed(() => realtimeConnections(cache()))
+      : Promise.resolve({ ok: false as const, ms: 0 }),
+  ]);
   const [beats, archiver, lever, failed, outbox, queues, usage, disk] = await Promise.all([
     db.ok ? timed(() => heartbeats(SCOPE)) : Promise.resolve({ ok: false as const, ms: 0 }),
     db.ok && e.BACKUPS_ENABLED
@@ -225,7 +235,8 @@ export async function collectHealth(deps: MonitorDeps = {}): Promise<HealthSnaps
     },
     email: { sentToday: usageValue?.emailToday ?? null, cap: e.EMAIL_DAILY_CAP },
     sentry: { sentThisMonth: usageValue?.sentryMonth ?? null, quota: e.SENTRY_MONTHLY_QUOTA },
-    sse: { connections: null },
+    sse: { connections: valueOr(sse, null) },
+    partitions: { notificationsMonthsAhead: valueOr(partitions, null) },
   };
 }
 

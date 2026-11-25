@@ -1,7 +1,9 @@
 import "server-only";
 import { z } from "zod";
+import { REALTIME_EVENTS } from "@/lib/realtime/events";
 import type { LockoutReason } from "@/server/emails/StaffLockoutEmail";
 import { ALERT_KINDS } from "@/server/ops/alert-kinds";
+import { parseRealtimeEvent, REALTIME_TARGET } from "@/server/realtime/events";
 
 /**
  * Queue registry (P0-04, ARCHITECTURE §6). Every queue, its worker concurrency and the payload schema of each
@@ -62,9 +64,42 @@ export function defineJob<S extends z.ZodType, R extends JobRunAs = "system">(
 /** Kept in step with StaffLockoutEmail's LockoutReason (type-checked below). */
 const LOCKOUT_REASONS = ["password", "second-factor"] as const satisfies readonly LockoutReason[];
 
+/** P1-10: a realtime hint for up to 100 channels (ids only; re-validated against the event schema). */
+const PUBLISH = z
+  .object({
+    targets: z.array(REALTIME_TARGET).min(1).max(100),
+    event: z
+      .object({ type: z.enum(REALTIME_EVENTS), data: z.record(z.string(), z.unknown()) })
+      .strict()
+      .refine((e) => parseRealtimeEvent(e) !== null, "not a valid realtime event"),
+  })
+  .strict();
+
+/** P1-10: an email for a notification on the email budget list (template from P2-11). */
+const NOTIFICATION_EMAIL = z
+  .object({ notificationId: z.uuid(), userId: z.uuid(), createdAt: z.iso.datetime() })
+  .strict();
+
 export const JOBS = {
-  notifications: {},
+  notifications: {
+    /**
+     * P1-10: publish a realtime event to Redis pub/sub. Two names for one handler because the outbox pairs a
+     * job's producer with how it runs (C-30): `publish` from request scopes, `publish-system` from jobs.
+     */
+    publish: defineJob(PUBLISH, { runAs: "tenant" }),
+    "publish-system": defineJob(PUBLISH),
+    /** C-58: one in-app notice per current member after a programme save that changes rewards/milestones. */
+    "loyalty-change-notice": defineJob(
+      z
+        .object({ shopId: z.uuid(), version: z.number().int().min(1), savedAt: z.iso.datetime() })
+        .strict(),
+      { runAs: "tenant" },
+    ),
+  },
   email: {
+    /** P1-10: email channel of `notify()` (budget-list types only); placeholder until P2-11's templates. */
+    notification: defineJob(NOTIFICATION_EMAIL, { runAs: "tenant" }),
+    "notification-system": defineJob(NOTIFICATION_EMAIL),
     /** P0-19/P0-18: tell a staff/admin owner their account was locked (written to the outbox with the audit row). */
     "staff-lockout": defineJob(
       z.object({ userId: z.uuid(), reason: z.enum(LOCKOUT_REASONS) }).strict(),
@@ -92,6 +127,8 @@ export const JOBS = {
     heartbeat: defineJob(z.object({}).strict()),
     /** P0-18: alerts on outbox rows waiting > 2 min and prunes completed rows past retention. */
     "outbox-sweep": defineJob(z.object({}).strict()),
+    /** P1-10: keep monthly notifications partitions 3 months ahead (ARCHITECTURE §4). */
+    "partitions-ensure": defineJob(z.object({}).strict()),
   },
 } as const satisfies Record<QueueName, Record<string, JobDef>>;
 

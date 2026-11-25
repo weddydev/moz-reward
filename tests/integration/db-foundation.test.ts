@@ -110,6 +110,7 @@ describe("[P0-03] app role moz_app (least privilege)", () => {
     nfc_tags: "ISU", // P1-01: no DELETE, tags are history (replaced, never removed)
     marketing_consents: "IS", // P1-04: append-only consent history (RLS: own insert/read, shop + admin read)
     loyalty_programs: "IS", // P1-05: immutable versions (RLS: team + admin read, owner inserts as themself)
+    notifications: "IS", // P1-10: partitioned parent; UPDATE (read_at) by column grant; partitions have no grants
   };
 
   it("has exactly the reviewed grants per table, never TRUNCATE", async () => {
@@ -129,7 +130,8 @@ describe("[P0-03] app role moz_app (least privilege)", () => {
         has_table_privilege('moz_app', c.oid, 'DELETE') AS del,
         has_table_privilege('moz_app', c.oid, 'TRUNCATE') AS trunc
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname <> 'spatial_ref_sys'`);
+      WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND NOT c.relispartition
+        AND c.relname <> 'spatial_ref_sys'`);
     const actual = Object.fromEntries(
       privs.map((p) => [
         p.rel,

@@ -70,6 +70,8 @@ export type HealthSnapshot = {
   sentry: { sentThisMonth: number | null; quota: number };
   /** SSE connections (P1-10 adds the counter). */
   sse: { connections: number | null };
+  /** P1-10: whole months after the current one with a notifications partition (null = unknown). */
+  partitions: { notificationsMonthsAhead: number | null };
 };
 
 const n = z.number();
@@ -117,10 +119,16 @@ export const healthSnapshotSchema: z.ZodType<HealthSnapshot> = z.object({
   email: z.object({ sentToday: nn, cap: n }),
   sentry: z.object({ sentThisMonth: nn, quota: n }),
   sse: z.object({ connections: nn }),
+  // Added in P1-10: snapshots stored before then have no such field.
+  partitions: z
+    .object({ notificationsMonthsAhead: nn })
+    .default({ notificationsMonthsAhead: null }),
 });
 
 export const THRESHOLDS = {
   queueLagSec: 60,
+  /** ARCHITECTURE §4: monthly partitions exist at least this many months ahead. */
+  partitionMonthsAhead: 2,
   outboxAgeSec: 120,
   schedulerStaleSec: 180,
   diskPct: 80,
@@ -193,6 +201,11 @@ export function evaluateHealth(s: HealthSnapshot, now: Date): Alert[] {
 
   if (s.outbox.oldestAgeSec !== null && s.outbox.oldestAgeSec > THRESHOLDS.outboxAgeSec) {
     ops("outbox.stale", { count: s.outbox.pending, oldestAgeSec: s.outbox.oldestAgeSec });
+  }
+
+  const ahead = s.partitions.notificationsMonthsAhead;
+  if (ahead !== null && ahead < THRESHOLDS.partitionMonthsAhead) {
+    ops("health.partitions", { table: "notifications", monthsAhead: ahead });
   }
 
   if ((s.failedJobs.recent ?? 0) > 0) {

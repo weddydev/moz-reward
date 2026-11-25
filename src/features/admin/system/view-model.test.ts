@@ -35,6 +35,7 @@ const snapshot = (over: Partial<HealthSnapshot> = {}): HealthSnapshot => ({
   email: { sentToday: 290, cap: 400 },
   sentry: { sentThisMonth: null, quota: 5000 },
   sse: { connections: null },
+  partitions: { notificationsMonthsAhead: null },
   ...over,
 });
 

@@ -332,6 +332,7 @@ export async function makeOpsSnapshot(now = new Date()): Promise<HealthSnapshot>
     email: { sentToday: 12, cap: 400 },
     sentry: { sentThisMonth: 3, quota: 5000 },
     sse: { connections: null },
+    partitions: { notificationsMonthsAhead: null },
   };
   await db()
     .insert(opsSnapshot)

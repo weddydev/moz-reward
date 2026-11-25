@@ -33,6 +33,12 @@ SELECT 'CREATE ROLE moz_rls' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolnam
 ALTER ROLE moz_rls WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION PASSWORD NULL;
 GRANT moz_rls TO moz_owner WITH ADMIN OPTION;
 
+-- Owner of the notifications partitions and their SECURITY DEFINER creator (P1-10, drizzle/0027). NOLOGIN, owns
+-- nothing else; moz_owner gets ADMIN so the migration can hand the table and function over.
+SELECT 'CREATE ROLE moz_partitions' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'moz_partitions') \gexec
+ALTER ROLE moz_partitions WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION PASSWORD NULL;
+GRANT moz_partitions TO moz_owner WITH ADMIN OPTION;
+
 -- No runtime login is a member of another (a web login must not SET ROLE to moz_worker or moz_auth; boot
 -- checks it too). Any such membership, however it was granted, is removed.
 SELECT format('REVOKE %I FROM %I CASCADE', r.rolname, m.rolname)
