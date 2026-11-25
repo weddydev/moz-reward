@@ -93,6 +93,8 @@ const pastRequest = (c: Member, shopId: string, over: Partial<typeof pointReques
       userId: c.id,
       shopId,
       idempotencyKey: newId(),
+      // P1-12: a rejected request always carries its preset reason (CHECK point_requests_rejected_has_reason).
+      ...(over.status === "rejected" ? { rejectReason: "other" as const } : {}),
       ...over,
     })
     .returning()
