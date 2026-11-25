@@ -7,17 +7,17 @@ Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-12 in progress (talha.syed, Mac, 26 Nov): `wip/P1-12`, HEAD `c2538e8`** (on main `6770f64`; CI on `c2538e8` was running at checkpoint, look at it before the next push). Autopilot OFF. CI 45681035420 on `65f0bfe` green.
-- **Done:** (a) migration 0029 + DB walls (`approvals-db.test.ts` 20/20). (b) `65f0bfe`: approvals repo/service/actions (`approveRequest`, `ownerApprove`, `rejectRequest`, `reverseAward`), notifications, realtime `awaiting_owner` (`approvals.test.ts` 23/0, authz 77/0). (c) `c2538e8`: Wallet reads rewards-ready count, recent activity (last 5 visits) and last 10 earns per membership (C-62); Vault streak chip + stored tier never lowered (C-66); shop page Recent receipts, last 5 (C-69); repo `src/server/repos/receipts.ts`; test helper `src/server/testing/visits.ts` (`approvedVisit`) + test API `shop` `visits`/member `tier`/`streakWeeks`; DECISIONS 26 Nov "P1-12 reads". C-62/C-66/C-69 proofs are on the branch: rows close with the task. Outbox rows for the receipt PDF and `fraud:award-check` are NOT written yet: steps (d)/(e) add the jobs and the writes in `decide()`.
-- **Next step (d):** receipt PDF: pdfkit worker-only (DECISIONS dep line + lint boundary to `src/server/jobs`; no links/attachments; `pnpm audit --prod` + OSV), private key `receipts/<shopId>/<receiptId>.pdf`, outbox row written in `decide()`, route never regenerates in web (404 + outbox), customer route + staff route with shopId in the path, headers `attachment; filename="receipt-<n>.pdf"`, `private, no-store`, nosniff, GET only, per-user limit, CDN URL 404 test; Download link on the shop page's receipt rows. Security-relevant: `security-reviewer` design check on the plan first.
-- **Then:** (e) `fraud:award-check`: unexpired sessions with same UA and IP, ids only in details; (f) minimal `/dashboard/requests` UI + J2 E2E. At close: DECISIONS lines for staff initials (≤ 3 letters, stay after staff erasure) and pdfkit; COMPLIANCE §2.6 retention + §2.7 DSAR rows for ledger/rewards/receipts/fraud_flags; FOLLOWUPS: VALIDATE 0029's NOT VALID checks. `security-reviewer` on the final diff.
-- **Not yet tested:** CI on `c2538e8`; C-95 (staging, authenticated stream); P1-11 on staging.
+- **P1-12 in progress (talha.syed, Mac, 26 Nov): `wip/P1-12`, HEAD `b5c4b27`** (on main `6770f64`: rebase onto main before the closing push; CI on `b5c4b27` was running at checkpoint, look at it before the next push). Autopilot OFF. CI 45683593425 on `c2538e8` green.
+- **Done:** (a) migration 0029 + DB walls. (b) `65f0bfe` approvals service/actions. (c) `c2538e8` Wallet/Vault/shop-page reads (C-62, C-66, C-69 proofs on the branch: rows close with the task). (d) `b5c4b27` receipt PDF: `pdf:receipt` tenant job written by `decide()` (renderer `src/server/jobs/receipt-pdf.ts`, pdfkit 0.20.2 worker-only via ESLint `pdfkitRule`), **private bucket** `S3_PRIVATE_BUCKET` (design check HIGH: `cdn.` serves a whole R2 bucket), download routes `/api/me/receipts/[id]/pdf` + `/api/shops/[shopId]/receipts/[id]/pdf` (`src/server/services/receipt-download.ts`), PDF link on the shop page, test API `receipt-pdfs` (stub files), DECISIONS 26 Nov "receipt PDFs", H-08b raised to 🟠, C-99 → P2-12. Design check: OK with changes, all applied. **New env:** `S3_PRIVATE_BUCKET=moz-rewards-private` (+ optional `S3_PRIVATE_ACCESS_KEY_ID`/`_SECRET_ACCESS_KEY`): add to `.env.local` on the Windows laptop; `pnpm services:up` recreate makes the MinIO bucket (tests also create it).
+- **Next step (e):** `fraud:award-check` job (fraud queue, outbox row in `decide()`): flag (fraud_flags) when the approver and the customer have unexpired sessions with the same UA and IP; ids only in details; integration tests.
+- **Then:** (f) minimal `/dashboard/requests` UI + J2 E2E. At close: rebase onto main; DECISIONS line for staff initials (≤ 3 letters, stay after staff erasure); COMPLIANCE §2.6 retention + §2.7 DSAR rows for ledger/rewards/receipts/fraud_flags (receipt PDFs: no customer data, follow the receipt row); FOLLOWUPS: VALIDATE 0029's NOT VALID checks; PROGRESS CARRIED row C-100 → P1-C close (staging receipt download after H-08b; anonymous GET of the private bucket and of `cdn.`/receipts path ≠ 200); `security-reviewer` on the final diff.
+- **Not yet tested:** CI on `b5c4b27` (incl. OSV on pdfkit's deps); receipt PDFs on staging (needs H-08b); C-95 (staging, authenticated stream); P1-11 on staging.
 ## Status
 - **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **P1-C** in progress (P1-10, P1-11 done; P1-12 on `wip/P1-12`). P1-B closed 25 Nov (reviews, QA, H-49 approved; Sentry held until P2, C-88). PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-26, talha.syed (P1-12 step c on `wip/P1-12` `c2538e8`)
+- **Last updated:** 2026-11-26, talha.syed (P1-12 step d on `wip/P1-12` `b5c4b27`)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -26,7 +26,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. P1-12 step (d) receipt PDF on `wip/P1-12`, then (e)–(f) per the Handoff note; then P1-13.
+1. P1-12 step (e) fraud:award-check on `wip/P1-12`, then (f) per the Handoff note; then P1-13.
 2. Human any time: H-45 (🟠), H-38 (branches), H-51 (b); H-48b at P2 start, after the first demo (C-88).
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -68,8 +68,8 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (26 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- P1-12 (c) `c2538e8` (`wip/P1-12`): unit wallet/vault/shop views 61/0; int wallet 10/0, vault 10/0, receipts 1/0; E2E `--grep P1-12` 15/15 on 5 projects (production build), screenshots 320/390/1440 inspected; pre-push check + SAST PASS. CI pending.
-- P1-12 (b) `65f0bfe`: approvals 23/0, authz + service 77/0; CI 45681035420 green.
+- P1-12 (d) `b5c4b27` (`wip/P1-12`): unit receipt-pdf 17/0, shop view 18/0, env+jobs 81/0; int receipt-pdf 7/0, receipt-download 7/0, approvals+db+storage+receipts+wallet 58/0; authz receipts 26/0; E2E shop-page `--grep P1-12` 5/5 on 5 projects (production build), screenshots 320/390/1440 inspected; pre-push check (unit 2225/0) + SAST PASS. CI pending.
+- P1-12 (c) `c2538e8`: CI 45683593425 green.
 - Main `da8a321` (gate inline script 68 ms): CI 45674369167 green (all jobs); gate:task PASS (unit 2199/0, int 1540/0/1).
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).

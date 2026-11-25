@@ -1079,3 +1079,9 @@ Done: Wallet rewards ready + recent activity + last 10 earns (C-62); Vault curre
 Commits: c2538e8 (wip/P1-12)
 Tests: unit 61/0; int wallet 10/0, vault 10/0, receipts 1/0; E2E P1-12 15/15 (5 projects, prod build); pre-push check + SAST PASS. CI on c2538e8 pending; 65f0bfe CI 45681035420 green.
 Left off: step (d) receipt PDF (pdfkit worker-only, private storage, outbox write in `decide()`, download routes; security-reviewer design check first), then (e) fraud:award-check, (f) UI + J2 E2E.
+
+## 2026-11-26 01:10 — P1 — P1-12 step (d): receipt PDF, private bucket, downloads
+Done: security-reviewer design check (OK with changes: HIGH bucket → separate private bucket `S3_PRIVATE_BUCKET`; MEDIUM scoped reads, strict snapshot schema, narrow systemScope key write; LOWs applied, C-99 → P2-12); pdfkit 0.20.2 worker-only renderer + `pdf:receipt` job + outbox write in `decide()`; GET routes for customer and team; PDF link on the shop page; DECISIONS "receipt PDFs"; H-08b 🟠.
+Commits: b5c4b27 (wip/P1-12)
+Tests: unit receipt-pdf 17/0; int receipt-pdf 7/0, receipt-download 7/0, related 58/0; authz 26/0; E2E P1-12 shop-page 5/5 (5 projects, prod build); pre-push check + SAST PASS (SAST first caught literal bidi chars in a test: fixed). CI on b5c4b27 pending; c2538e8 CI 45683593425 green.
+Left off: step (e) fraud:award-check (outbox in decide(), fraud_flags on same UA+IP sessions, ids only), then (f) dashboard requests UI + J2 E2E, then the close list in the Handoff note.
