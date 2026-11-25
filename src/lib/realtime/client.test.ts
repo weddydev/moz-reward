@@ -125,6 +125,32 @@ describe("[P1-10] realtime client", () => {
     expect(b.deps.onSignedOut).toHaveBeenCalledTimes(1);
   });
 
+  it("closed: replaced (a newer tab took the slot) → no reconnect ping-pong: polls every 15 s until started again", async () => {
+    const s = sseBody();
+    const again = sseBody();
+    const { client, deps, calls } = setup([s.response, again.response]);
+    client.start();
+    await tick();
+    s.push('event: ready\ndata: {}\n\nevent: closed\ndata: {"reason":"replaced"}\n\n');
+    s.end();
+    await tick();
+    expect(client.state()).toBe("replaced");
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(calls).toHaveLength(1);
+    expect(deps.refetch).toHaveBeenCalledTimes(8);
+    // Shown again (the hook calls start): one new stream, polling ends once it is ready.
+    client.start();
+    await tick();
+    expect(calls).toHaveLength(2);
+    again.push("event: ready\ndata: {}\n\n");
+    await tick();
+    expect(client.state()).toBe("open");
+    const polled = deps.refetch.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(deps.refetch.mock.calls.length).toBe(polled);
+    client.stop();
+  });
+
   it("403 stops for good", async () => {
     const { client, calls } = setup([new Response(null, { status: 403 })]);
     client.start();

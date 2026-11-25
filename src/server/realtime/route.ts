@@ -3,10 +3,12 @@ import { parseShopId } from "@/lib/brand";
 import { streamDeadline } from "@/server/auth/stream-sessions";
 import { ALL_SHOP_ROLES, requireCustomer, requireShopRole } from "@/server/authz";
 import { currentPrincipal } from "@/server/authz/principal";
+import { env } from "@/server/env";
 import { AppError, isAppError } from "@/server/errors";
 import { ipLimit, limit, tooManyRequests, userKey } from "@/server/security/rate-limit";
 import { assertReadOrigin, clientIp } from "@/server/security/request";
 import { realtimeHub } from "./process-hub";
+import { realtimeOffForTest } from "./test-switch";
 import type { RealtimeTarget } from "./events";
 
 /**
@@ -54,6 +56,8 @@ export async function openRealtimeStream(
   which: StreamRequest,
 ): Promise<Response> {
   try {
+    if (realtimeOffForTest(request.headers.get("cookie"), env().APP_ENV))
+      throw new AppError("FORBIDDEN", "realtime off in this spec");
     assertReadOrigin(request);
     const ip = ipLimit("sse", clientIp(request.headers), CONNECT_LIMITS.ip);
     if (ip) {

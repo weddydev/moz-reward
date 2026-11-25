@@ -5,6 +5,7 @@ import { newId } from "@/lib/id";
 import { TEMPLATES } from "@/lib/loyalty/programme";
 import { validStreamSessions } from "@/server/auth/stream-sessions";
 import {
+  mintAdminScope,
   mintCustomerScope,
   mintShopScope,
   type ShopScope,
@@ -400,6 +401,42 @@ describe("[P1-10] notifications RLS and partitions", () => {
     // Team members can't read what they wrote (no SELECT policy for the shop scope).
     const seen = await transaction(a.owner, (tx) => tx.execute(sql`SELECT id FROM notifications`));
     expect([...seen]).toEqual([]);
+  });
+
+  it("only a shop's team may insert, transactional only, for a current member: customers, every admin role, a left member and marketing are refused", async () => {
+    const a = await shopWithTeam();
+    const member = await makeUser();
+    const left = await makeUser();
+    await makeMembership(member.id, a.shop.id);
+    await makeMembership(left.id, a.shop.id);
+    await db()
+      .update(memberships)
+      .set({ leftAt: new Date() })
+      .where(eq(memberships.userId, left.id));
+    const row = (userId: string, category: "transactional" | "marketing" = "transactional") => ({
+      id: newId(),
+      userId,
+      shopId: a.shop.id,
+      type: "loyalty_change_notice",
+      category,
+      payload: {},
+    });
+    const insertAs = (scope: Parameters<typeof transaction>[0], values: ReturnType<typeof row>) =>
+      transaction(scope, (tx) => tx.insert(notifications).values(values));
+    // A customer can't write a notification: not for themselves, not for anyone else.
+    const me = mintCustomerScope({ userId: member.id });
+    expect(await pgCode(() => insertAs(me, row(member.id)))).toBe("42501");
+    expect(await pgCode(() => insertAs(me, row(left.id)))).toBe("42501");
+    // No admin role may insert in P1 (deny by default).
+    for (const role of ["owner", "support", "moderator", "finance"] as const) {
+      const admin = mintAdminScope({ userId: (await makeUser()).id, role });
+      expect(await pgCode(() => insertAs(admin, row(member.id))), role).toBe("42501");
+    }
+    // The team: a left member and a marketing row are refused; a transactional row for a current member is not.
+    expect(await pgCode(() => insertAs(a.owner, row(left.id)))).toBe("42501");
+    expect(await pgCode(() => insertAs(a.owner, row(member.id, "marketing")))).toBe("42501");
+    await insertAs(a.owner, row(member.id));
+    expect(await listOwnNotifications(me)).toHaveLength(1);
   });
 
   it("partitions can't be reached directly by the web role; only the worker may create them", async () => {

@@ -10,9 +10,12 @@ import { createSseParser } from "./sse-parser";
  *    `degraded`, and every 15 s while the stream is degraded or refused (429/503), so the page never goes
  *    stale while realtime is down (security design check M8);
  *  - 401 or an `auth` event → `onSignedOut` (the page sends the user to sign in), no retry; 403 → stop;
- *  - no bytes for 2.5 heartbeats → the stream is treated as dead and replaced.
+ *  - no bytes for 2.5 heartbeats → the stream is treated as dead and replaced;
+ *  - `closed: replaced` (over the per-user cap, a newer tab took the slot) → `replaced`: no reconnect (two tabs
+ *    would otherwise keep pushing each other out), polls every 15 s until `start()` (the tab shown again).
  */
-export type RealtimeState = "idle" | "connecting" | "open" | "degraded" | "waiting" | "stopped";
+export type RealtimeState =
+  "idle" | "connecting" | "open" | "degraded" | "waiting" | "replaced" | "stopped";
 
 export type RealtimeClientDeps = {
   url: string;
@@ -150,7 +153,7 @@ export function createRealtimeClient(deps: RealtimeClientDeps): RealtimeClient {
     }
 
     // Set from the parser callback (an `auth` event): the stream then ends as "signed out", not as a drop.
-    const ended = { byAuth: false };
+    const ended = { byAuth: false, replaced: false };
     const parser = createSseParser({
       onRetry: (ms) => {
         serverRetry = Math.min(ms, BACKOFF.maxRetryAfterMs);
@@ -174,7 +177,15 @@ export function createRealtimeClient(deps: RealtimeClientDeps): RealtimeClient {
           ended.byAuth = true;
           return;
         }
-        if (m.event === "closed") return; // `retry:` (if any) arrived just before; the stream ends next
+        if (m.event === "closed") {
+          // `retry:` (if any) arrived just before; the stream ends next.
+          try {
+            ended.replaced = (JSON.parse(m.data) as { reason?: unknown }).reason === "replaced";
+          } catch {
+            // a closed frame without a readable reason ends like any other drop
+          }
+          return;
+        }
         if (isRealtimeEvent(m.event)) {
           let data: unknown = null;
           try {
@@ -208,6 +219,12 @@ export function createRealtimeClient(deps: RealtimeClientDeps): RealtimeClient {
       signedOut();
       return;
     }
+    if (ended.replaced) {
+      stop();
+      setState("replaced");
+      startPolling();
+      return;
+    }
     afterStreamEnded();
   }
 
@@ -226,7 +243,8 @@ export function createRealtimeClient(deps: RealtimeClientDeps): RealtimeClient {
 
   return {
     start() {
-      if (state !== "idle" && state !== "stopped") return;
+      if (state !== "idle" && state !== "stopped" && state !== "replaced") return;
+      stopPolling();
       state = "idle";
       attempt = 0;
       void connect();

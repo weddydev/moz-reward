@@ -112,7 +112,7 @@ type Options = {
   /** P0-13: the analytics choice already stored when the page opens (null = undecided: the notice shows). */
   analyticsConsent: "granted" | "denied" | null;
   /**
-   * P1-10: open the realtime stream (`/api/sse/*`). Off by default: the fixture answers 403 (the client then
+   * P1-10: open the realtime stream (`/api/sse/*`). Off by default: the fixture sets the `moz_e2e_realtime=off` cookie and the route answers 403 (the client then
    * stops for good: no retries, no polling), because an open stream never lets `networkidle` settle and would
    * refresh pages under other specs. Realtime specs opt in with `test.use({ realtime: true })`.
    */
@@ -280,16 +280,13 @@ export const test = base.extend<Fixtures & Options>({
 
   // Unhandled promise rejections don't always surface as `pageerror` (WebKit); re-raise them as errors.
   page: async ({ page, analyticsConsent, baseURL, realtime }, provide) => {
-    if (!realtime) {
-      await page.route("**/api/sse/**", (route) =>
-        route.fulfill({
-          status: 403,
-          contentType: "application/json",
-          body: JSON.stringify({
-            error: { code: "FORBIDDEN", message: "realtime off in this spec" },
-          }),
-        }),
-      );
+    // A cookie the SSE route honours only when APP_ENV=test (`REALTIME_OFF_COOKIE`), not `page.route`: any route
+    // makes WebKit intercept every request and turns the HTTP cache off, which changed every spec's timing
+    // (CI 45596050268: the slider drag's pointer never settled on Linux WebKit).
+    if (!realtime && baseURL) {
+      await page
+        .context()
+        .addCookies([{ name: "moz_e2e_realtime", value: "off", url: baseURL, sameSite: "Lax" }]);
     }
     // The consent spec sets `analyticsConsent: null` to start undecided.
     if (analyticsConsent && baseURL) {

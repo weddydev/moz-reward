@@ -60,7 +60,9 @@ export function useRealtime(
       }
       if (hiddenTimer !== null) clearTimeout(hiddenTimer);
       hiddenTimer = null;
-      if (client.state() === "stopped") client.start();
+      // Stopped while hidden, or replaced by a newer tab: this tab is in use again, so it takes the stream back.
+      const st = client.state();
+      if (st === "stopped" || st === "replaced") client.start();
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {

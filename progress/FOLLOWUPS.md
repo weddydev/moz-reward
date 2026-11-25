@@ -99,3 +99,4 @@ _CLAUDE.md §4 findings policy: LOW findings and nits get one line here, are not
 - [P1-12, P1-B close QA L6, 25 Nov] "Recent receipts" uses lucide `Receipt` (a `$` sign): `ReceiptPoundSterling` for GBP (`MemberShopPage.tsx` receipts card).
 - [P1-18, P1-B close QA L7, 25 Nov] Phone stack: the top-sorted shop sits at the back (header strip only) and the 3rd card in front; check against the reference's order (its first card is at the back too) and record the choice in DECISIONS.
 - [P1-18, P1-B close QA L8, 25 Nov] WebKit logs "not cross-origin isolated (COEP)" on most loads after the first (not our code): confirm it's the WebKit/Playwright quirk and allow-list it in the guard if it ever fails a test.
+- [P5-01, P1-10 security review LOW, 25 Nov] SSE: a per-IP cap on **open** streams (today the IP limit counts connects, 60 / 5 min, and the open caps are per user and per shop): an IP-wide open-stream cap in the hub, sized for a shop's shared Wi-Fi.
