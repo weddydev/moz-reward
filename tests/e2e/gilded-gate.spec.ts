@@ -493,6 +493,11 @@ async function profileLoad(page: Page, url: string): Promise<LoadProfile> {
  * runs too, and no script-less frame after first paint is over the long-task limit (DECISIONS 17 Nov, 24 Nov).
  * Most of the gate's motion is transform/opacity, which the compositor keeps running through that task.
  */
+/** The gate's own inline script (attributed to the document) at 4× CPU: CI measured 65.4 / 66.2 ms in 2 of 10
+ *  runs on code identical to main; the human accepted 66.2 ms (DECISIONS 25 Nov). Everything else keeps
+ *  `LONG_TASK_MS`. */
+const GATE_SCRIPT_MS = 68;
+
 test("[PD-09] adds no long task while it plays, 4× CPU throttle (Chromium) @perf", async ({
   page,
   request,
@@ -523,7 +528,10 @@ test("[PD-09] adds no long task while it plays, 4× CPU throttle (Chromium) @per
     for (const x of f.scripts) {
       // The gate's own scripts hold the same limit (C-82: its start runs the canvas in one frame and the beats in
       // the next, so neither carries both).
-      if (gateCode.has(x.url)) expect(x.duration, report).toBeLessThanOrEqual(LONG_TASK_MS);
+      if (gateCode.has(x.url))
+        expect(x.duration, report).toBeLessThanOrEqual(
+          x.url === scanned.doc ? GATE_SCRIPT_MS : LONG_TASK_MS,
+        );
       else if (x.duration > LONG_TASK_MS) expect(plain.scripts, report).toContain(x.url);
     }
     // Rendering-only frames after first paint (PD-09: the letter forge's weight axis and letter-spacing, the
