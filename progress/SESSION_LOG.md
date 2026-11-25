@@ -1085,3 +1085,9 @@ Done: security-reviewer design check (OK with changes: HIGH bucket → separate 
 Commits: b5c4b27 (wip/P1-12)
 Tests: unit receipt-pdf 17/0; int receipt-pdf 7/0, receipt-download 7/0, related 58/0; authz 26/0; E2E P1-12 shop-page 5/5 (5 projects, prod build); pre-push check + SAST PASS (SAST first caught literal bidi chars in a test: fixed). CI on b5c4b27 pending; c2538e8 CI 45683593425 green.
 Left off: step (e) fraud:award-check (outbox in decide(), fraud_flags on same UA+IP sessions, ids only), then (f) dashboard requests UI + J2 E2E, then the close list in the Handoff note.
+
+## 2026-11-26 — P1 — P1-12 step (e): same-device fraud flag
+Done: security-reviewer design check (OK with changes: router checked too, 30-day session lookback, DPIA/ROPA wording, ESLint import rule, audit row, signal/party in details; alert + sign-out gap → P4-08 C-101/C-102; retention → P2-13 C-103). Job `fraud:award-check`, `device-signal.ts`, repo `fraud.ts`.
+Commits: 4c0d217 (wip/P1-12)
+Tests: int fraud-award-check 14/0, approvals+receipt-pdf 44/0, related 108/0; pnpm check PASS (unit 2225/0).
+Left off: step (f): staff can't read customer names/member IDs under RLS → design check for a narrow SECURITY DEFINER member-card read (migration 0030), then requests page + `relay-realtime` test API + J2 E2E (Handoff note).
