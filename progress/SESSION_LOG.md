@@ -1061,3 +1061,9 @@ AC2 spec-repeat ×10 (caaaa07): molten-fields wk 240/0 ip 210/0; molten-controls
 Fix found by ×10: Linux WebKit draws no frame for 1.7–6.2 s after a load (measured; KI-10): molten-dock `SETTLE` 15 s + rail pour proven started (mutation: rail pour off fails on WebKit + Chromium); vault journey test 60 s; KI-64 WebKit cancelled `/api/sse/me` allowed in the guard.
 AC3 mutations one per spec file (checkpoint entry) + rail pour; AC4 C-78 closed, FOLLOWUPS 83/103/105 closed (slider and gate ×10 green); gate:task PASS on 9ad3caf. CI 45668197214 green (every-page change: all specs on WebKit).
 Gate `@perf` desktop1440 65.4/66.2 ms vs 65 in 2/10 (code identical to main): human accepts 66.2 ms, 68 ms gate bound next (DECISIONS); confirmed flakes shop-page + wipe "slow way back" (FOLLOWUPS).
+
+## 2026-11-26 — P1 — P1-12 checkpoint (in progress), talha.syed (Mac)
+Gate `@perf` inline-script bound 68 ms (human, DECISIONS 25 Nov) on main `da8a321` (CI 45674369167 green). P1-12 security design check: OK with changes (HIGH 1–4, MEDIUM 5–10 applied or carried: C-96 → P2-02, C-97 → P2-15, C-98 → P4-08).
+Step (a) on `wip/P1-12` `a366f43`: migration 0029 (ledger append-only, rewards, receipts, gapless counter, fraud_flags, membership loyalty state, request decisions) + guards/RLS/grants; approvals-db 20/0, affected suites 119/0; DECISIONS 26 Nov.
+NOT VERIFIED: CI 45677907123 on `a366f43` (running at checkpoint). Branch sits on `9180b94`: rebase onto main before the next push.
+Next: step (b) `src/server/services/approvals.ts` + actions + authz + `tests/integration/approvals.test.ts`, write order in the Handoff note.

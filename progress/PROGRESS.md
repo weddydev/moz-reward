@@ -7,15 +7,17 @@ Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-19 closed (talha.syed, Mac, 25 Nov), on main `f5a2866` + this progress commit.** Autopilot OFF. No wip branch open.
-- **Next step:** P1-12 (security-relevant: `security-reviewer` design check first; incoming C-60, C-62, C-66, C-69), then P1-13. Before the P1-C close: C-92/C-93/C-94 (Molten fixes), C-95 (staging SSE), FOLLOWUPS flakes (shop page, wipe "slow way back"). First, before P1-12: the gate `@perf` 68 ms bound (DECISIONS 25 Nov, FOLLOWUPS).
-- **Not yet tested:** C-95 (staging, authenticated stream); P1-11 on staging.
+- **P1-12 in progress (talha.syed, Mac, 26 Nov): `wip/P1-12`, HEAD `a366f43`** (sits on `9180b94`: **rebase onto main `da8a321` before its next push**; CI 45677907123 on `a366f43` was running at checkpoint). Autopilot OFF.
+- **Done (step a):** migration 0029 (ledger_entries append-only, rewards, receipts, shop_receipt_counters, fraud_flags; membership loyalty state C-60/C-66; request decision columns) + guards/RLS/grants per the security design check (DECISIONS 26 Nov "P1-12 approvals: the database walls"); `tests/integration/approvals-db.test.ts` 20/20; existing guard/RLS/grant tests updated (119/119). Local DB reset to 0029.
+- **Next step (b):** `src/server/services/approvals.ts`: `approveRequest`, `ownerApprove`, `rejectRequest`, `reverseAward` + actions + authz entries + `tests/integration/approvals.test.ts`. Write order inside the transaction follows the guards: plain SELECT request → lock membership FOR UPDATE → lock request FOR UPDATE + re-check status → plain SELECT own staff row (active, limit) → engine → UPDATE request (approved / awaiting_owner) → ledger earn (+bonus_streak), keys `<requestId>:earn` → UPDATE membership → rewards → counter upsert → receipt (`number` = counter) → outbox (pdf, notifications, SSE, `fraud:award-check`) → audit. DB `now()` read once. Map 40P01/40001 → CONFLICT. Rate limits `failMode: "closed"`, per user + per shop. Reversal: lock membership then receipt; reason = `REVERSAL_REASONS` code in ledger `ref`, optional note (≤ 200) in audit only. Payloads ids/numbers only; customer repos select explicit columns (no `reject_note`, `routed_by`, `decided_by`).
+- **Then:** (c) Wallet/Vault/shop-page reads (C-62, C-66, C-69); (d) receipt PDF: pdfkit worker-only (DECISIONS dep line + lint boundary to `src/server/jobs`; no links/attachments; `pnpm audit --prod` + OSV), private key `receipts/<shopId>/<receiptId>.pdf`, route never regenerates in web (404 + outbox), staff route takes shopId in the path, headers `attachment; filename="receipt-<n>.pdf"`, `private, no-store`, nosniff, GET only, per-user limit, cdn URL 404 test; (e) `fraud:award-check`: unexpired sessions with same UA and IP, ids only in details; (f) minimal `/dashboard/requests` UI + J2 E2E. At close: DECISIONS lines for staff initials (≤ 3 letters, stay after staff erasure) and pdfkit; COMPLIANCE §2.6 retention + §2.7 DSAR rows for ledger/rewards/receipts/fraud_flags; FOLLOWUPS: VALIDATE 0029's NOT VALID checks. `security-reviewer` on the final diff.
+- **Not yet tested:** CI on `a366f43`; C-95 (staging, authenticated stream); P1-11 on staging.
 ## Status
 - **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
-- **Current sub-phase:** **P1-C** next, from P1-10. P1-B closed 25 Nov (reviews, QA, H-49 approved; Sentry held until P2, C-88). PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
+- **Current sub-phase:** **P1-C** in progress (P1-10, P1-11 done; P1-12 on `wip/P1-12`). P1-B closed 25 Nov (reviews, QA, H-49 approved; Sentry held until P2, C-88). PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-25, talha.syed (P1-19 closed on main `f5a2866`)
+- **Last updated:** 2026-11-26, talha.syed (P1-12 step a on `wip/P1-12` `a366f43`; gate 68 ms bound on main `da8a321`)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -24,7 +26,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. P1-12 · Approve / reject, owner approval, reversals, receipts (security-relevant; C-60, C-62, C-66, C-69); then P1-13.
+1. P1-12 step (b) approvals service on `wip/P1-12` (rebase onto main first), then (c)–(f) per the Handoff note; then P1-13.
 2. Human any time: H-45 (🟠), H-38 (branches), H-51 (b); H-48b at P2 start, after the first demo (C-88).
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -64,12 +66,11 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 ## Map of the codebase
 In **`progress/MAP.md`** (read when you need to locate code; add new important paths there).
 
-## Last verified (25 Nov 2026)
+## Last verified (26 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- P1-19 `f5a2866` (main): CI 45668197214 green with an every-page change (all specs on WebKit); spec-repeat ×10 0 failures on webkit + iphone14 for all 9 specs (ids in SESSION_LOG); gate:task PASS on `9ad3caf` (unit 2199/0, int 1540/0/1).
-- P1-11 `6d8d763` (on main `a469c92`): CI 45647684620 green (all jobs; 1 confirmed flake → FOLLOWUPS); gate:task PASS on `d5c965b` (unit 2161/0, int 1540/0/1, task E2E 15/0, SAST, bundle).
-- Main `a469c92` (gate morph fix, KI-48): CI 45644813206 + 45646733888 green (perf-budget job included).
-- P1-11 screenshots (390, 320, 1440; Chromium + WebKit) inspected: button, pending, queued states.
+- P1-12 (a) `a366f43` (`wip/P1-12`): approvals-db 20/0; membership-guard, point-requests, leave-shop, rls, db-foundation, join, wallet 119/0; check-migrations OK; pre-push `pnpm check` PASS. CI 45677907123 pending.
+- Main `da8a321` (gate inline script 68 ms): CI 45674369167 green (all jobs); gate:task PASS (unit 2199/0, int 1540/0/1).
+- P1-19 `f5a2866` (main): CI 45668197214 green with an every-page change; spec-repeat ×10 0 failures on webkit + iphone14.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 
