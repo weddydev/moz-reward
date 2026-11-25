@@ -149,6 +149,10 @@ export function MemberCard({
     cancelAnimationFrame(frame.current);
     frame.current = 0;
     pending.current = null;
+    // The follow (`.live`, 120 ms linear) goes in the same task as the angles, so the return is always the 0.7 s
+    // spring: `pointerleave` is a continuous event in React, so `setMode` commits a task later, and a frame in
+    // between started the return on the follow's transition (P1-19, molten-fields member card spec).
+    e.currentTarget.classList.remove("live");
     e.currentTarget.style.setProperty("--rx", "0deg");
     e.currentTarget.style.setProperty("--ry", "0deg");
     setMode(motion().sway && !flippedNow.current ? "idle" : "rest");

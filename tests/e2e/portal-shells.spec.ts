@@ -18,6 +18,17 @@ async function settledBox(locator: Locator) {
       locator.evaluate((el) => el.getAnimations().filter((a) => a.playState === "running").length),
     )
     .toBe(0);
+  // Then the box itself, polled until two reads agree: a frame-starved Linux WebKit reports the animation
+  // finished while the box still holds the last frame drawn (KI-10), so one read can be mid-way.
+  let last = "";
+  await expect
+    .poll(async () => {
+      const now = JSON.stringify(await locator.boundingBox());
+      const same = now === last;
+      last = now;
+      return same;
+    })
+    .toBe(true);
   return locator.boundingBox();
 }
 

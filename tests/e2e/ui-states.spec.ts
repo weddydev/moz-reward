@@ -190,6 +190,7 @@ test.describe("[P0-09] UI gallery states", () => {
     test(`[P0-09] AC5: press feedback within 150ms${reduced ? " (reduced motion: no transform, dim)" : " (scale .97)"}`, async ({
       page,
       isMobile,
+      browserName,
     }) => {
       test.skip(isMobile, "mouse press: desktop projects (real iPhone feel: H-task)");
       test.setTimeout(90_000);
@@ -222,15 +223,15 @@ test.describe("[P0-09] UI gallery states", () => {
         await el.scrollIntoViewIfNeeded();
         const box = await el.boundingBox();
         if (!box) continue;
-        // Timed inside the page. The press must be driven by CSS from pointerdown: the transition that
-        // carries it (transform, or opacity under reduced motion) has delay + duration ≤ 150ms, read from the
-        // running CSSTransition. "Not deferred by script" is timed with timers, not frames: the press has
-        // begun when that transition exists (or the style is already there), and that must happen within
-        // 300ms of pointerdown. Frames only confirm the pressed look is reached. Linux WebKit can go 300ms+
-        // without painting a frame (CI 43194053878: "seen at 323ms" with a 120ms transition), so a frame
-        // clock measured the runner, not the press.
+        // Checked inside the page. The press must be driven by CSS from pointerdown: the transition that carries
+        // it (transform, or opacity under reduced motion) heads to the pressed value and has delay + duration
+        // ≤ 150ms, read from the running CSSTransition. "Not deferred by script", on every engine, in tasks, not
+        // ms (TESTING §7): the transition exists (or the style is already there) by the 2nd task after
+        // pointerdown; a press put off by a timer or a frame needs more. Linux WebKit can go 300ms+ without a
+        // frame or a timely timer (CI 43194053878: "seen at 323ms" with a 120ms transition), so the wall-clock
+        // bound (≤ 300ms) and the drawn pressed look are Chromium-only.
         await page.evaluate(
-          ({ i, reduced }) => {
+          ({ i, reduced, drawn }) => {
             const w = window as unknown as { __press?: unknown };
             delete w.__press;
             const host = document.querySelector<HTMLElement>(`[data-press-probe="${String(i)}"]`);
@@ -269,23 +270,34 @@ test.describe("[P0-09] UI gallery states", () => {
                         (a as CSSTransition).transitionProperty ===
                           (reduced ? "opacity" : "transform") && toPressed(a),
                     );
-                const confirm = (ms: number): void => {
+                let tasks = 0;
+                const confirm = (ms: number, started: boolean): void => {
+                  // Started is enough off Chromium; there the look is also seen drawn, bounded by frames.
+                  if (!drawn && started) {
+                    w.__press = { ...look(), ok: true, ms, planned, tasks };
+                    return;
+                  }
+                  let frames = 0;
                   const check = (): void => {
                     const seen = look();
-                    if (seen.ok || performance.now() - down > 3000)
-                      w.__press = { ...seen, ms, planned };
-                    else requestAnimationFrame(check);
+                    if (seen.ok || frames > 30) w.__press = { ...seen, ms, planned, tasks };
+                    else {
+                      frames += 1;
+                      requestAnimationFrame(check);
+                    }
                   };
                   check();
                 };
                 const begin = (): void => {
+                  tasks += 1;
                   const t = transition();
                   const ms = performance.now() - down;
                   if (t) {
                     const timing = t.effect?.getComputedTiming();
                     planned = (timing?.delay ?? 0) + Number(timing?.duration ?? 0);
                   }
-                  if (t || look().ok || ms > 400) confirm(ms);
+                  const already = look().ok;
+                  if (t || already || tasks > 20) confirm(ms, !!t || already);
                   else setTimeout(begin, 0);
                 };
                 setTimeout(begin, 0);
@@ -293,7 +305,7 @@ test.describe("[P0-09] UI gallery states", () => {
               { once: true, capture: true },
             );
           },
-          { i, reduced },
+          { i, reduced, drawn: browserName === "chromium" },
         );
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
         await page.mouse.down();
@@ -303,6 +315,8 @@ test.describe("[P0-09] UI gallery states", () => {
         const result = (await handle.jsonValue()) as {
           ok: boolean;
           ms: number;
+          /** Tasks after pointerdown until the press had started (1 = the first). */
+          tasks: number;
           /** delay + duration of the press transition; null when the change was instant (no transition). */
           planned: number | null;
           transform: string;
@@ -311,12 +325,17 @@ test.describe("[P0-09] UI gallery states", () => {
         // Release away from the control so the press doesn't open overlays or fire handlers.
         await page.mouse.move(2, 2);
         await page.mouse.up();
-        if (!result.ok || (result.planned ?? 0) > 150 || result.ms > 300) {
+        if (
+          !result.ok ||
+          (result.planned ?? 0) > 150 ||
+          result.tasks > 2 ||
+          (browserName === "chromium" && result.ms > 300)
+        ) {
           const name = await el.evaluate((n) =>
             (n.getAttribute("aria-label") ?? n.textContent).trim().slice(0, 30),
           );
           failures.push(
-            `"${name}" ${result.ok ? `planned ${String(result.planned)}ms, seen at ${result.ms.toFixed(0)}ms` : `${result.transform} opacity ${result.opacity}`}`,
+            `"${name}" ${result.ok ? `planned ${String(result.planned)}ms, started by task ${String(result.tasks)}, seen at ${result.ms.toFixed(0)}ms` : `${result.transform} opacity ${result.opacity}`}`,
           );
         }
       }

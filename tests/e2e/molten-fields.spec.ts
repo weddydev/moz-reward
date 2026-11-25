@@ -9,6 +9,7 @@ import {
   started,
   sweepOnStyleWrites,
   toValue,
+  type StartedAnimation,
 } from "./support/animations";
 import { expect, test } from "./support/test";
 
@@ -641,14 +642,23 @@ test("[PD-06] slider drag: the coin follows the pointer, the fill grows, the bub
     leans.some((a) => rotationOf(String(toValue(a, "transform"))) < -1),
     `a transition leaning the bubble back started:\n${log}`,
   ).toBe(true);
+  // Then upright again: the last transition heads upright, or (a lean that never moved on a frame-starved
+  // runner) the lean was cancelled outright when the bubble was asked back (CSS Transitions §3.4: the value is
+  // already the upright one). The drawn end state is polled below.
   const last = leans.at(-1);
   expect(last, `transitions started:\n${log}`).toBeDefined();
   expect(
-    Math.abs(rotationOf(String(last ? toValue(last, "transform") : ""))),
-    `the last transition takes it upright:\n${log}`,
-  ).toBeLessThan(0.01);
+    !!last &&
+      (last.state === "cancelled" ||
+        Math.abs(rotationOf(String(toValue(last, "transform")))) < 0.01),
+    `the last transition takes it upright, or the lean was dropped:\n${log}`,
+  ).toBe(true);
+  // The first lean runs the full 0.5 s spring; one reversed mid-way is shortened by the browser (CSS
+  // Transitions §3.4.1, the reversing shortening factor: 494.9 ms seen on CI), never longer.
+  expect(leans[0]?.timing.duration, `0.5 s spring (DESIGN §7.4):\n${log}`).toBe(500);
   for (const a of leans) {
-    expect(a.timing.duration, `0.5 s spring (DESIGN §7.4):\n${log}`).toBe(500);
+    expect(a.timing.duration, `at most the 0.5 s spring:\n${log}`).toBeLessThanOrEqual(500);
+    expect(a.timing.duration, `a real transition:\n${log}`).toBeGreaterThan(0);
     expect(a.timing.easing, `the spring curve, not a default ease:\n${log}`).toMatch(
       /^(linear|cubic-bezier)\(/,
     );
@@ -923,39 +933,81 @@ test("[PD-06] member card rapid flips retarget, never queue: it ends on the side
 test("[PD-06] member card: a mouse tilts it and lights the glare; leaving fast springs it back upright", async ({
   page,
   isMobile,
+  browserName,
 }) => {
   test.skip(isMobile, "a mouse over the card; touch screens sway instead (next test)");
+  await recordAnimations(page);
   await open(page);
   await cardAtRest(page);
-  const box = await memberCard(page).boundingBox();
+  const card = memberCard(page);
+  const box = await card.boundingBox();
   if (!box) throw new Error("no card box");
+  const stopSweeping = await sweepOnStyleWrites(card);
+  await clearAnimations(page);
+  /** The lean the card asks for (its `--rx` / `--ry`, written on the next frame after the pointer moves). */
+  const asked = (): Promise<{ rx: number; ry: number }> =>
+    card.evaluate((c) => ({
+      rx: Number.parseFloat((c as HTMLElement).style.getPropertyValue("--rx")) || 0,
+      ry: Number.parseFloat((c as HTMLElement).style.getPropertyValue("--ry")) || 0,
+    }));
+  const transforms = async (): Promise<StartedAnimation[]> =>
+    (await started(page, ".m-mcard")).filter(
+      (a) => a.source === "css-transition" && a.name === "transform",
+    );
   // Up and to the right (80% across, 20% down; well inside, so the leaning card stays under the pointer): the
   // top comes towards it, (.5 − .2) × 22 = 6.6°, and the right side, (.8 − .5) × 26 = 7.8°.
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.2, { steps: 4 });
-  await expect(memberCard(page)).toHaveClass(/\blive\b/);
+  await expect(card).toHaveClass(/\blive\b/);
+  // Asked for (every engine). The pointer is read on the leaning card's box, so the angles land near, not
+  // exactly on, 6.6° and 7.8°.
   await expect
-    .poll(async () => (await cardAngles(page)).ry, { timeout: 2_000 })
+    .poll(async () => (await asked()).ry, { message: "the card asks to lean right" })
     .toBeGreaterThan(6.5);
-  await expect.poll(() => running(memberCard(page)), { timeout: 2_000 }).toBe(0);
-  const tilted = await cardAngles(page);
-  // The pointer is read on the leaning card's box, so the angles land near, not exactly on, 6.6° and 7.8°.
-  expect(tilted.rx).toBeGreaterThan(5);
-  expect(tilted.rx).toBeLessThanOrEqual(11.01);
-  expect(tilted.ry).toBeLessThanOrEqual(13.01);
-  await expect
-    .poll(() =>
-      memberCard(page)
-        .locator(".m-glare")
-        .first()
-        .evaluate((g) => getComputedStyle(g).opacity),
-    )
-    .toBe("1");
-  // Out in one jump (a fast exit): it springs back upright and the glare fades.
+  const lean = await asked();
+  expect(lean.rx).toBeGreaterThan(5);
+  expect(lean.rx).toBeLessThanOrEqual(11.01);
+  expect(lean.ry).toBeLessThanOrEqual(13.01);
+  // Started (every engine): the live follow, a 120 ms linear transform transition (DESIGN §7.4).
+  const follow = await transforms();
+  expect(
+    follow.some((a) => a.timing.duration === 120 && a.timing.easing === "linear"),
+    `the 120 ms follow started:\n${describeAnimations(follow)}`,
+  ).toBe(true);
+  // Drawn (Chromium only): the card is seen tilted and the glare lit.
+  if (browserName === "chromium") {
+    await expect
+      .poll(async () => (await cardAngles(page)).ry, { timeout: 2_000 })
+      .toBeGreaterThan(6.5);
+    await expect.poll(() => running(card), { timeout: 2_000 }).toBe(0);
+    const tilted = await cardAngles(page);
+    expect(tilted.rx).toBeGreaterThan(5);
+    expect(tilted.rx).toBeLessThanOrEqual(11.01);
+    expect(tilted.ry).toBeLessThanOrEqual(13.01);
+    await expect
+      .poll(() =>
+        card
+          .locator(".m-glare")
+          .first()
+          .evaluate((g) => getComputedStyle(g).opacity),
+      )
+      .toBe("1");
+  }
+  // Out in one jump (a fast exit): it asks for upright, springs back (0.7 s spring started) and the glare fades.
+  // Read without the per-write sweep: the card writes its angles and React drops `.live` a moment apart, and a
+  // flush between them would start the return on the 120 ms follow instead of the spring.
+  await stopSweeping();
+  await clearAnimations(page);
   await page.mouse.move(box.x + box.width + 300, box.y - 200);
-  await expect(memberCard(page)).not.toHaveClass(/\blive\b/);
-  await expect.poll(() => running(memberCard(page)), { timeout: 5_000 }).toBe(0);
-  // Polled: frame-starved Linux WebKit reports the spring done while the drawn angle is the last frame's.
+  await expect(card).not.toHaveClass(/\blive\b/);
+  expect(await asked()).toEqual({ rx: 0, ry: 0 });
+  const back = await transforms();
+  expect(
+    back.some((a) => a.timing.duration === 700 && /^(linear|cubic-bezier)\(/.test(a.timing.easing)),
+    `the 0.7 s spring back started:\n${describeAnimations(back)}`,
+  ).toBe(true);
+  // Ended upright (the end state, polled on every engine: a frame-starved Linux WebKit reports the spring done
+  // while the drawn angle is the last frame's, KI-10).
   await expect
     .poll(
       async () => {
@@ -966,7 +1018,7 @@ test("[PD-06] member card: a mouse tilts it and lights the glare; leaving fast s
     )
     .toBeLessThan(0.5);
   // A fine pointer never sways.
-  await expect(memberCard(page)).not.toHaveClass(/\bidle\b/);
+  await expect(card).not.toHaveClass(/\bidle\b/);
 });
 
 test("[PD-06] member card idle sway: only on touch-only screens (iOS too), never while turned over", async ({

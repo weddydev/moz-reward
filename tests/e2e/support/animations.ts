@@ -279,15 +279,26 @@ export function clearAnimations(page: Page): Promise<void> {
  * Records the CSS transitions a style or class write on `target` starts, at the write: `getAnimations()` flushes
  * style, so the transition exists even if the page never draws a frame before the next write replaces it (a
  * starved Linux WebKit, KI-10). Without this, a transition replaced before any frame is never seen.
+ * Caution: the flush comes between writes the page makes in separate tasks or microtasks, so a transition can
+ * then start from an in-between style the browser would have skipped (the member card's `--rx` written before
+ * React drops `.live`). Use it only while the writes it watches are the motion under test, and stop it (the
+ * returned function) before steps where the page changes a style and a class apart.
  */
-export async function sweepOnStyleWrites(target: Locator): Promise<void> {
+export async function sweepOnStyleWrites(target: Locator): Promise<() => Promise<void>> {
   await target.evaluate((el) => {
     const rec = (window as unknown as { __animRec?: { sweep: () => void } }).__animRec;
     if (!rec) throw new Error("recordAnimations(page) was not called before this page loaded");
-    new MutationObserver(() => {
+    const obs = new MutationObserver(() => {
       rec.sweep();
-    }).observe(el, { attributes: true, attributeFilter: ["style", "class"] });
+    });
+    obs.observe(el, { attributes: true, attributeFilter: ["style", "class"] });
+    (el as Element & { __sweepObs?: MutationObserver }).__sweepObs = obs;
   });
+  return async () => {
+    await target.evaluate((el) => {
+      (el as Element & { __sweepObs?: MutationObserver }).__sweepObs?.disconnect();
+    });
+  };
 }
 
 type Holder = {

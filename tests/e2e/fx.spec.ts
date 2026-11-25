@@ -1,4 +1,14 @@
 import { type Page, type TestInfo } from "@playwright/test";
+import {
+  clearAnimations,
+  describeAnimations,
+  fromValue,
+  recordAnimations,
+  scaleOf,
+  started,
+  toValue,
+  type StartedAnimation,
+} from "./support/animations";
 import { throttleCpu, LONG_TASK_MS, medianFrameRate } from "./support/cpu-throttle";
 import { expect, test } from "./support/test";
 
@@ -315,16 +325,40 @@ test("[PD-03] a route change mid-burst: particles finish over the new page, whic
 
 test("[PD-03] press kit: pressed state, a ripple from the press point, celebrate throws 28 sparks + 6 coins", async ({
   page,
+  browserName,
 }) => {
+  await recordAnimations(page);
   await openPlayground(page);
   const press = page.getByTestId("fx-press");
   await press.scrollIntoViewIfNeeded();
   const box = await press.boundingBox();
   if (!box) throw new Error("no press button");
   await page.mouse.move(box.x + 30, box.y + 20);
+  await clearAnimations(page);
   await page.mouse.down();
   await expect(press).toHaveClass(/(^|\s)down(\s|$)/);
   await expect(press.locator(".m-ripple")).toHaveCount(1);
+  // Started (every engine): the ripple grows from the press point, 720 ms (PRESS.rippleMs), scale .04 → 1.
+  const ripples = await started(page, ".m-ripple");
+  const log = describeAnimations(ripples);
+  expect(ripples.length, `one ripple:\n${log}`).toBe(1);
+  const rip = ripples[0] as StartedAnimation;
+  expect(rip.timing.duration, log).toBe(720);
+  expect(scaleOf(fromValue(rip, "transform")), log).toBeCloseTo(0.04, 3);
+  expect(scaleOf(toValue(rip, "transform")), log).toBeCloseTo(1, 3);
+  const at = await press.locator(".m-ripple").evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const p = el.parentElement?.getBoundingClientRect();
+    // The ripple's centre (its box is placed, not transformed: the transform is about its centre).
+    const s = (el as HTMLElement).style;
+    return {
+      x: (p?.left ?? 0) + Number.parseFloat(s.left) + Number.parseFloat(s.width) / 2,
+      y: (p?.top ?? 0) + Number.parseFloat(s.top) + Number.parseFloat(s.height) / 2,
+      w: r.width,
+    };
+  });
+  expect(Math.abs(at.x - (box.x + 30)), "centred on the press point (x)").toBeLessThan(1.5);
+  expect(Math.abs(at.y - (box.y + 20)), "centred on the press point (y)").toBeLessThan(1.5);
   await page.mouse.up();
   await expect(press).not.toHaveClass(/(^|\s)down(\s|$)/);
   // The click celebrated: 28 sparks + 6 coins on a full-tier device (14 + 3 on lite).
@@ -332,7 +366,22 @@ test("[PD-03] press kit: pressed state, a ripple from the press point, celebrate
   const lite = await page.evaluate(() => document.documentElement.classList.contains("lite"));
   expect(live).toBeLessThanOrEqual(lite ? 17 : 34);
   expect(live).toBeGreaterThan(0);
-  await expect(press.locator(".m-ripple")).toHaveCount(0, { timeout: 2_000 });
+  // Ended: removed once it finishes (the end state, polled; no wall-clock bound on WebKit, TESTING §7). On
+  // Chromium also within 720 ms of frames, +50% (a ripple that never ends fails by frame count).
+  if (browserName === "chromium") {
+    const frames = await press.evaluate(async (el) => {
+      let n = 0;
+      while (el.querySelector(".m-ripple") && n < 200) {
+        await new Promise(requestAnimationFrame);
+        n += 1;
+      }
+      return n;
+    });
+    expect(frames, "frames until the ripple was removed").toBeLessThanOrEqual(
+      Math.ceil((720 / 1000) * 60 * 1.5),
+    );
+  }
+  await expect(press.locator(".m-ripple")).toHaveCount(0);
   await expect(page.getByTestId("fx-count")).toHaveText("160");
 });
 
