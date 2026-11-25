@@ -15,7 +15,8 @@ export const REALTIME_EVENT_SCHEMAS = {
     .object({
       requestId: id,
       shopId: id,
-      outcome: z.enum(["approved", "rejected", "expired", "cancelled"]),
+      /** `awaiting_owner`: still open, routed to the owner (P1-12); the shop's queue refetches. */
+      outcome: z.enum(["approved", "awaiting_owner", "rejected", "expired", "cancelled"]),
     })
     .strict(),
   points_credited: z.object({ shopId: id }).strict(),
