@@ -1,7 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { diffRatio } from "./support/diff";
 import { fireTimed, freezeTimed, openForMotion, referenceUrl } from "./support/motion";
-import { attachPair, capture } from "./support/reference";
+import { attachPair, capture, keepForSet } from "./support/reference";
 import { PARITY_PARTS, parityLimit } from "../../src/features/dev/molten/parity-parts";
 
 /**
@@ -104,6 +104,7 @@ async function compare(
   const b = await capture(page, part);
   const d = diffRatio(a, b);
   const name = `${part}-${state}-${String(page.viewportSize()?.width ?? 0)}`;
+  keepForSet(name, a, b, d.ratio, max);
   if (d.ratio > max) await attachPair(name, a, b);
   expect(d.ratio, `${name}: ${d.why ?? ""} ${spec.tolerance?.why ?? ""}`).toBeLessThanOrEqual(max);
 }

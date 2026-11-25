@@ -95,7 +95,7 @@ test.describe("[P0-08] token page and contrast table", () => {
     await openGallery(page);
     await expect(page.locator("[data-token]")).toHaveCount(TOKENS.length);
     // The values fill in after hydration.
-    await expect(page.locator('[data-token="bg"] [data-token-value]')).not.toHaveText("");
+    await expect(page.locator('[data-token="pearl"] [data-token-value]')).not.toHaveText("");
     const shown = await shownValues(page);
 
     const empty = TOKENS.filter((t) => !shown[t.name]).map((t) => t.name);
@@ -472,7 +472,7 @@ async function clsOf(page: Page): Promise<number> {
     if (m.text().startsWith("[P0-08] layout shifts")) console.warn(m.text());
   });
   await expect(page.locator(html)).toHaveAttribute("data-hydrated", "true");
-  await expect(page.locator('[data-token="bg"] [data-token-value]')).not.toHaveText("");
+  await expect(page.locator('[data-token="pearl"] [data-token-value]')).not.toHaveText("");
   return page.evaluate(async () => {
     await document.fonts.ready;
     await new Promise((resolve) => setTimeout(resolve, 500));

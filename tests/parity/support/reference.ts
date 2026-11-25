@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { type APIRequestContext, type Page, test } from "@playwright/test";
 import { PARITY_PARTS } from "../../../src/features/dev/molten/parity-parts";
@@ -254,6 +254,31 @@ export async function openStill(
 }
 
 /** Writes both images of a mismatch next to the test's results and attaches them to the report. */
+/**
+ * H-49 side-by-side set (PD-11): with `PARITY_SET=1`, every compared pair (reference, app) is kept under
+ * `.artifacts/parity-set/<browser>/` with a manifest line (name, diff ratio, limit), whatever the result, so the
+ * human sign-off reviews exactly what the parity specs compared. A normal run writes nothing.
+ */
+export function keepForSet(
+  name: string,
+  a: Buffer,
+  b: Buffer | undefined,
+  ratio: number,
+  max: number,
+): void {
+  if (process.env["PARITY_SET"] !== "1" || !b) return;
+  const browser = test.info().project.name;
+  const dir = path.join(".artifacts", "parity-set", browser);
+  mkdirSync(dir, { recursive: true });
+  const safe = name.replace(/[^\w.-]+/g, "_");
+  writeFileSync(path.join(dir, `${safe}-ref.png`), a);
+  writeFileSync(path.join(dir, `${safe}-app.png`), b);
+  appendFileSync(
+    path.join(dir, "manifest.jsonl"),
+    `${JSON.stringify({ name: safe, title: test.info().title, ratio, max })}\n`,
+  );
+}
+
 export async function attachPair(name: string, a: Buffer, b: Buffer | undefined): Promise<void> {
   const info = test.info();
   for (const [side, img] of [

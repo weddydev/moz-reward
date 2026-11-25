@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { type ComponentProps, useEffect, useState } from "react";
 import { buttonClasses } from "@/components/ui/button-classes";
+import { preloadQuietly } from "@/lib/preload";
 import { useHydrated } from "@/lib/use-hydrated";
 
 /** The sheet's code (form, overlays, profile fields) is fetched the first time it is wanted (C-64). */
@@ -38,7 +39,7 @@ export function JoinCta({
   }, [autoOpen]);
 
   const warm = (): void => {
-    void loadSheet();
+    preloadQuietly(loadSheet);
   };
   return (
     <>

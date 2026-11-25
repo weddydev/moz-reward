@@ -8,7 +8,7 @@ import {
   reseed,
   type Sample,
 } from "./support/motion";
-import { attachPair, capture } from "./support/reference";
+import { attachPair, capture, keepForSet } from "./support/reference";
 import { PARITY_PARTS, parityLimit } from "../../src/features/dev/molten/parity-parts";
 
 /**
@@ -124,6 +124,7 @@ test.describe("[PD-09] Gilded Gate intro parity", () => {
       const b = await capture(page, "intro");
       const name = rest ? "rest" : `${String(ms)}ms`;
       const d = diffRatio(a, b);
+      keepForSet(`intro-${name}`, a, b, d.ratio, max);
       if (d.ratio > max) await attachPair(`intro-${name}`, a, b);
       expect(d.ratio, `intro at ${name}: ${d.why ?? ""}`).toBeLessThanOrEqual(max);
     }

@@ -2,7 +2,14 @@ import { writeFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
 import { diffRatio } from "./support/diff";
 import { fire, openForMotion, referenceUrl, seekFraction, TRIGGERS } from "./support/motion";
-import { capture, edgeCycleAt, freezeAt, openStill, REFERENCE_PATH } from "./support/reference";
+import {
+  capture,
+  edgeCycleAt,
+  freezeAt,
+  keepForSet,
+  openStill,
+  REFERENCE_PATH,
+} from "./support/reference";
 import { PARITY_PARTS, parityLimit } from "../../src/features/dev/molten/parity-parts";
 
 /**
@@ -75,6 +82,7 @@ test.describe("[PD-02] gilded edge frames", () => {
       const a = await capture(ref, "language");
       const b = await capture(page, "language");
       const d = diffRatio(a, b);
+      keepForSet(`edge-${String(ms)}`, a, b, d.ratio, MAX_DIFF);
       if (d.ratio > MAX_DIFF) await attachPair(`edge-${String(ms)}`, a, b);
       expect(d.ratio, `edge at ${String(ms)} ms: ${d.why ?? ""}`).toBeLessThanOrEqual(MAX_DIFF);
     }
@@ -112,6 +120,7 @@ test.describe("[PD-01] frame parity", () => {
       const at = stopsOf(part.name);
       for (const [i, shot] of a.entries()) {
         const d = diffRatio(shot, b[i] ?? Buffer.alloc(0));
+        keepForSet(`${part.name}-${String(at[i] ?? i)}`, shot, b[i], d.ratio, max);
         if (d.ratio > max) await attachPair(`${part.name}-${at[i] ?? ""}`, shot, b[i]);
         expect(d.ratio, `${part.name} at ${at[i] ?? ""}: ${d.why ?? ""}`).toBeLessThanOrEqual(max);
       }

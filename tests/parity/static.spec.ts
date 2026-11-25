@@ -3,6 +3,7 @@ import { diffRatio } from "./support/diff";
 import { fire, settleIntro, TRIGGERS } from "./support/motion";
 import {
   attachPair,
+  keepForSet,
   capture,
   edgesDrawn,
   freezeAt,
@@ -105,6 +106,7 @@ test.describe("[PD-01] static parity", () => {
           page.context().browser()?.browserType().name() ?? "",
           MAX_DIFF,
         );
+        keepForSet(`${part.name}-${String(vp.width)}`, a, b, d.ratio, max);
         if (d.ratio > max) await attachPair(`${part.name}-${String(vp.width)}`, a, b);
         expect(d.ratio, `${d.why ?? ""} ${part.tolerance?.why ?? ""}`).toBeLessThanOrEqual(max);
       });

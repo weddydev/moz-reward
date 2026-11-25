@@ -149,6 +149,9 @@ test("[P1-09] leave on day 1: the sheet explains the 30-day window, the shop lea
   await leaveSheet(page).getByTestId("shop-leave-confirm").click();
   await expect(page).toHaveURL("/wallet");
   await expect(page.getByRole("link", { name: new RegExp(SHOP) })).toHaveCount(0);
+  // Let the client navigation's own fetches finish before a full load cuts them (KI-52: WebKit reports the
+  // cancelled RSC fetch as an uncaught "TypeError: Load failed").
+  await page.waitForLoadState("networkidle");
 
   // The shop page now shows a non-member the join CTA instead of the member sections.
   await page.goto(`/shops/${shopId}`);
@@ -161,6 +164,7 @@ test("[P1-09] leave on day 1: the sheet explains the 30-day window, the shop lea
   await shoot("shop-page-non-member-390");
 
   // Rejoin the same day from the landing page: the frozen gold is back, nothing extra was paid.
+  await page.waitForLoadState("networkidle"); // KI-52
   await page.goto(`/s/${shopCode}`);
   await page.getByTestId("landing-collect").click();
   const join = page.getByRole("dialog", { name: `Join ${SHOP}` });

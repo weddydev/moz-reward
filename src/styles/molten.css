@@ -688,7 +688,10 @@ html:root.rm *::after {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.m-toast-x:focus {
+/* `:active` too: WebKit on macOS doesn't focus a button on a mouse press and blurs the focused one, so without
+   it the Dismiss a keyboard user reached collapses under the pointer mid-click and the click is lost. */
+.m-toast-x:focus,
+.m-toast-x:active {
   position: static;
   width: 44px;
   height: 44px;

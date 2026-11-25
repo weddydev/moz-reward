@@ -361,6 +361,17 @@ async function stressRun(page: Page, info: TestInfo) {
     (window as unknown as { __long: number[] }).__long = [];
   });
   const { cdp } = await throttleCpu(page, info);
+  // Control (C-79): the same page, throttle and runner for 3 s with no bursts. If this already misses 60 fps,
+  // the shortfall is the runner (or the page's own ground), not the FX engine.
+  const idleTimes = await page.evaluate(async () => {
+    const t: number[] = [];
+    const start = performance.now();
+    while (performance.now() - start < 3_000)
+      t.push(await new Promise<number>(requestAnimationFrame));
+    return t;
+  });
+  const idleGaps = idleTimes.slice(1).map((t, i) => t - (idleTimes[i] ?? t));
+  const idleFps = (1000 * idleGaps.length) / idleGaps.reduce((s, g) => s + g, 0);
   const run = await page.evaluate(async () => {
     const w = window as unknown as { __mozFx: Hook; __long: number[] };
     const times: number[] = [];
@@ -391,12 +402,12 @@ async function stressRun(page: Page, info: TestInfo) {
   const longest = Math.max(0, ...run.long);
   info.annotations.push({
     type: "fx stress trace",
-    description: `${String(run.fired)} bursts, peak ${String(run.peak)} particles, ${String(times.length)} frames, ${fps.toFixed(1)} fps, p95 ${p95.toFixed(1)} ms, long tasks ${String(run.long.length)} (max ${longest.toFixed(0)} ms)`,
+    description: `${String(run.fired)} bursts, peak ${String(run.peak)} particles, ${String(times.length)} frames, ${fps.toFixed(1)} fps, p95 ${p95.toFixed(1)} ms, long tasks ${String(run.long.length)} (max ${longest.toFixed(0)} ms); idle control ${idleFps.toFixed(1)} fps`,
   });
   console.warn(
-    `[fx-trace] bursts ${String(run.fired)} peak ${String(run.peak)} frames ${String(times.length)} fps ${fps.toFixed(1)} p95 ${p95.toFixed(1)} long ${String(run.long.length)}/${longest.toFixed(0)}`,
+    `[fx-trace] ${info.project.name} bursts ${String(run.fired)} peak ${String(run.peak)} frames ${String(times.length)} fps ${fps.toFixed(1)} p95 ${p95.toFixed(1)} long ${String(run.long.length)}/${longest.toFixed(0)} idle ${idleFps.toFixed(1)}`,
   );
-  return { ...run, fps, p95, longest };
+  return { ...run, fps, p95, longest, idleFps };
 }
 
 test("[PD-03] 200-burst stress at 4× CPU: engine holds its 420 cap, no long task over 65 ms @perf", async ({
@@ -417,13 +428,8 @@ test("[PD-03] 200-burst stress at 4× CPU: 60 fps, p95 ≤ 16.8 ms @fps", async 
   browserName,
 }, testInfo) => {
   test.skip(browserName !== "chromium", "CPU throttling is a Chromium DevTools feature");
-  // QUARANTINED on pixel7 (23 Nov 2026, CARRIED C-79 → PD-C close, TEMPORARY T-7): CI runners give 45–58 fps here
-  // even on main (981e003: 58.8 at 09:32, 52.3–54.8 at 10:09, same commit); PD-07 sits a few fps lower after the
-  // KI-42 fix. The 58 fps / 16.8 ms bounds stay; desktop1440 keeps running. Root cause + un-quarantine at the close.
-  test.fixme(
-    testInfo.project.name === "pixel7",
-    "quarantined: pixel7 FX stress below 58 fps on CI runners, main included (C-79)",
-  );
+  // pixel7 active again (PD-11, C-79): each run also measures the idle page as a control, so a miss shows
+  // whether the runner or the FX engine is short of frames (`[fx-trace] … idle`).
   // Median of 3 runs (process fix 3): the bounds are unchanged, one slow moment on a shared runner no longer decides.
   const m = await medianFrameRate(testInfo, () => stressRun(page, testInfo));
   for (const run of m.runs) expect(run.fired).toBe(200);
