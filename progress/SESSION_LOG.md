@@ -1041,4 +1041,4 @@ Built: SSE `/api/sse/me` + `/api/sse/shop/[shopId]` (hub, Redis fan-out, caps, h
 Evidence: integration realtime 16/16 (fan-out across two hubs, revoked session, staff removed, Redis restart, 1,000 cycles, rollback, RLS insert refusals for customer/4 admin roles/left member/marketing, C-58); unit client 9/9 + switch 3/3; authz matrix; gate:task PASS (`714874c`); CI 45625778081 green on `b46b67c`.
 CI fixes on the way: main `79b19bc` red (wipe probes, KI-59) → `6a13466`; fixture `page.route` changed every WebKit spec's timing and the cookie switch was cleared by specs (KI-60) → header switch.
 Reviews: security design check + task security review PASS WITH FIXES (fixed); MEDIUM RLS test added. NOT VERIFIED: SSE heartbeat through the staging proxy (C-95 → P1-C close).
-
+Process change (human, 25 Nov): CI 96 runs/5 days, 35% green → WebKit 4 shards, spec-repeat workflow, motion-spec rule, progress files on main mid-task, KNOWN_ISSUES widened; cross-checked against CLAUDE.md/TESTING (6 conflicts fixed, @perf kept per push). On main `58b321c`, CI 45630715347 green (4 WebKit shards). Next: P1-11.

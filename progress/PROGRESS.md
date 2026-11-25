@@ -8,7 +8,7 @@ Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **P1-10 closed 25 Nov (talha.syed, Mac); next P1-11** (Points requests, customer). Nothing half-done on P1-10. Autopilot OFF.
-- **Process change (human, 25 Nov) on `wip/process-ci-speed` (`6aaf365`), lands on main after its CI is green:** WebKit 4 shards, `@perf` off the per-push run, `spec-repeat.yml`, motion-spec rule (TESTING §7), progress files on main during a task, new task P1-19 (motion specs assert the animation; before the P1-C close). If it isn't on main yet: check its CI, rebase onto main (DECISIONS: keep both appended entries), push, then main.
+- **Process change (human, 25 Nov) is on main (`58b321c`, CI 45630715347 green, WebKit in 4 shards):** `spec-repeat.yml` + `wip/dbg-*` scratch branches for CI-only failures, motion specs assert the animation (TESTING §7), progress files on main during a task (CLAUDE.md), KNOWN_ISSUES covers every recurring dev problem; new task P1-19 (before the P1-C close).
 - **Before the P1-C close:** P1-19; Molten fixes C-92/C-93/C-94; C-95 (SSE heartbeat through the staging proxy).
 - **Not yet tested:** C-95 (staging, authenticated stream).
 ## Status
@@ -16,7 +16,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** **P1-C** next, from P1-10. P1-B closed 25 Nov (reviews, QA, H-49 approved; Sentry held until P2, C-88). PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-25, talha.syed (P1-10 closed; next P1-11)
+- **Last updated:** 2026-11-25, talha.syed (P1-10 closed, process change on main; next P1-11)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
