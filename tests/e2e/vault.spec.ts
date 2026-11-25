@@ -111,6 +111,9 @@ test("[P1-08] gold vault: DESIGN sample data, mystery hidden, tiers, shelf, how 
   signInAs,
   shoot,
 }) => {
+  // The pour's end state (up to 15 s), three resizes with screenshots, then two loads whose clicks wait for a
+  // stable box (two drawn frames): Linux WebKit can draw none for ~6 s after a load (KI-10), so 30 s ran out.
+  test.setTimeout(60_000);
   const me = await signInAs("customer");
   const { shopId } = await seedVault(page.request, me.userId, {
     progressGold: 720,

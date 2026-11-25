@@ -20,22 +20,42 @@ const isPhone = (page: Page): boolean => (page.viewportSize()?.width ?? 1280) < 
 const dock = (page: Page): Locator => page.locator('[data-portal-nav="bottom"]');
 const rail = (page: Page): Locator => page.locator('[data-portal-nav="side"]');
 
+/**
+ * After a load, Linux WebKit can draw no frame for up to ~6 s (measured 1.7–6.2 s, P1-19, KI-10): a transition
+ * waits for the next rendering update to start, and an IntersectionObserver reports on it. End states that need
+ * a drawn frame are polled this long (as vault and wipe do), never asserted within a set time.
+ */
+const SETTLE = { timeout: 15_000 };
+
 /** Waits until nothing inside `root` is animating (the pour, the droplet). Endless loops don't count. */
 async function poured(root: Locator): Promise<void> {
+  // Each still-running finite animation, named (target, property or name, times), so a failure says what is stuck.
   await expect
-    .poll(() =>
-      root.evaluate(
-        (el) =>
+    .poll(
+      () =>
+        root.evaluate((el) =>
           el
             .getAnimations({ subtree: true })
             .filter(
               (a) =>
                 a.playState === "running" &&
                 Number.isFinite(a.effect?.getComputedTiming().endTime ?? Number.POSITIVE_INFINITY),
-            ).length,
-      ),
+            )
+            .map((a) => {
+              const t = (a.effect as KeyframeEffect | null)?.target;
+              const what =
+                "transitionProperty" in a
+                  ? (a as CSSTransition).transitionProperty
+                  : "animationName" in a
+                    ? (a as CSSAnimation).animationName
+                    : "script";
+              const ct = a.effect?.getComputedTiming();
+              return `${t?.className ?? "?"} ${what} at ${String(Math.round(Number(a.currentTime)))} / ${String(Math.round(Number(ct?.endTime)))} ms (timeline ${String(Math.round(Number(document.timeline.currentTime)))})`;
+            }),
+        ),
+      { message: "running finite animations inside the nav", ...SETTLE },
     )
-    .toBe(0);
+    .toEqual([]);
 }
 
 /** The gold's resting box against an item's box (centres, along the run), in viewport pixels. */
@@ -56,16 +76,17 @@ async function goldSettlesOn(root: Locator, item: Locator, axis: "x" | "y"): Pro
   await expect
     .poll(() => goldOn(root, item, axis).then(Math.abs), {
       message: "the gold rests on the current item",
+      ...SETTLE,
     })
     .toBeLessThanOrEqual(1);
 }
 
 /**
- * Pours started on the bottom dock's gold since the last `clearAnimations` (script animations that move its
- * `.m-blob`; the side rail, hidden on phones, has its own).
+ * Pours started on a nav's gold since the last `clearAnimations` (script animations that move its `.m-blob`): the
+ * bottom dock's by default; the side rail, hidden on phones, has its own.
  */
-async function pours(page: Page): Promise<StartedAnimation[]> {
-  return (await started(page, '[data-portal-nav="bottom"] .m-blob')).filter(
+async function pours(page: Page, nav: "bottom" | "side" = "bottom"): Promise<StartedAnimation[]> {
+  return (await started(page, `[data-portal-nav="${nav}"] .m-blob`)).filter(
     (a) => a.source === "script" && moves(a),
   );
 }
@@ -281,7 +302,16 @@ test.describe("[PD-07] floating dock", () => {
     await signInAs("customer");
     await page.goto("/wallet");
     await expect(dock(page)).toBeHidden();
-    await expect(dock(page)).toHaveAttribute("data-paused");
+    const state = await page.evaluate(
+      () =>
+        `hydrated ${String(document.documentElement.hasAttribute("data-hydrated"))}, ` +
+        `${String(document.querySelectorAll("[data-hydrating]").length)} parts hydrating`,
+    );
+    // The observer reports on the next rendering update, which a frame-starved Linux WebKit may hold back ~6 s.
+    await expect(dock(page), `the hidden dock sleeps (at the check: ${state})`).toHaveAttribute(
+      "data-paused",
+      SETTLE,
+    );
   });
 
   test("[PD-07] shop: five items at 320 px, every label inside its own column", async ({
@@ -332,6 +362,7 @@ test.describe("[PD-07] customer rail", () => {
     shoot,
   }) => {
     test.skip(isPhone(page), "the rail is the tablet and desktop navigation");
+    await recordAnimations(page);
     await signInAs("customer");
     await page.goto("/wallet");
     const side = rail(page);
@@ -340,11 +371,17 @@ test.describe("[PD-07] customer rail", () => {
     await expect(wallet).toHaveAttribute("aria-current", "page");
     await goldSettlesOn(list, wallet, "y");
     await shoot("rail-wallet");
+    await poured(list);
+    await clearAnimations(page);
     await side.getByRole("link", { name: "Market" }).click();
     await expect(page).toHaveURL(/\/market$/);
     const market = side.getByRole("link", { name: "Market" });
     await expect(market).toHaveAttribute("aria-current", "page");
     await poured(list);
+    // Started (every engine): one pour of the rail's gold down to Market, a timed move, not a jump.
+    const down = await pours(page, "side");
+    expect(down.length, `one pour to Market:\n${describeAnimations(down)}`).toBe(1);
+    expect(down[0]?.timing.duration, describeAnimations(down)).toBeGreaterThan(0);
     await goldSettlesOn(list, market, "y");
   });
 });

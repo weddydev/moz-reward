@@ -45,6 +45,7 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 - Fix: poll settled values to their end state (`expect.poll`, default timeout), never read once after `running == 0`; judge drawn motion by frames; never wall-clock bounds alone. A product bug only if host (macOS) WebKit also fails. DECISIONS 12 Nov, 21 Nov, 23 Nov "Linux WebKit E2E".
 
 - More of KI-10 (CI 45537212442, 25 Nov): "the bar started empty" (first drawn frame already 0.2–0.6 into the 900 ms fill), the pour not `done` within 5 s, reduced motion mid-pour not `done` within 500 ms. Fixes in tests: prove a start state from the animation (`getKeyframes()[0]`, fill `backwards`), not from a frame that may never be drawn; wait for a signature moment's end state well past its length; "at once" in frames (count rAF from the trigger), never ms.
+- Worse than 1 fps (P1-19, 25 Nov, measured in the Linux container): after a load WebKit can draw one frame and then **none for 1.7–6.2 s**. Everything that needs a rendering update waits that long: a transition stays pending at `currentTime 0`, an IntersectionObserver's first callback (`data-paused`, usePauseOffscreen), and Playwright's click "stable" check (two drawn frames). So: end states that need a frame poll for 15 s (`SETTLE` in molten-dock, vault, wipe), and a journey test with several loads gets `test.setTimeout(60_000)` (vault "DESIGN sample data", CI 45660314012).
 - Since P1-19 (25 Nov) every motion spec proves a start with the shared recorder `tests/e2e/support/animations.ts` (`recordAnimations` in an init script, `started()`, `holdAnimations()`; it sees `animate()`, CSS animations/transitions, cancel and finish): use it, never a hand-rolled hook. Drawn frames, mid-animation samples and wall clock are Chromium-only or `@perf`/`@fps`/parity (TESTING §7).
 
 **KI-53 · wipe.spec "the wallet sank" flaky (0 frames), worse on a fast machine** — 25 Nov, CI 45537212442 + host iphone14 1 in 3.
@@ -78,6 +79,10 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 **KI-61 · Test API 500 "the web process has no \"system\" database pool"** — P1-11, 25 Nov.
 - Cause: by design (P0-20) the Next.js process has no moz_worker pool, so `/api/test/*` can't run a system-scope job (e.g. `expirePointRequests`); the E2E server runs no worker either. Fix: the test API does the job's DB change with the test factories (`testOwnerDb`) and calls `deliverRealtime` for the hint; the job itself is tested in integration.
+
+**KI-64 · WebKit guard failure "pageerror: …/api/sse/me due to access control checks." (or `…?_rsc=…`)** — P1-19, 25 Nov (spec-repeat 45660308963).
+- Cause: WebKit reports a fetch cut off by a page load as an uncaught error even when the code catches it (`connect()` in src/lib/realtime/client.ts does). Not a product bug.
+- Fix: the guard's WebKit-only `WEBKIT_CANCELLED_PREFETCH` allows exactly these two URL shapes (tests/e2e/support/test.ts). Any other "access control checks" error is real: look at CORS / CSP first.
 
 **KI-60 · Shared E2E fixtures: never `page.route` for every page, never a cookie as a test switch** — P1-10, 25 Nov.
 - Symptom 1: after a fixture added `page.route("**/api/sse/**")` to every page, Linux WebKit specs far from the change failed (slider drag: pointer never over the input, 3/3; CI 45596050268). Cause: any Playwright route makes WebKit intercept **every** request and turns the HTTP cache off, so every spec's load timing changes.
