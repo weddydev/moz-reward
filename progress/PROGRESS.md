@@ -7,17 +7,16 @@ Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-10 in progress, talha.syed (Mac), stopped mid-task 25 Nov (human's usage limit). Branch `wip/P1-10`, pushed HEAD `d990337` (switch to it and `git merge --ff-only origin/wip/P1-10`; check HEAD = `d990337`). Nothing of P1-10 is on main yet. Autopilot OFF.**
-- **Done:** SSE hub/routes/client, notify(), notifications partitions (0027, owner `moz_partitions`), C-58 notice, C-28 drain; design check + task security review (PASS WITH FIXES); gate:task failures fixed (scheduler test, backup checks.sql) and those 4 suites re-run green; Lighthouse: wallet judgment (DECISIONS), landing regression is on main too (C-91 → P1-18).
-- **Half-done (uncommitted review fixes, now committed UNTESTED):** 0027 insert policy `category='transactional'` + `left_at IS NULL`; `shopAudience` current members only; notify() team/system only + explicit createdAt; layout mounts realtime only with a principal. **Next:** `pnpm db:reset`; add the MEDIUM test (customer own/other + each admin role INSERT into notifications → 42501) in tests/integration/realtime.test.ts; client: on `closed: replaced` stop + poll (no reconnect ping-pong, hook resumes on visible); FOLLOWUPS: per-IP open-stream cap (review LOW). Then `pnpm fix:changed`, `pnpm gate:task`, walk ACs, tick P1-10, SESSION_LOG, push wip → main after CI green.
-- **Also (human, 25 Nov, after P1-10):** Molten fixes C-92 (button coin animation missing), C-93 (tabs spark not on every example), C-94 (/dev/ui missing Slider, StarRating, MemberCard and other built parts) → fix before the P1-C close ("Design first" rule).
-- **Not yet tested:** the uncommitted-fix commit above; CI 45593767533 (first checkpoint) result unread; heartbeat through the staging proxy (after deploy).
+- **P1-10 closed 25 Nov (talha.syed, Mac); next P1-11** (Points requests, customer). Nothing half-done on P1-10. Autopilot OFF.
+- **Process change (human, 25 Nov) on `wip/process-ci-speed` (`6aaf365`), lands on main after its CI is green:** WebKit 4 shards, `@perf` off the per-push run, `spec-repeat.yml`, motion-spec rule (TESTING §7), progress files on main during a task, new task P1-19 (motion specs assert the animation; before the P1-C close). If it isn't on main yet: check its CI, rebase onto main (DECISIONS: keep both appended entries), push, then main.
+- **Before the P1-C close:** P1-19; Molten fixes C-92/C-93/C-94; C-95 (SSE heartbeat through the staging proxy).
+- **Not yet tested:** C-95 (staging, authenticated stream).
 ## Status
 - **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **P1-C** next, from P1-10. P1-B closed 25 Nov (reviews, QA, H-49 approved; Sentry held until P2, C-88). PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-25, talha.syed (P1-10 mid-task on wip/P1-10)
+- **Last updated:** 2026-11-25, talha.syed (P1-10 closed; next P1-11)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -26,8 +25,8 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. P1-10 · Realtime (SSE) infrastructure (CARRIED C-28, C-58).
-2. P1-11 after it.
+1. P1-11 · Points requests (customer) (CARRIED C-68).
+2. P1-19 · Motion specs assert the animation (before the P1-C close); then P1-12, P1-13.
 3. Human any time: H-45 (🟠), H-38 (branches), H-51 (b); H-48b at P2 start, after the first demo (C-88).
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -35,12 +34,10 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 | ID | From | To | Criterion | Proof |
 |---|---|---|---|---|
 | C-16 | B-CR-12 | passkey UI task | Passkey re-sign-in over a stale session | E2E |
-| C-28 | P0-18 | P1-10 | SSE streams get a jittered `retry:` before close on shutdown | integration |
 | C-35 | P0-13 | P1-18 (human 17 Nov) | Backup jobs write `backup:dump`/`backup:wal`/`backup:restore-drill` heartbeats + `BACKUPS_ENABLED=true` on staging; per-route request rate/p95/error on the System page from host logs Backup half done 16 Nov (D4); left: health snapshot after deploy + request logs (E). | staging health snapshot + screenshot |
 | C-39 | P0-10 review | first P1 task that puts a menu, select or popover inside a Modal/SidePanel/BottomSheet | `Popover` portals to `<body>`, so inside a `showModal()` dialog it renders under the top layer and is inert: portal into the open dialog (or the top layer) and re-check placement | E2E: popover opened inside a modal is visible and clickable |
 | C-40 | P0-C flaky (CI 43206412851) | P1-18 (human 17 Nov) | Pixel 7 "[P0-09] motion" quarantined (`test.fixme` on pixel7): closing a panel once recorded two `transform` transitionstarts; find the cause, fix, remove the fixme | 5-project run with the test active, 0 flaky |
 | C-53 | P1-02 gate (gpg 2.5) | P1-18 | backup-pitr "WAL object without integrity protection" fixture is unprotected on every gpg (hand-built SED packet), so the case runs on developer laptops (gpg 2.5 writes AEAD even with `--rfc2440`) as well as CI | integration passes on Mac gpg 2.5 without the skip |
-| C-58 | P1-05 | P1-10 | Programme-change notice: a save whose rewards/milestones change writes a `loyalty-change-notice` outbox row in the save transaction; the handler sends each current member one in-app transactional notice with the effective date (keyset-paged, idempotent per version, none for left members, none on rollback) | integration |
 | C-60 | P1-05 | P1-12 | Membership stores its current ingot's start; approval uses `ingotTerms(versions, ingotStartedAt)` and `versionActiveAt(versions, requestedAt)`; a programme save mid-progress leaves ledger and unlocked rewards untouched | integration |
 | C-62 | P1-07 | P1-12 | Approvals write `progress_gold` / `ingots_completed`; the Wallet reads rewards-ready count, recent activity, and the last 10 awards for "N more visits"; Wallet statement count unchanged | integration |
 | C-66 | P1-08 | P1-12 | Gold Vault streak chip shows the member's current streak from the ledger; tier never goes down when an owner raises a threshold (membership stores the highest tier reached) | integration + E2E |
@@ -50,12 +47,13 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 | C-69 | P1-09 | P1-12 | Approvals refuse a left membership (progress frozen); the shop page's Recent receipts card lists the last receipts (empty state today) | integration + E2E |
 | C-70 | P1-09 | P1-16 | Leaving voids live redeem codes in `leaveShop`'s transaction (staff confirm then fails); unredeemed rewards stay with their own validity and reappear on rejoin | integration |
 | C-73 | P1-09 | P1-13 | A rejoin after the 30-day window gets no frozen progress back even if the forfeit job hasn't run yet (forfeit at rejoin, or the join refuses to restore) | integration |
-| C-78 | CI 45101535248 (PD-B close) | P1-18 (moved from PD-11, human 25 Nov) | Linux WebKit: `molten-fields` slider drag's final track press keeps 720 (3/3 there; passed in CI 45090767908 + 45096798286, host WebKit 6/6): root-caused and the WebKit assertion un-quarantined | CI WebKit run + SESSION_LOG |
+| C-78 | CI 45101535248 (PD-B close) | P1-19 (moved from PD-11 → P1-18, human 25 Nov; → P1-19 motion specs, 25 Nov) | Linux WebKit: `molten-fields` slider drag's final track press keeps 720 (3/3 there; passed in CI 45090767908 + 45096798286, host WebKit 6/6): root-caused and the WebKit assertion un-quarantined | CI WebKit run + SESSION_LOG |
 | C-79 | PD-07 CI (perf 45153452036, main 45153456299) | P1-18 (moved from PD-11, human 25 Nov) | pixel7 `@fps` FX stress (≥ 58 fps, p95 ≤ 16.8 ms at 4× CPU) un-quarantined: cause found (runner variance vs. a dock/FX frame cost), fixed if real; TEMPORARY T-7 closed | nightly perf run green on pixel7 + SESSION_LOG |
 | C-81 | PD-10 design review M3 | P1-16 | `RedeemCode` gets `receivedAt` = the phone's `Date.now()` when the redeem response arrives (not at mount), with `serverNow`/`expiresAt` from that response | E2E: a code shown after a delay counts from the response |
 | C-83 | PD-11 CI 45548579038 | P1-18 | Linux-WebKit-only failures quarantined on CI WebKit (T-9): `molten-controls` /dev/ui 320 overflow 44 px, `gilded-gate` src=qr ends 6.8 s vs < 4.88 s, `shop-page` leave on day 1 (iphone14): root-caused, fixed, fixmes removed. Also from PD-11 E: gate "convergence at 4× full p95 ≤ 20" (fails on main's nightly 45397054403 too); Wallet→shop commit long task (FOLLOWUPS 79) | CI WebKit green with the tests active + nightly perf |
 | C-86 | P1-B close C-84 reward trace | P1-15 | The reward moment's first play has one long task of 182–288 ms at 4× CPU (repeat plays none): root-caused, fixed, `vault.spec` "[PD-10] the reward moment … @perf" un-quarantined; T-10 closed | @perf spec active and green + SESSION_LOG |
 | C-91 | P1-10 (Lighthouse on main `79b19bc` and `wip/P1-10`, 25 Nov) | P1-18 | Landing `/s/[code]` Lighthouse mobile: LCP 4.21 s (budget 2.50; was 0.80 at P1-02) and JS 163.4 KB gzip (band 140) on main itself, score 82–85: root-caused and back inside budget (FOLLOWUPS 80 trim + the LCP regression) | `pnpm test:lighthouse` landing PASS + SESSION_LOG |
+| C-95 | P1-10 (edge case: proxy buffering) | P1-C close (`/subphase-complete`) | An authenticated `/api/sse/me` stream on staging through Cloudflare + Caddy (`flush_interval -1`) delivers `ready` at once and a heartbeat comment every 25 s (no buffering) | curl/browser trace on staging + SESSION_LOG |
 | C-92 | Human, H-49 side-by-side re-check (25 Nov) | P1-C close (`/subphase-complete`) | Button tap: the **coin animation** that plays in the Molten demo (`design/reference/molten/`) doesn't play in the app's Button. Match the demo exactly (same trigger, timing, reduced-motion fallback); add the part to the parity harness so it can't drift again | parity spec (frames) + side-by-side check by the human |
 | C-93 | Human, H-49 side-by-side re-check (25 Nov) | P1-C close (`/subphase-complete`) | Fluid tabs (gold blob gliding left/right): the **spark after the blob settles** shows in some examples but not all. It must appear on every tabs/segmented instance that the demo shows it on (every variant, every direction) | parity spec per variant + side-by-side check by the human |
 | C-94 | Human (25 Nov) | P1-C close (`/subphase-complete`) | `/dev/ui` shows **every component built** (incl. Slider, StarRating, MemberCard and any other Molten part made in PD/P1 that isn't there yet), each in its states, so the human can review them side by side with the demo | E2E: each component visible on /dev/ui + screenshot 320/1440 |
@@ -72,10 +70,9 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (25 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- Main `f588a5e`: CI 45585092326 green; staging deploy 45587066510 green (health ready/live, staging checks, demo sign-in ok).
-- `480285a` (KI-59, test-only): CI 45586152876 green (no flake warnings); host 20/20 webkit + iphone14, wipe spec 43/0, mutation (no rise) fails as it should.
-- KI-58: mid-wipe reduced-motion spec 40/40 webkit + iphone14. QA batch `6a006c7`: gate:task PASS, visual darwin + linux 10/0.
-- H-49 approved by the human (25 Nov): /dev/ui perfect, /dev/motion motion perfect.
+- P1-10 `b46b67c` (rebased on main `6a13466`): CI 45625778081 green (all jobs); gate:task on `714874c` all steps PASS (unit 2150/0, int 1501/0/1, task E2E 9/0, SAST, bundle).
+- Main `6a13466` (wipe probes, KI-59): CI 45625941247 green.
+- P1-10 two-tab screenshot (desktop1440, Linux Chromium) inspected: event reached both tabs, Wallet unobstructed.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 

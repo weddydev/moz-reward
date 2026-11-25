@@ -1036,3 +1036,9 @@ Reviews (code, security, design) of PD-C: APPROVE/PASS WITH FIXES → fixed (`8b
 CI on main `bb82b00` red: WebKit mid-wipe axe contrast (KI-58, test released its frozen animations + waited for the page) → `f588a5e`; confirmed flake "wallet came back from the sunk state" (KI-59, recorder frame-independent) → `480285a`.
 Docker tidy: 2 leftover test containers (41 h) removed, unused volumes removed. code-review done `480285a`.
 
+## 2026-11-25 — P1 — P1-10 closed, talha.syed (Mac)
+Built: SSE `/api/sse/me` + `/api/sse/shop/[shopId]` (hub, Redis fan-out, caps, heartbeat session checks, jittered `retry:` on shutdown C-28), `notify()` (row + outbox, in-app only in P1), monthly `notifications` partitions (0027), C-58 programme-change notice; client: backoff, refetch on reconnect, `replaced` → poll (no tab ping-pong).
+Evidence: integration realtime 16/16 (fan-out across two hubs, revoked session, staff removed, Redis restart, 1,000 cycles, rollback, RLS insert refusals for customer/4 admin roles/left member/marketing, C-58); unit client 9/9 + switch 3/3; authz matrix; gate:task PASS (`714874c`); CI 45625778081 green on `b46b67c`.
+CI fixes on the way: main `79b19bc` red (wipe probes, KI-59) → `6a13466`; fixture `page.route` changed every WebKit spec's timing and the cookie switch was cleared by specs (KI-60) → header switch.
+Reviews: security design check + task security review PASS WITH FIXES (fixed); MEDIUM RLS test added. NOT VERIFIED: SSE heartbeat through the staging proxy (C-95 → P1-C close).
+

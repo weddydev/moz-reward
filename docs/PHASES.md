@@ -110,7 +110,7 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 
 **P1-C · Requests, approvals, realtime**
 
-- [ ] P1-10 · Realtime (SSE) infrastructure
+- [x] P1-10 · Realtime (SSE) infrastructure (25 Nov)
 - [ ] P1-11 · Points requests (customer)
 - [ ] P1-12 · Approve / reject, owner approval, reversals, receipts
 - [ ] P1-13 · Points expiry job
