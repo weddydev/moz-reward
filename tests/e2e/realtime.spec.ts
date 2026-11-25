@@ -41,6 +41,9 @@ test("[P1-10] two tabs: an event published for the customer arrives in both, liv
     await expect(p.getByTestId("realtime")).toHaveAttribute("data-realtime-events", "1");
     await expect(p.getByTestId("realtime")).toHaveAttribute("data-realtime", "open");
   }
+  // The pointer starts at (0, 0), over the desktop rail, which opens on hover once the second tab has been in
+  // front: move it off so the shot shows the Wallet, not the rail over it.
+  await page.mouse.move(700, 600);
   await shoot("two-tabs-event-received");
   await second.close();
 });
