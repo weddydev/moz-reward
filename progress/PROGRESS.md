@@ -7,27 +7,26 @@ Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-B close in progress, talha.syed, 25 Nov 2026 (Mac); baton held. Autopilot OFF.** Work on **`wip/P1-B-close`** (worktree `../moz-P1-B-close`); its HEAD is the commit carrying this note (it merges main `d38cb5e`). CI on it was started by the push of this note: read it first; green → push the same commit to main (pre-push hook), which also deploys staging.
-- **Done this session (all test-first, on the branch):** design HIGH Wallet header as the reference (`56ab5a7`: `WalletHeader.tsx`, CSS moved from /dev/molten into molten.css; one bell on phones, rail from 768px; total panel "N gold across M shops", hidden with no shops; C-87 unread badge → P3-07). Design MEDs (`13e7dab`): card meta "720 / 1,000 · reward" (percent + visits in the accessible name), `navParent: "/wallet"` for shop and vault. CI fixes: gate face lock by face status (`4b8538a`, KI-57: Linux WebKit `fonts.check()` true for a blocked font), wallet integration shape (`cac47ad`), bell hover inside fine-pointer media (P0-09 AC7). KI-56 (wipe "slow way back" timed from the tap). Visual baselines darwin + linux (`5a3459e`). QA (qa-engineer, 30 scenarios × 320/390/1440 × Chromium + WebKit): 1 HIGH + 3 MEDIUM fixed in `6a006c7` (vault back link overflow; paused/closed shop page state + notice; meta line wraps its pill; cover title sized by longest word), 8 LOW → FOLLOWUPS.
-- **Next (in order):** (1) CI on this commit green → main. (2) **H-49 to the human**: the side-by-side set is in the main checkout's `.artifacts/parity-set/` (local only; /dev/molten unchanged since it was made). (3) Staging smoke on the deployed main commit (Wallet header, shop page, vault) + Sentry for the release; `pnpm docker:tidy` (old `moz-pitr-src`, `moz-walg-test` containers). (4) `/subphase-complete` close lines: SESSION_LOG close entry, tick the P1-B close line in PHASES, C-84/C-85 rows closed (C-85 waits on H-49 only).
-- **Not yet tested:** CI on this commit (WebKit has the gate font fix and the QA batch untried on Linux WebKit; host WebKit passed). Local Linux container shows gate letters with no animations at 2.5 s (CI doesn't; KI-57 note), so judge gate timing on CI.
-- **Before work:** no env/migration changes. The worktree needs `.env.local` (copied from the main checkout).
+- **P1-B closed 25 Nov 2026, talha.syed (Mac); baton held. Autopilot OFF.** Everything is on main (`wip/P1-B-close` landed; the worktree `../moz-P1-B-close` can be removed). Next: **P1-10 · Realtime (SSE) infrastructure**: start a new `wip/P1-10` from main; read CARRIED rows targeting P1-10 first (C-28 SSE jittered `retry:`, C-58 programme-change notice).
+- **P1-B close done:** reviews (code, security, design) of PD-C + fixes; design HIGH Wallet header + 2 MEDs; QA (1 HIGH + 3 MEDIUM fixed, 8 LOW → FOLLOWUPS); H-49 parity approved by the human; CI fixes KI-56/57/58/59; visual baselines darwin + linux. Sentry held until P2 start (C-88, H-48b).
+- **Not yet tested:** staging journeys behind basic auth by hand (the deploy's own smoke passed: health ready/live, staging checks C-23/C-36/C-38, demo sign-in); Sentry for releases since 22 Nov (held, C-88). Staging runs `f588a5e`; `480285a` (KI-59 test-only fix) reaches staging with the next deploy.
+- **Before work:** no env/migration changes.
 ## Status
-- **Phase:** **PD — Molten design** (runs first; human 20 Nov). Then P1 resumes with the P1-B close. P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
-- **Current sub-phase:** **P1-B close** next (PD-C closed 25 Nov by the human's decision: PD-07..PD-11 done; H-49, reviews and QA moved to the P1-B close as C-85). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete.
+- **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
+- **Current sub-phase:** **P1-C** next, from P1-10. P1-B closed 25 Nov (reviews, QA, H-49 approved; Sentry held until P2, C-88). PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-25, talha.syed (P1-B close: design HIGH/MEDs + QA fixes on `wip/P1-B-close`; next: CI → main, H-49, staging smoke)
+- **Last updated:** 2026-11-25, talha.syed (P1-B closed; next P1-10)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
-- **Staging live** (release `74fba5b` since 22 Nov ~06:50 UTC; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
-- **P1-B:** P1-05..P1-09 done (P1-09 landed 20 Nov, `2dd6039`); the sub-phase close runs after PD.
+- **Staging live** (release `f588a5e` since 25 Nov, P1-B close; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
+- **P1-B:** closed 25 Nov (P1-05..P1-09 + the close: reviews, QA fixes, Wallet header, H-49).
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. P1-B close: staging deploy of `bb82b00` + smoke, close lines (H-49 approved 25 Nov; Sentry held, C-88).
-2. P1-10 after the close.
+1. P1-10 · Realtime (SSE) infrastructure (CARRIED C-28, C-58).
+2. P1-11 after it.
 3. Human any time: H-45 (🟠), H-38 (branches), H-51 (b); H-48b at P2 start, after the first demo (C-88).
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -68,10 +67,10 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (25 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- `6a006c7` (wip): gate:task PASS (unit 2098/0, int 1456/0, Linux Chromium E2E 95/0, SAST, bundle); visual darwin 10/0 + linux 10/0.
-- Host E2E on the changes: shop-page, vault, wipe, ui-states × chromium/pixel7/desktop1440 141/0; wallet, dock, shells 69/0; wallet, shop-page, vault, gate × webkit/iphone14 78/0 + the reworked long-name test 4/4.
-- Linux WebKit (container) diagnostic: gate `data-face="fallback"` with the font blocked after the KI-57 fix (was null).
-- CI 45566545768 (`4b8538a`): red on wallet integration shape + P0-09 hover rule, both fixed (`cac47ad`, `6a006c7`); parity Chromium, perf, check, gitleaks green.
+- Main `f588a5e`: CI 45585092326 green; staging deploy 45587066510 green (health ready/live, staging checks, demo sign-in ok).
+- `480285a` (KI-59, test-only): CI 45586152876 green (no flake warnings); host 20/20 webkit + iphone14, wipe spec 43/0, mutation (no rise) fails as it should.
+- KI-58: mid-wipe reduced-motion spec 40/40 webkit + iphone14. QA batch `6a006c7`: gate:task PASS, visual darwin + linux 10/0.
+- H-49 approved by the human (25 Nov): /dev/ui perfect, /dev/motion motion perfect.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 

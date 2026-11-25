@@ -1030,3 +1030,9 @@ QA (qa-engineer, Chromium + WebKit × 320/390/1440, 30 scenarios, axe clean): HI
 Evidence: gate:task PASS on `6a006c7`; visual darwin + linux 10/0; host E2E 141/0 + 69/0 (Chromium projects), 78/0 + 4/4 (WebKit projects).
 NOT VERIFIED: CI on the closing commit (pushed with this entry); staging smoke + Sentry (after main); H-49 (human).
 
+## 2026-11-25 — P1 — P1-B closed (/subphase-complete), talha.syed (Mac)
+CI: main `f588a5e` 45585092326 green; `480285a` (KI-59 test fix) CI 45586152876 green. Staging: deploy 45587066510 ok (health ready/live, staging checks C-23/C-36/C-38, demo sign-in two-step ok). Sentry: deferred, H-48b at P2 start (human; C-88).
+Reviews (code, security, design) of PD-C: APPROVE/PASS WITH FIXES → fixed (`8b74a8c`, `56ab5a7`, `13e7dab`). QA: 1 HIGH + 3 MEDIUM fixed (`6a006c7`), 8 LOW → FOLLOWUPS. H-49 parity approved by the human.
+CI on main `bb82b00` red: WebKit mid-wipe axe contrast (KI-58, test released its frozen animations + waited for the page) → `f588a5e`; confirmed flake "wallet came back from the sunk state" (KI-59, recorder frame-independent) → `480285a`.
+Docker tidy: 2 leftover test containers (41 h) removed, unused volumes removed. code-review done `480285a`.
+

@@ -106,7 +106,7 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 - [x] P1-07 · Wallet (19 Nov, 4703422; C-62..C-65 carried)
 - [x] P1-08 · Ingot component, pour-on-view, Gold Vault page (19 Nov, db18c95; C-50, C-59, C-64 closed; C-66, C-67 carried)
 - [x] P1-09 · Shop page (customer) (19 Nov; C-54 closed; C-68..C-74 carried)
-- [ ] P1-B closed with `/subphase-complete` (after PD-C, so its design review and QA see the Molten screens)
+- [x] P1-B closed with `/subphase-complete` (after PD-C, so its design review and QA see the Molten screens) — closed 25 Nov (H-49 approved; Sentry held until P2 start, C-88)
 
 **P1-C · Requests, approvals, realtime**
 
