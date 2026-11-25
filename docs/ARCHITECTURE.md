@@ -169,8 +169,8 @@ All jobs idempotent, with retries + exponential backoff and a dead-letter queue 
 
 - SSE endpoints: `/api/sse/shop/[shopId]` (staff only) and `/api/sse/me` (customer). Heartbeat every 25s. Redis pub/sub (on `redis-cache`) fan-out so multiple web containers work.
 - One shared Redis subscriber connection per web process, multiplexed to all local streams. Never one Redis connection per SSE client.
-- Connection caps: per user (default 5 open streams) and per shop (default 50 staff streams). Over the cap, the oldest stream is closed.
-- Long-lived streams re-check authorisation every 5 min (session still valid, role and shop membership unchanged); on failure the stream closes with an auth event.
+- Connection caps: per user (default 5 open streams) and per shop (default 50 staff streams). Over the cap, the oldest stream is closed. Plus a process-wide ceiling (2,000): past it a new stream gets 503 + Retry-After. Caps are per process (P1-10, DECISIONS 25 Nov).
+- Long-lived streams re-check their session on **every heartbeat** (one batched query per process; a role change deletes the user's sessions, migration 0006), so a signed-out, revoked or expired session or a removed staff member loses the stream within 25 s, with an auth event. If the check itself fails, streams stay open only while the last good check is under 5 min old. Every stream is closed for a full re-authorisation after ~60 min (± 5 min) with a short jittered `retry:`. (P1-10; stricter than the original 5-min re-check.)
 - Clients reconnect with exponential backoff plus random jitter and refetch state on reconnect (SSE is a hint, DB is truth).
 - On shutdown or deploy the server sends `retry:` with a jittered delay, then closes, so clients do not reconnect all at once.
 - Redis down: the stream sends a `degraded` event and the client falls back to polling (every 15 s) until SSE recovers. No user action fails because realtime is down.

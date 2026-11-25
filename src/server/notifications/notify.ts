@@ -1,7 +1,7 @@
 import "server-only";
 import { v5 } from "uuid";
 import { newId } from "@/lib/id";
-import type { CustomerScope, ShopScope, SystemScope } from "@/server/authz/scope";
+import type { ShopScope, SystemScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import { writeOutbox } from "@/server/jobs/outbox";
 import { MAX_TARGETS, publishRealtime } from "@/server/realtime/publish";
@@ -35,7 +35,8 @@ export const notificationIdFor = (dedupeKey: string, userId: string): string =>
 
 /** Notifies each recipient (≤ 100 per call) of one event; returns the notification ids. */
 export async function notify<T extends NotificationType>(
-  scope: CustomerScope | ShopScope | SystemScope,
+  // A team (its current members/staff, RLS) or a job; customers never notify (no INSERT policy for them).
+  scope: ShopScope | SystemScope,
   tx: Transaction,
   recipients: readonly string[],
   input: NotifyInput<T>,
@@ -49,10 +50,8 @@ export async function notify<T extends NotificationType>(
   if (scope.kind === "shop" && input.shopId !== scope.shopId) {
     throw new Error("notify: a shop team notifies about its own shop only");
   }
-  if (scope.kind === "customer" && recipients.some((r) => r !== scope.userId)) {
-    throw new Error("notify: a customer can only notify itself");
-  }
   const payload = def.payload.parse(input.payload) as Record<string, unknown>;
+  const now = new Date();
   const rows = [...new Set(recipients)].map((userId) => ({
     id: input.dedupe ? notificationIdFor(input.dedupe.key, userId) : newId(),
     userId,
@@ -60,7 +59,7 @@ export async function notify<T extends NotificationType>(
     type: input.type,
     category: def.category,
     payload,
-    ...(input.dedupe ? { createdAt: input.dedupe.createdAt } : {}),
+    createdAt: input.dedupe?.createdAt ?? now,
   }));
   await insertNotifications(scope, tx, rows);
   // One hint to the recipients' own channels (one outbox row per call, not per recipient). A duplicate hint for
@@ -77,7 +76,7 @@ export async function notify<T extends NotificationType>(
       const job = {
         notificationId: row.id,
         userId: row.userId,
-        createdAt: (row.createdAt ?? new Date()).toISOString(),
+        createdAt: row.createdAt.toISOString(),
       };
       if (scope.kind === "system")
         await writeOutbox(scope, tx, "email", "notification-system", job);

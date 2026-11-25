@@ -18,6 +18,8 @@ Alert emails go to every address in `ALERT_EMAILS` (both developers). Subject: `
 | `error.unexpected` | An unhandled error in an action, route, page, Better Auth or after-commit work. Detail: `where` and `requestId`. | Sentry (search the request id), then the host logs for that `requestId` (§15). |
 | `outbox.stale` | Outbox rows waiting > 2 min to be dispatched: the relay or redis-queue is stuck. | §8 (worker) and §7 (Redis). |
 | `outbox.lost` | Dispatched jobs vanished from redis-queue (re-dispatched automatically). | §7 — usually a Redis restart without its AOF. |
+| `notifications.undelivered` | *(P1-10)* A notice job could not read what it announces (today: a programme change notice whose owner lost the role before the job ran; RLS hides the version), so nothing was sent. Detail: `job`, `shopId`, `version`. | Rare by design. Check the shop's team; if the notice still matters, a current owner re-saves (or wait for the admin re-send tool). |
+| `health.partitions` | *(P1-10)* Fewer than 2 months of `notifications` partitions exist ahead; inserts fail once a month has none. | Check the `partitions-ensure` job (daily 03:17, §8); run it by hand: `SELECT ensure_notifications_partitions(3)` as `moz_worker` (`pnpm worker` must be healthy). |
 | `codes.exhausted` | Five random public codes in a row were taken (shop code, member ID…); nothing was created and the caller saw an error. Detail: `kind`, `attempts`. | One alert is chance-level impossible at today's size (30⁶ ≈ 729 M codes): look for a bug in the generator or a unique index on the wrong column; if the code space is genuinely filling up, lengthen the code (DECISIONS). |
 | `health.db` | Postgres did not answer the monitor within 2 s. | `docker compose ps postgres`, its logs; disk (§12). |
 | `health.redis` | redis-queue did not answer. Jobs, rate limits and alert dedup are affected; requests needing limits fail closed (503). | §7. |
@@ -59,6 +61,7 @@ On staging these three URLs (exactly these paths) skip the basic-auth password, 
 *(P0-15)* Staging deploys on every green push to `main`; production on a `v*` tag, started by a human.
 1. Check CI is green on the commit (`gh run list --limit 1`) and the System page shows no open alerts.
 2. Production: `gh workflow run deploy.yml -f tag=vX.Y.Z` (GitHub Free mode refuses a tag without a green CI run).
+- *(P1-10)* Migration 0027 needs the NOLOGIN role `moz_partitions`, which only the bootstrap can create on the VPS (moz_owner has no CREATEROLE). Nothing to do by hand: every deploy runs the **new** release's `bootstrap.sql` before its migrations. If the migration ever reports `role "moz_partitions" does not exist`, the bootstrap step didn't run: the deploy stops before switching replicas.
 3. The job ships the image (`docker save | zstd | ssh … docker load`), runs migrations in a one-off container, then replaces `web-1`, waits for `/api/health/ready`, replaces `web-2`, then the worker (it drains for 60 s).
 4. **Worked when:** the job is green, `/api/health/ready` and `/api/health/worker` are 200, the System page snapshot is fresh, Sentry shows no new issues for the release (`APP_RELEASE` = the SHA).
 - A failing health check aborts the deploy and leaves the previous version serving: read the job log, fix, deploy again.
@@ -148,7 +151,7 @@ lever is set, storage reaches 70% of the environment's B2 share, or the key expi
 3. If the data is gone: the outbox sweep re-dispatches rows dispatched > 10 min ago and still open (`outbox.lost` alert) — or run §6 step 4 from the time of the loss. Rate-limit and lockout counters restart from zero (accepted).
 4. **Worked when:** ready 200, `health.redis` stops, outbox waiting drains, System page queues move.
 
-**redis-cache** (cache + pub/sub, `allkeys-lru`): losing it is not an outage — reads fall back to Postgres (slower), SSE fan-out (P1-10) reconnects. Restart it; nothing to restore.
+**redis-cache** (cache + pub/sub, `allkeys-lru`): losing it is not an outage — reads fall back to Postgres (slower), SSE fan-out (P1-10) reconnects. Restart it; nothing to restore. While it is down every realtime stream gets `degraded` and the pages poll every 15 s; on recovery the shared subscriber re-subscribes and the streams get `ready` (the pages refetch). The System page's "Live connections (SSE)" reads per-process counts kept here, so it shows "—" meanwhile.
 
 ## 8. Worker down
 

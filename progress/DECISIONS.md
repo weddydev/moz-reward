@@ -1214,3 +1214,28 @@ Consequence / revisit when: P1-16 (redeem) makes the closed-shop 30-day window r
 Decision: H-48b (the staging Sentry probe and a review of staging releases for new errors) is done by the human at P2 start, after the first client demo. Until then the "Sentry: no new errors for the release" step of `/subphase-complete` and `/phase-complete` records "deferred, H-48b" and doesn't block the close. C-88 (→ P2-01) makes sure it isn't forgotten.
 Why: the human asked to keep Sentry work for after the demo (25 Nov). The deploy's own checks (health ready/live, basic-auth staging checks, demo sign-in) still run on every release.
 Consequence / revisit when: P2-01 can't be ticked until H-48b is done; any staging error before then is found at that review, not at the release.
+
+## 2026-11-25 — Realtime streams: caps, session re-check, lifetime and failure modes (P1-10, security design check)
+Decision: one hub per web process with one shared redis-cache subscriber; caps 5/user, 50/shop channel, 2,000/process (503 + Retry-After), counted per process (two replicas → at most 2× a cap; the cluster-wide connect limits bound churn). Every 25 s heartbeat re-checks all streams' sessions in one query (role changes delete sessions, 0006), so revocation and staff removal close a stream within one heartbeat; a failing check keeps streams only while the last good one is < 5 min old; every stream is closed for a full re-authorisation after ~60 min ± 5. Connect limits (60/5 min per IP before auth, 30/5 min per user after) fail open: read-only hints, realtime down already degrades.
+Why: ARCHITECTURE §7, security design check M4/M5/answers 2–4; a per-event DB check was judged unnecessary (events carry ids only, every refetch is authorised and under RLS).
+Consequence: ARCHITECTURE §7 updated; the 5-min re-check there is replaced by the stricter heartbeat check.
+
+## 2026-11-25 — Realtime client is fetch-based; E2E specs opt in to streams (P1-10)
+Decision: the browser reads SSE with fetch + our own parser, not EventSource (which hides 401/403/429/503 and reconnects on a fixed timer); full-jitter backoff (1 s → 30 s), the server's `retry:` honoured once, 15 s polling while degraded or refused, 401/`auth` → the page refreshes into its sign-in gate, 403 → stop. The customer layout holds the one stream. The shared E2E fixture answers `/api/sse/*` with 403 unless a spec sets `test.use({ realtime: true })`.
+Why: ARCHITECTURE §7 and design check M8; an open stream never lets Playwright's `networkidle` settle (12 waits in 5 specs) and would refresh pages under unrelated specs.
+Consequence: realtime is proven by `tests/e2e/realtime.spec.ts` (two tabs, real sockets, 401/403) and the integration tests; other specs see a refused stream (quiet, no retries).
+
+## 2026-11-25 — Notifications partitions: owner role, no DEFAULT partition, UTC months (P1-10)
+Decision: `notifications` is range-partitioned by month (UTC boundaries) and owned by a dedicated NOLOGIN role `moz_partitions` (bootstrap creates it on the VPS; moz_owner has ADMIN), which also owns `ensure_notifications_partitions(months 1..12)` (SECURITY DEFINER, pinned search_path, EXECUTE for moz_worker only). Each partition is created with all privileges revoked from PUBLIC/moz_app/moz_auth and RLS forced with no policy; the web role reaches rows only through the parent's policies. No DEFAULT partition: the daily job keeps 3 months ahead and the monitor alerts below 2.
+Why: security design check H1/M1 (default privileges would have given moz_app full DML on each partition, bypassing the parent's RLS); the catalog test requires NOLOGIN definer owners; a DEFAULT partition would block creating a month that already holds rows.
+Consequence: each deploy runs the new release's bootstrap before migrating (moz-deploy), so the role exists before 0027 runs; no manual step (RUNBOOK §4). Retention (C-90) drops partitions through the same owner.
+
+## 2026-11-25 — notify(), publish targets and the programme change notice (P1-10, C-58)
+Decision: `notify(scope, tx, recipients ≤ 100, …)` writes the rows, one realtime hint (one id for a single notice, none for a batch) and budget-list emails as outbox rows in the caller's transaction; `publishRealtime` checks targets inside that transaction (customer: own channel or shops it belongs to; team: own shop, its members/staff). The change notice is a tenant job of the saving owner (C-30): deterministic ids (uuid v5 of shop/version/member) with `created_at` = save time make retries idempotent; if the owner lost the role before the job ran, RLS hides the version, nothing is sent and `notifications.undelivered` alerts (rare; accepted for P1).
+Why: design check M2/M3/M7 and answer 6; no RETURNING on the insert (a team may insert notices but not read them).
+Consequence: a backstop/admin re-send for a lost notice can be added later without breaking C-30; marketing notifications are refused until P3-07's consent gate.
+
+## 2026-11-25 — Wallet JS 188.9 KB accepted (realtime client, P1-10)
+Decision: the Wallet route's initial JS is accepted at 188.9 KB gzip (Lighthouse mobile `wallet-50`: LCP 1.06 s, CLS 0, score 100), +11% on the 170 KB target, inside the 15% judgment band (was 183.7 on 23 Nov). The realtime client chunk (fetch SSE reader, parser, backoff, hook) is 2.1 KB gzip and loads on customer pages only (never the landing).
+Why: ARCHITECTURE §7 realtime is core to the counter flow (request → approve → gold pours); LCP and CLS are far inside budget. The landing's separate failure (LCP 4.21 s, 163.4 KB) is identical on main and carried (C-91 → P1-18).
+Consequence / revisit when: the FOLLOWUPS 80 trim of global code before the phase gate.

@@ -32,6 +32,8 @@ SELECT pg_temp.backup_check('migrations',
 
 -- 2. Row-Level Security: every table is ENABLE + FORCE with at least one policy, except the tables a migration
 --    declared global (`-- rls: global`, kept in step by scripts/backup-checks.test.ts) and PostGIS's own.
+--    Partitions (P1-10) are reached only through their parent's policies: ENABLE + FORCE, no policy needed,
+--    and no web-role privilege at all.
 SELECT pg_temp.backup_check('rls',
          count(*) = 0,
          coalesce('missing on ' || string_agg(c.relname, ', ' ORDER BY c.relname), 'every app table'))
@@ -40,7 +42,10 @@ SELECT pg_temp.backup_check('rls',
    AND c.relkind IN ('r', 'p')
    AND c.relname NOT IN ('failed_jobs', 'job_heartbeats', 'spatial_ref_sys')
    AND NOT (c.relrowsecurity AND c.relforcerowsecurity
-            AND EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid));
+            AND CASE WHEN c.relispartition
+                  THEN NOT has_table_privilege('moz_app', c.oid, 'SELECT, INSERT, UPDATE, DELETE')
+                   AND NOT has_table_privilege('moz_auth', c.oid, 'SELECT, INSERT, UPDATE, DELETE')
+                  ELSE EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid) END);
 
 -- 3. Foreign keys: all restored as validated (pg_restore re-checks each one when it adds it).
 SELECT pg_temp.backup_check('foreign-keys',
@@ -56,10 +61,13 @@ SELECT pg_temp.backup_check('grants',
          AND NOT has_table_privilege('moz_app', 'public.failed_jobs', 'SELECT')
          AND NOT has_table_privilege('moz_app', 'public.outbox', 'DELETE')
          AND NOT has_function_privilege('moz_app', 'public.record_backup_heartbeat(text)', 'EXECUTE')
-         AND NOT has_function_privilege('moz_worker', 'public.record_backup_heartbeat(text)', 'EXECUTE'),
+         AND NOT has_function_privilege('moz_worker', 'public.record_backup_heartbeat(text)', 'EXECUTE')
+         AND NOT has_function_privilege('moz_app', 'public.ensure_notifications_partitions(integer)', 'EXECUTE'),
          'app roles keep their grants and nothing more');
 SELECT pg_temp.backup_check('definer-functions',
-         count(*) > 0 AND count(*) FILTER (WHERE pg_get_userbyid(proowner) <> 'moz_rls') = 0,
+         -- moz_rls owns the helpers; moz_partitions owns only the notifications partition function (P1-10).
+         count(*) > 0 AND count(*) FILTER (WHERE NOT (pg_get_userbyid(proowner) = 'moz_rls'
+           OR (pg_get_userbyid(proowner) = 'moz_partitions' AND proname = 'ensure_notifications_partitions'))) = 0,
          count(*) || ' SECURITY DEFINER functions, owners: ' || string_agg(DISTINCT pg_get_userbyid(proowner), ', '))
   FROM pg_proc
  WHERE pronamespace = 'public'::regnamespace AND prosecdef;

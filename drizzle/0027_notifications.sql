@@ -59,14 +59,16 @@ CREATE POLICY notifications_own_read ON notifications AS PERMISSIVE FOR SELECT T
 CREATE POLICY notifications_own_mark_read ON notifications AS PERMISSIVE FOR UPDATE TO moz_app
   USING ((SELECT app_scope()) = 'customer' AND user_id = (SELECT app_user_id()))
   WITH CHECK ((SELECT app_scope()) = 'customer' AND user_id = (SELECT app_user_id()));--> statement-breakpoint
--- A shop's team notifies its own customers (an active or past membership) or its own staff; nobody else. Both
+-- A shop's team notifies its own current customers or its own active staff, transactional only (marketing needs
+-- the consent gate, P3-07); nobody else (task security review LOWs: no left members, category in the policy). Both
 -- lookups run under the shop scope's own RLS (memberships_shop / shop_staff_shop), so no definer helper exists
 -- that could answer "is user X a member of shop Y" for another shop.
 CREATE POLICY notifications_shop_insert ON notifications AS PERMISSIVE FOR INSERT TO moz_app
   WITH CHECK (
-    shop_id = (SELECT app_shop_id()) AND (SELECT app_in_shop())
+    shop_id = (SELECT app_shop_id()) AND (SELECT app_in_shop()) AND category = 'transactional'
     AND (
-      EXISTS (SELECT 1 FROM memberships m WHERE m.shop_id = notifications.shop_id AND m.user_id = notifications.user_id)
+      EXISTS (SELECT 1 FROM memberships m WHERE m.shop_id = notifications.shop_id AND m.user_id = notifications.user_id
+              AND m.left_at IS NULL)
       OR EXISTS (SELECT 1 FROM shop_staff s WHERE s.shop_id = notifications.shop_id AND s.user_id = notifications.user_id AND s.active)
     )
   );--> statement-breakpoint

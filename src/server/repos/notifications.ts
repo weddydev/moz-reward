@@ -17,8 +17,8 @@ export type NotificationRow = {
   type: string;
   category: NotificationCategory;
   payload: Record<string, unknown>;
-  /** Fixed for deterministic (idempotent) notices; otherwise the database's now(). */
-  createdAt?: Date;
+  /** Part of the primary key: always set by the app (fixed for idempotent notices), so outbox rows can name it. */
+  createdAt: Date;
 };
 
 /**
@@ -26,7 +26,7 @@ export type NotificationRow = {
  * shop scope may insert but not read the rows it wrote (security design check M3).
  */
 export async function insertNotifications(
-  scope: ShopScope | CustomerScope | SystemScope,
+  scope: ShopScope | SystemScope,
   tx: Transaction,
   rows: readonly NotificationRow[],
 ): Promise<void> {
@@ -42,7 +42,7 @@ export async function insertNotifications(
   );
 }
 
-/** The ids among `userIds` who are members (current or past) or active staff of the scope's shop. */
+/** The ids among `userIds` who are current members or active staff of the scope's shop. */
 export async function shopAudience(
   scope: ShopScope,
   tx: Transaction,
@@ -56,7 +56,14 @@ export async function shopAudience(
         q
           .select({ userId: memberships.userId })
           .from(memberships)
-          .where(inShop(memberships.shopId, scope, inArray(memberships.userId, [...userIds]))),
+          .where(
+            inShop(
+              memberships.shopId,
+              scope,
+              inArray(memberships.userId, [...userIds]),
+              isNull(memberships.leftAt),
+            ),
+          ),
         q
           .select({ userId: shopStaff.userId })
           .from(shopStaff)

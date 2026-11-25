@@ -19,7 +19,7 @@ export default async function CustomerLayout({
   return (
     <>
       {/* P1-10: realtime hints refresh the signed-in pages (outside the shell: renders nothing visible). */}
-      <CustomerRealtime />
+      {gate.principal ? <CustomerRealtime /> : null}
       <PortalShell nav={navFor("customer", gate.role ?? null)} chrome={chrome}>
         {children}
       </PortalShell>

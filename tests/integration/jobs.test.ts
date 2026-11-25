@@ -311,22 +311,27 @@ describe("[P0-04] scheduler", () => {
     await registerSchedules(); // restart: must not double-register
     const keys = async (): Promise<string[]> =>
       (await getQueue("scheduled").getJobSchedulers()).map((s) => s.key).sort();
-    expect(await keys()).toEqual(["heartbeat", "outbox-sweep"]);
+    expect(await keys()).toEqual(["heartbeat", "outbox-sweep", "partitions-ensure"]);
+    const PATTERNS: Record<string, string> = {
+      heartbeat: "* * * * *",
+      "outbox-sweep": "* * * * *",
+      "partitions-ensure": "17 3 * * *", // P1-10: daily
+    };
     for (const s of await getQueue("scheduled").getJobSchedulers())
-      expect(s).toMatchObject({ pattern: "* * * * *", tz: SCHEDULE_TZ });
+      expect(s).toMatchObject({ pattern: PATTERNS[s.key], tz: SCHEDULE_TZ });
 
     const base = await import("@/server/jobs/scheduler");
     // A newer release registered "probe"; this (older) code doesn't know it and must not delete it.
     await registerSchedules([...base.SCHEDULES, extra]);
     const older = await registerSchedules();
     expect(older).toMatchObject({ removed: [], unknown: ["probe"] });
-    expect(await keys()).toEqual(["heartbeat", "outbox-sweep", "probe"]);
+    expect(await keys()).toEqual(["heartbeat", "outbox-sweep", "partitions-ensure", "probe"]);
     // Retired in code: removed.
     const retired = await registerSchedules(base.SCHEDULES, ["probe"]);
     expect(retired).toMatchObject({ removed: ["probe"], unknown: [] });
-    expect(await keys()).toEqual(["heartbeat", "outbox-sweep"]);
+    expect(await keys()).toEqual(["heartbeat", "outbox-sweep", "partitions-ensure"]);
     // One next run per schedule, never two (BullMQ keeps each scheduler's next job delayed).
-    expect(await getQueue("scheduled").getJobCountByTypes("delayed")).toBe(2);
+    expect(await getQueue("scheduled").getJobCountByTypes("delayed")).toBe(3);
     await expect(registerSchedules(base.SCHEDULES, ["heartbeat"])).rejects.toThrow(
       /both defined and retired/,
     );
