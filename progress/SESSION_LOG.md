@@ -1091,3 +1091,9 @@ Done: security-reviewer design check (OK with changes: router checked too, 30-da
 Commits: 4c0d217 (wip/P1-12)
 Tests: int fraud-award-check 14/0, approvals+receipt-pdf 44/0, related 108/0; pnpm check PASS (unit 2225/0).
 Left off: step (f): staff can't read customer names/member IDs under RLS → design check for a narrow SECURITY DEFINER member-card read (migration 0030), then requests page + `relay-realtime` test API + J2 E2E (Handoff note).
+
+## 2026-11-26 01:45 — P1 — P1-12 step (f) started; handoff (human's request)
+Done: security-reviewer design check of the staff member-card read: OK with changes (all applied); migration 0030 `shop_member_cards`; repo `listTeamOpenRequests`; int tests; C-104 → P2-13.
+Commits: 0ff6b33 (wip/dbg-P1-12-f, on 4c0d217; no CI)
+Tests: typecheck PASS; int member-cards 5/7 (2 setup failures). CI 45689617776 (4c0d217): perf GREEN, WebKit 3/4 RED (log after run ends); spec-repeat 45689625606 gate ×10: 9/10 (1 long task 123.8 ms).
+Left off: fast-forward wip/P1-12 to the dbg branch, fix 2 test setups, then the Requests page + realtime + relay-realtime + authz + J2 E2E.
