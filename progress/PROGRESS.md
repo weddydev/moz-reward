@@ -7,17 +7,17 @@ Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-12 in progress (talha.syed, Mac, 26 Nov): `wip/P1-12`, HEAD `65f0bfe`** (rebased onto main `6770f64`; CI 45681035420 on `65f0bfe` was running at checkpoint, look at it before the next push). Autopilot OFF. Previous CI 45677907123 on `a366f43` green.
-- **Done:** (a) migration 0029 + DB walls, `tests/integration/approvals-db.test.ts` 20/20. (b) `65f0bfe`: repo `src/server/repos/approvals.ts`, service `src/server/services/approvals.ts` (`approveRequest`, `ownerApprove`, `rejectRequest`, `reverseAward`; live staff row read first, then request → membership lock → request lock), actions `src/features/requests/actions.ts` + input `input.ts` (60/min per member per shop, 300/min per shop, fail closed; 40P01/40001 → CONFLICT), notification types `request_approved`/`request_rejected`/`request_awaiting_owner`/`award_reversed`, realtime outcome `awaiting_owner`, `receiptInitials` in `src/lib/initials.ts`; tests `tests/integration/approvals.test.ts` 23/0 + `tests/authz/approvals.authz.test.ts` (77 with service). DECISIONS 26 Nov "approvals service: the small calls". Outbox rows for receipt PDF and `fraud:award-check` are NOT written yet: steps (d)/(e) add the jobs and the writes in `decide()`.
-- **Next step (c):** Wallet/Vault/shop-page reads from the new tables: C-62 (rewards-ready count, recent activity = last 5 earns across shops, `loadWallet` `recentAwards` = each membership's last 10 award amounts; statement count same for 1 and 50 memberships, `tests/integration/wallet.test.ts`), C-66 (Vault streak chip from membership streak + highest tier stored; integration + E2E), C-69 (shop page Recent receipts card; E2E). Files: `src/server/repos/wallet.ts`, `src/server/services/wallet.ts`, `src/server/repos/vault.ts`, `src/features/vault/`, `src/features/shop/`.
-- **Then:** (c) Wallet/Vault/shop-page reads (C-62, C-66, C-69); (d) receipt PDF: pdfkit worker-only (DECISIONS dep line + lint boundary to `src/server/jobs`; no links/attachments; `pnpm audit --prod` + OSV), private key `receipts/<shopId>/<receiptId>.pdf`, route never regenerates in web (404 + outbox), staff route takes shopId in the path, headers `attachment; filename="receipt-<n>.pdf"`, `private, no-store`, nosniff, GET only, per-user limit, cdn URL 404 test; (e) `fraud:award-check`: unexpired sessions with same UA and IP, ids only in details; (f) minimal `/dashboard/requests` UI + J2 E2E. At close: DECISIONS lines for staff initials (≤ 3 letters, stay after staff erasure) and pdfkit; COMPLIANCE §2.6 retention + §2.7 DSAR rows for ledger/rewards/receipts/fraud_flags; FOLLOWUPS: VALIDATE 0029's NOT VALID checks. `security-reviewer` on the final diff.
-- **Not yet tested:** CI on `65f0bfe`; C-95 (staging, authenticated stream); P1-11 on staging.
+- **P1-12 in progress (talha.syed, Mac, 26 Nov): `wip/P1-12`, HEAD `c2538e8`** (on main `6770f64`; CI on `c2538e8` was running at checkpoint, look at it before the next push). Autopilot OFF. CI 45681035420 on `65f0bfe` green.
+- **Done:** (a) migration 0029 + DB walls (`approvals-db.test.ts` 20/20). (b) `65f0bfe`: approvals repo/service/actions (`approveRequest`, `ownerApprove`, `rejectRequest`, `reverseAward`), notifications, realtime `awaiting_owner` (`approvals.test.ts` 23/0, authz 77/0). (c) `c2538e8`: Wallet reads rewards-ready count, recent activity (last 5 visits) and last 10 earns per membership (C-62); Vault streak chip + stored tier never lowered (C-66); shop page Recent receipts, last 5 (C-69); repo `src/server/repos/receipts.ts`; test helper `src/server/testing/visits.ts` (`approvedVisit`) + test API `shop` `visits`/member `tier`/`streakWeeks`; DECISIONS 26 Nov "P1-12 reads". C-62/C-66/C-69 proofs are on the branch: rows close with the task. Outbox rows for the receipt PDF and `fraud:award-check` are NOT written yet: steps (d)/(e) add the jobs and the writes in `decide()`.
+- **Next step (d):** receipt PDF: pdfkit worker-only (DECISIONS dep line + lint boundary to `src/server/jobs`; no links/attachments; `pnpm audit --prod` + OSV), private key `receipts/<shopId>/<receiptId>.pdf`, outbox row written in `decide()`, route never regenerates in web (404 + outbox), customer route + staff route with shopId in the path, headers `attachment; filename="receipt-<n>.pdf"`, `private, no-store`, nosniff, GET only, per-user limit, CDN URL 404 test; Download link on the shop page's receipt rows. Security-relevant: `security-reviewer` design check on the plan first.
+- **Then:** (e) `fraud:award-check`: unexpired sessions with same UA and IP, ids only in details; (f) minimal `/dashboard/requests` UI + J2 E2E. At close: DECISIONS lines for staff initials (≤ 3 letters, stay after staff erasure) and pdfkit; COMPLIANCE §2.6 retention + §2.7 DSAR rows for ledger/rewards/receipts/fraud_flags; FOLLOWUPS: VALIDATE 0029's NOT VALID checks. `security-reviewer` on the final diff.
+- **Not yet tested:** CI on `c2538e8`; C-95 (staging, authenticated stream); P1-11 on staging.
 ## Status
 - **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **P1-C** in progress (P1-10, P1-11 done; P1-12 on `wip/P1-12`). P1-B closed 25 Nov (reviews, QA, H-49 approved; Sentry held until P2, C-88). PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-26, talha.syed (P1-12 step b on `wip/P1-12` `65f0bfe`)
+- **Last updated:** 2026-11-26, talha.syed (P1-12 step c on `wip/P1-12` `c2538e8`)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -26,7 +26,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. P1-12 step (c) Wallet/Vault/shop-page reads on `wip/P1-12`, then (d)–(f) per the Handoff note; then P1-13.
+1. P1-12 step (d) receipt PDF on `wip/P1-12`, then (e)–(f) per the Handoff note; then P1-13.
 2. Human any time: H-45 (🟠), H-38 (branches), H-51 (b); H-48b at P2 start, after the first demo (C-88).
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -68,9 +68,9 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (26 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- P1-12 (b) `65f0bfe` (`wip/P1-12`): approvals 23/0, approvals authz + service 77/0, realtime/point-requests/approvals-db/notifications 61/0; pnpm check PASS (unit 2201/0); pre-push check + SAST PASS. CI 45681035420 pending. P1-12 (a) CI 45677907123 green.
+- P1-12 (c) `c2538e8` (`wip/P1-12`): unit wallet/vault/shop views 61/0; int wallet 10/0, vault 10/0, receipts 1/0; E2E `--grep P1-12` 15/15 on 5 projects (production build), screenshots 320/390/1440 inspected; pre-push check + SAST PASS. CI pending.
+- P1-12 (b) `65f0bfe`: approvals 23/0, authz + service 77/0; CI 45681035420 green.
 - Main `da8a321` (gate inline script 68 ms): CI 45674369167 green (all jobs); gate:task PASS (unit 2199/0, int 1540/0/1).
-- P1-19 `f5a2866` (main): CI 45668197214 green with an every-page change; spec-repeat ×10 0 failures on webkit + iphone14.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 

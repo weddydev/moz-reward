@@ -1073,3 +1073,9 @@ Done: rebased `wip/P1-12` onto main; approvals repo/service/actions, 4 notificat
 Commits: 65f0bfe (wip/P1-12)
 Tests: approvals 23/0; approvals authz 77/0 (with service); related int 61/0; pnpm check PASS (unit 2201/0). CI 45681035420 pending; a366f43 CI 45677907123 green.
 Left off: step (c) Wallet/Vault/shop-page reads (C-62, C-66, C-69), then (d) receipt PDF job + outbox write in `decide()`, (e) fraud:award-check, (f) UI + J2 E2E.
+
+## 2026-11-26 00:55 — P1 — P1-12 step (c): Wallet, Vault, shop page read the new tables
+Done: Wallet rewards ready + recent activity + last 10 earns (C-62); Vault current streak chip + stored tier (C-66); shop page Recent receipts (C-69); `approvedVisit` helper + test API `visits`; DECISIONS "P1-12 reads".
+Commits: c2538e8 (wip/P1-12)
+Tests: unit 61/0; int wallet 10/0, vault 10/0, receipts 1/0; E2E P1-12 15/15 (5 projects, prod build); pre-push check + SAST PASS. CI on c2538e8 pending; 65f0bfe CI 45681035420 green.
+Left off: step (d) receipt PDF (pdfkit worker-only, private storage, outbox write in `decide()`, download routes; security-reviewer design check first), then (e) fraud:award-check, (f) UI + J2 E2E.
