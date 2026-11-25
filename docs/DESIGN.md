@@ -170,7 +170,7 @@ Duration tokens (PD-11; the v1 `--dur-fast/base/slow/hero` names were retired): 
 
 ### 7.3 Page transitions
 - Use the **View Transitions API** where supported (feature-detect) for the shared-element morph; page slides animate the live content (fade + 8px, `--dur-expressive`, in every browser), because a view-transition snapshot can't be tapped while it animates (DECISIONS 11 Nov 2026 "Pages slide as live content"). No old-page cross-fade: the old page leaves at once.
-- **Card → page**: tapping a shop card morphs the card image and title into the shop page header (shared element via `view-transition-name`), and (v2) a **gold circle wipe** spreads from the tap point (620 ms ease-in-out; the shop view follows 110 ms later; the wallet scales to .92 at 40% opacity; content rises with a 60 ms stagger; sparks at the tap). Back reverses the wipe from the back button (520 ms).
+- **Card → page**: tapping a shop card plays (v2) a **gold circle wipe** (the shared-element morph was dropped for the wipe, DECISIONS 23 Nov 2026 "PD-08") spreads from the tap point (620 ms ease-in-out; the shop view follows 110 ms later; the wallet scales to .92 at 40% opacity; content rises with a 60 ms stagger; sparks at the tap). Back reverses the wipe from the back button (520 ms).
 - **Tab switches (bottom nav)**: cross-fade with 6px directional slide based on tab order.
 - **Back**: reverse direction.
 - Desktop: panel content cross-fades in place; rail stays fixed.

@@ -1194,3 +1194,8 @@ Consequence / revisit when: P1-18 can't be ticked while C-78, C-79, C-83 are ope
 Decision: `E2E WebKit` runs as a 2-shard matrix (`WEBKIT_SHARD` → `--shard` in `scripts/ci-webkit.ts`); same specs, same minutes.
 Why: an every-page push runs ≈ 700 tests on WebKit at ~1 frame/s on Linux; CI 45548579038 hit the 45-min limit at ≈ 615 (KI-54).
 Consequence / revisit when: if a shard nears 45 min again, go to 3 shards rather than raising the limit.
+
+## 2026-11-25 — next/image optimiser: SECURITY §14 inventory (P1-B close, security review M1)
+Decision: PD-08 turned on `/_next/image` for the demo shop photos only; this supersedes DECISIONS 17 Nov "plain cover `<img>`" (3) for `/demo/shops/**` (uploads stay plain `<img>` of CDN variants). Every option set explicitly in `next.config.ts`: AVIF/WebP, quality 75 only, `deviceSizes` 640–1200 (sources ≤ 800 px), `imageSizes` 32–384, `localPatterns` `/demo/shops/**` with no query, no remote patterns, `maximumRedirects` 0, `maximumResponseBody` 5 MB, `dangerouslyAllowSVG`/`dangerouslyAllowLocalIP` false, `minimumCacheTTL` 31 days, attachment disposition, CSP `default-src 'none'; script-src 'none'; frame-src 'none'; sandbox;`. The endpoint sits outside the proxy matcher (`_next/`), so it gets the §5 static headers from `next.config` `headers()` and no per-IP limit.
+Why: the encode work one client can ask for is bounded (15 files × 12 widths × 2 formats, cached 31 days in the 256 MB tmpfs), so a rate limit adds nothing yet; Cloudflare fronts the origin.
+Consequence / revisit when: any new local path, remote pattern or upload through the optimiser needs a new entry and the conformance test (`[P0-19] image optimiser`) updated.

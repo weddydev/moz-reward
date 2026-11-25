@@ -339,6 +339,37 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
     expect(s.clip, "the shop opened in the circle once it committed").toBeGreaterThan(0);
   });
 
+  test("[PD-08] slow way back: the hidden shop can't be tapped while the Wallet is on its way", async ({
+    page,
+    signInAs,
+  }) => {
+    const me = await signInAs("customer");
+    const shopId = await seedShop(page, me.userId);
+    // The Wallet is slow, its prefetch from the shop page too, so nothing commits early (3.5 s from the shop's
+    // load: past the closing copy's 520 ms after the tap, inside the 5 s abandon window).
+    await page.route("**/wallet*", async (route) => {
+      await new Promise((r) => setTimeout(r, 3500));
+      await route.continue();
+    });
+    await page.goto(`/shops/${shopId}`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("member-shop-name")).toHaveText("Brew & Bloom Café");
+    await page.getByTestId("shop-back").click();
+    // The copy has closed and the stage is gone; the shop is still the page, invisible (code review MED-1).
+    await expect(page.getByTestId("wipe-stage")).toBeHidden({ timeout: 2_000 });
+    expect(new URL(page.url()).pathname).toBe(`/shops/${shopId}`);
+    const shop = await page.evaluate(() => {
+      const el = document.querySelector<HTMLElement>("[data-route-content]");
+      return { opacity: el?.style.opacity, inert: el?.inert };
+    });
+    expect(shop).toEqual({ opacity: "0", inert: true });
+    await expect(page).toHaveURL("/wallet", { timeout: 15_000 });
+    await settled(page);
+    expect(
+      await page.evaluate(() => document.querySelector<HTMLElement>("[data-route-content]")?.inert),
+      "the Wallet is live again",
+    ).toBe(false);
+  });
+
   test("[PD-08] reduced motion: no metal, no circle, no sinking; the page simply arrives", async ({
     page,
     signInAs,

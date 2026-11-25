@@ -408,8 +408,10 @@ export function wipeBack(
   s.append(clone);
   s.style.opacity = "";
   s.hidden = false;
-  // The real shop underneath hides until the Wallet replaces it, so a slow network shows the page's ground.
+  // The real shop underneath hides until the Wallet replaces it, so a slow network shows the page's ground; hidden
+  // means untouchable too (code review MED-1, P1-B close): `returnWipe` or `abandon` (via `unsink`) lift it.
   content.style.opacity = "0";
+  content.inert = true;
   const p = wipePoint(event, button.getBoundingClientRect(), rect);
   const vp = viewport();
   const r = wipeRadius(vp.width, vp.height);
@@ -438,6 +440,7 @@ export function returnWipe(
   if (!back) return null;
   clearTimeout(abandonTimer);
   el.style.opacity = "";
+  el.inert = false;
   if (reducedMotionNow()) return null;
   el.style.transformOrigin = sinkOrigin(el.getBoundingClientRect(), viewport());
   const a = anim(

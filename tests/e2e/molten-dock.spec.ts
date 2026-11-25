@@ -97,6 +97,26 @@ test.describe("[PD-07] floating dock", () => {
     expect(Math.abs(await goldOn(bar, me, "x"))).toBeLessThanOrEqual(1);
   });
 
+  test("[PD-07] customer: Back after a dock tap settles the gold on the page you return to", async ({
+    page,
+    signInAs,
+  }) => {
+    test.skip(!isPhone(page), "the dock is the phone navigation");
+    await signInAs("customer");
+    await page.goto("/wallet");
+    const bar = dock(page);
+    await bar.getByRole("link", { name: "Me" }).click();
+    await expect(page).toHaveURL(/\/me$/);
+    await poured(bar);
+    // Android / browser Back: the gold follows aria-current back to Wallet (code review HIGH-1, P1-B close).
+    await page.goBack();
+    await expect(page).toHaveURL(/\/wallet$/);
+    const wallet = bar.getByRole("link", { name: "Wallet" });
+    await expect(wallet).toHaveAttribute("aria-current", "page");
+    await poured(bar);
+    expect(Math.abs(await goldOn(bar, wallet, "x"))).toBeLessThanOrEqual(1);
+  });
+
   test("[PD-07] customer: Scan opens the scan page; the gold drains while Scan is current", async ({
     page,
     signInAs,

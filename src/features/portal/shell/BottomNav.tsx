@@ -12,10 +12,11 @@ import { cx } from "@/lib/cx";
 import { useHydrated } from "@/lib/use-hydrated";
 import { navIcon } from "../nav-icons";
 import { activeRoute, type PortalRoute } from "../routes";
-import { dockPlacement, plainClick, type PendingTap } from "./dock-placement";
+import { dockPlacement, plainClick } from "./dock-placement";
 import { NAV_LABEL } from "./labels";
 import { PortalSwitchList } from "./PortalSwitcher";
 import { ShopSwitchList } from "./ShopSwitcher";
+import { useDockPending } from "./use-dock-pending";
 import type { ShellProps } from "./types";
 
 /** A dock icon: the reference's own drawing where it has one (customer items), else the Lucide icon. */
@@ -56,8 +57,9 @@ export function BottomNav({
   const rest = items.filter((r) => !r.mobile);
   const hasMore = chrome.portal !== "customer";
   const moreActive = rest.some((r) => r.path === active);
-  // A tap pours the gold at once; the committed route takes over when the URL changes (dockPlacement).
-  const [pending, setPending] = useState<PendingTap | null>(null);
+  // A tap pours the gold at once; the committed route takes over when the URL changes (dockPlacement), and the
+  // tap is dropped then, so Back to the tapping page settles the gold on it (useDockPending).
+  const [pending, tap] = useDockPending(pathname);
   const { current, columns, column, liquid } = dockPlacement({
     bar,
     rest,
@@ -67,7 +69,7 @@ export function BottomNav({
     pending,
   });
   const tapped = (e: React.MouseEvent, col: number): void => {
-    if (plainClick(e)) setPending({ from: pathname, column: col });
+    if (plainClick(e)) tap(col);
   };
   return (
     <>

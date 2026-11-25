@@ -557,13 +557,25 @@ export function gateBeats(
  */
 export function startGate(
   id: string,
-  t: { staggerMs: number; subDelayMs: number },
+  t: { staggerMs: number; subDelayMs: number; faceAtMs: number },
   beats: typeof gateBeats,
   lib: GateSceneLib,
 ): void {
   const gate = document.getElementById(id);
   if (!gate || gate.getAttribute("data-state") !== "play") return;
   const alive = (): boolean => gate.getAttribute("data-state") === "play";
+  // The display font (PD-09 brief; reference: the letters wait up to 1.2 s for Fraunces, then the fallback face).
+  // The gate plays from first paint, so it can't wait; the face is decided once, just before the letters forge
+  // (`faceAtMs`, past 1.2 s): Fraunces if it has arrived, else its metric-matched fallback for the rest of the
+  // gate, so a late font never swaps faces under the animating letters (code review MED-2, P1-B close).
+  const lockFace = (): void => {
+    const title = gate.querySelector<HTMLElement>(".gate-title");
+    if (!title || !alive()) return;
+    const families = getComputedStyle(title).fontFamily.split(",");
+    if (families.length < 2 || document.fonts.check(`600 40px ${families[0] ?? ""}`)) return;
+    title.style.fontFamily = families.slice(1).join(",");
+    gate.setAttribute("data-face", "fallback");
+  };
   // In the first frame, not during parse: first paint has then done the document's style and layout, so
   // nothing here forces them inside the parser's task (a long task at 4× CPU, gate 24 Nov). The canvas (layout
   // reads, the coin's pixels, the particles) starts in that frame and the beats in the next, so neither frame's
@@ -584,6 +596,7 @@ export function startGate(
       subDelayMs: t.subDelayMs,
     };
     lib.runGateCanvas(gate, { ...o, t0: performance.now() }, lib);
+    setTimeout(lockFace, Math.max(0, t.faceAtMs - (Number(life.currentTime) || 0)));
     requestAnimationFrame(() => {
       if (!alive()) return;
       const anims = beats(gate, o);
@@ -602,6 +615,10 @@ export function startGate(
 /** The inline scene script (nonce'd; rendered right after the gate, only with it). */
 export function gateSceneScript(t: GateTimeline): string {
   const lib = `{runGateCanvas:(${runGateCanvas.toString()}),sampleTargets:(${sampleTargets.toString()}),buildParticles:(${buildParticles.toString()}),particleAt:(${particleAt.toString()})}`;
-  const timing = JSON.stringify({ staggerMs: t.staggerMs, subDelayMs: t.subDelayMs });
+  const timing = JSON.stringify({
+    staggerMs: t.staggerMs,
+    subDelayMs: t.subDelayMs,
+    faceAtMs: GATE.forge.at - GATE.forge.faceLeadMs,
+  });
   return `(${startGate.toString()})(${JSON.stringify(GATE.id)},${timing},(${gateBeats.toString()}),${lib})`;
 }

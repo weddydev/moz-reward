@@ -618,7 +618,7 @@ test.describe("[PD-09] font blocked", () => {
     ],
   });
 
-  test("[PD-09] the letters don't wait for the display font; a hidden tab ends the gate", async ({
+  test("[PD-09] a blocked display font: the letters forge on time in the fallback face, locked before the forge; a hidden tab ends the gate", async ({
     page,
     request,
   }) => {
@@ -645,6 +645,17 @@ test.describe("[PD-09] font blocked", () => {
     );
     expect(forge.length).toBe(14);
     expect(new Set(forge)).toEqual(new Set([1480])); // each letter's beat; its own lead is held inside it
+    // The face is decided at 1,400 ms (past the reference's 1.2 s wait): the fallback, for the whole gate, so a
+    // font arriving later can't swap under the letters (code review MED-2).
+    await expect(page.locator("#gilded-gate")).toHaveAttribute("data-face", "fallback", {
+      timeout: 4000,
+    });
+    const face = await page
+      .locator("#gilded-gate .gate-title")
+      .evaluate((t) => ({ inline: t.style.fontFamily, computed: getComputedStyle(t).fontFamily }));
+    expect(face.inline).not.toBe("");
+    expect(face.computed).toBe(face.inline);
+    expect(face.computed).not.toMatch(/^['"]?__Fraunces_[^F]/);
     await expect.poll(() => gateState(page), { timeout: 8000 }).toBe("done");
 
     // A second shop: the tab goes to the background mid-play, and the gate finishes at its end state.

@@ -17,6 +17,8 @@ export const GATE = {
   canvasUntilMs: 1900,
   forge: {
     at: 1480,
+    /** The display face is decided this long before the forge beat (1,400 ms: past the reference's 1.2 s wait). */
+    faceLeadMs: 80,
     /** Each letter starts 120 ms + i × stagger after the beat and forges for 760 ms. */
     leadMs: 120,
     staggerMs: 40,

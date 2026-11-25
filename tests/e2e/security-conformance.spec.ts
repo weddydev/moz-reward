@@ -259,4 +259,42 @@ test.describe("[P0-19] SECURITY conformance (production build)", () => {
       "prefetch",
     );
   });
+  test("[P0-19] image optimiser: only the demo photos at listed widths and quality; others refused; §5 static headers", async ({
+    request,
+  }) => {
+    // SECURITY §14 inventory (DECISIONS 25 Nov "next/image optimiser"); next.config.ts `images`.
+    const img = (url: string, w = 640, q = 75): Promise<APIResponse> =>
+      request.get(`/_next/image?url=${encodeURIComponent(url)}&w=${String(w)}&q=${String(q)}`, {
+        headers: { accept: "image/avif,image/webp,*/*" },
+      });
+
+    const ok = await img("/demo/shops/brew-cover.jpg");
+    expect(ok.status()).toBe(200);
+    const h = ok.headers();
+    expect(h["content-type"]).toMatch(/^image\/(avif|webp)$/);
+    expect(h["content-disposition"] ?? "").toMatch(/^attachment/);
+    expect(h["content-security-policy"]).toBe(
+      "default-src 'none'; script-src 'none'; frame-src 'none'; sandbox;",
+    );
+    expect(h["x-content-type-options"]).toBe("nosniff");
+    expect(h["strict-transport-security"]).toBe("max-age=63072000; includeSubDomains; preload");
+    expect(h["x-frame-options"]).toBe("DENY");
+    expect(h["x-powered-by"]).toBeUndefined();
+
+    for (const [what, res] of [
+      ["path outside /demo/shops", await img("/favicon.ico")],
+      ["query string on the source", await img("/demo/shops/brew-cover.jpg?a=1")],
+      ["remote source", await img("https://example.com/a.jpg")],
+      ["protocol-relative source", await img("//example.com/a.jpg")],
+      ["unlisted width", await img("/demo/shops/brew-cover.jpg", 641)],
+      ["width above the list", await img("/demo/shops/brew-cover.jpg", 3840)],
+      ["unlisted quality", await img("/demo/shops/brew-cover.jpg", 640, 50)],
+    ] as const) {
+      expect(res.status(), what).toBe(400);
+    }
+    // No SVG exists there (404 before the SVG rule); either way nothing is optimised or served as an image.
+    const svg = await img("/demo/shops/x.svg");
+    expect([400, 404]).toContain(svg.status());
+    expect(svg.headers()["content-type"] ?? "").not.toMatch(/^image\//);
+  });
 });

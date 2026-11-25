@@ -38,6 +38,12 @@ export default defineConfig({
     ];
     return skip.length ? { grepInvert: new RegExp(skip.join("|")) } : {};
   })(),
+  // Per-OS visual baselines are named by the OS the *browser* runs on: under `pnpm e2e:linux` the runner stays on
+  // this machine while the browsers render in the Linux container, so `{platform}` would file Linux pixels as
+  // this host's baseline (found at the P1-B close: the Linux update overwrote the darwin files).
+  snapshotPathTemplate: `{snapshotDir}/{testFileDir}/{testFileName}-snapshots/{arg}{-projectName}-${
+    process.env.PW_WS_ENDPOINT ? "linux" : process.platform
+  }{ext}`,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   // CI also writes a JSON report (`PW_JSON_OUT`): `pnpm e2e:confirm-flakes` re-runs each flaky test alone before a
