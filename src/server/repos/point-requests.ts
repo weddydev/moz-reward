@@ -1,7 +1,7 @@
 import "server-only";
-import { and, asc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import type { ProgrammeVersion } from "@/lib/loyalty/programme";
-import type { CustomerScope, SystemScope } from "@/server/authz/scope";
+import type { CustomerScope, ShopScope, SystemScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import {
   loyaltyPrograms,
@@ -12,7 +12,7 @@ import {
   shops,
   shopStaff,
 } from "@/server/db/schema";
-import { ownedBy, withScope } from "./_base";
+import { inShop, ownedBy, transaction, withScope } from "./_base";
 import { toVersion } from "./loyalty";
 
 /**
@@ -357,4 +357,90 @@ export async function activeTeamIds(
     tx,
   );
   return rows.map((r) => r.userId);
+}
+
+// ---- The shop's queue (P1-12 minimal Requests page; the full page is P2) ----
+
+/** At most this many open requests on the queue (oldest first); also under shop_member_cards' 100-id cap. */
+export const TEAM_QUEUE_LIMIT = 50;
+
+/** What the team sees per open request: the member card comes from `shop_member_cards` (0030), ids only else. */
+export type TeamRequest = {
+  id: string;
+  status: "pending" | "awaiting_owner";
+  requestedAt: Date;
+  /** Set when a staff member's over-limit approval routed it to the owner (the owner sees the proposal). */
+  amountPence: number | null;
+  items: string[] | null;
+  awardGold: number | null;
+  /** Null when the person has no card (an erased account, P2-13). */
+  member: { name: string; memberId: string } | null;
+  purchaseCount: number;
+  lastVisitAt: Date | null;
+};
+
+/**
+ * The scoped shop's open requests still inside their 24 h (`requestedAfter` = now − 24 h; the expiry job may
+ * not have run yet), oldest first, with each member's name and member ID (staff can't read profiles directly:
+ * `shop_member_cards` hands out those two columns for the caller's own members while they are active staff).
+ */
+export async function listTeamOpenRequests(
+  scope: ShopScope,
+  opts: { requestedAfter: Date },
+): Promise<TeamRequest[]> {
+  return transaction(scope, async (tx) => {
+    const rows = await withScope(
+      scope,
+      (q) =>
+        q
+          .select({
+            id: pointRequests.id,
+            status: pointRequests.status,
+            requestedAt: pointRequests.requestedAt,
+            amountPence: pointRequests.amountPence,
+            items: pointRequests.items,
+            awardGold: pointRequests.awardGold,
+            userId: pointRequests.userId,
+            purchaseCount: memberships.purchaseCount,
+            lastVisitAt: memberships.lastVisitAt,
+          })
+          .from(pointRequests)
+          .innerJoin(memberships, eq(memberships.id, pointRequests.membershipId))
+          .where(
+            inShop(
+              pointRequests.shopId,
+              scope,
+              inArray(pointRequests.status, [...OPEN_REQUEST_STATUSES]),
+              gt(pointRequests.requestedAt, opts.requestedAfter),
+            ),
+          )
+          .orderBy(asc(pointRequests.requestedAt), asc(pointRequests.id))
+          .limit(TEAM_QUEUE_LIMIT),
+      tx,
+    );
+    const cards = await memberCards(scope, tx, [...new Set(rows.map((r) => r.userId))]);
+    return rows.map(({ userId, status, ...r }) => ({
+      ...r,
+      status: status as TeamRequest["status"],
+      member: cards.get(userId) ?? null,
+    }));
+  });
+}
+
+/** Name and member ID of the scoped shop's own members (0030); ≤ 100 ids (the function raises above). */
+export async function memberCards(
+  scope: ShopScope,
+  tx: Transaction,
+  userIds: readonly string[],
+): Promise<Map<string, { name: string; memberId: string }>> {
+  if (userIds.length === 0) return new Map();
+  const rows = await withScope(
+    scope,
+    (q) =>
+      q.execute<{ user_id: string; full_name: string; member_id: string }>(
+        sql`SELECT user_id, full_name, member_id FROM public.shop_member_cards(${sql.param([...userIds])}::uuid[])`,
+      ),
+    tx,
+  );
+  return new Map([...rows].map((r) => [r.user_id, { name: r.full_name, memberId: r.member_id }]));
 }
