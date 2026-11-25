@@ -112,7 +112,7 @@ type Options = {
   /** P0-13: the analytics choice already stored when the page opens (null = undecided: the notice shows). */
   analyticsConsent: "granted" | "denied" | null;
   /**
-   * P1-10: open the realtime stream (`/api/sse/*`). Off by default: the fixture sets the `moz_e2e_realtime=off` cookie and the route answers 403 (the client then
+   * P1-10: open the realtime stream (`/api/sse/*`). Off by default: the fixture sends `x-moz-e2e-realtime: off` and the route answers 403 (the client then
    * stops for good: no retries, no polling), because an open stream never lets `networkidle` settle and would
    * refresh pages under other specs. Realtime specs opt in with `test.use({ realtime: true })`.
    */
@@ -271,23 +271,22 @@ export const test = base.extend<Fixtures & Options>({
   clientIp: async ({}, provide) => {
     await provide(newClientIp());
   },
-  extraHTTPHeaders: async ({ extraHTTPHeaders, clientIp }, provide) => {
-    await provide({ ...extraHTTPHeaders, ...clientHeaders(clientIp) });
+  // P1-10: realtime off unless the spec opts in, by a header the SSE route honours only when APP_ENV=test. Not
+  // `page.route` (WebKit then intercepts every request with the HTTP cache off: CI 45596050268) and not a cookie
+  // (specs clear cookies between roles: CI 45619492506). KNOWN_ISSUES KI-60.
+  extraHTTPHeaders: async ({ extraHTTPHeaders, clientIp, realtime }, provide) => {
+    await provide({
+      ...extraHTTPHeaders,
+      ...clientHeaders(clientIp),
+      ...(realtime ? {} : { "x-moz-e2e-realtime": "off" }),
+    });
   },
 
   analyticsConsent: ["denied", { option: true }],
   realtime: [false, { option: true }],
 
   // Unhandled promise rejections don't always surface as `pageerror` (WebKit); re-raise them as errors.
-  page: async ({ page, analyticsConsent, baseURL, realtime }, provide) => {
-    // A cookie the SSE route honours only when APP_ENV=test (`REALTIME_OFF_COOKIE`), not `page.route`: any route
-    // makes WebKit intercept every request and turns the HTTP cache off, which changed every spec's timing
-    // (CI 45596050268: the slider drag's pointer never settled on Linux WebKit).
-    if (!realtime && baseURL) {
-      await page
-        .context()
-        .addCookies([{ name: "moz_e2e_realtime", value: "off", url: baseURL, sameSite: "Lax" }]);
-    }
+  page: async ({ page, analyticsConsent, baseURL }, provide) => {
     // The consent spec sets `analyticsConsent: null` to start undecided.
     if (analyticsConsent && baseURL) {
       await storeConsent(page.context(), baseURL, analyticsConsent);

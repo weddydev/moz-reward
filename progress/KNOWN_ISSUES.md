@@ -1,6 +1,6 @@
-# KNOWN ISSUES — check here first when a test, gate, CI or tool fails
+# KNOWN ISSUES — check here first when a test, gate, CI or tool fails, or anything misbehaves during development
 
-_Human's standing rule (23 Nov 2026): before debugging a failure, search this file for the symptom (`grep -i "<error text or spec>" progress/KNOWN_ISSUES.md`). When a tooling, test, gate, CI or environment problem is root-caused (or quarantined), add or update its entry **in the same commit** as the fix. One entry = symptom (what you see), cause, fix / what to do, where the detail lives. Keep each entry ≤ 6 lines; detail stays in DECISIONS / FOLLOWUPS / SESSION_LOG._
+_Human's standing rule (23 Nov 2026): before debugging a failure, search this file for the symptom (`grep -i "<error text or spec>" progress/KNOWN_ISSUES.md`). When a tooling, test, gate, CI or environment problem is root-caused (or quarantined), add or update its entry **in the same commit** as the fix. One entry = symptom (what you see), cause, fix / what to do, where the detail lives. Keep each entry ≤ 6 lines; detail stays in DECISIONS / FOLLOWUPS / SESSION_LOG. **Widened (human, 25 Nov 2026):** any problem met during development that a later session could hit again (browser/platform quirks, library traps, environment snags) gets an entry, at Claude's judgment; one-off bugs fixed for good don't. Lean: update an entry rather than add a near-duplicate._
 
 ## Local gate and containers
 
@@ -68,6 +68,11 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 - Seen 22–23 Nov: 4 runs cancelled in a row. Fix: before the next push, let the previous run conclude (do other work meanwhile); push fixes in one batch.
 
 ## Tests in general
+
+**KI-60 · Shared E2E fixtures: never `page.route` for every page, never a cookie as a test switch** — P1-10, 25 Nov.
+- Symptom 1: after a fixture added `page.route("**/api/sse/**")` to every page, Linux WebKit specs far from the change failed (slider drag: pointer never over the input, 3/3; CI 45596050268). Cause: any Playwright route makes WebKit intercept **every** request and turns the HTTP cache off, so every spec's load timing changes.
+- Symptom 2: the replacement cookie (`moz_e2e_realtime=off`) broke `portal-access` on WebKit ("navigation to /portal is interrupted by another navigation to /wallet", CI 45619492506). Cause: specs call `clearCookies()` between roles, the switch vanished, a real stream opened and its refresh raced the next `goto`.
+- Fix: test-only switches travel as a request header from the `extraHTTPHeaders` fixture (`x-moz-e2e-realtime: off`), honoured by the server only when APP_ENV=test. A spec that must fake a response routes inside that spec only.
 
 **KI-20 · E2E presses keys / types before React owns the control** — wait for hydration: every page (incl. `/dev/molten`) marks `data-hydrating` until hydrated; interactive controls are disabled until then (DECISIONS 10 Nov, 23 Nov).
 - Same cause, other side (CI 45128513936, Linux WebKit iphone14: "keyboard hides the dock" never saw `data-keyboard`): a hook that only listens (focus, resize) misses what happened before its effect ran, and the root's `data-hydrated` can come before the shell's effects. Fix in the product: such hooks also read the current state once on mount (`useKeyboardOpen`, 23 Nov).

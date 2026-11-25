@@ -1240,7 +1240,7 @@ Decision: the Wallet route's initial JS is accepted at 188.9 KB gzip (Lighthouse
 Why: ARCHITECTURE §7 realtime is core to the counter flow (request → approve → gold pours); LCP and CLS are far inside budget. The landing's separate failure (LCP 4.21 s, 163.4 KB) is identical on main and carried (C-91 → P1-18).
 Consequence / revisit when: the FOLLOWUPS 80 trim of global code before the phase gate.
 
-## 2026-11-25 — E2E switches realtime off with a test-only cookie, never `page.route` (P1-10)
-Decision: specs that don't opt in (`test.use({ realtime: true })`) get a `moz_e2e_realtime=off` cookie; the SSE route answers 403 to it only when APP_ENV=test (`src/server/realtime/test-switch.ts`, unit tested for every other env). Shared fixtures never register a Playwright route for every page.
-Why: any Playwright route makes WebKit intercept every request and turns the HTTP cache off, changing every spec's load timing (CI 45596050268: the slider drag's pointer never settled on Linux WebKit, 3/3).
+## 2026-11-25 — E2E switches realtime off with a test-only header, never `page.route` or a cookie (P1-10)
+Decision: specs that don't opt in (`test.use({ realtime: true })`) send `x-moz-e2e-realtime: off` from the `extraHTTPHeaders` fixture; the SSE route answers 403 to it only when APP_ENV=test (`src/server/realtime/test-switch.ts`, unit tested for every other env). Shared fixtures never register a Playwright route for every page.
+Why: any Playwright route makes WebKit intercept every request with the HTTP cache off (CI 45596050268); a cookie is wiped by specs that clear cookies between roles (CI 45619492506). KNOWN_ISSUES KI-60.
 Consequence / revisit when: a spec that needs to fake a response routes only inside that spec.
