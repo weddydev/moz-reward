@@ -7,18 +7,18 @@ Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint by talha.syed, 25 Nov 2026 ~02:30 IST (Mac); baton held. Autopilot OFF.**
-- **PD-11 steps A + B done on `wip/PD-11`** (B: shop mini vault C-80, Gold Vault page on `GoldVault`, state pages; DECISIONS 25 Nov step B). **Step A `9b70acb`** (from main `431d6e1`): LivingBackground in the root layout + pearl ground, `Card` placed by default (`.m-card` 24 px), landing cover restyled (`.m-cover-art` = gate morph target; `CoverPhoto` load-error fallback), auth screens (gilded placed card, TextField, molten buttons, top-anchored). DECISIONS 25 Nov; FOLLOWUPS 73/74 closed. gate:task on `9b70acb`: every step PASS (unit 2079/0, int 1456/0, E2E PD-11 9/0); its "working tree unchanged" step failed only because progress files were edited during the run.
-- **Continue exactly here:** `wip/PD-11` pushed at HEAD `9e52b88` (A `9b70acb`, B `948b55c`, C part 1 SideNav `9745676`, button gap `32f3a9d`, KI-49 fix `9e52b88`); a progress-only checkpoint commit sits on top. **First read CI 45484442092** (the KI-49 offline fix is NOT VERIFIED on CI: local Sentry is off; WebKit should run every spec since the branch changes global CSS). Red → fix first. Green → rest of step C: loyalty settings (+ its iphone14 flake, FOLLOWUPS), admin system, TextArea/Select (FOLLOWUPS 79), primitive LOWs (FOLLOWUPS 75, 76, 80–84), the local leave-on-day-1 flake (FOLLOWUPS); gate:task; closing commit for C. Then D, E, F per the plan below.
-- **PD-11 plan (lettered steps, one commit each):** A public/auth screens (landing `/s/[code]` still v1: flat white cards, square initials logo, `bg-bg` main; reuse `ShopPageHeader`/`m-cover` w/o back button, `ShopCoin`, `Card variant="placed"`; keep `[data-gate-cover]` + `[data-gate-rise]` for the gate) + global surfaces: mount `LivingBackground` in the root layout (now only on /dev/molten), body ground `--pearl`, `Card` default → placed (48 uses; every-page change → full 5-project E2E); FOLLOWUPS 73/74. B customer screens (shop page C-80, Me, notifications, error/empty; `VaultPage` uses the v1 `ShopLogo`). C portal shells/SideNav, loyalty settings, admin system, TextArea/Select, primitive LOWs. D retire v1 tokens (`--bg`, gold-700/500/300/100, `--gold-gradient`, shadow-1/2/gold, `--dur-fast/base/slow/hero`) + perf trims (FOLLOWUPS 75, 91, 92, 94–97) + C-82. E C-78, C-79/T-7, the PD-06 tabs WebKit flake, baselines, parity, Lighthouse, 4× traces, full E2E. F reviews, QA, H-49 set, tick, PD-C close.
-- **Not yet tested:** real devices (H-13).
-- **Before work:** no env/migration changes. Local dev data: `pnpm db:seed --reset` was needed for the demo shop photos (seed keeps existing rows; landing data cached 60 s in redis-cache). A `next dev` from 23 Nov still listens on :3000 (PID 20343, this repo).
+- **Checkpoint by talha.syed, 25 Nov 2026 ~05:00 IST (Mac); baton held. Autopilot OFF.** Session rule from the human (this session only, not standing): go straight through PD-11 C → F without stopping; they asked to clear after E.
+- **On `wip/PD-11`:** C done (`cf4d8ca`, gate PASS), D done (`1742615`, gate PASS: v1 tokens retired, C-82 gate split), E part 1 `0ff4af8` (pushed; full 5-project E2E fixes, H-49 parity set hook `PARITY_SET=1`, pixel7 @fps active with idle control), E part 2 `2c4ece1` (pushed at checkpoint; its CI supersedes the cancelled WebKit job of 45534612625: tabs pill as Web Animations + timer net = root cause of the WebKit tabs flake, Linux WebKit 32/32, parity tabs 12/12; `[data-paused]` self-pause only on `.m-btn`).
+- **Continue exactly here:** (1) read the CI run on `2c4ece1` (45534612625 on `0ff4af8`: Chromium shards, perf-budget, parity green; its WebKit job was cancelled by this push) — red → fix first; check its perf-budget log shows gilded-gate "adds no long task" passed at 65 ms → close C-82 (CARRIED) + T-8 (TEMPORARY → Resolved). (2) **C-79 root cause found** (scheduled run 45534630037): idle control 60.0 fps on the runner, FX stress 55.6–58.1 fps p95 33.3 on pixel7 → a real per-frame FX cost at the 420-particle peak: profile `src/lib/motion/fx.ts` draw loop at 4× (pixel7, DPR 2), cut it, re-dispatch `gh workflow run scheduled.yml --ref wip/PD-11 -f suite=perf`. (3) Same run: gilded-gate "convergence at 4× CPU: p95 ≤ 20 ms" failed on desktop1440 (flaky on pixel7) — check whether D's C-82 split (canvas frame 1, beats frame 2) caused it (compare the nightly on main). (4) C-78 slider track press: local Linux WebKit can't measure it (the slider check fails even at the CI-green baseline `9e52b88`: the Tile's 4 px hover lift moves the input between measure and check) → root-cause on CI (temporarily run the press on WebKit and read the CI trace). (5) Rest of E: Lighthouse (FOLLOWUPS: landing JS 156.5 KB vs band 140), Wallet→shop commit long task (FOLLOWUPS), 4× traces (Gate, wipe, pour, reward, stress), visual baselines darwin + Linux, full parity Chromium + WebKit with `PARITY_SET=1` (H-49 set in `.artifacts/parity-set/`), final full 5-project E2E, gate:task, E closing commit with progress lines. Then F (reviews, QA, H-49, tick, PD-C close).
+- **PD-11 plan (lettered steps):** A ✓ B ✓ C ✓ D ✓ E in progress (above) F reviews, QA, H-49 set, tick, PD-C close.
+- **Not yet tested:** real devices (H-13); CI on `2c4ece1`; C-79/C-82 bounds on CI after the fixes.
+- **Before work:** no env/migration changes. Local Linux WebKit (`pnpm e2e:linux`) differs from CI for the slider drag (see (4)). A `next dev` from 23 Nov still listens on :3000 (PID 20343).
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov). Then P1 resumes with the P1-B close. P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **PD-C** (PD-07 + PD-08 on main 23 Nov, PD-09 24 Nov; PD-10 on main 25 Nov; PD-11 next; H-49 at its close). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete; its close runs after PD-C.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-25 (~02:30 IST), talha.syed (PD-11 A+B + C part 1 + KI-49 fix pushed on `wip/PD-11` `9e52b88`; next: CI 45484442092, rest of step C)
+- **Last updated:** 2026-11-25 (~05:00 IST), talha.syed (PD-11 C + D done, E in progress on `wip/PD-11`; next: CI 45534612625, push `2c4ece1`, C-79 FX cost)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -27,9 +27,9 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; **PD-B closed 23 Nov** (main `d59a2eb`). **PD-07 on main 23 Nov** (CI 45177538333 green). **PD-08 on main 23 Nov** (CI 45211398059 green). **PD-09 on main 24 Nov** (CI 45357702882 green). **PD-10 on main 25 Nov** (`2cb621f`, CI 45467487343 green; gate perf limit T-8 until C-82).
 
 ## Next (top 3)
-1. CI 45476822891 (step A, WebKit) → push step B to `wip/PD-11` and read its CI; then step C (portal shells, SideNav, loyalty settings, admin system, TextArea/Select, primitive LOWs).
-2. PD-11 steps B–F, then the PD-C close (`/subphase-complete`, H-49).
-3. Human any time: H-48b, H-45 (🟠), H-38 (branches; `wip/PD-10` now merged), H-51 (b).
+1. CI 45534612625 → push `2c4ece1`; close C-82/T-8 from the perf log; C-79 FX per-frame cost (pixel7); gate convergence @fps; C-78 on CI.
+2. Rest of PD-11 E (Lighthouse, commit long task, 4× traces, baselines, parity + H-49 set, full E2E, gate), then F and the PD-C close (`/subphase-complete`, H-49).
+3. Human any time: H-48b, H-45 (🟠), H-38 (branches), H-51 (b).
 
 ## CARRIED (a task can't be ticked while a row targets it)
 Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026, human-approved, to keep this file light): read it at every phase close and when a P2–P5 task starts, and move a phase's rows back here when that phase starts. The same rule applies there: a task can't be ticked while a row targets it.
@@ -68,10 +68,10 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (25 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- PD-11 A `9b70acb`: gate:task every step PASS (unit 2079/0, int 1456/0, E2E PD-11 9/0 Linux Chromium); full Chromium E2E (Linux) 325/0/18 skipped.
-- CI 45476822891 on `9b70acb`: RED on WebKit only (offline sign-in specs, KI-49, fixed on `wip/PD-11`; loyalty-settings iphone14 flaky → FOLLOWUPS); every other job green.
-- PD-11 B (wip/PD-11): gate:task every step PASS (unit 2081/0, int 1456/0, E2E PD-11 12/0); vault/shop/wipe/portal specs pass locally (chromium + desktop1440). C-80 closed.
-- CI 45467487343 on `6386f9a` (PD-10 + T-8): GREEN on every job; PD-10 on main `2cb621f`.
+- PD-11 C `cf4d8ca`: gate:task PASS (unit 2093/0, int 1456/0, E2E PD-11 14/0). D `1742615`: gate:task PASS (unit 2088/0, int 1456/0, E2E PD-11 17/0).
+- Full 5-project E2E on C+D (local, prod build): 1460 passed / 18 failed → all 18 fixed (`0ff4af8`) and the failed specs re-run green on all projects (243/0) except WebKit toast + leave (then fixed: KI-51, KI-52).
+- CI 45484442092 (`9e52b88`): WebKit green (KI-49 verified), shard 2 red only on the sidebar glass spec (lite tier, KI-50, fixed). CI 45534612625 (`0ff4af8`): Chromium shards + perf-budget + parity green; WebKit running.
+- Tabs pill (WebKit flake) Linux WebKit 32/32 after the fix (3 in 4 failing before); parity tabs 12/12.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 
