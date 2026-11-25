@@ -2,6 +2,13 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { type APIRequestContext, type Page } from "@playwright/test";
+import {
+  describeAnimations,
+  endTime,
+  recordAnimations,
+  started,
+  type StartedAnimation,
+} from "./support/animations";
 import { medianFrameRate, throttleCpu, LONG_TASK_MS } from "./support/cpu-throttle";
 import { expect, test, testApiHeaders } from "./support/test";
 
@@ -13,7 +20,12 @@ import { expect, test, testApiHeaders } from "./support/test";
  * .artifacts/screens/PD-09 for inspection (390, 320, 1440, landscape) next to the reference's intro-*.jpg.
  */
 
-type GateLog = { states: { s: string | null; t: number }[]; startedAt: number | null };
+type GateLog = {
+  states: { s: string | null; t: number }[];
+  startedAt: number | null;
+  /** The gate's own `animationend` (gate-life), when it fired: the gate ends itself on it. */
+  ended: { name: string; t: number }[];
+};
 
 /** "Brew & Bloom Café": 14 letters → the hand-off at 2880 ms, 3280 ms in all (`gateTimeline(14)`). */
 const HANDOFF_MS = 2880;
@@ -25,7 +37,15 @@ const TOTAL_MS = 3280;
 async function watchGate(page: Page, pause = false): Promise<void> {
   await page.addInitScript((freeze: boolean) => {
     const w = window as unknown as { __gate: GateLog };
-    w.__gate = { states: [], startedAt: null };
+    w.__gate = { states: [], startedAt: null, ended: [] };
+    addEventListener(
+      "animationend",
+      (e) => {
+        if ((e.target as HTMLElement).id === "gilded-gate")
+          w.__gate.ended.push({ name: e.animationName, t: performance.now() });
+      },
+      true,
+    );
     // `play` is set before the first paint; the CSS animation starts with it, which a starved runner can
     // delay by seconds (WebKit, run 44689683099), so the duration is measured from here.
     addEventListener(
@@ -51,6 +71,21 @@ const gateLog = (page: Page): Promise<GateLog> =>
   page.evaluate(() => (window as unknown as { __gate: GateLog }).__gate);
 const gateState = (page: Page): Promise<string | null> =>
   page.evaluate(() => document.getElementById("gilded-gate")?.getAttribute("data-state") ?? null);
+
+/** Why the morph may not have joined: the gate's life animation, its clock and the cover (diagnostic). */
+const morphState = (page: Page): Promise<string> =>
+  page.evaluate(() => {
+    const g = document.getElementById("gilded-gate");
+    const life = g?.getAnimations().find((a) => (a as CSSAnimation).animationName === "gate-life");
+    return JSON.stringify({
+      state: g?.getAttribute("data-state"),
+      life: life ? { play: life.playState, t: life.currentTime, pending: life.pending } : null,
+      cover: !!document.querySelector("[data-gate-cover]"),
+      panel: !!g?.querySelector("[data-gate-panel]"),
+      frame: !!g?.querySelector("[data-gate-frame]"),
+      ready: document.readyState,
+    });
+  });
 
 /** Seek every animation on the page (the gate, the page's rise, the morph clone) to `ms`. */
 const seek = (page: Page, ms: number): Promise<void> =>
@@ -80,12 +115,9 @@ test("[PD-09] plays with src=qr for 3.28 s, hides itself; arrival stays silent b
   request,
   browserName,
 }) => {
-  test.fixme(
-    process.env.CI !== undefined && browserName === "webkit",
-    "C-83: Linux WebKit (CI only) ends 6.8 s after start vs < 4.88 s (wall-clock bound, ~1 frame/s after load, KI-10); passes on the Mac's WebKit",
-  );
   const { shopCode } = await seedShop(request);
   await watchGate(page);
+  await recordAnimations(page);
   await page.addInitScript(() => {
     const w = window as unknown as { __audioMade: number; AudioContext?: typeof AudioContext };
     w.__audioMade = 0;
@@ -105,13 +137,28 @@ test("[PD-09] plays with src=qr for 3.28 s, hides itself; arrival stays silent b
   const [play, done] = states;
   expect(startedAt).not.toBeNull();
   expect(startedAt ?? 0).toBeGreaterThanOrEqual(play?.t ?? 0);
+  // Started (every engine): the gate's own life, a 3.28 s CSS animation, ran to its end and the gate ended on
+  // its `animationend` (not cut short: no cancel, no finish(), and `done` only after that event).
+  const life = (await started(page, "#gilded-gate")).filter((a) => a.name === "gate-life");
+  const log = describeAnimations(life);
+  expect(life.length, `the gate's life started once:\n${log}`).toBe(1);
+  expect(endTime(life[0] as StartedAnimation), log).toBeCloseTo(TOTAL_MS, 3);
+  expect(life[0]?.finishCalled, `cut short with finish():\n${log}`).toBe(false);
+  const { ended } = await gateLog(page);
+  const lifeEnd = ended.find((e) => e.name === "gate-life");
+  expect(lifeEnd, "the gate's life ended (animationend)").toBeDefined();
+  expect(done?.t ?? 0, "done on the gate's own animationend, not before").toBeGreaterThanOrEqual(
+    lifeEnd?.t ?? Number.POSITIVE_INFINITY,
+  );
+  // Wall-clock bounds (Chromium only, TESTING §7; Linux WebKit runs ~1 frame/s after a load, KI-10, C-83).
   // `play` comes before the animation's real start and `animationstart` is dispatched at or after it, so each
-  // bound uses the clock that can't flatter it: not cut short from `play`, not stuck from `animationstart`
-  // (a starved runner can delay the first paint by seconds; the start event itself can land a frame late).
-  const fromPlay = (done?.t ?? 0) - (play?.t ?? 0);
-  const fromStart = (done?.t ?? 0) - (startedAt ?? 0);
-  expect(fromPlay).toBeGreaterThanOrEqual(TOTAL_MS - 100); // it ends itself (animationend), not cut short
-  expect(fromStart).toBeLessThan(TOTAL_MS + 1600);
+  // bound uses the clock that can't flatter it: not cut short from `play`, not stuck from `animationstart`.
+  if (browserName === "chromium") {
+    const fromPlay = (done?.t ?? 0) - (play?.t ?? 0);
+    const fromStart = (done?.t ?? 0) - (startedAt ?? 0);
+    expect(fromPlay).toBeGreaterThanOrEqual(TOTAL_MS - 100);
+    expect(fromStart).toBeLessThan(TOTAL_MS + 1600);
+  }
   await expect(page.getByTestId("gilded-gate")).toBeHidden();
   await expect(page.getByTestId("landing-collect")).toBeVisible();
   expect(
@@ -126,7 +173,12 @@ test("[PD-09] the timeline lasts 3.28 s and the morph grows the cover out of the
   const { shopCode } = await seedShop(request);
   await watchGate(page, true);
   await page.goto(`/s/${shopCode}?src=nfc`);
-  await expect(page.getByTestId("gilded-gate")).toHaveAttribute("data-morph", ""); // the inline morph joined in step
+  // The inline morph joined in step. On failure, say why (FOLLOWUPS 105: Linux WebKit, never joined in 5 s).
+  await expect(page.getByTestId("gilded-gate"))
+    .toHaveAttribute("data-morph", "")
+    .catch(async (e: unknown) => {
+      throw new Error(`the morph never joined: ${await morphState(page)}\n${String(e)}`);
+    });
   // The timeline is every finite animation outside the scene (the gate, the page's rise, the morph clone). Idle
   // loops on the page underneath (PD-04: the molten button's flowing fill; the gilded edge, the living
   // background) never end, so their Infinity is not part of it (CI 45006025356). The scene's shine may run on
