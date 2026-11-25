@@ -1016,4 +1016,4 @@ NOT VERIFIED: CI 45548579038 on `dae3b95` (running). Next step: read it, then C-
 CI 45548579038 (`dae3b95`): all jobs green except WebKit, cancelled at its 45-min limit at ≈ 615/692 (KI-54) → WebKit job split into 2 shards (`WEBKIT_SHARD`).
 Its WebKit failures (molten-controls /dev/ui 320 overflow 44 px, overlays 1440 timeout, gilded-gate src=qr 6.8 s, shop-page leave iphone14) re-run on the Mac's WebKit: 9 passed / 0 failed → Linux-only; overlays 60 s limit, the other 3 quarantined on CI WebKit (T-9, C-83 → P1-18).
 Carried, not done (human: "close it fast, note errors, solve later"): C-78, C-79/T-7, C-83 → P1-18; C-84 (4× traces, baselines, full parity) + C-85 (reviews, QA, H-49) → P1-B close. Lighthouse landing +11.8% accepted in the 15% band.
-NOT VERIFIED: CI on the closing commit at this entry; reviews/QA of PD commits (C-85).
+On main `e268ee6`: CI 45556514588 green (all jobs, WebKit 2 shards; 1 confirmed flake PD-06 slider → FOLLOWUPS); local gate:task green. NOT VERIFIED: reviews/QA of PD commits (C-85).

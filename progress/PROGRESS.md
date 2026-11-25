@@ -8,17 +8,17 @@ Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD-11 closing commit by talha.syed, 25 Nov 2026 (Mac); baton held. Autopilot OFF.** PD-11 and PD-C closed fast on the human's instruction (DECISIONS 25 Nov "PD-11 and PD-C closed fast"); leftovers carried, none dropped.
-- **On `wip/PD-11`** (closing commit = this one; it merges origin/main's progress commits). Its CI must be green before main moves (pre-push hook); **if main is not at this commit yet: read that CI run, then `git push origin wip/PD-11:main`** (green) or fix (red).
+- **PD-11 on main** `e268ee6` (CI 45556514588 green on every job incl. both WebKit shards; local gate:task green). No wip branch open.
 - **This commit:** WebKit CI job split into 2 shards (KI-54: one job ran out of 45 min on an every-page push); overlays screenshots get 60 s; 3 Linux-WebKit-only failures quarantined on CI WebKit (T-9, C-83 → P1-18); C-78, C-79/T-7 moved to P1-18; C-84 (traces, baselines, full parity) and C-85 (reviews, QA, H-49) → P1-B close.
 - **Next:** the P1-B close (`/subphase-complete`) including C-84 and C-85; then P1-10.
-- **Not yet tested:** CI on the closing commit (WebKit shards); C-83 tests on Linux WebKit; real devices (H-13).
+- **Not yet tested:** C-83 tests on Linux WebKit (quarantined); real devices (H-13). Confirmed flake PD-06 slider drag on CI WebKit (FOLLOWUPS, with C-78).
 - **Before work:** no env/migration changes.
 ## Status
 - **Phase:** **PD — Molten design** (runs first; human 20 Nov). Then P1 resumes with the P1-B close. P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **P1-B close** next (PD-C closed 25 Nov by the human's decision: PD-07..PD-11 done; H-49, reviews and QA moved to the P1-B close as C-85). PD-B closed 23 Nov. PD-A closed 22 Nov. P1-B (P1-05..P1-09) complete.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-25, talha.syed (PD-11 ticked and PD-C closed fast; WebKit CI sharded; C-83/C-84/C-85 carried)
+- **Last updated:** 2026-11-25, talha.syed (PD-11 on main `e268ee6`, PD-C closed; next: P1-B close)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -27,7 +27,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. CI on the PD-11 closing commit (red → fix first); green → push it to main if not done (Handoff).
+1. P1-B close (`/subphase-complete`): see 2.
 2. P1-B close (`/subphase-complete`) with C-84 (traces, baselines, full parity) and C-85 (design + code review of PD commits, QA, H-49); then P1-10.
 3. Human any time: H-48b, H-45 (🟠), H-38 (branches), H-51 (b).
 
