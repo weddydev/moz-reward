@@ -36,6 +36,13 @@ const CLASSIFIED = {
     // P1-07 (0025): loyalty counters, written by P1-12 approvals only.
     "progress_gold",
     "ingots_completed",
+    // P1-12 (0029): the rest of the engine's member state, written by approvals beside a ledger row only.
+    "ingot_started_at",
+    "milestones_reached",
+    "gold_shortfall",
+    "tier",
+    "streak_weeks",
+    "streak_last_week_start",
   ],
 } as const;
 
@@ -138,11 +145,13 @@ describe("[P1-01] C-34 memberships: customers can't write counters", () => {
       .where(and(eq(memberships.userId, w.customerId), eq(memberships.shopId, w.shopB.id)));
   });
 
-  it("lets the shop's own team change counters of its members", async () => {
+  // P1-12 (0029): the team's counter writes need a ledger entry of theirs in the same transaction (the approval);
+  // the allowed path is proven in tests/integration/approvals.test.ts.
+  it("refuses the shop's own team changing counters of its members without a ledger entry", async () => {
     const at = new Date("2026-11-13T12:00:00Z");
     expect(
-      await update(w.staffA, w.otherInA.id, { purchaseCount: 3, lastVisitAt: at }),
-    ).toHaveLength(1);
+      await pgCode(() => update(w.staffA, w.otherInA.id, { purchaseCount: 3, lastVisitAt: at })),
+    ).toBe(DENIED);
   });
 
   it("refuses staff changing counters on their own customer membership in another shop", async () => {
@@ -234,6 +243,11 @@ describe("[P1-04] memberships: what a shop's team may change (P1-A close, securi
       // P1-07 (0025): the loyalty counters stay with the approval flow (P1-12), not a staff write.
       { progressGold: 500 },
       { ingotsCompleted: 1 },
+      // P1-12 (0029): no loyalty-state write without a ledger entry in the same transaction.
+      { goldShortfall: 0, tier: "gold" as const },
+      { streakWeeks: 9 },
+      { milestonesReached: [50] },
+      { ingotStartedAt: new Date() },
     ] satisfies Partial<typeof memberships.$inferInsert>[]) {
       expect(await pgCode(() => update(t.staff, t.memberRow.id, set)), JSON.stringify(set)).toBe(
         DENIED,
@@ -244,12 +258,12 @@ describe("[P1-04] memberships: what a shop's team may change (P1-A close, securi
     expect(row?.marketingOptIn).not.toBe(true);
   });
 
-  it("still lets staff change the visit counters of a member of their own shop", async () => {
+  it("refuses staff changing the visit counters of a member of their own shop outside an approval (P1-12)", async () => {
     const t = await teamWorld();
     const at = new Date("2026-11-18T12:00:00Z");
     expect(
-      await update(t.staff, t.memberRow.id, { purchaseCount: 4, lastVisitAt: at }),
-    ).toHaveLength(1);
+      await pgCode(() => update(t.staff, t.memberRow.id, { purchaseCount: 4, lastVisitAt: at })),
+    ).toBe(DENIED);
   });
 
   it("refuses staff raising the counters on their own membership of their own shop (no self-award)", async () => {

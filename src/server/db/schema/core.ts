@@ -6,6 +6,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
@@ -152,6 +153,9 @@ export const adminMembers = pgTable(
   (t) => [index("admin_members_invited_by_idx").on(t.invitedBy)],
 );
 
+/** Status label from lifetime ingots (engine `TIERS`); the membership keeps the highest reached. */
+export const membershipTier = pgEnum("membership_tier", ["bronze", "silver", "gold"]);
+
 export const memberships = pgTable(
   "memberships",
   {
@@ -175,6 +179,20 @@ export const memberships = pgTable(
      */
     progressGold: integer().notNull().default(0),
     ingotsCompleted: integer().notNull().default(0),
+    /**
+     * P1-12 (C-60, C-66; engine `MemberState`): the rest of the loyalty state, written by approvals with the
+     * ledger. `ingotStartedAt` null = the current ingot started at `joinedAt` (no backfill in a migration,
+     * ENGINEERING §6). `tier` is the highest reached (never lowered); the streak is the engine's `StreakState`.
+     */
+    ingotStartedAt: tz(),
+    milestonesReached: smallint()
+      .array()
+      .notNull()
+      .default(sql`'{}'::smallint[]`),
+    goldShortfall: integer().notNull().default(0),
+    tier: membershipTier().notNull().default("bronze"),
+    streakWeeks: integer().notNull().default(0),
+    streakLastWeekStart: date({ mode: "string" }),
     ...timestamps(),
   },
   (t) => [
@@ -183,6 +201,8 @@ export const memberships = pgTable(
     check("memberships_purchase_count_non_negative", sql`${t.purchaseCount} >= 0`),
     check("memberships_progress_gold_non_negative", sql`${t.progressGold} >= 0`),
     check("memberships_ingots_completed_non_negative", sql`${t.ingotsCompleted} >= 0`),
+    check("memberships_gold_shortfall_non_negative", sql`${t.goldShortfall} >= 0`),
+    check("memberships_streak_weeks_non_negative", sql`${t.streakWeeks} >= 0`),
   ],
 );
 

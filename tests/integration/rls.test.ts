@@ -274,14 +274,15 @@ describe("[P0-20] AC1: with the app filter removed, RLS alone blocks cross-shop 
 describe("[P0-20] AC1: with the app filter removed, RLS alone blocks cross-shop writes", () => {
   it("shop scope: an unfiltered UPDATE touches only its own shop; inserting into another shop fails", async () => {
     const { shopA } = scopes();
-    // The visit counter: the one kind of membership column a shop's team may write (0022).
-    const visit = new Date("2026-11-18T09:00:00Z");
-    const updated = await withScope(shopA, (q) =>
-      q.update(memberships).set({ lastVisitAt: visit }).returning({ shopId: memberships.shopId }),
+    // Memberships: a team's counter writes need an approval's ledger row since P1-12 (0029), so the probe takes
+    // the rows an UPDATE could touch (FOR UPDATE applies the update policy): only its own shop's.
+    const lockable = await withScope(shopA, (q) =>
+      q.execute(sql`SELECT shop_id FROM memberships FOR UPDATE`),
     );
-    expect(updated.map((r) => r.shopId)).toEqual([w.shopA.id, w.shopA.id]);
-    const [bRow] = await db().select().from(memberships).where(eq(memberships.shopId, w.shopB.id));
-    expect(bRow?.lastVisitAt).toBeNull();
+    expect([...lockable].map((r) => (r as { shop_id: string }).shop_id)).toEqual([
+      w.shopA.id,
+      w.shopA.id,
+    ]);
 
     const renamed = await withScope(shopA, (q) =>
       q.execute(sql`UPDATE shops SET description = 'rls probe' RETURNING id`),
@@ -613,6 +614,7 @@ describe("[P0-20] re-review (0011): admin writes bound to the admin role; define
       "app_in_shop",
       "app_is_admin",
       "app_shop_role",
+      "app_staff_award_limit",
       "ensure_notifications_partitions",
       "record_backup_heartbeat",
       "record_backup_metric",

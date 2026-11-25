@@ -8,3 +8,4 @@ export * from "./consents";
 export * from "./loyalty";
 export * from "./notifications";
 export * from "./requests";
+export * from "./ledger";
