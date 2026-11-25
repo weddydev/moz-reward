@@ -113,6 +113,25 @@ test("[P1-12] recent receipts: the member's approved visits, newest first, with 
   }
   await expect(card).not.toContainText("No receipts yet");
   await expect(page.getByTestId("shop-vault-percent")).toHaveText("92%");
+
+  // Download: the worker's file (a stub in E2E: no worker runs) streams as an attachment named by its number.
+  const stored = await page.request.post("/api/test/receipt-pdfs", {
+    data: { shopId },
+    headers: testApiHeaders(),
+  });
+  expect(((await stored.json()) as { stored: number }).stored).toBe(2);
+  const link = rows.nth(0).getByTestId("shop-receipt-pdf");
+  await expect(link).toHaveAccessibleName("Download Receipt 2 (PDF)");
+  const [download] = await Promise.all([page.waitForEvent("download"), link.click()]);
+  expect(download.suggestedFilename()).toBe("receipt-2.pdf");
+  const href = await link.getAttribute("href");
+  const res = await page.request.get(href ?? "");
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toBe("application/pdf");
+  expect(res.headers()["cache-control"]).toBe("private, no-store");
+  expect((await res.body()).subarray(0, 5).toString("latin1")).toBe("%PDF-");
+  // GET only.
+  expect((await page.request.post(href ?? "")).status()).toBe(405);
   for (const width of [390, 320, 1440]) {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
     await noHorizontalScroll(page);

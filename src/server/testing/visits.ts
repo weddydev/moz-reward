@@ -8,8 +8,10 @@ import { and, eq } from "drizzle-orm";
 import { newId } from "@/lib/id";
 import { mintShopScope } from "@/server/authz/scope";
 import { testOwnerDb as db } from "@/server/db/client";
-import { pointRequests, shopStaff } from "@/server/db/schema";
+import { pointRequests, receipts, shopStaff } from "@/server/db/schema";
+import { privateStorage } from "@/server/integrations/storage";
 import { transaction } from "@/server/repos/_base";
+import { receiptPdfKey } from "@/server/repos/receipts";
 import { type ApproveResult, approveRequest } from "@/server/services/approvals";
 import { makeStaff, makeUser } from "./factories";
 
@@ -53,4 +55,27 @@ export async function approvedVisit(
   );
   if (result.outcome !== "approved") throw new Error(`approvedVisit: ${result.outcome}`);
   return result;
+}
+
+/** What the E2E download stores per receipt (the E2E server runs no worker; real rendering is integration-tested). */
+export const STUB_RECEIPT_PDF = Buffer.from(
+  "%PDF-1.7\n% Moz Rewards E2E stub receipt\n%%EOF\n",
+  "latin1",
+);
+
+/**
+ * P1-12: the worker's `pdf:receipt` result for every receipt of a shop, for E2E: a stub file in the private
+ * bucket at the receipt's key, and the key recorded on the row. Returns how many receipts got one.
+ */
+export async function storeStubReceiptPdfs(shopId: string): Promise<number> {
+  const rows = await db()
+    .select({ id: receipts.id, shopId: receipts.shopId })
+    .from(receipts)
+    .where(eq(receipts.shopId, shopId));
+  for (const row of rows) {
+    const key = receiptPdfKey(row);
+    await privateStorage.put(key, STUB_RECEIPT_PDF, "application/pdf");
+    await db().update(receipts).set({ pdfKey: key }).where(eq(receipts.id, row.id));
+  }
+  return rows.length;
 }

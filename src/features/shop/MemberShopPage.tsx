@@ -2,6 +2,7 @@ import {
   CalendarX,
   ChevronRight,
   Clock,
+  Download,
   Info,
   MapPin,
   Navigation,
@@ -204,8 +205,19 @@ export function MemberShopPage({
                             <span className="text-caption text-ink-2 truncate">{r.items}</span>
                           ) : null}
                         </span>
-                        <span className="text-small text-gold-deep shrink-0 font-semibold tabular-nums">
-                          {r.gold}
+                        <span className="flex shrink-0 flex-col items-end">
+                          <span className="text-small text-gold-deep font-semibold tabular-nums">
+                            {r.gold}
+                          </span>
+                          <a
+                            href={r.pdfHref}
+                            download
+                            className="text-caption text-ink-2 hover:text-ink inline-flex min-h-11 items-center gap-1 underline underline-offset-2"
+                            aria-label={`Download ${r.title} (PDF)`}
+                            data-testid="shop-receipt-pdf"
+                          >
+                            <Icon icon={Download} className="size-3.5" /> PDF
+                          </a>
                         </span>
                       </li>
                     ))}

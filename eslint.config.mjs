@@ -87,7 +87,20 @@ const uiBarrelRule = {
   message:
     'Import the primitive\'s own file (e.g. "@/components/ui/Button"): the barrel pulls every client primitive into the bundle (P1-02).',
 };
+/**
+ * P1-12: pdfkit renders receipts in the worker only (src/server/jobs/receipt-pdf.ts, loaded lazily by the job
+ * handler). Restricted in every block below, so no web code can pull the renderer into a bundle.
+ */
+const pdfkitRule = {
+  name: "pdfkit",
+  message:
+    "pdfkit is worker-only: render PDFs in src/server/jobs/receipt-pdf.ts (a job), never in web code (P1-12).",
+};
 const restrictImports = (...paths) => ({
+  "no-restricted-imports": ["error", { paths: [...paths, pdfkitRule] }],
+});
+/** The same restrictions without pdfkit, for the one renderer module. */
+const restrictImportsAllowPdf = (...paths) => ({
   "no-restricted-imports": paths.length ? ["error", { paths }] : "off",
 });
 
@@ -201,6 +214,11 @@ const eslintConfig = defineConfig([
   {
     files: ["src/server/jobs/**/*.ts", "src/worker/**/*.ts"],
     rules: restrictImports(dbClientRule, testOwnerRule, mintRule, authScopeRule),
+  },
+  // The receipt renderer is the one module that imports pdfkit (worker only).
+  {
+    files: ["src/server/jobs/receipt-pdf.ts"],
+    rules: restrictImportsAllowPdf(dbClientRule, testOwnerRule, mintRule, authScopeRule),
   },
   // Test-only seeding API (404 unless APP_ENV=test): ends a test user's setup sessions.
   {

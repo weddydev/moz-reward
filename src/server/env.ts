@@ -132,6 +132,14 @@ export const serverEnvSchema = z
       .default("false")
       .transform((v) => v === "true"),
     S3_PUBLIC_BASE_URL: optional,
+    /**
+     * P1-12: the private bucket (receipt PDFs; later every file that must never be public). Its own bucket, never
+     * given a public domain: an R2 custom domain serves a whole bucket, so a prefix can't keep files private
+     * (DECISIONS 26 Nov "receipt PDFs"). Same endpoint; its own bucket-scoped key where set, else the S3_ key.
+     */
+    S3_PRIVATE_BUCKET: optional,
+    S3_PRIVATE_ACCESS_KEY_ID: optional,
+    S3_PRIVATE_SECRET_ACCESS_KEY: optional,
 
     TURNSTILE_SECRET_KEY: optional,
     SENTRY_DSN: optionalSentryDsn,
@@ -222,6 +230,13 @@ export const serverEnvSchema = z
           ctx.addIssue({ code: "custom", path: [b], message: `must differ from ${a}` });
         }
       }
+    }
+    if (e.S3_PRIVATE_BUCKET && e.S3_PRIVATE_BUCKET === e.S3_BUCKET) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["S3_PRIVATE_BUCKET"],
+        message: "must differ from S3_BUCKET (the public bucket's files can be served by the CDN)",
+      });
     }
     try {
       parseKeyring({ key: e.DATA_ENCRYPTION_KEY, old: e.DATA_ENCRYPTION_OLD_KEYS });

@@ -89,6 +89,8 @@ export type ReceiptRow = {
   gold: string;
   /** "Flat white, Croissant", or null when staff added no items. */
   items: string | null;
+  /** The PDF download (the customer route; the file is rendered by the worker). */
+  pdfHref: string;
 };
 
 export function receiptRow(receipt: {
@@ -104,5 +106,6 @@ export function receiptRow(receipt: {
     when: `${formatDate(receipt.createdAt)}, ${formatTime(receipt.createdAt)}`,
     gold: `+${gold.toLocaleString("en-GB")} gold`,
     items: receipt.data.items.length > 0 ? receipt.data.items.join(", ") : null,
+    pdfHref: `/api/me/receipts/${encodeURIComponent(receipt.id)}/pdf`,
   };
 }

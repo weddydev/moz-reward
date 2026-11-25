@@ -1,10 +1,15 @@
 import { CreateBucketCommand, HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
 
-/** Creates the local/test bucket in MinIO if it doesn't exist (idempotent). */
+/** Creates the local/test buckets (public + private) in MinIO if they don't exist (idempotent). */
 export async function ensureBucket(): Promise<void> {
-  const bucket = process.env.S3_BUCKET;
   const endpoint = process.env.S3_ENDPOINT;
-  if (!bucket || !endpoint) return;
+  if (!endpoint) return;
+  for (const bucket of [process.env.S3_BUCKET, process.env.S3_PRIVATE_BUCKET]) {
+    if (bucket) await ensureOne(endpoint, bucket);
+  }
+}
+
+async function ensureOne(endpoint: string, bucket: string): Promise<void> {
   const client = new S3Client({
     endpoint,
     region: process.env.S3_REGION ?? "auto",

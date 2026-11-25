@@ -117,6 +117,7 @@ describe("[P1-12] recent receipts rows (C-69)", () => {
       when: "7 Jul 2026, 14:05",
       gold: "+150 gold",
       items: "Flat white, Croissant",
+      pdfHref: "/api/me/receipts/r1/pdf",
     });
     expect(
       receiptRow({ ...base, data: { goldEarned: 1_000, bonusGold: 0, items: [] } }),
