@@ -21,3 +21,4 @@ _Moved word for word from PROGRESS.md's CARRIED table on 23 Nov 2026 (human-appr
 | C-72 | P1-09 | P3-11 | Referral bonuses are never re-earned after leaving and rejoining | integration |
 | C-74 | P1-09 | P3-05 | Shop page offers carousel (screen 4 slot; hidden until offers exist) | E2E 390 + 1440 |
 | C-87 | P1-B close design HIGH (Wallet header) | P3-07 | The Wallet bell (`WalletHeader` `unread`) shows the unread notification count: ember badge with its ping (reference `.bell i`), label "Notifications, N new", "99+" above 99; none at 0 | E2E 390 |
+| C-88 | P1-B close (human 25 Nov: Sentry held until the first demo) | P2-01 | Sentry reviewed for every staging release since 22 Nov (H-48b done): no unexplained new errors, each one fixed or a FOLLOWUPS line; the P1-B close and P1 close recorded Sentry as "deferred, H-48b" | H-48b done + SESSION_LOG |

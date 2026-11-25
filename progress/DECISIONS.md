@@ -1209,3 +1209,8 @@ Consequence / revisit when: P3-07 supplies `unread`; any new customer page heade
 Decision: the shop cover title keeps the reference's 30 px and steps down (to 18 px at least) only when the name's longest word wouldn't fit its column (`--lw` from `longestWord`, `cqi` on `.m-cover-text`), so no word breaks without a hyphen; WebKit may still hyphenate to fill a line. A member's suspended or closed shop shows the Wallet's state badge and a notice from PRODUCT §14 (suspended: no collecting or redeeming, gold safe, reward time limits paused; closed: redeem unlocked rewards for 30 days). The vault back link is capped at its column so a long name truncates.
 Why: P1-B close QA (1 HIGH, 3 MEDIUM); a vw step shrank every name on small phones and still split 15-letter words in the 180 px column.
 Consequence / revisit when: P1-16 (redeem) makes the closed-shop 30-day window real: show its end date in the notice.
+
+## 2026-11-25 — Sentry checks held until P2 starts (human's decision)
+Decision: H-48b (the staging Sentry probe and a review of staging releases for new errors) is done by the human at P2 start, after the first client demo. Until then the "Sentry: no new errors for the release" step of `/subphase-complete` and `/phase-complete` records "deferred, H-48b" and doesn't block the close. C-88 (→ P2-01) makes sure it isn't forgotten.
+Why: the human asked to keep Sentry work for after the demo (25 Nov). The deploy's own checks (health ready/live, basic-auth staging checks, demo sign-in) still run on every release.
+Consequence / revisit when: P2-01 can't be ticked until H-48b is done; any staging error before then is found at that review, not at the release.

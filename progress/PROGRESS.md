@@ -28,7 +28,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 ## Next (top 3)
 1. P1-B close: CI on `wip/P1-B-close` → main, then H-49 (human), staging smoke + Sentry, close lines (Handoff note).
 2. P1-10 after the close.
-3. Human any time: H-48b, H-45 (🟠), H-38 (branches), H-51 (b); H-49 when the set is shared.
+3. Human any time: H-45 (🟠), H-38 (branches), H-51 (b); H-49 now (set in `.artifacts/parity-set/`); H-48b at P2 start, after the first demo (C-88).
 
 ## CARRIED (a task can't be ticked while a row targets it)
 Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026, human-approved, to keep this file light): read it at every phase close and when a P2–P5 task starts, and move a phase's rows back here when that phase starts. The same rule applies there: a task can't be ticked while a row targets it.
