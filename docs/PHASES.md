@@ -111,7 +111,7 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 **P1-C · Requests, approvals, realtime**
 
 - [x] P1-10 · Realtime (SSE) infrastructure (25 Nov)
-- [ ] P1-11 · Points requests (customer)
+- [x] P1-11 · Points requests (customer) (25 Nov)
 - [ ] P1-12 · Approve / reject, owner approval, reversals, receipts
 - [ ] P1-13 · Points expiry job
 - [ ] P1-19 · Motion specs assert the animation, not drawn frames (process, human 25 Nov; any time before the P1-C close)

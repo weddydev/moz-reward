@@ -7,16 +7,16 @@ Baton: held by talha.syed since 2026-11-25 00:30 IST (24 Nov 19:00 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-10 closed 25 Nov (talha.syed, Mac); next P1-11** (Points requests, customer). Nothing half-done on P1-10. Autopilot OFF.
-- **Process change (human, 25 Nov) is on main (`58b321c`, CI 45630715347 green, WebKit in 4 shards):** `spec-repeat.yml` + `wip/dbg-*` scratch branches for CI-only failures, motion specs assert the animation (TESTING §7), progress files on main during a task (CLAUDE.md), KNOWN_ISSUES covers every recurring dev problem; new task P1-19 (before the P1-C close).
-- **Before the P1-C close:** P1-19; Molten fixes C-92/C-93/C-94; C-95 (SSE heartbeat through the staging proxy).
-- **Not yet tested:** C-95 (staging, authenticated stream).
+- **P1-11 closed 25 Nov (talha.syed, Mac); next P1-19** (motion specs assert the animation, takes C-78), then P1-12. Nothing half-done. Autopilot OFF. No wip branch in use (`wip/P1-11`, `wip/fix-gate-morph` are merged).
+- **Main was red and is fixed:** gate `@perf` long task root-caused (parse-time `getAnimations()` in the morph script, KI-48) → `a469c92`, CI 45644813206 green.
+- **Before the P1-C close:** P1-19; Molten fixes C-92/C-93/C-94; C-95 (SSE heartbeat through the staging proxy); two confirmed flakes in FOLLOWUPS (P1-09 shop page, PD-09 timeline morph).
+- **Not yet tested:** C-95 (staging, authenticated stream); P1-11 on staging (rides the P1-C close deploy).
 ## Status
 - **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **P1-C** next, from P1-10. P1-B closed 25 Nov (reviews, QA, H-49 approved; Sentry held until P2, C-88). PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-25, talha.syed (P1-10 closed, process change on main; next P1-11)
+- **Last updated:** 2026-11-25, talha.syed (P1-11 closed, main CI fixed; next P1-19)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -25,8 +25,8 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. P1-11 · Points requests (customer) (CARRIED C-68).
-2. P1-19 · Motion specs assert the animation (before the P1-C close); then P1-12, P1-13.
+1. P1-19 · Motion specs assert the animation (before the P1-C close; takes C-78).
+2. P1-12 · Approve / reject, owner approval, reversals, receipts (security-relevant; C-60, C-62, C-66, C-69); then P1-13.
 3. Human any time: H-45 (🟠), H-38 (branches), H-51 (b); H-48b at P2 start, after the first demo (C-88).
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -43,7 +43,6 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 | C-66 | P1-08 | P1-12 | Gold Vault streak chip shows the member's current streak from the ledger; tier never goes down when an owner raises a threshold (membership stores the highest tier reached) | integration + E2E |
 | C-67 | P1-08 | P1-16 | Gold Vault "Rewards ready" lists that shop's unredeemed, unexpired rewards with Redeem | E2E 390 + 1440 |
 | C-65 | P1-07 | P1-16 | Wallet right column: rewards list with Redeem | E2E |
-| C-68 | P1-09 | P1-11 | Leaving cancels the member's open points requests in `leaveShop`'s transaction; a left member can't request; the shop page's Request points button and pending state | integration + E2E |
 | C-69 | P1-09 | P1-12 | Approvals refuse a left membership (progress frozen); the shop page's Recent receipts card lists the last receipts (empty state today) | integration + E2E |
 | C-70 | P1-09 | P1-16 | Leaving voids live redeem codes in `leaveShop`'s transaction (staff confirm then fails); unredeemed rewards stay with their own validity and reappear on rejoin | integration |
 | C-73 | P1-09 | P1-13 | A rejoin after the 30-day window gets no frozen progress back even if the forfeit job hasn't run yet (forfeit at rejoin, or the join refuses to restore) | integration |
@@ -70,9 +69,9 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (25 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- P1-10 `b46b67c` (rebased on main `6a13466`): CI 45625778081 green (all jobs); gate:task on `714874c` all steps PASS (unit 2150/0, int 1501/0/1, task E2E 9/0, SAST, bundle).
-- Main `6a13466` (wipe probes, KI-59): CI 45625941247 green.
-- P1-10 two-tab screenshot (desktop1440, Linux Chromium) inspected: event reached both tabs, Wallet unobstructed.
+- P1-11 `6d8d763` (on main `a469c92`): CI 45647684620 green (all jobs; 1 confirmed flake → FOLLOWUPS); gate:task PASS on `d5c965b` (unit 2161/0, int 1540/0/1, task E2E 15/0, SAST, bundle).
+- Main `a469c92` (gate morph fix, KI-48): CI 45644813206 + 45646733888 green (perf-budget job included).
+- P1-11 screenshots (390, 320, 1440; Chromium + WebKit) inspected: button, pending, queued states.
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 

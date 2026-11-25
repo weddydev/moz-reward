@@ -1042,3 +1042,9 @@ Evidence: integration realtime 16/16 (fan-out across two hubs, revoked session, 
 CI fixes on the way: main `79b19bc` red (wipe probes, KI-59) → `6a13466`; fixture `page.route` changed every WebKit spec's timing and the cookie switch was cleared by specs (KI-60) → header switch.
 Reviews: security design check + task security review PASS WITH FIXES (fixed); MEDIUM RLS test added. NOT VERIFIED: SSE heartbeat through the staging proxy (C-95 → P1-C close).
 Process change (human, 25 Nov): CI 96 runs/5 days, 35% green → WebKit 4 shards, spec-repeat workflow, motion-spec rule, progress files on main mid-task, KNOWN_ISSUES widened; cross-checked against CLAUDE.md/TESTING (6 conflicts fixed, @perf kept per push). On main `58b321c`, CI 45630715347 green (4 WebKit shards). Next: P1-11.
+
+## 2026-11-25 — P1 — P1-11 closed, talha.syed (Mac)
+Built: `point_requests` (0028: one open per membership, unique key, DB-stamped `requested_at`, RLS + guard), `requestPoints` (membership lock, shop state, programme, daily cap 5/UK day), jobs `requests-expire`/`requests-remind` (every 5 min), leave cancels open requests (C-68), shop-page Request points + pending state + offline queue (`QueuedRequestSender`).
+Evidence: integration point-requests 24/0 + authz 9/0 + grants catalog; unit 2161/0; gate:task PASS (`d5c965b`); E2E Chromium + WebKit 24/0, Linux WebKit/iphone14 10/0; screenshots 390/320/1440 inspected; CI 45647684620 green on `6d8d763`.
+Main was red (CI 45633357321, gate `@perf` 68–81 ms): root cause a parse-time `getAnimations()` in the morph script (LoAF: 71.5 of 73 ms forced style/layout, KI-48) → `a469c92`, CI 45644813206 green. CI-only P1-11 fixes: offline spec allows its own cut `_rsc` prefetches; availability via `toContainText`.
+Confirmed flakes → FOLLOWUPS (P1-09 shop page, PD-09 timeline morph), before the P1-C close.
