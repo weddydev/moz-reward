@@ -572,7 +572,14 @@ export function startGate(
     const title = gate.querySelector<HTMLElement>(".gate-title");
     if (!title || !alive()) return;
     const families = getComputedStyle(title).fontFamily.split(",");
-    if (families.length < 2 || document.fonts.check(`600 40px ${families[0] ?? ""}`)) return;
+    // By the faces' own status, not `fonts.check()`: a face whose load failed counts as ready there (Linux
+    // WebKit returns true for a blocked Fraunces, CI 45562871999), which would keep a face that never comes.
+    // No web font of that name (a system face): nothing can swap, so it stays.
+    const unquote = (f: string): string => f.trim().replace(/^["']|["']$/g, "");
+    const name = unquote(families[0] ?? "");
+    const faces = [...document.fonts].filter((f) => unquote(f.family) === name);
+    if (families.length < 2 || faces.length === 0 || faces.some((f) => f.status === "loaded"))
+      return;
     title.style.fontFamily = families.slice(1).join(",");
     gate.setAttribute("data-face", "fallback");
   };
