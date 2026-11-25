@@ -38,7 +38,9 @@ on:
         type: boolean
 
 concurrency:
-  group: spec-repeat-${{ github.ref }}
+  # One group per ref + spec + project (KI-63): GitHub keeps one pending run per group, so a per-ref group
+  # cancelled every queued spec but the last when several were dispatched at once.
+  group: spec-repeat-${{ github.ref }}-${{ inputs.spec }}-${{ inputs.project }}-${{ inputs.grep }}
   cancel-in-progress: false
 
 permissions:
@@ -52,7 +54,8 @@ jobs:
   repeat:
     name: repeat a spec (${{ inputs.project }} × ${{ inputs.repeat }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # A whole motion spec × 10 on Linux WebKit: molten-fields took 25.8 min (P1-19).
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

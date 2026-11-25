@@ -69,6 +69,9 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 ## Tests in general
 
+**KI-63 · Several `spec-repeat` dispatches at once: all but the first and the last end "cancelled"** — P1-19, 25 Nov.
+- Cause: GitHub keeps one *pending* run per concurrency group (`cancel-in-progress: false` only spares the running one), and the group was per ref. Fix: the group is per ref + spec + project + grep, so different specs run side by side; the same spec dispatched twice still queues. The job's limit is 50 min (a whole motion spec × 10 on Linux WebKit: 25.8 min).
+
 **KI-62 · Every E2E job fails at once: "Vitest cannot be imported in a CommonJS module using require()"** — P1-19, 25 Nov (CI 45652286230).
 - Cause: Playwright's default `testMatch` collects `*.test.ts` as well as `*.spec.ts` under `testDir` (`tests/e2e`), so a Vitest unit file there (`tests/e2e/support/animations.test.ts`) is loaded by Playwright and crashes collection. A run naming spec files locally never loads it. Fix: unit tests of E2E helpers live outside `tests/e2e` (`tests/support/*.test.ts`, in the unit project); check with `pnpm exec playwright test --list`.
 
