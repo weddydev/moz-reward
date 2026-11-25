@@ -1,0 +1,104 @@
+"use server";
+
+import { defineAction } from "@/server/actionTemplate";
+import { requireShopRole } from "@/server/authz";
+import type { ShopScope } from "@/server/authz/scope";
+import { AppError } from "@/server/errors";
+import { limitOrThrow } from "@/server/security/rate-limit";
+import {
+  type ApproveResult,
+  approveRequest,
+  ownerApprove,
+  rejectRequest,
+  reverseAward,
+  type ReverseResult,
+} from "@/server/services/approvals";
+import { approveInput, ownerApproveInput, rejectInput, reverseInput } from "./input";
+
+/**
+ * The shop's decisions on points requests (P1-12, PRODUCT §5): approve, owner approval, reject, reverse. The
+ * caller's role in the shop comes from the session (requireShopRole); the service re-reads it live and the
+ * database's guards check it again. Every action is a money endpoint: rate limits fail closed (SECURITY §6),
+ * per team member in the shop and per shop. Audit rows are written by the service, in the same transaction.
+ */
+
+/** Decisions per team member per shop per minute, and per shop per minute (a busy counter is ~1 every 10 s). */
+const MEMBER_CALLS = { max: 60, windowSec: 60 } as const;
+const SHOP_CALLS = { max: 300, windowSec: 60 } as const;
+
+const PG_CONTENTION = new Set(["40P01", "40001"]);
+
+/** A deadlock or serialisation failure: two decisions on the same rows at once. The caller may retry. */
+async function contentionAsConflict<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (err) {
+    const e = err as { code?: unknown; cause?: { code?: unknown } };
+    const code = e.cause?.code ?? e.code;
+    if (typeof code === "string" && PG_CONTENTION.has(code)) throw new AppError("CONFLICT");
+    throw err;
+  }
+}
+
+async function teamScope(
+  shopId: string,
+  roles: ("owner" | "staff")[],
+  p: Parameters<typeof requireShopRole>[2],
+): Promise<ShopScope> {
+  const scope = await requireShopRole(shopId, roles, p);
+  await limitOrThrow({ key: `action:requests:shop:${shopId}`, ...SHOP_CALLS, onError: "closed" });
+  return scope;
+}
+
+const memberKey = (input: { shopId: string }, scope: ShopScope): string =>
+  `${input.shopId}:${scope.userId}`;
+
+export const approveRequestAction = defineAction({
+  name: "requests.approve",
+  input: approveInput,
+  authorize: ({ shopId }, p) => teamScope(shopId, ["owner", "staff"], p),
+  rateLimit: { ...MEMBER_CALLS, failMode: "closed", key: memberKey },
+  transaction: true,
+  handler: async (input, scope, { tx }): Promise<ApproveResult> => {
+    if (!tx) throw new Error("requests.approve runs in a transaction");
+    return contentionAsConflict(() => approveRequest(scope, input, tx));
+  },
+});
+
+/** The owner decides an over-limit award a staff member sent them; the amount may be changed. */
+export const ownerApproveAction = defineAction({
+  name: "requests.owner-approve",
+  input: ownerApproveInput,
+  authorize: ({ shopId }, p) => teamScope(shopId, ["owner"], p),
+  rateLimit: { ...MEMBER_CALLS, failMode: "closed", key: memberKey },
+  transaction: true,
+  handler: async (input, scope, { tx }): Promise<ApproveResult> => {
+    if (!tx) throw new Error("requests.owner-approve runs in a transaction");
+    return contentionAsConflict(() => ownerApprove(scope, input, tx));
+  },
+});
+
+export const rejectRequestAction = defineAction({
+  name: "requests.reject",
+  input: rejectInput,
+  authorize: ({ shopId }, p) => teamScope(shopId, ["owner", "staff"], p),
+  rateLimit: { ...MEMBER_CALLS, failMode: "closed", key: memberKey },
+  transaction: true,
+  handler: async (input, scope, { tx }): Promise<{ requestId: string }> => {
+    if (!tx) throw new Error("requests.reject runs in a transaction");
+    return contentionAsConflict(() => rejectRequest(scope, input, tx));
+  },
+});
+
+/** Owner any time, or the staff member who made the award within 15 minutes (the service decides which). */
+export const reverseAwardAction = defineAction({
+  name: "requests.reverse",
+  input: reverseInput,
+  authorize: ({ shopId }, p) => teamScope(shopId, ["owner", "staff"], p),
+  rateLimit: { ...MEMBER_CALLS, failMode: "closed", key: memberKey },
+  transaction: true,
+  handler: async (input, scope, { tx }): Promise<ReverseResult> => {
+    if (!tx) throw new Error("requests.reverse runs in a transaction");
+    return contentionAsConflict(() => reverseAward(scope, input, tx));
+  },
+});

@@ -1,6 +1,8 @@
 import "server-only";
 import { z } from "zod";
+import { REVERSAL_REASONS } from "@/server/db/schema/ledger";
 import type { NotificationCategory } from "@/server/db/schema/notifications";
+import { REJECT_REASONS } from "@/server/db/schema/requests";
 
 /**
  * Notification types (P1-10). Each type fixes its category, its channels and its payload schema (ids, dates and
@@ -70,6 +72,43 @@ export const NOTIFICATION_TYPES = {
   request_reminder: defineNotificationType({
     category: "transactional",
     payload: z.object({ shopId: id, requestId: id, requestedAt: z.iso.datetime() }).strict(),
+  }),
+  /** P1-12 (PRODUCT §5, §9): to the customer, their request was approved (gold and receipt number). */
+  request_approved: defineNotificationType({
+    category: "transactional",
+    payload: z
+      .object({
+        shopId: id,
+        requestId: id,
+        receiptId: id,
+        receiptNumber: z.number().int().min(1),
+        gold: z.number().int().min(1),
+      })
+      .strict(),
+  }),
+  /** P1-12: to the customer, their request was rejected (the preset reason only; the note stays with the shop). */
+  request_rejected: defineNotificationType({
+    category: "transactional",
+    payload: z.object({ shopId: id, requestId: id, reason: z.enum(REJECT_REASONS) }).strict(),
+  }),
+  /** P1-12: to the shop's owners, a staff member's over-limit award waits for them (push from P3-07). */
+  request_awaiting_owner: defineNotificationType({
+    category: "transactional",
+    payload: z.object({ shopId: id, requestId: id, gold: z.number().int().min(1) }).strict(),
+  }),
+  /** P1-12 (PRODUCT §5 "Reversal"): to the customer, an award was reversed; any shortfall offsets future gold. */
+  award_reversed: defineNotificationType({
+    category: "transactional",
+    payload: z
+      .object({
+        shopId: id,
+        receiptId: id,
+        receiptNumber: z.number().int().min(1),
+        gold: z.number().int().min(1),
+        shortfall: z.number().int().min(0),
+        reason: z.enum(REVERSAL_REASONS),
+      })
+      .strict(),
   }),
 } as const satisfies Record<string, NotificationTypeDef>;
 
