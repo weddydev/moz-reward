@@ -190,56 +190,66 @@ export type MorphConfig = {
 export function runGateMorph(cfg: MorphConfig, morph: typeof gateMorph): void {
   const gate = document.getElementById(cfg.id);
   if (!gate || gate.getAttribute("data-state") !== "play") return;
-  const life = gate
-    .getAnimations()
-    .filter((a) => (a as CSSAnimation).animationName === "gate-life")[0];
-  if (!life) return;
-  life.ready
-    .then(() => {
-      const elapsed = life.currentTime;
-      if (gate.getAttribute("data-state") !== "play" || typeof elapsed !== "number") return;
-      if (elapsed > cfg.delayMs - cfg.leadMs) return; // step 4 has begun: leave the CSS exit alone
-      const cover = document.querySelector<HTMLElement>("[data-gate-cover]");
-      const frame = gate.querySelector<HTMLElement>("[data-gate-frame]");
-      const panel = gate.querySelector<HTMLElement>("[data-gate-panel]");
-      const art = panel?.firstElementChild as HTMLElement | null | undefined;
-      if (!cover || !frame || !panel || !art) return;
-      const c = cover.getBoundingClientRect();
-      const m = morph(
-        frame.getBoundingClientRect(),
-        c,
-        cfg.radius,
-        Number.parseFloat(getComputedStyle(cover).borderTopLeftRadius) || 0,
-      );
-      if (!m) return;
-      // Styles and animations only: the panel and its cover copy are server-rendered (no DOM changes before
-      // React hydrates).
-      Object.assign(panel.style, {
-        left: `${String(c.left)}px`,
-        top: `${String(c.top)}px`,
-        width: `${String(c.width)}px`,
-        height: `${String(c.height)}px`,
-      });
-      gate.setAttribute("data-morph", "");
-      const ease =
-        getComputedStyle(document.documentElement).getPropertyValue("--ease-in-out").trim() ||
-        cfg.ease;
-      const timing: KeyframeAnimationOptions = {
-        duration: cfg.morphMs,
-        delay: cfg.delayMs,
-        easing: ease,
-        fill: "both",
-      };
-      for (const a of [panel.animate(m.move, timing), art.animate(m.clip, timing)]) {
-        if (life.playState === "running" && typeof life.startTime === "number") {
-          a.startTime = life.startTime;
-        } else {
-          a.pause();
-          a.currentTime = elapsed;
+  // In the first frame, not during parse (as `startGate`): `getAnimations()` recalculates the document's style,
+  // which inside the parser's task was a 68–81 ms long task at 4× CPU (KI-48, CI 45633357321). First paint has
+  // done that work by the next frame. The hand-off starts at `delayMs` (~2.7 s) on the gate's own clock, so a
+  // frame later changes nothing on screen.
+  requestAnimationFrame(() => {
+    if (gate.getAttribute("data-state") !== "play") return;
+    const life = gate
+      .getAnimations()
+      .filter((a) => (a as CSSAnimation).animationName === "gate-life")[0];
+    if (!life) return;
+    follow(life);
+  });
+  const follow = (life: Animation): void => {
+    life.ready
+      .then(() => {
+        const elapsed = life.currentTime;
+        if (gate.getAttribute("data-state") !== "play" || typeof elapsed !== "number") return;
+        if (elapsed > cfg.delayMs - cfg.leadMs) return; // step 4 has begun: leave the CSS exit alone
+        const cover = document.querySelector<HTMLElement>("[data-gate-cover]");
+        const frame = gate.querySelector<HTMLElement>("[data-gate-frame]");
+        const panel = gate.querySelector<HTMLElement>("[data-gate-panel]");
+        const art = panel?.firstElementChild as HTMLElement | null | undefined;
+        if (!cover || !frame || !panel || !art) return;
+        const c = cover.getBoundingClientRect();
+        const m = morph(
+          frame.getBoundingClientRect(),
+          c,
+          cfg.radius,
+          Number.parseFloat(getComputedStyle(cover).borderTopLeftRadius) || 0,
+        );
+        if (!m) return;
+        // Styles and animations only: the panel and its cover copy are server-rendered (no DOM changes before
+        // React hydrates).
+        Object.assign(panel.style, {
+          left: `${String(c.left)}px`,
+          top: `${String(c.top)}px`,
+          width: `${String(c.width)}px`,
+          height: `${String(c.height)}px`,
+        });
+        gate.setAttribute("data-morph", "");
+        const ease =
+          getComputedStyle(document.documentElement).getPropertyValue("--ease-in-out").trim() ||
+          cfg.ease;
+        const timing: KeyframeAnimationOptions = {
+          duration: cfg.morphMs,
+          delay: cfg.delayMs,
+          easing: ease,
+          fill: "both",
+        };
+        for (const a of [panel.animate(m.move, timing), art.animate(m.clip, timing)]) {
+          if (life.playState === "running" && typeof life.startTime === "number") {
+            a.startTime = life.startTime;
+          } else {
+            a.pause();
+            a.currentTime = elapsed;
+          }
         }
-      }
-    })
-    .catch(() => undefined); // cancelled by a skip
+      })
+      .catch(() => undefined); // cancelled by a skip
+  };
 }
 
 /** The inline morph script (nonce'd; rendered after the landing content, only with the gate); `handoffMs` from

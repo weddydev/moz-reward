@@ -317,6 +317,31 @@ describe("[P1-03] gateMorphScript (inlined, so its functions must stand alone)",
     expect(run({ getElementById: () => null })).not.toThrow();
     expect(run({ getElementById: () => ({ getAttribute: () => "done" }) })).not.toThrow();
   });
+
+  it("reads the gate's animations in the first frame, never during parse (no forced style in the parser's task)", () => {
+    const script = gateMorphScript(2720);
+    let reads = 0;
+    const frames: Array<() => void> = [];
+    const gate = {
+      getAttribute: () => "play",
+      getAnimations: () => {
+        reads++;
+        return [];
+      },
+    };
+    runInNewContext(script, {
+      document: { getElementById: () => gate },
+      requestAnimationFrame: (f: () => void) => {
+        frames.push(f);
+      },
+    });
+    // KI-48 (CI 45633357321): a synchronous getAnimations() recalculated the whole document's style inside the
+    // inline script, a 68–81 ms task at 4× CPU. First paint does that work anyway; the frame after it reads it free.
+    expect(reads).toBe(0);
+    expect(frames).toHaveLength(1);
+    frames[0]?.();
+    expect(reads).toBe(1);
+  });
 });
 
 describe("[PD-09] gateSceneScript (inlined after the gate markup)", () => {

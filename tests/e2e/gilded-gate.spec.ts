@@ -512,9 +512,11 @@ test("[PD-09] beat frames (390, 320, 1440, landscape 844 × 390)", async ({
       .catch(() => undefined);
     await page.goto(`/s/${shopCode}?src=qr`);
     expect(await gateState(page)).toBe("play");
+    // The morph (like the scene) starts in the first frame, not during parse (KI-48): let the paused clock run one.
+    await page.clock.runFor(17);
     await expect(page.getByTestId("gilded-gate")).toHaveAttribute("data-morph", "");
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    let at = 0;
+    let at = 17;
     for (const ms of BEAT_MS) {
       await page.clock.runFor(ms - at);
       at = ms;
