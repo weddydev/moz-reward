@@ -34,7 +34,7 @@ export function VaultPage({
       <TransitionLink
         href={`/shops/${shop.shopId}`}
         direction="back"
-        className="text-small text-ink-2 hit-44 inline-flex min-w-0 items-center gap-1 self-start"
+        className="text-small text-ink-2 hit-44 inline-flex max-w-full min-w-0 items-center gap-1 self-start"
         data-testid="vault-back"
       >
         <Icon icon={ChevronLeft} size={16} />

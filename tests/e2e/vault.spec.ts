@@ -13,11 +13,12 @@ async function seedVault(
   userId: string | null,
   member: { progressGold?: number; ingotsCompleted?: number } = {},
   programme: boolean | "sample" = "sample",
+  name = "Brew & Bloom Café",
 ): Promise<Seeded> {
   const res = await request.post("/api/test/shop", {
     data: {
       status: "active",
-      name: "Brew & Bloom Café",
+      name,
       details: true,
       programme,
       ...(userId ? { memberUserId: userId, member: { purchaseCount: 5, ...member } } : {}),
@@ -203,6 +204,35 @@ test("[P1-08] gold vault: members only, and a shop without a programme says so",
   const bare = await seedVault(page.request, me.userId, {}, false);
   await page.goto(`/vault/${bare.shopId}`);
   await expect(page.getByTestId("vault-not-set-up")).toContainText("Rewards not set up yet");
+});
+
+test("[P1-08] a 60-character shop name: the back link truncates, the vault never scrolls sideways", async ({
+  page,
+  signInAs,
+}) => {
+  const me = await signInAs("customer");
+  const long = "The Extraordinarily Long-Named Neighbourhood Coffee House Ltd";
+  const { shopId } = await seedVault(page.request, me.userId, {}, "sample", long);
+  // P1-B close QA HIGH: the link sized itself to the unbroken name (445 px), 141 px past a 320 screen.
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(`/vault/${shopId}`);
+    const back = page.getByTestId("vault-back");
+    await expect(back).toContainText("The Extraordinarily");
+    await expect(back).toBeVisible();
+    await noHorizontalScroll(page);
+    const box = await back.boundingBox();
+    expect(
+      (box?.x ?? 0) + (box?.width ?? 0),
+      `back link inside ${String(width)}`,
+    ).toBeLessThanOrEqual(width);
+    if (width < 768) {
+      expect(
+        await back.locator("span.truncate").evaluate((el) => el.scrollWidth > el.clientWidth),
+        "the name ends in an ellipsis",
+      ).toBe(true);
+    }
+  }
 });
 
 test("[P1-08] [PD-10] pour: 200 ms after it shows, 0.9 s with the stream on the first view, a 0.5 s rise later in the session", async ({

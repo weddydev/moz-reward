@@ -20,6 +20,7 @@ import { Icon } from "@/components/ui/Icon";
 import { MiniVault } from "@/components/ui/MiniVault";
 import { addressLine, areaLine, statusLabel, weekRows } from "@/features/landing/view";
 import type { VaultView } from "@/features/vault/view";
+import { AVAILABILITY_TEXT } from "@/features/wallet/view";
 import type { MemberId } from "@/lib/brand";
 import { openStatus } from "@/lib/open-status";
 import { directionsUrl, telHref } from "@/lib/shop-links";
@@ -50,6 +51,7 @@ export function MemberShopPage({
   welcome,
   join,
   now,
+  availability = "live",
 }: {
   shop: { shopId: string; name: string; logoUrl: string | null; muted: boolean };
   /** The shop's public profile (cached landing data); null while the shop is suspended or closed. */
@@ -62,6 +64,8 @@ export function MemberShopPage({
   /** The join CTA (with its sheet) for a non-member. */
   join?: React.ReactNode;
   now: Date;
+  /** A member's shop that is suspended or closed: its state, as on the Wallet card, and what it means. */
+  availability?: "live" | "suspended" | "closed";
 }): React.JSX.Element {
   const today = londonDate(now);
   const status = details ? statusLabel(openStatus(details, now), today) : null;
@@ -79,7 +83,22 @@ export function MemberShopPage({
           rise
         />
         <div className="mt-4 flex flex-col gap-3" data-rise={3}>
-          {status ? (
+          {availability !== "live" ? (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone="closed">
+                  <span data-testid="shop-status">{AVAILABILITY_TEXT[availability]}</span>
+                </Badge>
+              </div>
+              {/* PRODUCT §14: suspended takes no requests and redeems nothing (reward validity paused); closed
+                  redeems for 30 days after closure. */}
+              <p role="status" className="m-note" data-testid="shop-availability">
+                {availability === "suspended"
+                  ? `${shop.name} is taking a break, so you can't collect or redeem gold here for now. Your gold is safe, and your rewards' time limits are paused until it's back.`
+                  : `${shop.name} has closed. You can still redeem rewards you've already unlocked for 30 days after it closed.`}
+              </p>
+            </>
+          ) : status ? (
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={status.tone}>
                 <span data-testid="shop-status">{status.text}</span>

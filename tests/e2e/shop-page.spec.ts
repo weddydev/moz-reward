@@ -200,6 +200,61 @@ test("[P1-09] leave from a stale second tab: the second leave lands on the Walle
   await expect(other.getByTestId("shop-leave-error")).toHaveCount(0);
 });
 
+test("[P1-09] a 60-character shop name: every word of the cover title fits its column at 320, 390 and 1440", async ({
+  page,
+  signInAs,
+}) => {
+  const me = await signInAs("customer");
+  const long = "The Extraordinarily Long-Named Neighbourhood Coffee House Ltd";
+  const { shopId } = await seedShop(page.request, me.userId, { name: long });
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(`/shops/${shopId}`);
+    const title = page.getByTestId("member-shop-name");
+    await expect(title).toHaveText(long);
+    await noHorizontalScroll(page);
+    // Every word fits the title's column, so none is forced to break mid-word (P1-B close QA: "Extraordinar|ily"
+    // at 320). A hyphenated break to fill a line (WebKit's `hyphens: auto`) is typesetting, not this bug.
+    const split = await title.evaluate((el) => {
+      const probe = document.createElement("span");
+      probe.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap;hyphens:none";
+      el.append(probe);
+      const out = (el.firstChild?.textContent ?? "").split(/\s+/).filter((w) => {
+        probe.textContent = w;
+        return probe.getBoundingClientRect().width > el.clientWidth;
+      });
+      probe.remove();
+      return out;
+    });
+    expect(split, `words split at ${String(width)}`).toEqual([]);
+  }
+});
+
+test("[P1-09] a member's suspended or closed shop says so: the Wallet's state and what it means for their gold", async ({
+  page,
+  signInAs,
+}) => {
+  // P1-B close QA MEDIUM: the Wallet card said "Taking a break", the shop page said nothing (PRODUCT §14:
+  // a suspended shop takes no requests and redeems nothing; a closed one redeems for 30 days).
+  const me = await signInAs("customer");
+  const paused = await seedShop(page.request, me.userId, { status: "suspended" });
+  await page.goto(`/shops/${paused.shopId}`);
+  await expect(page.getByTestId("shop-status")).toHaveText("Taking a break");
+  await expect(page.getByTestId("shop-availability")).toContainText(
+    "can't collect or redeem gold here",
+  );
+  await expect(page.getByTestId("shop-availability")).toContainText("Your gold is safe");
+
+  const closed = await seedShop(page.request, me.userId, { status: "closed", name: "Gone Café" });
+  await page.goto(`/shops/${closed.shopId}`);
+  await expect(page.getByTestId("shop-status")).toHaveText("No longer on Moz Rewards");
+  await expect(page.getByTestId("shop-availability")).toContainText("has closed");
+
+  const live = await seedShop(page.request, me.userId, { name: "Open Café" });
+  await page.goto(`/shops/${live.shopId}`);
+  await expect(page.getByTestId("shop-availability")).toHaveCount(0);
+});
+
 test("[P1-09] non-members: join CTA for a shop taking members, not-found for the rest", async ({
   page,
   signInAs,

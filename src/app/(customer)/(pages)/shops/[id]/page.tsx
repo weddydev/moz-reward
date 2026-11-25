@@ -53,6 +53,7 @@ export default async function ShopPage({
       <MemberShopPage
         shop={{ shopId, name: shop.name, logoUrl: shop.logoUrl, muted: shop.muted }}
         details={landing.kind === "live" ? landing : null}
+        availability={landing.kind === "gone" ? landing.status : "live"}
         member={member}
         vault={vault ? vaultView(vault, now) : null}
         welcome={(await searchParams).welcome === "1"}

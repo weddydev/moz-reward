@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { VaultView } from "@/features/vault/view";
-import { closureLabel, leaveRestoreBy, upcomingClosures, vaultCardText } from "./view";
+import { closureLabel, leaveRestoreBy, longestWord, upcomingClosures, vaultCardText } from "./view";
 
 const step = (percent: number, title: string, reached: boolean, main = false) => ({
   percent,
@@ -60,5 +60,13 @@ describe("[P1-09] shop page view", () => {
     expect(leaveRestoreBy(new Date("2026-11-19T10:00:00Z"))).toBe("19 Dec 2026");
     // 23:30 on 1 Mar 2027 in London is still 1 Mar there; 30 days on is 31 Mar (BST from 28 Mar).
     expect(leaveRestoreBy(new Date("2027-03-01T23:30:00Z"))).toBe("31 Mar 2027");
+  });
+});
+
+describe("[P1-09] cover title size", () => {
+  it("counts the letters of the longest word (accents as one), at least 1", () => {
+    expect(longestWord("The Extraordinarily Long-Named Neighbourhood Coffee House Ltd")).toBe(15);
+    expect(longestWord("Brew & Bloom Café")).toBe(5);
+    expect(longestWord("  ")).toBe(1);
   });
 });

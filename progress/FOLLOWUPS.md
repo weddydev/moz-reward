@@ -91,3 +91,11 @@ _CLAUDE.md §4 findings policy: LOW findings and nits get one line here, are not
 - [P1-18, P1-B close design review L4, 25 Nov] `ShopLanding.tsx:95,153`: hours and reward card both `rise(4)`; reward 4, hours 5, Find us 6.
 - [P1-18, P1-B close design review L5, 25 Nov] `WalletStack.tsx:53`: "Show all N shops" is plain underlined text; use the Molten ghost button (`buttonClasses({ variant: "ghost", size: 46 })`).
 - [P1-18, P1-B close design review L6, 25 Nov] `.m-wcard::after` shine loops every 5 s on lite devices too; DESIGN §7.2 says lite gets no light glides: `.lite .m-wcard::after { animation: none }`.
+- [P1-12, P1-B close QA L1, 25 Nov] At 1440 the Wallet says "Rewards ready" twice (the 0 tile and the "Rewards ready (0)" side card): drop the tile from 1024px, or the count from the card, when the rewards list lands (C-62/C-65).
+- [P1-18, P1-B close QA L2, 25 Nov] An empty Wallet still shows "0 Rewards ready / 0 Ingots filled": hide the summary tiles with no shops (like the total panel).
+- [P3-07, P1-B close QA L3, 25 Nov] On phones `/notifications` has no current item (no dock entry; the top-bar bell isn't `aria-current`): mark the bell current there.
+- [P1-18, P1-B close QA L4, 25 Nov] After Enter on a Wallet card, focus lands on `<body>` on the shop page (Chromium + WebKit): move focus to the page's h1 (or main) after a client navigation.
+- [P1-18, P1-B close QA L5, 25 Nov] Mute toggle `.m-tgl-btn` is 70×40 (the reference's size; passes WCAG 2.5.8, under DESIGN's 44): extend its hit area to 44 without changing the look.
+- [P1-12, P1-B close QA L6, 25 Nov] "Recent receipts" uses lucide `Receipt` (a `$` sign): `ReceiptPoundSterling` for GBP (`MemberShopPage.tsx` receipts card).
+- [P1-18, P1-B close QA L7, 25 Nov] Phone stack: the top-sorted shop sits at the back (header strip only) and the 3rd card in front; check against the reference's order (its first card is at the back too) and record the choice in DECISIONS.
+- [P1-18, P1-B close QA L8, 25 Nov] WebKit logs "not cross-origin isolated (COEP)" on most loads after the first (not our code): confirm it's the WebKit/Playwright quirk and allow-list it in the guard if it ever fails a test.

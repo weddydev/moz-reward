@@ -152,6 +152,11 @@ test("[P1-07] wallet: memberships in order with progress, summary, a suspended s
     expect(nameBox && cardBox && nameBox.x + nameBox.width <= cardBox.x + cardBox.width + 0.5).toBe(
       true,
     );
+    // The meta line keeps its words; an opening-hours pill that doesn't fit wraps under it (P1-B close QA).
+    expect(
+      await first.locator(".m-wc-meta").evaluate((el) => el.scrollWidth <= el.clientWidth),
+      `meta line whole at ${String(width)}`,
+    ).toBe(true);
     const rightColumn = page.getByTestId("wallet-rewards-ready");
     if (width === 1440) await expect(rightColumn).toBeVisible();
     else await expect(rightColumn).toBeHidden();

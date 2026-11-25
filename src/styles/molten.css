@@ -2451,16 +2451,19 @@ html:root.rm .rail .m-blob {
   border-radius: inherit;
   background: var(--wcard-bar);
 }
+/* A status pill that doesn't fit beside the meta line wraps under it: the line keeps its words (P1-B close QA). */
 .m-wc-metarow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px 8px;
   margin-top: 6px;
 }
 .m-wc-meta {
   margin: 0;
   min-width: 0;
+  max-width: 100%;
   font-size: 12px;
   font-weight: 600;
   /* The reference's body line height (its cards are buttons with font: inherit). */
@@ -2579,6 +2582,8 @@ html:root.rm .m-wcard {
 .m-cover-text {
   padding-right: 72px;
   min-width: 0;
+  /* The title sizes against this column (`cqi`, `.m-cover-title`). */
+  container-type: inline-size;
 }
 .m-cover-title,
 .m-cover-meta {
@@ -2586,7 +2591,10 @@ html:root.rm .m-wcard {
 }
 .m-cover-title {
   margin: 0;
-  font: 600 30px/1.05 var(--font-display);
+  /* The reference's 30 px; smaller only when the name's longest word (`--lw`, its letters, set by the page)
+     wouldn't fit its column, so a 60-character name's "Extraordinarily" keeps its letters together at 320
+     (P1-B close QA). Fraunces 600 averages about 0.58 em a letter. */
+  font: 600 clamp(18px, calc(100cqi / (var(--lw, 1) * 0.58)), 30px) / 1.05 var(--font-display);
   letter-spacing: -0.02em;
   /* The reference's greedy wrap, not the headings' balance (globals.css). */
   text-wrap: wrap;
@@ -3137,9 +3145,14 @@ html:root.rm .m-cover > .m-cover-back {
   stroke-linejoin: round;
   transform-origin: 50% 10%;
 }
-.m-bell:hover svg,
+/* Rings on keyboard focus, and on hover for fine pointers only (no sticky hover on touch; P0-09 AC7). */
 .m-bell:focus-visible svg {
   animation: m-ringbell 0.8s var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .m-bell:hover svg {
+    animation: m-ringbell 0.8s var(--ease-out);
+  }
 }
 @keyframes m-ringbell {
   0%,

@@ -1,6 +1,7 @@
 import { ChevronLeft } from "lucide-react";
 import { TransitionLink } from "@/components/motion/TransitionLink";
 import { ShopCoin, ShopImage } from "@/components/ui/ShopImage";
+import { longestWord } from "./view";
 
 /** The customer shop page's column; its loading state uses the same one, so nothing moves when it arrives. */
 export const SHOP_PAGE_CLASS =
@@ -93,6 +94,8 @@ export function ShopPageHeader({
       <div className="m-cover-text" aria-hidden={loading || undefined}>
         <Title
           className="m-cover-title"
+          // The longest word's letters: the title steps down only when that word wouldn't fit (molten.css).
+          style={{ "--lw": longestWord(name) } as React.CSSProperties}
           data-testid={loading ? "member-shop-name-loading" : "member-shop-name"}
           {...at(1)}
         >
