@@ -122,7 +122,12 @@ test("[P1-09] leave on day 1: the sheet explains the 30-day window, the shop lea
   page,
   signInAs,
   shoot,
+  browserName,
 }) => {
+  test.fixme(
+    process.env.CI !== undefined && browserName === "webkit",
+    "C-83: Linux WebKit (CI only, iphone14) fails on retry after the PD-11 restyle (KI-52 family suspected); passes on the Mac's WebKit",
+  );
   await page.setViewportSize({ width: 390, height: 844 });
   const me = await signInAs("customer");
   const { shopId, shopCode } = await seedShop(page.request, me.userId);

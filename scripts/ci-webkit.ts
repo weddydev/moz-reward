@@ -72,8 +72,10 @@ function main(): void {
   console.warn(
     `[e2e:ci-webkit] base ${base.slice(0, 7)}, tasks ${ids.join(", ") || "(none)"}${everyPage ? "; every-page change or no range: every spec" : ""}`,
   );
+  // WEBKIT_SHARD="1/2": CI splits the WebKit job so an every-page run (≈ 700 tests) fits its time limit (KI-54).
+  const shard = process.env.WEBKIT_SHARD ? [`--shard=${process.env.WEBKIT_SHARD}`] : [];
   for (const [i, args] of ciWebkitRuns(ids, base, everyPage).entries()) {
-    const r = spawnSync("pnpm", ["e2e", ...args], {
+    const r = spawnSync("pnpm", ["e2e", ...args, ...shard], {
       stdio: "inherit",
       env: { ...process.env, PW_JSON_OUT: `.artifacts/e2e/results-webkit-${String(i)}.json` },
     });

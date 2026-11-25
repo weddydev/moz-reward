@@ -509,6 +509,8 @@ test.describe("[P0-09] overlay screenshots", () => {
         own !== (width === 0),
         own ? "shoots at its own size" : "covered by the 320/390/1440 tests",
       );
+      // ≈ 31 s on the Mac's WebKit; Linux WebKit (CI) ran past 30 s (CI 45548579038, KI-54/C-83).
+      test.setTimeout(60_000);
       if (width > 0) await page.setViewportSize({ width, height: 800 });
       await page.goto("/dev/ui");
       await expect(trigger(page, "modal")).toBeEnabled();

@@ -78,7 +78,12 @@ async function seedShop(
 test("[PD-09] plays with src=qr for 3.28 s, hides itself; arrival stays silent before any gesture", async ({
   page,
   request,
+  browserName,
 }) => {
+  test.fixme(
+    process.env.CI !== undefined && browserName === "webkit",
+    "C-83: Linux WebKit (CI only) ends 6.8 s after start vs < 4.88 s (wall-clock bound, ~1 frame/s after load, KI-10); passes on the Mac's WebKit",
+  );
   const { shopCode } = await seedShop(request);
   await watchGate(page);
   await page.addInitScript(() => {

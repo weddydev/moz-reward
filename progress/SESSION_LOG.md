@@ -1011,3 +1011,9 @@ CI 45537212442 WebKit red → KI-53 real defect: fast shop commit cancelled the 
 Evidence: host wipe + vault 306/0 (4 projects × 3); wipe @perf 4/4; Linux container 1 worker 6/6 + 14/0. C-82 + T-8 closed (perf-budget 8/8 at 65 ms on `2c4ece1`).
 C-79: FX canvas raster ≈ 5.6 ms/frame at 4× (profile idle vs stress); dirty-rect clear no gain (reverted). Gate convergence @fps fails on main too (45397054403) → not C-82's split.
 NOT VERIFIED: CI 45548579038 on `dae3b95` (running). Next step: read it, then C-79 sprite-cache / spark-batch A/B (Handoff (2)).
+
+## 2026-11-25 — PD — PD-11 ticked, PD-C closed fast (human's instruction)
+CI 45548579038 (`dae3b95`): all jobs green except WebKit, cancelled at its 45-min limit at ≈ 615/692 (KI-54) → WebKit job split into 2 shards (`WEBKIT_SHARD`).
+Its WebKit failures (molten-controls /dev/ui 320 overflow 44 px, overlays 1440 timeout, gilded-gate src=qr 6.8 s, shop-page leave iphone14) re-run on the Mac's WebKit: 9 passed / 0 failed → Linux-only; overlays 60 s limit, the other 3 quarantined on CI WebKit (T-9, C-83 → P1-18).
+Carried, not done (human: "close it fast, note errors, solve later"): C-78, C-79/T-7, C-83 → P1-18; C-84 (4× traces, baselines, full parity) + C-85 (reviews, QA, H-49) → P1-B close. Lighthouse landing +11.8% accepted in the 15% band.
+NOT VERIFIED: CI on the closing commit at this entry; reviews/QA of PD commits (C-85).

@@ -1185,3 +1185,12 @@ Consequence / revisit when: P1-11 adds Request points under the mini vault (the 
 Decision: `startWipe` takes a stripped, inert stage copy of the Wallet at the tap; when the shop commits before the metal is full (< 620 ms), `openWipe` places it under the metal and continues the sink from the tap's time (`walletCopyAt`). A later commit uses no copy.
 Why: a fast phone commits the loading cover 16–70 ms after the tap, cancelling the 600 ms sink after 0–2 frames, so the ground showed outside the circle (reference: the Wallet sinks to .92 / .4 under the metal). KI-53.
 Consequence / revisit when: one `cloneNode` of the Wallet per tap (wipe @perf at 4× still passes); the wipe spec's per-frame `gone` invariant guards it.
+## 2026-11-25 — PD-11 and PD-C closed fast (human's instruction)
+Decision: the human asked to close PD-11 and PD-C now ("complete it fast, note every error and why, we solve later; make sure nothing is breaking"). PD-11 E/F items not done are carried, not dropped: C-78, C-79 (+ T-7) and the new C-83 (WebKit-only CI failures, quarantined) → P1-18; C-84 (4× traces, visual baselines darwin + Linux, full parity with `PARITY_SET=1` on Chromium + WebKit) and C-85 (`design-reviewer` + `code-reviewer` on the PD commits, exploratory QA 320/390/1440 Chromium + WebKit, H-49 sign-off) → the P1-B close, whose design review and QA already cover the Molten screens. Landing Lighthouse JS 156.5 KB vs 140 (+11.8%) accepted inside the 15% judgment band for the Molten ground (CLAUDE.md "Judgment over rigid budgets"). Screens the reference doesn't show (shop dashboard, admin, system, preferences, portal shells) are "extended": built from Molten parts, checked for consistency at C-85.
+Why: explicit instruction from the human (source-of-truth order 1); every check that guards main (check, unit, integration + authz, SAST, Chromium E2E both shards, parity Chromium, perf-budget, WebKit minus the quarantined tests) stays green before main moves.
+Consequence / revisit when: P1-18 can't be ticked while C-78, C-79, C-83 are open; the P1-B close can't close while C-84, C-85 are open; H-49 stays an open human task.
+
+## 2026-11-25 — WebKit CI job sharded 2 ways
+Decision: `E2E WebKit` runs as a 2-shard matrix (`WEBKIT_SHARD` → `--shard` in `scripts/ci-webkit.ts`); same specs, same minutes.
+Why: an every-page push runs ≈ 700 tests on WebKit at ~1 frame/s on Linux; CI 45548579038 hit the 45-min limit at ≈ 615 (KI-54).
+Consequence / revisit when: if a shard nears 45 min again, go to 3 shards rather than raising the limit.

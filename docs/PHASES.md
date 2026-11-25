@@ -85,8 +85,8 @@ Details: [`docs/phases/PD.md`](phases/PD.md) · Spec: [`design/reference/molten/
 - [x] PD-08 · Wallet stack, gold wipe into the shop, shop photos
 - [x] PD-09 · Gilded Gate 2.0
 - [x] PD-10 · Vault pour, reward unlocked, redeem code
-- [ ] PD-11 · Restyle built screens, full parity sweep, close
-- [ ] PD-C closed with `/subphase-complete` (needs H-49 human parity sign-off)
+- [x] PD-11 · Restyle built screens, full parity sweep, close (closed fast on the human's instruction 25 Nov; leftovers C-83 → P1-18, C-84/C-85 → P1-B close)
+- [x] PD-C closed with `/subphase-complete` (needs H-49 human parity sign-off) — closed 25 Nov by the human's decision; H-49, reviews and QA moved to the P1-B close (C-85)
 
 ## P1 — Core loyalty
 Details: [`docs/phases/P1.md`](phases/P1.md)

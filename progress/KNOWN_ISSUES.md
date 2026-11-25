@@ -50,6 +50,7 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 - Cause: a real product gap, not the runner. A fast server commits the shop's loading cover 16–70 ms after the tap (one worker, host), so the Wallet's 600 ms sink was cancelled after 0–2 frames and the ground showed outside the metal circle; slow parallel workers (200–2,600 ms) hid it.
 - Fix (PD-11): `startWipe` takes a stage copy of the Wallet; `openWipe` sinks it on under the metal when the shop commits before the metal is full (`walletCopyAt`). The spec asserts a per-frame invariant (`gone` = 0: in the first 600 ms every frame shows the Wallet or its copy), which fails 31–33 frames without the copy.
 
+**KI-54 · CI "E2E WebKit" job cancelled at 45 min ("The operation was canceled", no summary)** — 25 Nov, CI 45548579038 (`dae3b95`). Cause: an every-page push runs every spec (≈ 700) on webkit + iphone14 with 2 workers, and Linux WebKit draws ~1 frame/s after loads (KI-10), so one job no longer fits 45 min (≈ 615 done). Fix: the job is a 2-shard matrix (`WEBKIT_SHARD`, DECISIONS 25 Nov); a cancelled WebKit job = time limit, read its log with `gh api --allow-escape-sequences repos/{owner}/{repo}/actions/jobs/<id>/logs` (`gh run view --log` returns nothing for a cancelled job).
 **KI-11 · WebKit: first mouse event after `scrollIntoViewIfNeeded` scrolls the page back (~39 px); the press lands on the wrong element**
 - Fix: re-measure the target's box until the pointer is really over it, then press (slider drag, PD-06).
 

@@ -162,9 +162,13 @@ jobs:
     # The WebKit half of gate:task (DECISIONS 22 Nov): the pushed commits' task specs + the changed specs on
     # webkit + iphone14 (every spec after an every-page change). With the Chromium job, every commit main takes
     # has passed all five projects here.
-    name: E2E WebKit (webkit + iphone14; task + changed specs)
+    name: E2E WebKit (webkit + iphone14; task + changed specs), shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
     timeout-minutes: 45 # an every-page push runs every spec on WebKit (DECISIONS 22 Nov)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ["1/2", "2/2"] # one job ran out of 45 min on an every-page push (≈ 700 tests, KI-54)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -189,6 +193,7 @@ jobs:
       - name: E2E on WebKit (task + changed specs)
         env:
           PUSH_BEFORE: ${{ github.event.before }}
+          WEBKIT_SHARD: ${{ matrix.shard }}
         run: pnpm e2e:ci-webkit
       - name: confirm flaky tests (each re-run alone 5×; red if any fails again — process fix 2)
         run: pnpm e2e:confirm-flakes
@@ -196,7 +201,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: e2e-webkit-${{ github.sha }}
+          name: e2e-webkit-${{ github.sha }}-${{ strategy.job-index }}
           path: |
             playwright-report/
             .artifacts/e2e/build.log
