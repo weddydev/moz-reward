@@ -1110,3 +1110,6 @@ Done: engine `planExpiry` (notice floor) + `leftForfeitAt`; daily `scheduled:poi
 Commits: 3b3c854 → main. Tests: unit engine 64/0, health-rules sweeps 5/0; int points-expiry 20/0; gate:task PASS (unit 2254/0, int 1724/0/1). CI 45733852636: perf confirm-flakes red on [PD-09] gate long task 79–85 ms (KI-48, not P1-13), green on re-run.
 Dry run on local seed (Pedal & Co., 12 months, 1,400 gold, last visit 17 Nov 2026): today nothing; 20 Oct 2027 30-day warning; 13 Nov 2027 7-day warning; 30 Nov 2027 expired 1,400; same-day re-run 0 (6–75 ms each).
 Left off: P1-C close on `wip/P1-C-close` (C-94 46d351d, C-92/C-93 1b0fec1, local only).
+
+## 2026-11-26 — P1 — P1-C close in progress; stop (usage limit, human)
+Done: C-94, C-92/C-93 on `wip/P1-C-close` `c36deb5` (pushed; CI 45737171703 running). Not done: reviews/QA (re-run), 3 flake fixes (causes in PROGRESS handoff), C-95/C-100 retarget, close commit.
