@@ -393,11 +393,38 @@ test("[PD-03] press kit: pressed state, a ripple from the press point, celebrate
  */
 async function stressRun(page: Page, info: TestInfo) {
   await page.addInitScript(() => {
-    const w = window as unknown as { __long: number[] };
+    const w = window as unknown as { __long: number[]; __loaf: string[] };
     w.__long = [];
+    w.__loaf = [];
     new PerformanceObserver((list) => {
       for (const e of list.getEntries()) w.__long.push(e.duration);
     }).observe({ type: "longtask", buffered: false });
+    // Who a long frame belongs to (KI-48's method): the trace names the script, its forced style/layout and
+    // the frame's own render time, so a CI-only sighting can be root-caused from the log.
+    try {
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries() as unknown as {
+          duration: number;
+          renderStart: number;
+          startTime: number;
+          scripts: { invoker: string; duration: number; forcedStyleAndLayoutDuration: number }[];
+        }[]) {
+          if (e.duration <= 65) continue;
+          const sc = e.scripts
+            .map(
+              (x) =>
+                `${x.invoker} ${x.duration.toFixed(0)}/${x.forcedStyleAndLayoutDuration.toFixed(0)}`,
+            )
+            .join("; ");
+          const render = e.renderStart ? e.startTime + e.duration - e.renderStart : 0;
+          w.__loaf.push(
+            `${e.duration.toFixed(0)} ms (render ${render.toFixed(0)}): ${sc || "no script"}`,
+          );
+        }
+      }).observe({ type: "long-animation-frame", buffered: false });
+    } catch {
+      // No LoAF in this engine: the long-task count alone.
+    }
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await openPlayground(page);
@@ -407,7 +434,9 @@ async function stressRun(page: Page, info: TestInfo) {
   }).toPass();
   await page.waitForLoadState("networkidle");
   await page.evaluate(() => {
-    (window as unknown as { __long: number[] }).__long = [];
+    const w = window as unknown as { __long: number[]; __loaf: string[] };
+    w.__long = [];
+    w.__loaf = [];
   });
   const { cdp } = await throttleCpu(page, info);
   // Control (C-79): the same page, throttle and runner for 3 s with no bursts. If this already misses 60 fps,
@@ -422,7 +451,7 @@ async function stressRun(page: Page, info: TestInfo) {
   const idleGaps = idleTimes.slice(1).map((t, i) => t - (idleTimes[i] ?? t));
   const idleFps = (1000 * idleGaps.length) / idleGaps.reduce((s, g) => s + g, 0);
   const run = await page.evaluate(async () => {
-    const w = window as unknown as { __mozFx: Hook; __long: number[] };
+    const w = window as unknown as { __mozFx: Hook; __long: number[]; __loaf: string[] };
     const times: number[] = [];
     let fired = 0;
     let peak = 0;
@@ -437,7 +466,7 @@ async function stressRun(page: Page, info: TestInfo) {
       peak = Math.max(peak, s.live);
       if (fired >= 200 && !s.running) break;
     }
-    return { times, peak, fired, long: w.__long };
+    return { times, peak, fired, long: w.__long, loaf: w.__loaf };
   });
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
   const { times } = run;
@@ -454,7 +483,7 @@ async function stressRun(page: Page, info: TestInfo) {
     description: `${String(run.fired)} bursts, peak ${String(run.peak)} particles, ${String(times.length)} frames, ${fps.toFixed(1)} fps, p95 ${p95.toFixed(1)} ms, long tasks ${String(run.long.length)} (max ${longest.toFixed(0)} ms); idle control ${idleFps.toFixed(1)} fps`,
   });
   console.warn(
-    `[fx-trace] ${info.project.name} bursts ${String(run.fired)} peak ${String(run.peak)} frames ${String(times.length)} fps ${fps.toFixed(1)} p95 ${p95.toFixed(1)} long ${String(run.long.length)}/${longest.toFixed(0)} idle ${idleFps.toFixed(1)}`,
+    `[fx-trace] ${info.project.name} bursts ${String(run.fired)} peak ${String(run.peak)} frames ${String(times.length)} fps ${fps.toFixed(1)} p95 ${p95.toFixed(1)} long ${String(run.long.length)}/${longest.toFixed(0)} idle ${idleFps.toFixed(1)}${run.loaf.length ? ` loaf ${run.loaf.join(" | ")}` : ""}`,
   );
   return { ...run, fps, p95, longest, idleFps };
 }
