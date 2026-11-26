@@ -979,7 +979,6 @@ test("[PD-06] member card: a mouse tilts it and lights the glare; leaving fast s
     await expect
       .poll(async () => (await cardAngles(page)).ry, { timeout: 2_000 })
       .toBeGreaterThan(6.5);
-    await expect.poll(() => running(card), { timeout: 2_000 }).toBe(0);
     const tilted = await cardAngles(page);
     expect(tilted.rx).toBeGreaterThan(5);
     expect(tilted.rx).toBeLessThanOrEqual(11.01);
@@ -993,6 +992,10 @@ test("[PD-06] member card: a mouse tilts it and lights the glare; leaving fast s
       )
       .toBe("1");
   }
+  // The follow has finished (every engine; an end state, not a frame). Leaving while it still runs makes the
+  // return a reversal, which the browser shortens below 0.7 s by design (CSS Transitions "reversing"; CI
+  // WebKit, frame-starved, still had it running: spec-repeat 45799468410, 4 of 10).
+  await expect.poll(() => running(card), { timeout: 5_000 }).toBe(0);
   // Out in one jump (a fast exit): it asks for upright, springs back (0.7 s spring started) and the glare fades.
   // Read without the per-write sweep: the card writes its angles and React drops `.live` a moment apart, and a
   // flush between them would start the return on the 120 ms follow instead of the spring.
@@ -1003,13 +1006,15 @@ test("[PD-06] member card: a mouse tilts it and lights the glare; leaving fast s
   expect(await asked()).toEqual({ rx: 0, ry: 0 });
   // Started (every engine), polled: a CSS transition exists only after the next style recalc, which a
   // frame-starved Linux WebKit can run late (KI-10; read once, it was missed on CI 45794253914).
-  const springBack = (a: StartedAnimation): boolean =>
-    a.timing.duration === 700 && /^(linear|cubic-bezier)\(/.test(a.timing.easing);
   await expect
-    .poll(async () => (await transforms()).some(springBack), {
-      message: "the 0.7 s spring back started",
-    })
-    .toBe(true);
+    .poll(
+      async () =>
+        (await transforms()).map((a) => `${String(a.timing.duration)} ${a.timing.easing}`),
+      {
+        message: "the 0.7 s spring back started (transform transitions: duration easing)",
+      },
+    )
+    .toContainEqual(expect.stringMatching(/^700 (linear|cubic-bezier)\(/));
   // Ended upright (the end state, polled on every engine: a frame-starved Linux WebKit reports the spring done
   // while the drawn angle is the last frame's, KI-10).
   await expect
