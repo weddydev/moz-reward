@@ -98,6 +98,8 @@ test("[P1-12] recent receipts: the member's approved visits, newest first, with 
   signInAs,
   shoot,
 }) => {
+  // A download plus three viewport resizes: Linux WebKit can draw no frame for seconds after each (KI-10).
+  test.setTimeout(60_000);
   const me = await signInAs("customer");
   // Two visits approved by the owner through the approvals service: 720 → 820 → 920 gold, receipts 1 and 2.
   const { shopId } = await seedShop(page.request, me.userId, { visits: 2 });
@@ -135,7 +137,7 @@ test("[P1-12] recent receipts: the member's approved visits, newest first, with 
   for (const width of [390, 320, 1440]) {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
     await noHorizontalScroll(page);
-    await card.scrollIntoViewIfNeeded();
+    // Full-page shot: no scroll needed (scrollIntoViewIfNeeded waited 3–11 s for stable frames on Linux WebKit).
     await shoot(`shop-receipts-${String(width)}`);
   }
 });

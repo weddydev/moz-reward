@@ -122,7 +122,7 @@ describe("[P1-12] shop_member_cards (0030)", () => {
     expect(await pgCode(() => cards(staffA(), [...ids, w.ana.userId]))).toBe("22023");
   });
 
-  it("moz_rls reads exactly user_id, full_name, member_id of customer_profiles; only moz_owner is in it", async () => {
+  it("moz_rls reads exactly user_id, full_name, member_id of customer_profiles; only the migrator is in it", async () => {
     const cols = await db().execute<{ column_name: string }>(sql`
       SELECT column_name FROM information_schema.column_privileges
       WHERE grantee = 'moz_rls' AND table_name = 'customer_profiles' AND privilege_type = 'SELECT'
@@ -142,7 +142,9 @@ describe("[P1-12] shop_member_cards (0030)", () => {
       WHERE r.rolname = 'moz_rls'`);
     const names = [...members].map((m) => m.member);
     for (const role of ["moz_app", "moz_auth", "moz_worker"]) expect(names).not.toContain(role);
-    expect(names.every((n) => n === "moz_owner" || n === "postgres")).toBe(true);
+    // 0010 grants it to the migrator only (GRANT moz_rls TO CURRENT_USER); testOwnerDb is that connection.
+    const [me] = await db().execute<{ user: string }>(sql`SELECT current_user AS "user"`);
+    expect(names).toEqual([me?.user]);
   });
 });
 
@@ -177,6 +179,7 @@ describe("[P1-12] the shop's requests queue", () => {
           requestedAt: new Date(now - agoMs),
           status: status as "pending",
           decidedAt: status === "pending" ? null : new Date(now),
+          rejectReason: status === "rejected" ? ("no_purchase" as const) : null,
         })
         .returning({ id: pointRequests.id });
     const [ra] = await req(a, shop.id, 3_600_000);
