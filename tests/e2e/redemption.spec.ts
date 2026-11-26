@@ -224,7 +224,8 @@ test("[J3][P1-16] Wallet at 1440: rewards ready with Redeem; a second code voids
     await member.page.goto(`/vault/${shopId}`);
     const vaultCard = member.page.getByTestId("vault-rewards");
     // Visible, not only present: streamed content sits hidden in the DOM until it swaps in.
-    await expect(vaultCard.getByTestId("reward-ready").first()).toBeVisible();
+    // A cold first load on Linux WebKit swaps the stream in after more than 5 s (KI-10; spec-repeat 45899478122).
+    await expect(vaultCard.getByTestId("reward-ready").first()).toBeVisible({ timeout: SERVER_MS });
     await expect(vaultCard.getByTestId("reward-ready")).toHaveCount(4);
     await expect(vaultCard.getByTestId("reward-redeem")).toHaveCount(4);
     await vaultCard.scrollIntoViewIfNeeded();
