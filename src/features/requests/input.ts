@@ -1,6 +1,6 @@
 import { z } from "zod";
+import { AMOUNT_PENCE_MAX, REJECT_NOTE_MAX, REJECT_REASONS, REQUEST_ITEMS } from "@/lib/requests";
 import { REVERSAL_REASONS } from "@/server/db/schema/ledger";
-import { REJECT_NOTE_MAX, REJECT_REASONS, REQUEST_ITEMS } from "@/server/db/schema/requests";
 
 /**
  * Inputs of the shop's request decisions (P1-12): strict objects, so a membership, user, status or gold in the
@@ -8,7 +8,7 @@ import { REJECT_NOTE_MAX, REJECT_REASONS, REQUEST_ITEMS } from "@/server/db/sche
  * checked by the service and the database; the bound here only stops absurd numbers (£100,000).
  */
 const uuid = z.uuid().transform((id) => id.toLowerCase());
-export const AMOUNT_PENCE_MAX = 10_000_000;
+export { AMOUNT_PENCE_MAX };
 
 const amountPence = z.number().int().min(1).max(AMOUNT_PENCE_MAX).nullable();
 const items = z.array(z.string().trim().min(1).max(REQUEST_ITEMS.maxLength)).max(REQUEST_ITEMS.max);

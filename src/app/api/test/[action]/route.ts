@@ -31,6 +31,7 @@ import {
   setShopStatus,
   userPointRequests,
 } from "@/server/testing/factories";
+import { relayShopRealtime } from "@/server/testing/realtime";
 import { testApiAllowed } from "@/server/testing/test-api";
 import { approvedVisit, storeStubReceiptPdfs } from "@/server/testing/visits";
 
@@ -48,6 +49,8 @@ const sessionInput = z
     extraShops: z.number().int().min(0).max(3).optional(),
     /** P1-04: false → a customer with no profile yet (the join sheet asks for it). */
     profile: z.boolean().optional(),
+    /** P1-12: a staff actor's per-award limit in gold (default 200); above it an approval goes to the owner. */
+    perAwardLimit: z.number().int().min(1).max(100_000).optional(),
   })
   .strict();
 
@@ -191,6 +194,8 @@ const pointRequestsInput = z.object({ userId: z.uuid() }).strict();
 
 /** P1-12: what the worker's `pdf:receipt` jobs leave behind for a shop's receipts (stub files; no worker in E2E). */
 const receiptPdfsInput = z.object({ shopId: z.uuid() }).strict();
+/** P1-12: deliver the realtime hints a shop's actions queued (the worker's publish job; no worker in E2E). */
+const relayRealtimeInput = z.object({ shopId: z.uuid() }).strict();
 
 type Ctx = { params: Promise<{ action: string }> };
 const invalid = (): Response => NextResponse.json({ error: "invalid input" }, { status: 400 });
@@ -229,6 +234,11 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
       const parsed = receiptPdfsInput.safeParse(body);
       if (!parsed.success) return invalid();
       return NextResponse.json({ stored: await storeStubReceiptPdfs(parsed.data.shopId) });
+    }
+    case "relay-realtime": {
+      const parsed = relayRealtimeInput.safeParse(body);
+      if (!parsed.success) return invalid();
+      return NextResponse.json({ delivered: await relayShopRealtime(parsed.data.shopId) });
     }
     case "point-requests": {
       const parsed = pointRequestsInput.safeParse(body);
@@ -409,6 +419,9 @@ async function createSession(body: unknown): Promise<Response> {
   const actor = await makeActor(parsed.data.role, {
     ...(parsed.data.shopId ? { shopId: parsed.data.shopId } : {}),
     ...(parsed.data.profile === false ? { profile: false } : {}),
+    ...(parsed.data.perAwardLimit === undefined
+      ? {}
+      : { perAwardLimit: parsed.data.perAwardLimit }),
   });
   const extraShopIds: string[] = [];
   for (let i = 0; i < (parsed.data.extraShops ?? 0); i++) {

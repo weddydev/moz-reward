@@ -223,7 +223,7 @@ export type ActorRole = (typeof ACTOR_ROLES)[number];
 export async function makeActor(
   role: ActorRole,
   /** `profile: false`: a customer who has never joined a shop (no profile yet; P1-04 join sheet). */
-  opts: { shopId?: string; profile?: boolean } = {},
+  opts: { shopId?: string; profile?: boolean; perAwardLimit?: number } = {},
 ): Promise<{ user: UserRow; shopId: string | null; shopCode: string | null }> {
   const user = await makeUser({
     email: fakeEmail(role),
@@ -239,7 +239,13 @@ export async function makeActor(
       // shopCode is known only for a shop created here (null when the caller passed shopId).
       const shop = opts.shopId ? null : await makeShop();
       const shopId = opts.shopId ?? shop?.id ?? "";
-      await makeStaff(shopId, user.id, role);
+      // P1-12: a staff member's per-award limit (gold); above it an approval goes to the owner.
+      await makeStaff(
+        shopId,
+        user.id,
+        role,
+        opts.perAwardLimit === undefined ? {} : { perAwardLimit: opts.perAwardLimit },
+      );
       return { user, shopId, shopCode: shop?.shopCode ?? null };
     }
     case "admin_owner":

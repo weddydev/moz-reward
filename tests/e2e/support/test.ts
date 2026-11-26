@@ -191,7 +191,7 @@ type Fixtures = {
   guard: { problems: GuardProblem[] };
   signInAs: (
     role: ActorRole,
-    opts?: { shopId?: string; extraShops?: number; profile?: boolean },
+    opts?: { shopId?: string; extraShops?: number; profile?: boolean; perAwardLimit?: number },
   ) => Promise<SignedIn>;
   /** A password user with no session, via `/api/test/user` (for flows that sign in through the UI). */
   createUser: (

@@ -95,6 +95,8 @@ Defaults — solicitor to confirm. Removal is a scheduled job per row, except au
 | Marketplace listings | 30 days after end |
 | Reveal logs | 12 months |
 | Device signals | 90 days |
+| Fraud flags | 24 months after the flag is closed (dismissed or confirmed); open flags stay |
+| Receipts and receipt PDFs | With the shop's records; removed with the shop's receipts when the shop is closed or deleted |
 | Receipt photos | 12 months |
 | Audit logs | 2 years (monthly partitions; dropping a partition is the only removal) |
 | Application logs | 30 days |
@@ -104,10 +106,10 @@ Defaults — solicitor to confirm. Removal is a scheduled job per row, except au
 
 ### 2.7 Ledger, erasure and DSAR
 
-- The ledger holds no personal data: membership / subject IDs only.
+- The ledger holds no personal data: membership / subject IDs only. Receipts carry the approving staff member's initials (at most 3 letters), kept after that staff member's erasure.
 - **Erasure** anonymises the user and the customer profile (name, email, phone ciphertext, birthday, birth year). Ledger and audit rows stay, pseudonymous.
 - **Deletion cascade**: marketplace listings removed; feedback text redacted; live redeem and claim codes voided; sessions and push subscriptions revoked; a sole shop owner must transfer or close the shop first; backups age out within 35 days. Completed within 1 month of the request.
-- **DSAR export scope**: profile, memberships, ledger, requests, redemptions, claims, feedback, listings, reveal logs, notifications, consents, devices, fraud flags (where lawful to disclose), notes about the customer.
+- **DSAR export scope**: profile, memberships, ledger, requests (incl. a reject's preset reason and the shop's note), receipts (incl. their PDFs), rewards, redemptions, claims, feedback, listings, reveal logs, notifications, consents, devices, fraud flags (where lawful to disclose), notes about the customer.
 - Google Play requires a public web URL for account deletion: `/delete-account` (PRODUCT.md §17).
 
 ### 2.8 Device signals

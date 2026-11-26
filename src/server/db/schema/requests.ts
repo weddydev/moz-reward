@@ -18,6 +18,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { REJECT_REASONS } from "@/lib/requests";
 import { id, timestamps, tz } from "./_columns";
 import { users } from "./auth";
 import { memberships, shops } from "./core";
@@ -37,24 +38,12 @@ export const OPEN_REQUEST_STATUSES = ["pending", "awaiting_owner"] as const;
 
 export const pointRequestStatus = pgEnum("point_request_status", POINT_REQUEST_STATUSES);
 
-/** P1-12: preset reasons a shop rejects a request with (PRODUCT §5); `reject_note` holds optional free text. */
-export const REJECT_REASONS = [
-  "no_purchase",
-  "not_recognised",
-  "already_awarded",
-  "wrong_shop",
-  "other",
-] as const;
-export type RejectReason = (typeof REJECT_REASONS)[number];
+/** P1-12: preset reject reasons and request limits live in `@/lib/requests` (the forms use them too). */
+export { REJECT_NOTE_MAX, REJECT_REASONS, type RejectReason, REQUEST_ITEMS } from "@/lib/requests";
 export const pointRequestRejectReason = pgEnum("point_request_reject_reason", REJECT_REASONS);
 
 /** `request`: the customer's tap (P1-11); `scan`: staff scanned the member QR (P1-14, already approved). */
 export const pointRequestSource = pgEnum("point_request_source", ["request", "scan"]);
-
-/** Items on one award (approve form): at most this many, each at most this long (receipt lines). */
-export const REQUEST_ITEMS = { max: 10, maxLength: 40 } as const;
-/** Free-text limit for a reject note (shop-only; disclosed under a DSAR). */
-export const REJECT_NOTE_MAX = 200;
 
 export const pointRequests = pgTable(
   "point_requests",

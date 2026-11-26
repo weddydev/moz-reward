@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { newId } from "@/lib/id";
 import { TEST_API_HEADER, testApiToken } from "@/lib/test-api-token";
 import { stubDeployedEnv } from "../support/deployed-env";
 
@@ -81,6 +82,8 @@ describe("[P0-17] test-only seeding API", () => {
     for (const action of ["push", "runtime"]) {
       expect((await get(route, action)).status).toBe(404);
     }
+    // P1-12: the realtime relay (marks outbox rows dispatched) never runs outside test either.
+    expect((await call(route, { shopId: newId() }, "relay-realtime")).status).toBe(404);
   });
 
   it("[P0-14] answers 404 without the AUTH_SECRET-derived token, even with APP_ENV=test (SEC-L4)", async () => {
@@ -89,6 +92,7 @@ describe("[P0-17] test-only seeding API", () => {
     for (const headers of [{}, wrong, { [TEST_API_HEADER]: "" }]) {
       expect((await call(route, { role: "customer" }, "session", headers)).status).toBe(404);
       expect((await get(route, "runtime", headers)).status).toBe(404);
+      expect((await call(route, { shopId: newId() }, "relay-realtime", headers)).status).toBe(404);
     }
     expect((await call(route, { role: "customer" })).status).toBe(200);
   });
