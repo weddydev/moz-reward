@@ -7,27 +7,27 @@ Baton: held by talha.syed since 2026-11-27 (resume)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-16 closed (27 Nov, talha.syed, Mac).** On main `d486c7a` (CI 45900700721 green). `wip/P1-16` and the scratch `wip/dbg-P1-16` can be deleted (H-38). Carries C-65, C-67, C-70, C-81, C-108 closed; new C-109 → P2-12 (validity paused while suspended).
-- **Next step:** P1-17 · Data-integrity reconciliation (docs/phases/P1.md). Start `wip/P1-17` from main. Its checks cover the new `redemption_codes` / `redeem` rows (no reward redeemed twice; every `redeem` entry 0 gold). When built, update its step in the demo guide ("Behind the scenes").
-- **Untested:** redeem on a real phone (haptics, sheet); the shop budget's owner notice end to end in the app inbox (P3-07 shows notifications). No device run.
-- **Carried to the P1-D close:** H-54 side-by-side of C-92/C-93/C-94; P1-16's UI diff gets the design review there (the task-level review was security only); the J1 confirmed flake (FOLLOWUPS).
+- **P1-17 closed (27 Nov, talha.syed, Mac).** On main `86fcf85` (CI 45904334444 green; the perf job passed on re-run: C-106 again, the landing @perf). P1-16 closed earlier today (`d486c7a`). `wip/P1-16`, `wip/dbg-P1-16`, `wip/P1-17` can be deleted (H-38).
+- **Next step:** the **P1-D close** (`/subphase-complete`): reviews of P1-14..P1-17 commits not yet reviewed (code; design for P1-16's UI: Wallet/Vault rewards lists, redeem sheet, staff confirm), scoped QA of those screens at 320/390/1440, H-54 side-by-side (C-92/93/94), the J1 confirmed flake (FOLLOWUPS), staging deploy + smoke. Then P1-18.
+- **Untested:** redeem on a real phone; the integrity job's first nightly run on staging (no worker run yet; check `integrity_issues` and the System heartbeat `sweep:integrity-check` after 04:00 once deployed). Staging's demo data needs `pnpm db:seed --reset` after the deploy so the seeded memberships get their opening balances (else the first run flags them).
+- **Carried to the P1-D close:** H-54; P1-16's UI design review; J1 flake.
 ## Status
 - **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
-- **Current sub-phase:** **P1-D** (P1-14 done 26 Nov, P1-15 and P1-16 done 27 Nov; P1-17 next). **P1-C closed 26 Nov** (P1-10..P1-13, P1-19 + the close: reviews, QA, code-review M2/M3, C-92..C-95). P1-B closed 25 Nov. PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
+- **Current sub-phase:** **P1-D** (P1-14 done 26 Nov, P1-15, P1-16 and P1-17 done 27 Nov; the P1-D close next). **P1-C closed 26 Nov** (P1-10..P1-13, P1-19 + the close: reviews, QA, code-review M2/M3, C-92..C-95). P1-B closed 25 Nov. PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-27, talha.syed (P1-16 closed, on main `d486c7a`)
+- **Last updated:** 2026-11-27, talha.syed (P1-17 closed, on main `86fcf85`)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
-- **P1-D:** P1-14 closed 26 Nov (member QR, offline card); P1-15 closed 27 Nov (celebrations; C-86 fixed); P1-16 closed 27 Nov (rewards ready lists, redeem codes as HMAC, staff confirm on Requests, guessing budget, reward validity). P1-17 next.
+- **P1-D:** P1-14 closed 26 Nov (member QR, offline card); P1-15 closed 27 Nov (celebrations; C-86 fixed); P1-16 closed 27 Nov (rewards ready lists, redeem codes as HMAC, staff confirm on Requests, guessing budget, reward validity); P1-17 closed 27 Nov (nightly integrity reconciliation, admin trigger). The P1-D close next.
 - **P1-C:** closed 26 Nov (P1-10..P1-13, P1-19, the close; C-95 SSE through Cloudflare + Caddy verified on staging).
 - **Staging live** (release `4a1a912` since 26 Nov, `c12dfc8` next once main's CI is green, P1-C close; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** closed 25 Nov (P1-05..P1-09 + the close: reviews, QA fixes, Wallet header, H-49).
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. P1-17 · Data-integrity reconciliation, then the P1-D close. **Each P1-D task (human 26 Nov):** when it is built, update its step in the human's training doc "Moz Rewards: Phase 1 demo guide" (https://claude.ai/artifact/EMEPhqufVhTCbBnxiqWtyw, section "P1-D steps": wording to match the real screens, status table → Built).
+1. The P1-D close (`/subphase-complete`), then P1-18 (phase hardening) and the P1 `/phase-complete`. **Staging:** after the next deploy run `pnpm db:seed --reset` on staging (demo opening balances for P1-17). **Each P1-D task (human 26 Nov):** when it is built, update its step in the human's training doc "Moz Rewards: Phase 1 demo guide" (https://claude.ai/artifact/EMEPhqufVhTCbBnxiqWtyw, section "P1-D steps": wording to match the real screens, status table → Built).
 2. Human any time: H-45 (🟠), H-53 (🟢 rotate staging password before launch), H-54 (🟢 side-by-side C-92/93/94, by the P1-D close), H-38 (branches, list updated 26 Nov), H-51 (b), H-08b (private bucket for receipt PDFs); H-48b at P2 start.
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -61,11 +61,11 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (27 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
+- P1-17 closed: gate:task PASS (unit 2313/0, int 1898/0/1, sast; no UI); integrity int 11/0 (each check clean + corrupted, demo seed clean, open issue kept, fixed resolved, overlap skip, keyset pages, read-only sums); authz 1 matrix + trigger test; coverage 4211/0; CI 45904334444 green (perf on re-run, C-106).
 - P1-16 closed: gate:task PASS (unit 2307/0, int 1873/0/1, sast, e2e P1-16/J3 Linux Chromium 9/0); coverage 4180/0; redemption.spec chromium/webkit/iphone14/pixel7 green (+ ×2 locally), spec-repeat ×5 webkit/iphone14 after the hydration fix; security design check (2 HIGH + 5 MEDIUM taken) + final review OK (4 LOW → FOLLOWUPS); screenshots 320/390/1440 + staff 320/1440 inspected; CI 45900700721 green.
 - P1-15 closed: gate:task PASS (unit 2299/0, int 1799/0/1, sast, e2e P1-15 Linux Chromium 21/0, perf 3/0); celebrations.spec ×3 chromium+webkit 39/0, pixel7 green; @perf/@fps celebration + vault reward ×3 18/18 with real taps (C-86); coverage 4097/0; design review: 4 HIGH + 7 MEDIUM fixed, LOWs fixed or logged; screenshots 320/390/1440 inspected; CI 45886425001 green.
 - P1-14 closed: gate:task PASS (unit 2281/0, int 1761/0/1, sast, e2e P1-14 Linux Chromium 24/0); member-card.spec on chromium/webkit/iphone14/pixel7 green; affected specs 118/0; screenshots 320/390/1440 + offline 390 inspected; security design check + final review OK; coverage fix `2c94edc`: `pnpm test:coverage` 4048/0, services branches 92.38%; CI 45834404486 green.
 - P1-C closed: `c12dfc8` CI 45805824302 green (perf job on re-run, C-106); main `4a1a912` CI 45801863694 green + deployed; scoped QA PASS (1 LOW fixed); C-95 on staging (release 4a1a912, demo staff session, through Cloudflare + Caddy): /api/sse/me 200 at 156 ms, event ready in the first chunk at 157 ms, ': hb' at 25.2 s, cf-cache-status DYNAMIC, no content-encoding; signed out after.
-- P1-13 closed: gate:task PASS (unit 2254/0, int 1724/0/1, sast; no E2E: no UI); points-expiry int 20/0 (injected clock, month end, BST, C-73 rejoin, 0031 walls); dry run on seed data (SESSION_LOG). CI 45733852636 green (re-run).
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 

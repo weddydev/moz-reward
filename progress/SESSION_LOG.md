@@ -1158,3 +1158,9 @@ Done: migration 0034 (redemption_codes as HMAC, one live code per member, reward
 Commits: f1d3936, 9957483, e15088a, 10ede11, abb942c, d486c7a (wip/P1-16) → main (ff).
 Tests: gate:task PASS (unit 2307/0, int 1873/0/1, e2e P1-16/J3 9/0); coverage 4180/0; spec-repeat ×5 webkit/iphone14 (hydration fix held); security design check + final review OK; CI 45900700721 green (CI 45896261969 red: confirm typed before hydration, KI-20 fourth face).
 Left off: P1-17 next (this session continues into it, human 27 Nov, session-only).
+
+## 2026-11-27 — P1 — P1-17 closed, talha.syed (Mac)
+Done: migration 0035 (integrity_issues, ref key `ingots`); pure `replayLedger` (engine replay); keyset checks (membership counters, receipt numbers, reward redeemed twice, redeem 0 gold, request approved twice, approved without ledger / receipt after 15 min); `runIntegrityCheck` (read-only, single-run lock, 04:00 London, sweep alarm, ops alert + Sentry for new issues); admin owner trigger (tenant job, worker re-checks); demo seed opening balances; demo guide P1-17 → Built.
+Commits: 86fcf85 (wip/P1-17) → main (ff).
+Tests: gate:task PASS (unit 2313/0, int 1898/0/1); integrity int 11/0; coverage 4211/0; CI 45904334444 green (perf job red first on C-106 gilded-gate @perf, green on re-run).
+Left off: the P1-D close next (review stop, Cadence).
