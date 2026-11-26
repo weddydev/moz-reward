@@ -76,6 +76,10 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 ## Tests in general
 
+**KI-73 · CI job "unit + integration + authz (coverage)" red with `Coverage for branches (89.32%) does not meet "src/server/services/**" threshold (90%)`, every test passing; gate:task was green** — P1-14, 26 Nov (CI 45822334087).
+- Cause: `gate:task` runs `test:int` without coverage; thresholds (`vitest.config` per folder) are checked only by CI's `pnpm test:coverage` and gate:phase. A new route/service tested only by E2E (and the authz matrix's NOT_FOUND path) leaves its success and limit branches uncovered.
+- Fix: give every new `src/server/services/*` file an integration test of its own branches (success, each limit, error mapping). Check one file locally: `pnpm exec vitest run <tests> --coverage.enabled --coverage.include='src/server/services/<file>.ts' --coverage.reporter=text-summary` (thresholds pass on a subset only if set to 0 on the command line).
+
 **KI-63 · Several `spec-repeat` dispatches at once: all but the first and the last end "cancelled"** — P1-19, 25 Nov.
 - Cause: GitHub keeps one *pending* run per concurrency group (`cancel-in-progress: false` only spares the running one), and the group was per ref. Fix: the group is per ref + spec + project + grep, so different specs run side by side; the same spec dispatched twice still queues. The job's limit is 50 min (a whole motion spec × 10 on Linux WebKit: 25.8 min).
 
