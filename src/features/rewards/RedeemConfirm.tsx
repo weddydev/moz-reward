@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { TextField } from "@/components/ui/TextField";
 import { haptic } from "@/lib/haptics";
+import { useHydrated } from "@/lib/use-hydrated";
 import { confirmRedeemCodeAction } from "./actions";
 
 type Outcome = { kind: "done"; label: string } | { kind: "error"; message: string } | null;
@@ -24,6 +25,8 @@ export function RedeemConfirm({ shopId }: { shopId: string }): React.JSX.Element
   const [outcome, setOutcome] = useState<Outcome>(null);
   const [tries, setTries] = useState(0);
   const field = useRef<HTMLInputElement>(null);
+  // Typed before React owns the field, a code would be reset by hydration (KI-20): the field and Confirm wait.
+  const hydrated = useHydrated();
 
   const submit = async (e: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -51,7 +54,11 @@ export function RedeemConfirm({ shopId }: { shopId: string }): React.JSX.Element
   };
 
   return (
-    <Card className="flex flex-col gap-3 p-5" data-testid="redeem-confirm">
+    <Card
+      className="flex flex-col gap-3 p-5"
+      data-testid="redeem-confirm"
+      data-hydrating={hydrated ? undefined : ""}
+    >
       <h2 className="text-h3 flex items-center gap-2">
         <Icon icon={Gift} className="text-gold-deep" />
         Redeem a reward
@@ -64,6 +71,7 @@ export function RedeemConfirm({ shopId }: { shopId: string }): React.JSX.Element
           className="min-w-0 flex-1 basis-48"
           value={code}
           maxLength={9}
+          disabled={!hydrated}
           autoComplete="off"
           autoCapitalize="characters"
           spellCheck={false}
@@ -76,7 +84,13 @@ export function RedeemConfirm({ shopId }: { shopId: string }): React.JSX.Element
           errorKey={tries}
           data-testid="redeem-confirm-code"
         />
-        <Button type="submit" size={46} loading={busy} data-testid="redeem-confirm-submit">
+        <Button
+          type="submit"
+          size={46}
+          loading={busy}
+          disabled={!hydrated}
+          data-testid="redeem-confirm-submit"
+        >
           Confirm
         </Button>
       </form>

@@ -67,15 +67,30 @@ async function device(
 /** The code on screen, read from the digits' accessible name ("Redeem code K 7 Q 4 2 M"). */
 async function shownCode(page: Page): Promise<string> {
   const digits = page.getByTestId("redeem-code").getByRole("img");
-  await expect(digits).toHaveAttribute("aria-label", /^Redeem code( [2-9A-HJKMNP-TV-Z]){6}$/);
+  // The Redeem round trip (3 s more where a spec holds the response back, C-81) under parallel workers.
+  await expect(digits).toHaveAttribute("aria-label", /^Redeem code( [2-9A-HJKMNP-TV-Z]){6}$/, {
+    timeout: SERVER_MS,
+  });
   const label = (await digits.getAttribute("aria-label")) ?? "";
   const code = label.replace("Redeem code", "").replace(/\s/g, "");
   expect(code).toMatch(CODE);
   return code;
 }
 
+/**
+ * Types the code and confirms, once React owns the field (KI-20: a value typed before hydration is reset by it;
+ * Linux WebKit, CI 45896261969), and checks the field kept what was typed (upper-cased, as the field shows it).
+ */
 async function confirm(staff: Page, code: string): Promise<void> {
-  await staff.getByTestId("redeem-confirm-code").fill(code);
+  await staff.waitForFunction(
+    () =>
+      document.documentElement.dataset.hydrated === "true" &&
+      !document.querySelector("[data-hydrating]"),
+  );
+  const field = staff.getByTestId("redeem-confirm-code");
+  await expect(field).toBeEnabled();
+  await field.fill(code);
+  await expect(field).toHaveValue(code.toUpperCase());
   await staff.getByTestId("redeem-confirm-submit").click();
 }
 
