@@ -1119,3 +1119,10 @@ Security review (P1-11, P1-13, C-92 hook): OK WITH CHANGES, no BLOCK/HIGH. MEDIU
 Done: CI 45737171703 red root-caused (Scan radar/halo hit-tested over Offers/Market, real tap bug, KI-67) + 3 flakes fixed (Linux WebKit 3/3 each); security M1/M2 fixed + re-check CLOSED; design + code reviews run, fixes in `470b216`; C-100 → P1-18; Claude does C-95 (no H-52); T-11/H-53.
 Commits: 179431d, 1f68b88, 470b216 (wip/P1-C-close). Tests: unit 2258/0; int rls P0-20 30/0, approvals+authz 77/0; E2E full 5-project on 179431d 1591/14 (10 = leftover QA worker KI-68, 4 = load; all pass alone 164/0 + requests 6/6); touched specs 142/1 (J2 Redis timeout, 6/6 on re-run).
 Left off: CI on 470b216, code-review M2/M3, P1-12 screenshots, QA, side-by-side, merge, staging (Handoff note).
+
+## 2026-11-26 — P1 — P1-C closed, talha.syed (Mac)
+Done: code-review M2 (customer sees gold owed after a reversal, Vault "to go" counts it) + M3 (owner's live Requests count, shop stream in the layout); design M3 screenshots inspected; scoped QA PASS (LOW visit count format fixed); flakes: fx burst stress (KI-70, not reproducible 0/15), KI-64 guard for the shop stream, C-93 WebKit click (KI-10, 10/10), member card reversal (KI-10, 12/12).
+Commits: 2558db4, 6c56df8, 50e4e06, 4a1a912, 31eb8dd, 7ae59ba → main `c12dfc8`.
+Tests: gate:task PASS (unit 2261/0, int 1728/0/1); E2E M2/M3 3+3 Chromium; CI green on 4a1a912 (wip + main) and 7ae59ba; spec-repeats 45790734257, 45795556310, 45801054414.
+C-95 on staging (release 4a1a912, demo staff session, through Cloudflare + Caddy): /api/sse/me 200 at 156 ms, event ready in the first chunk at 157 ms, ': hb' at 25.2 s, cf-cache-status DYNAMIC, no content-encoding; signed out after
+Left off: P1-14 next; H-54 (human side-by-side C-92/93/94) by the P1-D close.

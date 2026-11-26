@@ -115,7 +115,7 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 - [x] P1-12 · Approve / reject, owner approval, reversals, receipts
 - [x] P1-13 · Points expiry job
 - [x] P1-19 · Motion specs assert the animation, not drawn frames (process, human 25 Nov; any time before the P1-C close)
-- [ ] P1-C closed with `/subphase-complete`
+- [x] P1-C closed with `/subphase-complete` — closed 26 Nov (C-92/93/94 human side-by-side carried to the P1-D close, H-54)
 
 **P1-D · Celebrations, member QR, rewards**
 
