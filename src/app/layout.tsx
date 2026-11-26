@@ -5,6 +5,7 @@ import { FxCanvas } from "@/components/motion/FxCanvas";
 import { GooFilter } from "@/components/motion/GooFilter";
 import { LivingBackground } from "@/components/motion/LivingBackground";
 import { CookieNotice } from "@/features/consent/CookieNotice";
+import { CardOwnerGuard } from "@/features/member-card/card-owner";
 import { ApplyPreferences } from "@/features/preferences/ApplyPreferences";
 import { loadAccountPreferences } from "@/features/preferences/load";
 import { parseConsent } from "@/lib/consent";
@@ -67,6 +68,10 @@ export default async function RootLayout({
         <LivingBackground />
         <Suspense fallback={null}>
           <AccountPreferences />
+        </Suspense>
+        {/* Drops a cached member card that isn't this account's (P1-14). */}
+        <Suspense fallback={null}>
+          <CardOwnerGuard />
         </Suspense>
         {children}
         {/* The shared particle canvas, outside every route transition (DESIGN §7; PD-03). */}

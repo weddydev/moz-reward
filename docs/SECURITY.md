@@ -100,7 +100,7 @@ Redis sliding-window limits (per IP + per user where signed in). Defaults:
 - [ ] Turnstile on registration, magic-link request, reveal number (after 5/day), report forms, and the next attempt on a locked account (§2).
 - [ ] Fraud rules (PRODUCT.md §16) run as jobs after awards and game scores.
 - [ ] Game scores validated server-side (min duration per score, max score rate); rewards capped.
-- [ ] Member QR encodes a short-lived signed token (HMAC, 5 min rotation on screen), not the raw member ID.
+- [ ] Member QR encodes a short-lived token, encrypted and MAC'd (AES-256-CTR + HMAC-SHA256, encrypt-then-MAC, two HKDF subkeys of `MEMBER_QR_SIGNING_KEY`; 5 min, refreshed on screen every 4), never the raw member ID (P1-14).
 
 ## 7. Data protection
 

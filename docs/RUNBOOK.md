@@ -299,3 +299,21 @@ a key leak (§9) or on a schedule. One environment at a time, staging first.
   better than it did before, so also consider COMPLIANCE §2 for the data it sealed.
 - Adding a new encrypted column: register it in `ENCRYPTED_FIELDS` (src/server/jobs/reencrypt.ts). The job refuses
   to run while any `*_enc` column is unregistered, and `tests/integration/key-rotation.test.ts` fails too.
+
+## 19. Switch off the service worker (kill switch)
+
+*(P1-14)* `public/sw.js` is served `Cache-Control: no-cache` and registered with `updateViaCache: "none"`, so every
+visit re-checks it. If a worker release misbehaves (pages served from the offline shell while online, stale files),
+replace the file's whole content with the version below, deploy, and keep it until a fixed worker ships:
+```js
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => {
+  event.waitUntil((async () => {
+    for (const name of await caches.keys()) await caches.delete(name);
+    await self.registration.unregister();
+    for (const client of await self.clients.matchAll({ type: "window" })) client.navigate(client.url);
+  })());
+});
+```
+Each phone drops the worker and its caches on its next visit (the offline card stops working until the fix ships).
+

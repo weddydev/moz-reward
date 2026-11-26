@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateTime, formatTime, londonDay } from "./format-date";
+import { formatDate, formatDateTime, formatMonthYear, formatTime, londonDay } from "./format-date";
 
 describe("[P0-06] UK date formatting (CLAUDE.md §5: `7 Nov 2026`, 24h)", () => {
   it("formats dates as day, short month, year in UK time", () => {
@@ -28,5 +28,13 @@ describe("[P1-11] formatTime: the pending request's time of day", () => {
     expect(formatTime(new Date("2026-01-15T16:05:00Z"))).toBe("16:05");
     expect(formatTime(new Date("2026-07-15T16:05:00Z"))).toBe("17:05");
     expect(formatTime(new Date("2026-07-14T23:30:00Z"))).toBe("00:30");
+  });
+});
+
+describe("[P1-14] formatMonthYear: the member card's since line", () => {
+  it("[P1-14] is UK month and year, the London month at a month boundary", () => {
+    expect(formatMonthYear(new Date("2026-11-07T12:00:00Z"))).toBe("Nov 2026");
+    // 31 May 23:30 UTC is already 1 June in London (BST).
+    expect(formatMonthYear(new Date("2026-05-31T23:30:00Z"))).toBe("Jun 2026");
   });
 });

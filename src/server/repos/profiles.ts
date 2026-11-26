@@ -78,10 +78,14 @@ export async function ownMemberId(
 /** What the member ID card shows (no phone, so nothing is decrypted), or null without a profile. */
 export async function ownMemberCard(
   scope: CustomerScope,
-): Promise<{ memberId: MemberId; fullName: string } | null> {
+): Promise<{ memberId: MemberId; fullName: string; createdAt: Date } | null> {
   const [row] = await withScope(scope, (q) =>
     q
-      .select({ memberId: customerProfiles.memberId, fullName: customerProfiles.fullName })
+      .select({
+        memberId: customerProfiles.memberId,
+        fullName: customerProfiles.fullName,
+        createdAt: customerProfiles.createdAt,
+      })
       .from(customerProfiles)
       .where(ownedBy(customerProfiles.userId, scope))
       .limit(1),

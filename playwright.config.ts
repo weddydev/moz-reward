@@ -58,6 +58,9 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "on-first-retry",
+    // P1-14: the member-card service worker stays out of every spec but its own (member-card.spec.ts opts in),
+    // so no other spec runs through it (design check, plan item 8).
+    serviceWorkers: "block",
     // `pnpm e2e:linux`: the browsers run in the Linux Playwright image (scripts/e2e-linux.ts), the runner and the
     // production server stay on this machine.
     ...(process.env.PW_WS_ENDPOINT

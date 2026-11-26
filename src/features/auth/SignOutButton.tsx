@@ -1,5 +1,6 @@
 "use client";
 
+import { clearCardCache } from "@/features/member-card/card-cache";
 import { browserQueueStorage, clearQueue } from "@/features/shop/request-queue";
 import { authClient } from "@/lib/auth-client";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -18,9 +19,13 @@ export function SignOutButton({ to = "/" }: { to?: string }): React.JSX.Element 
       onClick={() => {
         // A full page load (P0-12): nothing of the signed-in pages stays in the router cache. Requests queued
         // offline go with the session, once it has really ended: a sign-out that failed (offline) keeps them
-        // (security review M1 and its re-check, P1-C close).
-        void authClient.signOut().then((res) => {
-          if (!res.error) clearQueue(browserQueueStorage());
+        // (security review M1 and its re-check, P1-C close). The cached member card goes too, awaited before the
+        // page unloads (P1-14, design check H1).
+        void authClient.signOut().then(async (res) => {
+          if (!res.error) {
+            clearQueue(browserQueueStorage());
+            await clearCardCache();
+          }
           window.location.assign(to);
         });
       }}

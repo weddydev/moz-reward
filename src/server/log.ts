@@ -27,6 +27,7 @@ const SENSITIVE_KEYS = [
   "cookie",
   '"set-cookie"',
   "authorization",
+  "memberId",
 ] as const;
 
 /** `key`, `*.key`, `*.*.key`: pino needs explicit paths; three levels covers request/user/payload shapes. */

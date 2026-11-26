@@ -15,9 +15,13 @@ import { retryAfterSec } from "@/server/security/rate-limit";
  * - `/dev/*` answers a real 404 in production (a page-level notFound() would stream a 200).
  * - `x-pathname`: the request path, forwarded for the portal layout gate (P0-12).
  * - `Cache-Control: private, no-store` on portal paths (P0-12) and shop landing pages (P1-02).
+ * - `Clear-Site-Data: "cache"` on the sign-out POST (P1-14, design check M3): defence in depth for the HTTP cache;
+ *   the member card's Cache Storage entry is cleared by the page itself (SignOutButton, CardCacheGuard).
  * - `/s/<code>`: per-IP shop-lookup limit (P1-02, C-15) before any render, so a refused request never reaches
  *   the cache or the database; over the limit → a friendly 429 page with Retry-After.
  */
+export const SIGN_OUT_PATH = "/api/auth/sign-out";
+
 const REQUEST_ID = /^[A-Za-z0-9-]{8,64}$/;
 
 function requestId(request: NextRequest, trustedProxy: string): string {
@@ -85,6 +89,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   // Portal pages are per-user (P0-12): never stored, whatever the framework would default to.
   // Shop landing HTML is never stored by a shared cache (ARCHITECTURE §5: only its public data is cached).
   if (isPortalPath(pathname) || landing) response.headers.set("Cache-Control", "private, no-store");
+  if (pathname === SIGN_OUT_PATH && request.method === "POST") {
+    response.headers.set("Clear-Site-Data", '"cache"');
+  }
   return response;
 }
 

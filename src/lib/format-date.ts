@@ -29,6 +29,12 @@ export function formatDate(date: Date): string {
   return `${Number(p.day)} ${MONTHS[Number(p.month) - 1] ?? ""} ${p.year}`;
 }
 
+/** `Nov 2026` (UK time): the member card's "since" line (P1-14). */
+export function formatMonthYear(date: Date): string {
+  const p = londonParts(date);
+  return `${MONTHS[Number(p.month) - 1] ?? ""} ${p.year}`;
+}
+
 export function formatDateTime(date: Date): string {
   const p = londonParts(date);
   return `${formatDate(date)}, ${p.hour}:${p.minute}`;

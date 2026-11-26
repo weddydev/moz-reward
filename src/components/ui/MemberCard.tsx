@@ -63,6 +63,7 @@ export function MemberCard({
   backLabel = "Member card showing QR code. Press to turn back",
   onFlip,
   parity,
+  memberIdTestId,
   className,
 }: {
   name: string;
@@ -84,6 +85,8 @@ export function MemberCard({
   /** Called after each turn with the new side (true: the back shows). */
   onFlip?: (flipped: boolean) => void;
   parity?: string;
+  /** Test id on the printed member ID (the real card, P1-14: "member-id", as the P1-04 card had). */
+  memberIdTestId?: string;
   className?: string;
 }): React.JSX.Element {
   const hydrated = useHydrated();
@@ -201,7 +204,9 @@ export function MemberCard({
           <span className="m-mc-bot">
             <span>
               <span className="m-mc-name">{name}</span>
-              <span className="m-mc-id">{memberId}</span>
+              <span className="m-mc-id" data-testid={memberIdTestId}>
+                {memberId}
+              </span>
             </span>
             <span className="m-mc-since">{since}</span>
           </span>

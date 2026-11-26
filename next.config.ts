@@ -48,6 +48,15 @@ const nextConfig: NextConfig = {
     Promise.resolve([
       ...PREFETCH.map((h) => ({ source: "/:path*", has: [h], headers: staticHeaders })),
       { source: "/_next/image", headers: staticHeaders },
+      // P1-14 (design check M6): the service worker is always re-checked, so a fix or the kill switch lands on
+      // the next visit (registered with updateViaCache: "none" too).
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache" },
+          { key: "Content-Type", value: "text/javascript; charset=utf-8" },
+        ],
+      },
     ]),
   // `next build` type-checks app code only (tests, scripts and tool configs are checked by `pnpm typecheck`), so
   // the Docker build context can leave them out. Build errors still fail the build.

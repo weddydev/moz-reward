@@ -20,14 +20,16 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { MiniVault } from "@/components/ui/MiniVault";
 import { addressLine, areaLine, statusLabel, weekRows } from "@/features/landing/view";
+import { MemberQrCard } from "@/features/member-card/MemberQrCard";
 import { owedText, type VaultView } from "@/features/vault/view";
 import { AVAILABILITY_TEXT } from "@/features/wallet/view";
 import type { MemberId } from "@/lib/brand";
+import { formatMemberId } from "@/lib/codes";
+import { formatMonthYear } from "@/lib/format-date";
 import { openStatus } from "@/lib/open-status";
 import { directionsUrl, telHref } from "@/lib/shop-links";
 import { londonDate } from "@/lib/time";
 import type { ShopLandingData } from "@/server/repos/shops";
-import { MemberIdCard } from "./MemberIdCard";
 import { MembershipControls } from "./MembershipControls";
 import { type OpenRequestView, RequestPoints } from "./RequestPoints";
 import { SHOP_PAGE_CLASS, ShopPageHeader } from "./ShopPageHeader";
@@ -43,7 +45,7 @@ type Live = Extract<ShopLandingData, { kind: "live" }>;
  * and the member's own settings (mute, leave) on the right. A non-member (never joined, or left) sees the
  * join CTA in place of the member sections. Request points or the pending request sits under the mini vault, as
  * in the reference (P1-11). Recent receipts lists the member's last receipts here (P1-12; the PDF download
- * arrives with the receipt job). Slots filled by later tasks: Show member QR (P1-14), offers carousel (P3-05),
+ * arrives with the receipt job). The member card with the live member QR (P1-14). Slots filled by later tasks: offers carousel (P3-05),
  * rate row (P3-01).
  * Server component; the pour and the settings are the only client parts.
  */
@@ -63,7 +65,7 @@ export function MemberShopPage({
   /** The shop's public profile (cached landing data); null while the shop is suspended or closed. */
   details: Live | null;
   /** The member's card, or null for a non-member (who gets `join` instead of the member sections). */
-  member: { memberId: MemberId; fullName: string } | null;
+  member: { memberId: MemberId; fullName: string; createdAt: Date } | null;
   /** The Gold Vault card; null when the shop has no programme yet. */
   vault: VaultView | null;
   welcome: boolean;
@@ -185,7 +187,11 @@ export function MemberShopPage({
           {member ? (
             <>
               <VaultCard shopId={shop.shopId} shopName={shop.name} vault={vault} />
-              <MemberIdCard memberId={member.memberId} fullName={member.fullName} />
+              <MemberQrCard
+                name={member.fullName}
+                memberId={formatMemberId(member.memberId)}
+                since={`since ${formatMonthYear(member.createdAt)}`}
+              />
               <Card className="flex flex-col gap-3 p-5" data-testid="shop-receipts">
                 <h2 className="text-h2 flex items-center gap-2">
                   <Icon icon={Receipt} className="text-gold-deep" /> Recent receipts

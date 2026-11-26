@@ -225,6 +225,13 @@
       "when": 1795654568614,
       "tag": "0031_points_expiry",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795693547292,
+      "tag": "0032_member_qr_lookup",
+      "breakpoints": true
     }
   ]
 }
