@@ -379,14 +379,22 @@ test("[P1-15] the moment is its own chunk, ≤ 35 KB gzip, fetched at idle befor
   });
   await page.goto("/dev/motion");
   await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
-  await page.waitForLoadState("networkidle");
-  const all = await Promise.all(scripts);
-  const moment = all.filter((s) => s.moment);
+  // The chunk comes from an idle callback with no timeout, which under load can fire after `networkidle` settles
+  // (KI-49): wait until it has arrived. No tap happens, so it still arrives before any moment.
+  let moment: { moment: boolean; gzip: number }[] = [];
+  await expect
+    .poll(
+      async () => {
+        moment = (await Promise.all(scripts)).filter((s) => s.moment);
+        return moment.length;
+      },
+      { message: "the moment's chunk was preloaded", timeout: 10_000 },
+    )
+    .toBeGreaterThan(0);
   test.info().annotations.push({
     type: "celebration chunk (gzip bytes)",
     description: moment.map((s) => s.gzip).join(", "),
   });
-  expect(moment.length, "the moment's chunk was preloaded").toBeGreaterThan(0);
   for (const s of moment) expect(s.gzip).toBeLessThanOrEqual(35 * 1024);
 });
 
