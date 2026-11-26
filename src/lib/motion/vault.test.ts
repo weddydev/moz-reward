@@ -21,6 +21,13 @@ describe("[PD-10] vault copy", () => {
     expect(goldToGo(1_000, 1_000, 80)).toBe("Your reward is ready.");
     expect(goldToGo(1_400, 1_000, 80)).toBe("Your reward is ready.");
   });
+
+  it("[P1-12] gold owed from a reversal is still to go (code review M2)", () => {
+    expect(goldToGo(0, 1_000, 100, 120)).toBe("1,120 gold to go · about 12 visits");
+    expect(goldToGo(0, 1_000, undefined, 120)).toBe("1,120 gold to go");
+    expect(goldToGo(0, 1_000, 100, 0)).toBe("1,000 gold to go · about 10 visits");
+    expect(goldToGo(0, 1_000, 100, 99_999)).toBe("100,999 gold to go · about 1,010 visits");
+  });
 });
 
 describe("[PD-10] redeem countdown", () => {

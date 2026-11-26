@@ -165,6 +165,8 @@ const shopInput = z
         tier: z.enum(["bronze", "silver", "gold"]).optional(),
         /** P1-12: a streak of this many weeks whose last week is this week (London). */
         streakWeeks: z.number().int().min(1).max(520).optional(),
+        /** P1-C close (code review M2): gold owed from a reversal larger than the progress there was. */
+        goldShortfall: z.number().int().min(0).max(100_000).optional(),
       })
       .strict()
       .optional(),

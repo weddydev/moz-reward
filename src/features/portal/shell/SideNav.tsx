@@ -11,6 +11,7 @@ import { navIcon } from "../nav-icons";
 import { activeRoute, type PortalRoute } from "../routes";
 import { plainClick } from "./dock-placement";
 import { NAV_LABEL, ROLE_LABEL } from "./labels";
+import { NavCount } from "./NavCount";
 import { PlanStatus } from "./PlanStatus";
 import { PortalSwitcher } from "./PortalSwitcher";
 import { ShopSwitcher } from "./ShopSwitcher";
@@ -108,6 +109,7 @@ export function SideNav({
               >
                 {Molten ? <Molten className="m-side-icon" /> : <Icon icon={navIcon(r.icon)} />}
                 {r.label}
+                <NavCount n={chrome.counts[r.path]} />
               </TransitionLink>
             </li>
           );

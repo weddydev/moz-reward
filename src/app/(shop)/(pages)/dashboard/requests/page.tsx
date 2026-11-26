@@ -1,4 +1,3 @@
-import { ShopRealtime } from "@/features/realtime/ShopRealtime";
 import { RequestsQueue } from "@/features/requests/RequestsQueue";
 import { queueRows } from "@/features/requests/view";
 import { gateShopRoute } from "@/server/portal/gate";
@@ -12,7 +11,8 @@ export const metadata: Metadata = { title: "Requests" };
 /**
  * The shop's open points requests (P1-12, PRODUCT §5): owner and staff. Requests still inside their 24 h (the
  * expiry job may not have run yet), oldest first, with each member's name and member ID from the staff
- * member-card read (0030). The full Requests page (tabs, search, history) is P2.
+ * member-card read (0030). The full Requests page (tabs, search, history) is P2. The shop's realtime stream is
+ * in the shop layout, so the queue stays live.
  */
 export default async function ShopRequestsPage(): Promise<React.JSX.Element> {
   const { shopId, scope, role } = await gateShopRoute("/dashboard/requests");
@@ -29,7 +29,6 @@ export default async function ShopRequestsPage(): Promise<React.JSX.Element> {
         <p className="text-body text-ink-2">Approve member visits and award gold.</p>
       </div>
       <RequestsQueue shopId={shopId} rows={rows} />
-      <ShopRealtime shopId={shopId} />
     </div>
   );
 }

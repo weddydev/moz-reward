@@ -39,6 +39,11 @@ export type VaultView = {
     next: { name: TierName; ingotsToGo: number } | null;
   };
   shelf: { completed: number; slots: number };
+  /**
+   * Gold owed from a reversal larger than the progress there was (`gold_shortfall`, PRODUCT §5): the member's
+   * next gold pays it off before it counts as progress. 0 when nothing is owed.
+   */
+  owed: number;
   howItWorks: { earn: string; unlock: string; tiers: string };
 };
 
@@ -53,6 +58,8 @@ export type VaultInput = {
   streakWeeks: number;
   /** Monday (London, YYYY-MM-DD) of the streak's last week with an approved visit. */
   streakLastWeekStart: string | null;
+  /** Gold reversed beyond the progress there was (`gold_shortfall`, P1-12). */
+  goldShortfall: number;
   versions: readonly ProgrammeVersion[];
 };
 
@@ -162,6 +169,7 @@ export function vaultView(input: VaultInput, now: Date): VaultView | null {
     perVisit: current.earnMode === "per_visit" ? current.earnRate : null,
     tier: { name, ingots, ladder, next },
     shelf: { completed: ingots, slots: Math.max(SHELF_MIN_SLOTS, ingots + 1) },
+    owed: Math.max(0, input.goldShortfall),
     howItWorks: {
       earn,
       unlock: `Rewards unlock at ${listPercents(steps.map((s) => s.percent))} of each ingot.`,
@@ -187,6 +195,10 @@ export const streakText = (streak: { bonusGold: number; weeks: number }): string
   streak.weeks >= 2
     ? `${gb(streak.weeks)}-week streak · bonus gold active`
     : `Visit 2 weeks running for +${gb(streak.bonusGold)} bonus gold`;
+
+/** The gold-owed note after a reversal larger than the progress (PRODUCT §5 "Reversal"). */
+export const owedText = (owed: number): string =>
+  `${gb(owed)} gold owed from a reversed award. Your next gold pays it off first.`;
 
 /** "1 more ingot to Silver". */
 export const nextTierText = (next: { name: TierName; ingotsToGo: number }): string =>

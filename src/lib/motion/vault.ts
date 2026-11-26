@@ -36,13 +36,16 @@ export const VAULT = {
 
 const gb = (n: number): string => Math.round(n).toLocaleString("en-GB");
 
-/** The vault's line under the reward: "280 gold to go · about 4 visits", or "Your reward is ready." when full. */
-export function goldToGo(gold: number, size: number, perVisit?: number): string {
-  const left = size - gold;
+/**
+ * The vault's line under the reward: "280 gold to go · about 4 visits", or "Your reward is ready." when full.
+ * Gold `owed` from a reversal (P1-12) is paid off before progress counts, so it is still to go.
+ */
+export function goldToGo(gold: number, size: number, perVisit?: number, owed = 0): string {
+  const left = size - gold + Math.max(0, owed);
   if (left <= 0) return "Your reward is ready.";
   if (!perVisit || !(perVisit > 0)) return `${gb(left)} gold to go`;
   const visits = Math.ceil(left / perVisit);
-  return `${gb(left)} gold to go · about ${String(visits)} visit${visits > 1 ? "s" : ""}`;
+  return `${gb(left)} gold to go · about ${gb(visits)} visit${visits > 1 ? "s" : ""}`;
 }
 
 export type Countdown = { leftMs: number; percent: number; label: string; expired: boolean };

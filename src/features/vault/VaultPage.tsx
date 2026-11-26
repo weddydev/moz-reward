@@ -8,7 +8,7 @@ import { GoldVault } from "@/components/ui/GoldVault";
 import { Icon } from "@/components/ui/Icon";
 import { MilestoneTrack } from "@/components/ui/MilestoneTrack";
 import { cx } from "@/lib/cx";
-import { nextTierText, shelfText, streakText, type VaultView } from "./view";
+import { nextTierText, owedText, shelfText, streakText, type VaultView } from "./view";
 
 /**
  * Gold Vault, screen 5 (DESIGN §15; P1-08, Molten PD-11). Mobile: the Molten vault (the shop's eyebrow, the
@@ -78,15 +78,27 @@ function Vault({
   return (
     <>
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start">
-        <GoldVault
-          shop={{ name: shop.name, logoUrl: shop.logoUrl }}
-          title={main?.title ?? "Your reward"}
-          gold={ingot.gold}
-          size={ingot.size}
-          ingots={tier.ingots}
-          {...(view.perVisit === null ? {} : { perVisit: view.perVisit })}
-          seenKey={shop.shopId}
-        />
+        <div className="flex flex-col gap-3">
+          <GoldVault
+            shop={{ name: shop.name, logoUrl: shop.logoUrl }}
+            title={main?.title ?? "Your reward"}
+            gold={ingot.gold}
+            size={ingot.size}
+            ingots={tier.ingots}
+            {...(view.perVisit === null ? {} : { perVisit: view.perVisit })}
+            owed={view.owed}
+            seenKey={shop.shopId}
+          />
+          {view.owed > 0 ? (
+            <p
+              className="text-small text-ink-2 flex items-start gap-2 px-1 break-words"
+              data-testid="vault-owed"
+            >
+              <Icon icon={Coins} size={16} className="text-gold-deep mt-0.5 shrink-0" />
+              <span className="min-w-0">{owedText(view.owed)}</span>
+            </p>
+          ) : null}
+        </div>
 
         <div className="flex flex-col gap-6">
           <Card className="flex flex-col gap-5 p-5">

@@ -20,6 +20,8 @@ export type OwnVault = {
   streakWeeks: number;
   /** Monday (London) of the streak's last week; null before the first approved visit. */
   streakLastWeekStart: string | null;
+  /** Gold reversed beyond the progress there was (P1-12); future earns pay it off first. */
+  goldShortfall: number;
   /** Every programme version of the shop, oldest first. */
   versions: ProgrammeVersion[];
 };
@@ -46,6 +48,7 @@ export async function readOwnVault(scope: CustomerScope, shopId: string): Promis
         tier: memberships.tier,
         streakWeeks: memberships.streakWeeks,
         streakLastWeekStart: memberships.streakLastWeekStart,
+        goldShortfall: memberships.goldShortfall,
       })
       .from(memberships)
       .innerJoin(shops, eq(shops.id, memberships.shopId))

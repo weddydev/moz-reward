@@ -271,3 +271,75 @@ test("[P1-12] over the staff limit the owner approves; a reject needs a preset r
     await member.context.close();
   }
 });
+
+test("[P1-12] the owner's Requests nav counts the requests awaiting them, live; staff see no count (code review M3)", async ({
+  page,
+  browser,
+  baseURL,
+  signInAs,
+  shoot,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const member = await device(browser, baseURL ?? "", { role: "customer" });
+  try {
+    const { shopId } = await seedShop(page.request, member.userId);
+    // The owner waits on the dashboard home (not the Requests page): the count is how they find out.
+    await signInAs("owner", { shopId });
+    await page.goto("/dashboard");
+    await expect(page.getByTestId("shop-realtime")).toHaveAttribute("data-realtime", "open");
+    const dock = page.locator('[data-portal-nav="bottom"]');
+    await expect(dock.getByRole("link", { name: "Requests", exact: true })).toBeVisible();
+    await expect(page.getByTestId("nav-count")).toHaveCount(0);
+
+    // A staff member who may award at most 50 gold sends a 100-gold visit to the owner.
+    const staff = await device(browser, baseURL ?? "", {
+      role: "staff",
+      shopId,
+      perAwardLimit: 50,
+    });
+    try {
+      await staff.page.setViewportSize({ width: 390, height: 844 });
+      await askForGold(member.page, shopId);
+      await openQueue(staff.page);
+      await staff.page.getByRole("button", { name: `Approve ${NAME}` }).click();
+      await staff.page.getByTestId("approve-submit").click();
+      await expect(staff.page.getByTestId("request-row")).toHaveAttribute(
+        "data-status",
+        "awaiting_owner",
+        { timeout: DECIDE_MS },
+      );
+      expect(await relay(page.request, shopId)).toBeGreaterThanOrEqual(1);
+      // Staff can't approve it, so their nav shows no count.
+      await expect(staff.page.getByTestId("nav-count")).toHaveCount(0);
+    } finally {
+      await staff.context.close();
+    }
+
+    const item = dock.getByRole("link", { name: "Requests (1 awaiting you)" });
+    await expect(item).toBeVisible();
+    await expect(item.getByTestId("nav-count")).toHaveText("1");
+    await noHorizontalScroll(page);
+    await shoot("requests-owner-count-390", { fullPage: false });
+    await page.setViewportSize({ width: 320, height: 700 });
+    await noHorizontalScroll(page);
+    await shoot("requests-owner-count-320", { fullPage: false });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const side = page.locator('[data-portal-nav="side"]');
+    await expect(side.getByRole("link", { name: "Requests (1 awaiting you)" })).toBeVisible();
+    await shoot("requests-owner-count-1440", { fullPage: false });
+
+    // The owner approves it: the count goes.
+    await side.getByRole("link", { name: "Requests (1 awaiting you)" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
+    await page.getByRole("button", { name: `Approve ${NAME}` }).click();
+    await page.getByTestId("approve-submit").click();
+    await expect(toasts(page)).toContainText(`Approved: +100 gold for ${NAME}. Receipt 1.`, {
+      timeout: DECIDE_MS,
+    });
+    await relay(page.request, shopId);
+    await expect(page.getByTestId("nav-count")).toHaveCount(0);
+  } finally {
+    await member.context.close();
+  }
+});

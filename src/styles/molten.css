@@ -3240,3 +3240,26 @@ html:root.rm .m-cover > .m-cover-back {
   font-weight: 600;
   color: var(--on-obsidian-2);
 }
+
+/* Nav item count (P1-12, code review M3): the bell's pill (`.m-bell i`) on the sidebar and dock items. */
+.m-nav-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--ember);
+  color: var(--obsidian);
+  font: 800 10px/18px var(--font-sans);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--pearl);
+}
+.m-side-item .m-nav-count {
+  margin-left: auto;
+}
+.m-dk .m-nav-count {
+  position: absolute;
+  top: 2px;
+  left: calc(50% + 6px);
+}

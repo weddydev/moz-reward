@@ -25,6 +25,7 @@ export function GoldVault({
   size,
   ingots = 0,
   perVisit,
+  owed = 0,
   seenKey,
   unlocked = false,
   onFull,
@@ -43,6 +44,8 @@ export function GoldVault({
   ingots?: number;
   /** Gold a usual visit earns, for "about N visits" (left out when unknown). */
   perVisit?: number;
+  /** Gold owed from a reversal (P1-12): added to the gold still to go. */
+  owed?: number;
   seenKey: string;
   unlocked?: boolean;
   onFull?: () => void;
@@ -67,7 +70,7 @@ export function GoldVault({
     setLastGold(gold);
     if (gold < landed) setLanded(gold);
   }
-  const line = goldToGo(Math.min(landed, gold), size, perVisit);
+  const line = goldToGo(Math.min(landed, gold), size, perVisit, owed);
   return (
     <section
       ref={section}

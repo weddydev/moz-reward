@@ -16,4 +16,6 @@ export type ShellProps = {
   activeShopId: string | null;
   /** The shop or admin role in this portal ("owner", "support"…); null in the customer portal. Display only. */
   role: string | null;
+  /** Counts on nav items, by route path (the owner's awaiting-approval requests, P1-12); absent = none. */
+  counts: Readonly<Record<string, number>>;
 };

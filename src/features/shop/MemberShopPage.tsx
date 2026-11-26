@@ -20,7 +20,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { MiniVault } from "@/components/ui/MiniVault";
 import { addressLine, areaLine, statusLabel, weekRows } from "@/features/landing/view";
-import type { VaultView } from "@/features/vault/view";
+import { owedText, type VaultView } from "@/features/vault/view";
 import { AVAILABILITY_TEXT } from "@/features/wallet/view";
 import type { MemberId } from "@/lib/brand";
 import { openStatus } from "@/lib/open-status";
@@ -299,6 +299,11 @@ function VaultCard({
           </p>
         </div>
       </div>
+      {vault.owed > 0 ? (
+        <p className="text-small text-ink-2 break-words" data-testid="shop-vault-owed">
+          {owedText(vault.owed)}
+        </p>
+      ) : null}
       <TransitionLink
         href={`/vault/${shopId}`}
         direction="forward"

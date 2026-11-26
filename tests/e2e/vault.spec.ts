@@ -17,6 +17,7 @@ async function seedVault(
     ingotsCompleted?: number;
     tier?: "bronze" | "silver" | "gold";
     streakWeeks?: number;
+    goldShortfall?: number;
   } = {},
   programme: boolean | "sample" = "sample",
   name = "Brew & Bloom Café",
@@ -133,6 +134,7 @@ test("[P1-08] gold vault: DESIGN sample data, mystery hidden, tiers, shelf, how 
   await expect(vault.getByTestId("vault-line")).toHaveText("280 gold to go · about 3 visits");
   await expect(vault.locator(".m-v-count")).toHaveText("720 / 1,000");
   await expect(page.getByTestId("shop-logo")).toHaveCount(0); // the v1 square logo is gone
+  await expect(page.getByTestId("vault-owed")).toHaveCount(0); // nothing owed, no note
 
   const track = page.getByRole("list", { name: "Rewards in this ingot" });
   await expect(track.getByRole("listitem")).toHaveText([
@@ -191,6 +193,36 @@ test("[P1-12] gold vault: the streak chip shows the member's streak; the tier re
     await noHorizontalScroll(page);
     await tier.scrollIntoViewIfNeeded();
     await shoot(`vault-streak-tier-${String(width)}`);
+  }
+});
+
+test("[P1-12] a reversal shortfall: the shop page and the Vault say how much gold is owed (code review M2)", async ({
+  page,
+  signInAs,
+  shoot,
+}) => {
+  // Reversing 300 gold with 180 in the ingot leaves it at 0 and 120 owed (PRODUCT §5 "Reversal"; the
+  // arithmetic is in the approvals integration tests). The member sees the debt beside their progress.
+  const me = await signInAs("customer");
+  const { shopId } = await seedVault(page.request, me.userId, {
+    progressGold: 0,
+    ingotsCompleted: 1,
+    goldShortfall: 120,
+  });
+  const text = "120 gold owed from a reversed award. Your next gold pays it off first.";
+  await page.goto(`/shops/${shopId}`);
+  await expect(page.getByTestId("shop-vault-owed")).toHaveText(text);
+  await expect(page.getByTestId("shop-vault-percent")).toHaveText("0%");
+  await page.goto(`/vault/${shopId}`);
+  const owed = page.getByTestId("vault-owed");
+  await expect(owed).toHaveText(text);
+  // The owed gold is still to go before the next reward.
+  await expect(page.getByTestId("vault-line")).toHaveText("1,120 gold to go · about 12 visits");
+  for (const width of [390, 320, 1440]) {
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+    await noHorizontalScroll(page);
+    await owed.scrollIntoViewIfNeeded();
+    await shoot(`vault-owed-${String(width)}`);
   }
 });
 

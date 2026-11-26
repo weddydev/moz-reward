@@ -380,6 +380,30 @@ export type TeamRequest = {
 };
 
 /**
+ * How many of the shop's requests wait for an owner (`awaiting_owner`, P1-12) inside their 24 h: the count on
+ * the owner's Requests nav item (code review M3). RLS (point_requests team read) is the second wall.
+ */
+export async function countAwaitingOwner(
+  scope: ShopScope,
+  opts: { requestedAfter: Date },
+): Promise<number> {
+  const [row] = await withScope(scope, (q) =>
+    q
+      .select({ n: sql<number>`count(*)::int` })
+      .from(pointRequests)
+      .where(
+        inShop(
+          pointRequests.shopId,
+          scope,
+          eq(pointRequests.status, "awaiting_owner"),
+          gt(pointRequests.requestedAt, opts.requestedAfter),
+        ),
+      ),
+  );
+  return row?.n ?? 0;
+}
+
+/**
  * The scoped shop's open requests still inside their 24 h (`requestedAfter` = now − 24 h; the expiry job may
  * not have run yet), oldest first, with each member's name and member ID (staff can't read profiles directly:
  * `shop_member_cards` hands out those two columns for the caller's own members while they are active staff).

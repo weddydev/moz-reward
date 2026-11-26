@@ -3,6 +3,7 @@ import { type ProgrammeVersion, TEMPLATES } from "@/lib/loyalty/programme";
 import {
   currentStreakWeeks,
   nextTierText,
+  owedText,
   shelfText,
   streakText,
   tierFor,
@@ -38,6 +39,7 @@ const MEMBER: Omit<VaultInput, "progressGold" | "ingotsCompleted" | "versions"> 
   tier: "bronze",
   streakWeeks: 0,
   streakLastWeekStart: null,
+  goldShortfall: 0,
 };
 
 const view = (
@@ -208,5 +210,23 @@ describe("[P1-08] Gold Vault view", () => {
   it("an odd ingot size rounds a milestone's gold up (25% of 1,001 needs 251)", () => {
     const v = view(250, 0, [version({ ingotSize: 1_001 })]);
     expect(v?.steps[0]).toMatchObject({ gold: 251, reached: false });
+  });
+
+  it("[P1-12] a reversal shortfall is shown as gold owed (0 when none); progress and steps are untouched", () => {
+    expect(view(300)?.owed).toBe(0);
+    const v = view(0, 1, [version()], { goldShortfall: 120 });
+    expect(v?.owed).toBe(120);
+    expect(v?.ingot.gold).toBe(0);
+    expect(v?.steps.every((s) => !s.reached)).toBe(true);
+    expect(view(0, 0, [version()], { goldShortfall: -5 })?.owed).toBe(0);
+  });
+
+  it("[P1-12] owed text: the gold owed and that the next gold pays it off first", () => {
+    expect(owedText(120)).toBe(
+      "120 gold owed from a reversed award. Your next gold pays it off first.",
+    );
+    expect(owedText(1_250)).toBe(
+      "1,250 gold owed from a reversed award. Your next gold pays it off first.",
+    );
   });
 });

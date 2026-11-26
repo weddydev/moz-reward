@@ -14,6 +14,7 @@ import { navIcon } from "../nav-icons";
 import { activeRoute, type PortalRoute } from "../routes";
 import { dockPlacement, plainClick } from "./dock-placement";
 import { NAV_LABEL } from "./labels";
+import { NavCount } from "./NavCount";
 import { PortalSwitchList } from "./PortalSwitcher";
 import { ShopSwitchList } from "./ShopSwitcher";
 import { useDockPending } from "./use-dock-pending";
@@ -116,6 +117,7 @@ export function BottomNav({
             >
               <DockGlyph name={r.icon} />
               <span data-nav-label>{label}</span>
+              <NavCount n={chrome.counts[r.path]} />
             </TransitionLink>
           );
         })}
