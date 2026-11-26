@@ -226,7 +226,10 @@ test("[P1-12] wallet right column: recent activity and rewards ready from approv
     await expect(row).toContainText("+100 gold");
   }
   await expect(page.getByTestId("wallet-rewards-ready")).toContainText("Rewards ready (2)");
-  await expect(page.getByTestId("wallet-rewards-ready")).toContainText("2 rewards waiting");
+  // P1-16 (C-65): each one listed with Redeem.
+  await expect(page.getByTestId("wallet-rewards-ready").getByTestId("reward-redeem")).toHaveCount(
+    2,
+  );
   await shoot("wallet-activity-1440");
 });
 

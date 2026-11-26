@@ -7,6 +7,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { GoldVault } from "@/components/ui/GoldVault";
 import { Icon } from "@/components/ui/Icon";
 import { MilestoneTrack } from "@/components/ui/MilestoneTrack";
+import { RewardsReady } from "@/features/rewards/RewardsReady";
+import type { ReadyRewardView } from "@/features/rewards/view";
 import { cx } from "@/lib/cx";
 import { nextTierText, owedText, shelfText, streakText, type VaultView } from "./view";
 
@@ -16,15 +18,17 @@ import { nextTierText, owedText, shelfText, streakText, type VaultView } from ".
  * the Vault shelf, rewards ready, how it works. Desktop (≥ 1024px): the vault left, vertical milestone timeline
  * and tiers right, then the shelf, rewards and how-it-works band. The page's h1 is for screen readers: the
  * vault's own eyebrow ("Gold Vault · <shop>") is the visible title, as in the reference. Server component; only
- * the vault is client code. Unlocking (rays, reward card) and "Rewards ready" with Redeem come with the real
- * rewards (P1-15/P1-16, CARRIED).
+ * the vault and the "Rewards ready" list (Redeem opens the redeem flow, P1-16 C-67) are client code.
  */
 export function VaultPage({
   shop,
   view,
+  rewards = [],
 }: {
   shop: { shopId: string; name: string; logoUrl: string | null };
   view: VaultView | null;
+  /** P1-16 (C-67): this shop's unredeemed, unexpired rewards, each with Redeem. */
+  rewards?: readonly ReadyRewardView[];
 }): React.JSX.Element {
   return (
     <div
@@ -44,7 +48,7 @@ export function VaultPage({
       <h1 className="sr-only">Your Gold Vault</h1>
 
       {view ? (
-        <Vault shop={shop} view={view} />
+        <Vault shop={shop} view={view} rewards={rewards} />
       ) : (
         <Card data-testid="vault-not-set-up">
           <EmptyState
@@ -69,9 +73,11 @@ export function VaultPage({
 function Vault({
   shop,
   view,
+  rewards,
 }: {
   shop: { shopId: string; name: string; logoUrl: string | null };
   view: VaultView;
+  rewards: readonly ReadyRewardView[];
 }): React.JSX.Element {
   const { ingot, steps, streak, tier, shelf, howItWorks } = view;
   const main = steps.find((s) => s.main);
@@ -185,10 +191,14 @@ function Vault({
           <h2 className="text-h2 flex items-center gap-2">
             <Icon icon={Sparkles} className="text-gold-deep" /> Rewards ready
           </h2>
-          <p className="text-small text-ink-2">
-            Nothing to redeem yet. Rewards appear here when you reach a milestone or fill your ingot
-            at {shop.name}.
-          </p>
+          {rewards.length === 0 ? (
+            <p className="text-small text-ink-2">
+              Nothing to redeem yet. Rewards appear here when you reach a milestone or fill your
+              ingot at {shop.name}.
+            </p>
+          ) : (
+            <RewardsReady rewards={rewards} showShop={false} />
+          )}
         </Card>
 
         <Card

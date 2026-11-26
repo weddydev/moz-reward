@@ -10,6 +10,7 @@ import {
   confirmRedemption,
   createRedemptionCode,
   type RedeemCodeResult,
+  redemptionCodeStatus,
 } from "@/server/services/redemptions";
 
 /**
@@ -35,6 +36,17 @@ export const createRedeemCodeAction = defineAction({
     if (!tx) throw new Error("rewards.redeem-code runs in a transaction");
     return createRedemptionCode(scope, input.rewardId, tx);
   },
+});
+
+/** Status checks per user per minute (one per realtime hint, while a code is on screen). */
+const STATUS_CALLS = { max: 60, windowSec: 60 } as const;
+
+export const redeemCodeStatusAction = defineAction({
+  name: "rewards.code-status",
+  input: z.object({ codeId: uuid }).strict(),
+  authorize: (_input, p) => requireCustomer(p),
+  rateLimit: { ...STATUS_CALLS, failMode: "open" },
+  handler: (input, scope) => redemptionCodeStatus(scope, input.codeId),
 });
 
 export const confirmRedeemCodeAction = defineAction({

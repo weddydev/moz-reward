@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, isNull, lt, lte, sql } from "drizzle-orm";
 import type { ShopId } from "@/lib/brand";
 import type { ProgrammeVersion } from "@/lib/loyalty/programme";
 import type { ClosureRow, HoursRow } from "@/lib/open-status";
@@ -163,7 +163,14 @@ export async function readOwnWallet(
       q
         .select({ n: sql<number>`count(*)`.mapWith(Number) })
         .from(rewards)
-        .where(and(inArray(rewards.membershipId, mids), isNull(rewards.redeemedAt))),
+        .where(
+          and(
+            inArray(rewards.membershipId, mids),
+            isNull(rewards.redeemedAt),
+            // P1-16: an expired reward is no longer ready (the list beside it uses the same rule).
+            gt(rewards.expiresAt, sql`now()`),
+          ),
+        ),
       q
         .select({
           shopId: ledgerEntries.shopId,

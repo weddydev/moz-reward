@@ -32,6 +32,7 @@ import {
   userPointRequests,
 } from "@/server/testing/factories";
 import { relayShopRealtime } from "@/server/testing/realtime";
+import { expireLiveRedeemCodes } from "@/server/testing/redemptions";
 import { testApiAllowed } from "@/server/testing/test-api";
 import { approvedVisit, currentMembership, storeStubReceiptPdfs } from "@/server/testing/visits";
 
@@ -196,6 +197,9 @@ const expireRequestInput = z.object({ userId: z.uuid(), shopId: z.uuid() }).stri
 /** P1-11: a user's points requests (ids and statuses only). */
 const pointRequestsInput = z.object({ userId: z.uuid() }).strict();
 
+/** P1-16: a shop's live redeem codes moved past their 15 minutes. */
+const expireRedeemCodesInput = z.object({ shopId: z.uuid() }).strict();
+
 /** P1-12: what the worker's `pdf:receipt` jobs leave behind for a shop's receipts (stub files; no worker in E2E). */
 const receiptPdfsInput = z.object({ shopId: z.uuid() }).strict();
 /** P1-12: deliver the realtime hints a shop's actions queued (the worker's publish job; no worker in E2E). */
@@ -245,6 +249,11 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
         });
       }
       return NextResponse.json({ expired: ids.length });
+    }
+    case "expire-redeem-codes": {
+      const parsed = expireRedeemCodesInput.safeParse(body);
+      if (!parsed.success) return invalid();
+      return NextResponse.json({ expired: await expireLiveRedeemCodes(parsed.data.shopId) });
     }
     case "receipt-pdfs": {
       const parsed = receiptPdfsInput.safeParse(body);

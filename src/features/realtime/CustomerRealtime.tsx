@@ -1,5 +1,6 @@
 "use client";
 import { CelebrationHost, requestCelebrationClaim } from "@/features/celebrations/CelebrationHost";
+import { REDEMPTION_HINT_EVENT } from "@/features/rewards/hint";
 import type { RealtimeEventType } from "@/lib/realtime/events";
 import { useRealtime } from "./use-realtime";
 
@@ -17,6 +18,9 @@ const relevant = (type: RealtimeEventType): boolean => CUSTOMER_EVENTS.has(type)
 const onHint = (hint: RealtimeEventType | "reconnect"): void => {
   if (hint === "points_credited" || hint === "reward_unlocked" || hint === "reconnect")
     requestCelebrationClaim();
+  // P1-16: an open redeem code asks whether it was the one confirmed.
+  if (hint === "redemption_confirmed" || hint === "reconnect")
+    window.dispatchEvent(new Event(REDEMPTION_HINT_EVENT));
 };
 
 /**

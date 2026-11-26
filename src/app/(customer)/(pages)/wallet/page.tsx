@@ -1,8 +1,10 @@
+import { readyRewardView } from "@/features/rewards/view";
 import { firstNameOf, greeting } from "@/features/wallet/view";
 import { WalletPage } from "@/features/wallet/WalletPage";
 import { requireCustomer } from "@/server/authz";
 import { gateCustomerRoute } from "@/server/portal/gate";
 import { ownMemberCard } from "@/server/repos/profiles";
+import { readOwnReadyRewards } from "@/server/repos/redemptions";
 import { loadWallet } from "@/server/services/wallet";
 import type { Metadata } from "next";
 
@@ -16,6 +18,16 @@ export default async function Wallet(): Promise<React.JSX.Element> {
   const principal = await gateCustomerRoute("/wallet");
   const scope = await requireCustomer(principal);
   const now = new Date();
-  const [view, profile] = await Promise.all([loadWallet(scope, now), ownMemberCard(scope)]);
-  return <WalletPage view={view} greeting={greeting(now, firstNameOf(profile?.fullName))} />;
+  const [view, profile, ready] = await Promise.all([
+    loadWallet(scope, now),
+    ownMemberCard(scope),
+    readOwnReadyRewards(scope, { now }),
+  ]);
+  return (
+    <WalletPage
+      view={view}
+      greeting={greeting(now, firstNameOf(profile?.fullName))}
+      rewards={ready.map(readyRewardView)}
+    />
+  );
 }

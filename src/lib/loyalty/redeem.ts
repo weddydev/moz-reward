@@ -3,6 +3,7 @@
  * the instant in. The database enforces the same rules (migration 0034); this module is what the services,
  * views and tests share.
  */
+import { formatDate } from "@/lib/format-date";
 import { addDays, londonDate, londonInstant } from "@/lib/time";
 
 const DAY_MS = 86_400_000;
@@ -44,6 +45,10 @@ export function rewardExpiresAt(unlockedAt: Date, days: number): Date {
 /** The last London date a reward is valid on (YYYY-MM-DD), for "Valid until 2 Apr 2027". */
 export const validUntilDate = (expiresAt: Date): string =>
   londonDate(new Date(expiresAt.getTime() - 1));
+
+/** "Valid until 2 Apr 2027" (customer copy, CLAUDE.md §5). */
+export const validUntilLabel = (expiresAt: Date): string =>
+  `Valid until ${formatDate(new Date(expiresAt.getTime() - 1))}`;
 
 export type RewardState = "ready" | "expired" | "redeemed";
 

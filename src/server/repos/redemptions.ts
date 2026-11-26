@@ -343,3 +343,19 @@ export async function confirmCode(
     tx,
   );
 }
+
+/** The status of one of the caller's codes (null: not theirs). */
+export async function readOwnCodeStatus(
+  scope: CustomerScope,
+  codeId: string,
+): Promise<"live" | "voided" | "confirmed" | null> {
+  const [row] = await withScope(scope, (q) =>
+    q
+      .select({ status: redemptionCodes.status })
+      .from(redemptionCodes)
+      .innerJoin(memberships, eq(memberships.id, redemptionCodes.membershipId))
+      .where(ownedBy(memberships.userId, scope, eq(redemptionCodes.id, codeId)))
+      .limit(1),
+  );
+  return row?.status ?? null;
+}

@@ -16,6 +16,7 @@ import {
   insertOwnCode,
   lockCodeByHash,
   readConfirmTarget,
+  readOwnCodeStatus,
   readOwnReward,
   voidOwnLiveCodes,
 } from "@/server/repos/redemptions";
@@ -231,4 +232,14 @@ async function confirmInTransaction(
     meta: { redemptionId: locked.id },
   });
   return { redemptionId: locked.id, rewardLabel: target.label, kind: target.kind };
+}
+
+/** Has the shop confirmed the caller's code yet? (The open code asks after a `redemption_confirmed` hint.) */
+export async function redemptionCodeStatus(
+  scope: CustomerScope,
+  codeId: string,
+): Promise<{ status: "live" | "voided" | "confirmed" }> {
+  const status = await readOwnCodeStatus(scope, codeId);
+  if (!status) throw new AppError("NOT_FOUND");
+  return { status };
 }

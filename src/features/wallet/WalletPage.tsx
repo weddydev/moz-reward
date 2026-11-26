@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { ShopCard } from "@/components/ui/ShopCard";
+import { RewardsReady } from "@/features/rewards/RewardsReady";
+import type { ReadyRewardView } from "@/features/rewards/view";
 import { PullToRefresh } from "./PullToRefresh";
 import {
   AVAILABILITY_TEXT,
@@ -14,7 +16,6 @@ import {
   type WalletView,
   goldText,
   ingotsText,
-  rewardsText,
 } from "./view";
 import { WalletHeader } from "./WalletHeader";
 import { WalletStack } from "./WalletStack";
@@ -28,9 +29,12 @@ import { WalletStack } from "./WalletStack";
 export function WalletPage({
   view,
   greeting,
+  rewards = [],
 }: {
   view: WalletView;
   greeting: { part: string; name: string | null };
+  /** P1-16 (C-65): the rewards ready at every current shop, each with Redeem. */
+  rewards?: readonly ReadyRewardView[];
 }): React.JSX.Element {
   const { cards, summary } = view;
   return (
@@ -95,11 +99,13 @@ export function WalletPage({
                 <Icon icon={Gift} className="text-gold-deep" />
                 Rewards ready ({summary.rewardsReady})
               </h2>
-              <p className="text-small text-ink-2">
-                {summary.rewardsReady === 0
-                  ? "Nothing to redeem yet. Fill an ingot to unlock a shop\u2019s reward."
-                  : `${rewardsText(summary.rewardsReady)} waiting. Open the shop to see ${summary.rewardsReady === 1 ? "it" : "them"}.`}
-              </p>
+              {rewards.length === 0 ? (
+                <p className="text-small text-ink-2">
+                  Nothing to redeem yet. Fill an ingot to unlock a shop{"\u2019"}s reward.
+                </p>
+              ) : (
+                <RewardsReady rewards={rewards} showShop />
+              )}
             </Card>
             <Card className="flex flex-col gap-2 p-5" data-testid="wallet-activity">
               <h2 className="text-h3 flex items-center gap-2">

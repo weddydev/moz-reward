@@ -11,6 +11,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { ReceiptCard } from "@/components/ui/ReceiptCard";
 import { RewardUnlocked } from "@/components/ui/RewardUnlocked";
+import { RedeemFlow } from "@/features/rewards/RedeemFlow";
 import {
   announcement,
   CELEBRATION,
@@ -277,7 +278,13 @@ export default function CelebrationMoment({
                     : `${reward.label} · ${shop.name}`
                 }
                 imageUrl={null}
-              />
+              >
+                {/* C-108: Redeem right here opens the same redeem flow as the Wallet and the Vault. */}
+                <RedeemFlow
+                  rewardId={reward.id}
+                  {...(moment.rewards.length > 1 ? { rewardLabel: reward.label } : {})}
+                />
+              </RewardUnlocked>
             ) : null
           }
         />

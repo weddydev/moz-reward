@@ -3048,6 +3048,12 @@ html:root.rm .m-cover > .m-cover-back {
   color: var(--on-obsidian-2);
   font-weight: 600;
 }
+/* P1-16: the shop confirmed the code (the redeem slot's last state). */
+.m-reward-card .m-redeem-done {
+  margin: 0;
+  font-size: 15px;
+  color: var(--gold-light);
+}
 .m-r-left {
   display: flex;
   align-items: center;

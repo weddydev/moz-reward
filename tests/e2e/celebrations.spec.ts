@@ -196,11 +196,16 @@ test("[P1-15] a filled ingot chains into the reward unlocked; reward chime state
     await expect(card).toContainText(`Free coffee & cake and 3 more · ${SHOP}`);
     await expect(page.getByTestId("celebration-live")).toContainText("4 rewards unlocked.");
     await expect(m.getByTestId("gold-vault")).toHaveAttribute("data-unlocked", "");
-    // Wait for the card's flip and the leaves to finish before the picture (the pour itself is skippable).
+    // Wait for the card's flip and the leaves to finish before the picture (the pour itself is skippable). The
+    // card's Redeem button (P1-16) shimmers on a loop: endless animations aren't waited for.
     await expect
       .poll(() =>
         card.evaluate((el) =>
-          el.getAnimations({ subtree: true }).every((a) => a.playState !== "running"),
+          el
+            .getAnimations({ subtree: true })
+            .every(
+              (a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity,
+            ),
         ),
       )
       .toBe(true);

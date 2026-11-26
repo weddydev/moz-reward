@@ -1,5 +1,6 @@
 import { RequestsQueue } from "@/features/requests/RequestsQueue";
 import { queueRows } from "@/features/requests/view";
+import { RedeemConfirm } from "@/features/rewards/RedeemConfirm";
 import { gateShopRoute } from "@/server/portal/gate";
 import { listProgrammeVersions } from "@/server/repos/loyalty";
 import { listTeamOpenRequests } from "@/server/repos/point-requests";
@@ -26,8 +27,11 @@ export default async function ShopRequestsPage(): Promise<React.JSX.Element> {
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8">
       <div className="flex flex-col gap-1">
         <h1 className="text-h1">Requests</h1>
-        <p className="text-body text-ink-2">Approve member visits and award gold.</p>
+        <p className="text-body text-ink-2">
+          Approve member visits, award gold and redeem rewards.
+        </p>
       </div>
+      <RedeemConfirm shopId={shopId} />
       <RequestsQueue shopId={shopId} rows={rows} />
     </div>
   );

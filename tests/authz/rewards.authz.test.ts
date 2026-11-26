@@ -1,6 +1,10 @@
 import { eq } from "drizzle-orm";
 import { expect, it } from "vitest";
-import { confirmRedeemCodeAction, createRedeemCodeAction } from "@/features/rewards/actions";
+import {
+  confirmRedeemCodeAction,
+  createRedeemCodeAction,
+  redeemCodeStatusAction,
+} from "@/features/rewards/actions";
 import { newId } from "@/lib/id";
 import { runAsPrincipal } from "@/server/authz/principal";
 import { mintCustomerScope } from "@/server/authz/scope";
@@ -35,6 +39,12 @@ authzMatrix("createRedeemCodeAction", {
   allow: SIGNED_IN,
   allowCodes: ["NOT_FOUND"],
   run: () => createRedeemCodeAction({ rewardId: newId() }),
+});
+
+authzMatrix("redeemCodeStatusAction", {
+  allow: SIGNED_IN,
+  allowCodes: ["NOT_FOUND"],
+  run: () => redeemCodeStatusAction({ codeId: newId() }),
 });
 
 authzMatrix("confirmRedeemCodeAction", {
