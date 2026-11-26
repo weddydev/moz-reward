@@ -1139,3 +1139,10 @@ Done: CI on `28ecafb` red only on services branch coverage 89.32% < 90% (KI-73: 
 Commits: 200e168, 71c761f, 2c94edc (rebased) → main `fcccd87`; docs: both client docs reworked with diagrams (human, 26 Nov).
 Tests: gate:task PASS (unit 2281/0, int 1761/0/1, e2e P1-14 24/0); `pnpm test:coverage` 4048/0, services branches 92.38%; CI 45834404486 green.
 Left off: P1-15 next (C-86 targets it).
+
+## 2026-11-26 — P1 — P1-15 handoff (limit), talha.syed (Mac)
+Done: P1-15 built: approval snapshot + seen_at (0033), claim route, CelebrationHost + lazy moment, reward chain, ReceiptCard print, C-86 root-caused (first AudioContext in the tap, now built off the tap), haptics wait for activation; design review 4 HIGH + 7 MEDIUM fixed; demo guide updated.
+Commits: f36b952, 4267b57 on `wip/P1-15`.
+Tests: gate:task PASS on f36b952; @perf/@fps ×3 18/18 real taps; coverage 4097/0; CI 45860370074 red only on KI-64 (fixed in 4267b57).
+Left off: CI on 4267b57, then ff main + closing progress commit (Handoff note).
+

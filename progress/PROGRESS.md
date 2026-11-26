@@ -3,20 +3,20 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-26 05:27 IST (25 Nov 23:57 UTC)
+Baton: free (talha.syed handed off 2026-11-26 22:15 IST)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-14 closed (26 Nov, talha.syed, Mac).** On main `fcccd87`; `wip/P1-14` can be deleted. CI on `28ecafb` had failed only on services branch coverage (KI-73); fixed in `2c94edc` (new `tests/integration/member-qr-issue.test.ts`), CI 45834404486 green.
-- **Next step:** P1-15 · Celebrations: points credited, reward unlocked, receipt. Read its section in `docs/phases/P1.md` and its Read list; C-86 (reward moment's first-play long task, T-10) targets P1-15. Start a `wip/P1-15` branch from main. When built, update its step in the demo guide (Next item 1).
-- **Untested:** nothing open for P1-14.
-- **Carried to the P1-D close:** the human's side-by-side of C-92/C-93/C-94 (H-54).
+- **P1-15 is built, gated and pushed but NOT closed.** Branch `wip/P1-15`, HEAD `4267b57` (on `ae4df73`; main unchanged). gate:task PASS on `f36b952` (unit 2299/0, int 1799/0/1, sast, e2e P1-15 21/0, perf 3/0). CI on `f36b952` (45860370074) red on one WebKit test only (KI-64 cancelled-fetch quirk, fixed in `4267b57`, vault.spec:199 webkit 5/5 alone). CI on `4267b57` was running at handoff.
+- **Next session, minimum steps only (human: no re-checks, no re-runs):** (1) `gh run list --branch wip/P1-15 --limit 1`: green → go on; red → fix only that. (2) `git switch main && git merge --ff-only origin/wip/P1-15 && git push origin main`. (3) Closing progress commit on main: run `python3 <scratch>/close.py <CI run id>` if the file still exists, else by hand: PHASES tick P1-15; PROGRESS Now/Next/Status/Last verified (P1-16 next); drop the C-86 CARRIED row; add `| C-108 | P1-15 design review LOW 14 | P1-16 | The celebration's reward card carries Redeem, opening the same redeem flow | E2E |`; SESSION_LOG entry. Push. (4) `pnpm clear:check`. Nothing else: reviews, screenshots, demo guide and DECISIONS/KNOWN_ISSUES/TEMPORARY are already done on the branch.
+- **Untested:** the moment on a real phone (sound/haptics, iOS audio after the deferred AudioContext build).
+- **Carried to the P1-D close:** H-54 (human side-by-side C-92/93/94).
 ## Status
 - **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **P1-D** (P1-14 done 26 Nov; P1-15 next). **P1-C closed 26 Nov** (P1-10..P1-13, P1-19 + the close: reviews, QA, code-review M2/M3, C-92..C-95). P1-B closed 25 Nov. PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-26, talha.syed (P1-14 closed, on main `fcccd87`)
+- **Last updated:** 2026-11-26, talha.syed (P1-15 handoff: `wip/P1-15` `4267b57`, CI pending)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
