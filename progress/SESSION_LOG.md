@@ -1097,3 +1097,10 @@ Done: security-reviewer design check of the staff member-card read: OK with chan
 Commits: 0ff6b33 (wip/dbg-P1-12-f, on 4c0d217; no CI)
 Tests: typecheck PASS; int member-cards 5/7 (2 setup failures). CI 45689617776 (4c0d217): perf GREEN, WebKit 3/4 RED (log after run ends); spec-repeat 45689625606 gate ×10: 9/10 (1 long task 123.8 ms).
 Left off: fast-forward wip/P1-12 to the dbg branch, fix 2 test setups, then the Requests page + realtime + relay-realtime + authz + J2 E2E.
+
+## 2026-11-26 — P1 — P1-12 closed (step f + close), talha.syed (Mac)
+Done: CI red root-caused (Linux WebKit resize frame starvation, KI-10; not a screenshot hang); member-cards setups; team Requests queue (approve/owner approve/reject, ShopRealtime, test relay-realtime); COMPLIANCE §2.6/§2.7; DECISIONS 26 Nov; rebase onto main.
+Commits: e21ed4c, 59dde82 (step f), 4fc879d (rebased HEAD) → main.
+Tests: view unit 10/0; member-cards int 7/0; E2E requests+shop-page 55/55 on 5 projects; gate:task PASS (unit 2235/0, int 1704/0/1, e2e 18/0); security-reviewer OK (2 LOW). CI 45728932726 green.
+Left off: P1-13 next; C-100 (staging PDFs after H-08b) at the P1-C close.
+
