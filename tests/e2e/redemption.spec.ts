@@ -122,12 +122,22 @@ test("[J3][P1-16] Gold Vault: Redeem shows the code; the team confirms it; the m
     await list.first().getByTestId("reward-redeem").click();
     const sheet = member.page.getByTestId("redeem-sheet");
     await expect(sheet).toBeVisible();
+    // C-81: the Redeem response held back 3 s on the network. The ring still starts from the response (15:00),
+    // not from the tap or the server's send (which would read 14:56).
+    await member.page.route(`**/vault/${shopId}`, async (route) => {
+      if (route.request().method() !== "POST" || !route.request().headers()["next-action"])
+        return route.fallback();
+      const res = await route.fetch();
+      await new Promise((r) => setTimeout(r, 3_000));
+      await route.fulfill({ response: res });
+    });
     await sheet.getByTestId("redeem-button").click();
     const code = await shownCode(member.page);
     await expect(sheet.getByRole("timer")).toHaveAttribute(
       "aria-label",
-      /^Code expires in 1[45]:\d\d$/,
+      /^Code expires in (15:00|14:5[89])$/,
     );
+    await member.page.unrouteAll({ behavior: "wait" });
     await expect
       .poll(() =>
         sheet.evaluate((el) =>
@@ -195,6 +205,16 @@ test("[J3][P1-16] Wallet at 1440: rewards ready with Redeem; a second code voids
     await expect(rows.first()).toContainText(SHOP);
     await expect(rows.first()).toContainText(/Valid until/);
     await shootOn(member.page, "wallet-rewards-1440");
+    // C-67: the Gold Vault's "Rewards ready" at 1440 (390 is the first test's).
+    await member.page.goto(`/vault/${shopId}`);
+    const vaultCard = member.page.getByTestId("vault-rewards");
+    // Visible, not only present: streamed content sits hidden in the DOM until it swaps in.
+    await expect(vaultCard.getByTestId("reward-ready").first()).toBeVisible();
+    await expect(vaultCard.getByTestId("reward-ready")).toHaveCount(4);
+    await expect(vaultCard.getByTestId("reward-redeem")).toHaveCount(4);
+    await vaultCard.scrollIntoViewIfNeeded();
+    await shootOn(member.page, "vault-rewards-1440");
+    await member.page.goto("/wallet");
 
     await rows.first().getByTestId("reward-redeem").click();
     const sheet = member.page.getByTestId("redeem-sheet");
