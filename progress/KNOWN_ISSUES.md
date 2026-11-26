@@ -85,7 +85,7 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 **KI-64 · WebKit guard failure "pageerror: …/api/sse/me due to access control checks." (or `…?_rsc=…`)** — P1-19, 25 Nov (spec-repeat 45660308963).
 - Cause: WebKit reports a fetch cut off by a page load as an uncaught error even when the code catches it (`connect()` in src/lib/realtime/client.ts does). Not a product bug.
-- Fix: the guard's WebKit-only `WEBKIT_CANCELLED_PREFETCH` allows exactly these two URL shapes (tests/e2e/support/test.ts). Any other "access control checks" error is real: look at CORS / CSP first.
+- Fix: the guard's WebKit-only `WEBKIT_CANCELLED_PREFETCH` allows exactly these URL shapes: `?_rsc=`, `/api/sse/me` and `/api/sse/shop/<uuid>` (the shop stream on every dashboard page since the P1-C close; CI 45790719090 failed loyalty-settings + portal-access on it). A new stream path needs adding here. Any other "access control checks" error is real: look at CORS / CSP first.
 
 **KI-60 · Shared E2E fixtures: never `page.route` for every page, never a cookie as a test switch** — P1-10, 25 Nov.
 - Symptom 1: after a fixture added `page.route("**/api/sse/**")` to every page, Linux WebKit specs far from the change failed (slider drag: pointer never over the input, 3/3; CI 45596050268). Cause: any Playwright route makes WebKit intercept **every** request and turns the HTTP cache off, so every spec's load timing changes.

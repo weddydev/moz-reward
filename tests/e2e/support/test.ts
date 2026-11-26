@@ -241,11 +241,12 @@ const RESOURCE_ECHO = /^Failed to load resource: the server responded with a sta
  * WebKit reports each cancelled fetch as an uncaught "…?_rsc=… due to access control checks" error. Nothing
  * failed for the user, and every portal page has a nav full of prefetched links (P0-12), so the guard ignores
  * exactly this message on WebKit. (Browser Sentry drops it too: PROGRESS follow-up.) The same report comes for
- * the realtime stream (`/api/sse/*`) cut off by a load, although `connect()` catches it (src/lib/realtime/client.ts;
- * CI spec-repeat 45660308963, P1-19).
+ * the realtime streams (`/api/sse/me`, and `/api/sse/shop/<id>` on every dashboard page since the shop layout
+ * holds it) cut off by a load, although `connect()` catches it (src/lib/realtime/client.ts; CI spec-repeat
+ * 45660308963, P1-19; CI 45790719090, P1-C close).
  */
 const WEBKIT_CANCELLED_PREFETCH =
-  /^pageerror: .*(?:[?&]_rsc=\S*|\/api\/sse\/[a-z-]+) due to access control checks\.$/;
+  /^pageerror: .*(?:[?&]_rsc=\S*|\/api\/sse\/(?:me|shop\/[0-9a-f-]{36})) due to access control checks\.$/;
 
 function watch(page: Page, problems: GuardProblem[]): void {
   page.on("pageerror", (err) => problems.push({ kind: "pageerror", text: err.message }));
