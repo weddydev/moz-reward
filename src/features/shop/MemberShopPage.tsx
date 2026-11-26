@@ -76,7 +76,7 @@ export function MemberShopPage({
    * P1-11: the member's open request (or none) when the shop takes requests (live, with a programme); null hides
    * the button (the availability note or the Vault card says why).
    */
-  request?: { open: OpenRequestView | null } | null;
+  request?: { open: OpenRequestView | null; userId: string } | null;
   /** P1-12: the member's latest receipts at this shop, newest first. */
   receipts?: readonly ReceiptRow[];
 }): React.JSX.Element {
@@ -154,7 +154,12 @@ export function MemberShopPage({
 
       {member && request ? (
         <div data-rise={4}>
-          <RequestPoints shopId={shop.shopId} shopName={shop.name} open={request.open} />
+          <RequestPoints
+            shopId={shop.shopId}
+            shopName={shop.name}
+            open={request.open}
+            userId={request.userId}
+          />
         </div>
       ) : null}
 

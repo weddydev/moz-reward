@@ -43,6 +43,9 @@ test("[P1-09] member shop page: cover, status, directions and call, vault card, 
   signInAs,
   shoot,
 }) => {
+  // A journey with three viewport resizes, full-page shots and a navigation: Linux WebKit draws no frames for
+  // seconds after each (KI-10), and the guard's axe scan of the last page waits up to 8 s for it to settle.
+  test.setTimeout(60_000);
   const me = await signInAs("customer");
   const { shopId } = await seedShop(page.request, me.userId);
   await page.goto(`/shops/${shopId}`);

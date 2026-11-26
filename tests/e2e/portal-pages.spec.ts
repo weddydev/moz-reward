@@ -13,6 +13,11 @@ import type { Page } from "@playwright/test";
  */
 const FORBIDDEN = "You don't have access to this page";
 const NOT_FOUND = "We can't find that page";
+/**
+ * Linux WebKit can draw no frame for up to ~6 s after a load (KI-10): a heading shown on the first rendering
+ * update waits that long, and a test that opens every route of a portal needs room for several such loads.
+ */
+const SETTLE = { timeout: 15_000 };
 
 /** A dynamic route (`/shops/[id]`) opened through a real URL, with the heading that page shows. */
 type Concrete = Record<string, { url: string; heading: string }>;
@@ -30,6 +35,7 @@ async function expectPages(
     expect(res?.status(), route.path).toBe(200);
     await expect(page.getByRole("heading", { level: 1 }), route.path).toHaveText(
       real?.heading ?? (route.path === "/admin/system" ? "System" : route.label),
+      SETTLE,
     );
     await expect(page.locator("main"), route.path).toHaveCount(1);
     await expect(page.locator(`[data-portal="${route.portal}"]`), route.path).toBeVisible();
@@ -37,6 +43,9 @@ async function expectPages(
 }
 
 test.describe("[P0-12] portal pages", () => {
+  // Each test opens many pages (KI-10 above; FOLLOWUPS, CI 45728932726).
+  test.describe.configure({ timeout: 60_000 });
+
   test("a shop owner can open every shop route and sees its title", async ({ page, signInAs }) => {
     await signInAs("owner");
     await expectPages(page, SHOP_ROUTES);

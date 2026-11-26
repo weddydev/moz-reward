@@ -22,7 +22,7 @@ export default async function CustomerLayout({
       {/* P1-10: realtime hints refresh the signed-in pages (outside the shell: renders nothing visible). */}
       {gate.principal ? <CustomerRealtime /> : null}
       {/* P1-11: sends "Request points" taps queued while offline, with their keys, once back online. */}
-      {gate.principal ? <QueuedRequestSender /> : null}
+      {gate.principal ? <QueuedRequestSender userId={gate.principal.userId} /> : null}
       <PortalShell nav={navFor("customer", gate.role ?? null)} chrome={chrome}>
         {children}
       </PortalShell>

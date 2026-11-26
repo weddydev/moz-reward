@@ -4,10 +4,11 @@ import { systemScope, type TenantScope } from "@/server/authz/scope";
 import { log } from "@/server/log";
 import { sendLoyaltyChangeNotices } from "@/server/notifications/loyalty-notice";
 import { deliverAlertEmail } from "@/server/ops/alerts";
-import { type SweepName, sweepHeartbeat } from "@/server/ops/sweeps";
+import { type SweepName, SWEEPS, sweepHeartbeat } from "@/server/ops/sweeps";
 import { deliverRealtime } from "@/server/realtime/publish";
 import { recordHeartbeat, touchHeartbeat } from "@/server/repos/jobs";
 import { ensureNotificationPartitions } from "@/server/repos/notifications";
+import { auditAs } from "@/server/services/audit";
 import { expirePointRequests, remindPointRequests } from "@/server/services/point-request-jobs";
 import { runPointsExpiry } from "@/server/services/points-expiry-job";
 import { checkAwardDevice } from "./fraud-award-check";
@@ -41,11 +42,26 @@ const JOBS_SCOPE = systemScope("scheduled background jobs run without a user");
  * Runs a scheduled sweep and, when it succeeds, records its heartbeat with the run time in ms: the health monitor
  * alerts when a sweep is late or slow (ops/sweeps.ts, ARCHITECTURE §4 runtime alarm). A failed run records
  * nothing (it retries; the dead-letter alert covers it) and stays late until a run succeeds.
+ *
+ * A run that changed rows is on record (SECURITY §3; security review M2, P1-C close): the sweeps write across
+ * shops as `moz_worker`, so one `system.sweep` audit row names the job and its counts (no personal data). Empty
+ * runs write none, as the outbox sweep (DECISIONS P0-20).
  */
-export async function timedSweep<T>(name: SweepName, run: () => Promise<T>): Promise<T> {
+export async function timedSweep<T extends Record<string, number | boolean>>(
+  name: SweepName,
+  run: () => Promise<T>,
+): Promise<T> {
   const start = performance.now();
   const result = await run();
   const ms = Math.round(performance.now() - start);
+  const { entity, changes } = SWEEPS[name].audit;
+  if (changes.some((k) => Number(result[k] ?? 0) > 0)) {
+    await auditAs(JOBS_SCOPE, {
+      action: "system.sweep",
+      entity,
+      meta: { job: name, ...result },
+    });
+  }
   await recordHeartbeat(JOBS_SCOPE, sweepHeartbeat(name), ms);
   log().info({ sweep: name, ms, result }, `sweep ${name} done`);
   return result;

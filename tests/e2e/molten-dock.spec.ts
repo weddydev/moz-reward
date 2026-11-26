@@ -294,6 +294,46 @@ test.describe("[PD-07] floating dock", () => {
     expect(await loops("::after")).toBe("1");
   });
 
+  test("[PD-07] (P1-C close) a tap beside the Scan coin reaches its neighbour while the radar ring is at its widest", async ({
+    page,
+    signInAs,
+  }) => {
+    test.skip(!isPhone(page), "the dock is the phone navigation");
+    await signInAs("customer");
+    await page.goto("/wallet");
+    const nav = dock(page);
+    const scan = nav.getByRole("link", { name: "Scan" });
+    // Hold the halo and the radar (scale 1.9, ~118 px) at their widest: the ring then covers the inner edge of
+    // Offers and Market. Pseudo-elements hit-test as their button, so they must let taps through (CI 45737171703).
+    await scan.evaluate((el) => {
+      for (const a of el.getAnimations({ subtree: true })) {
+        const end = Number(a.effect?.getComputedTiming().duration ?? 0);
+        a.pause();
+        a.currentTime = end * 0.99;
+      }
+    });
+    const missed = await nav.evaluate((root) => {
+      const out: string[] = [];
+      for (const name of ["Offers", "Market"]) {
+        const item = [...root.querySelectorAll<HTMLElement>("a, button")].find(
+          (el) => el.textContent.trim() === name,
+        );
+        if (!item) {
+          out.push(`${name} missing`);
+          continue;
+        }
+        const r = item.getBoundingClientRect();
+        // Two px inside the edge that faces the Scan coin, at the item's vertical centre.
+        const x = name === "Offers" ? r.right - 2 : r.left + 2;
+        const hit = document.elementFromPoint(x, r.top + r.height / 2);
+        if (!hit || !item.contains(hit))
+          out.push(`${name}: the tap lands on ${hit?.outerHTML.slice(0, 60) ?? "nothing"}`);
+      }
+      return out;
+    });
+    expect(missed).toEqual([]);
+  });
+
   test("[PD-07] loops sleep where the dock isn't shown (desktop widths)", async ({
     page,
     signInAs,

@@ -24,6 +24,7 @@ import {
   twoFactors,
   verifications,
 } from "@/server/db/schema";
+import { timedSweep } from "@/server/jobs/handlers";
 import { replayOutbox, sweepOutbox } from "@/server/jobs/relay";
 import { adminRead, transaction, withScope } from "@/server/repos/_base";
 import {
@@ -35,6 +36,17 @@ import {
   makeUser,
 } from "@/server/testing/factories";
 import { rlsState } from "../../scripts/check-migrations";
+
+const EMPTY_EXPIRY_RUN = {
+  checked: 0,
+  warned30: 0,
+  warned7: 0,
+  expired: 0,
+  expiredGold: 0,
+  forfeited: 0,
+  forfeitedGold: 0,
+  capped: false,
+};
 
 /**
  * P0-20 (SECURITY §3): Row-Level Security as the second wall. Every query here runs WITHOUT the app filter
@@ -698,8 +710,13 @@ describe("[P0-20] C-29: the web role may only append to the outbox", () => {
 });
 
 describe("[P0-20] AC4: cross-shop sweeps run as moz_worker and are audit-logged", () => {
+  // Oldest first: each run writes its row in its own transaction, so `at` orders them.
   const sweepAudits = () =>
-    db().select().from(auditLogs).where(eq(auditLogs.action, "system.sweep"));
+    db()
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.action, "system.sweep"))
+      .orderBy(auditLogs.at, auditLogs.id);
 
   it("a sweep that changed rows writes one audit row; an empty sweep writes none", async () => {
     await db().delete(outbox);
@@ -739,6 +756,40 @@ describe("[P0-20] AC4: cross-shop sweeps run as moz_worker and are audit-logged"
       .orderBy(sql`${auditLogs.at} DESC`)
       .limit(1);
     expect(row).toMatchObject({ actorRole: "system", meta: { dryRun: true, replayed: 0 } });
+  });
+
+  it("security review M2 (P1-C close): the P1 sweeps (requests, points expiry) audit a run that changed rows, as the system", async () => {
+    const before = (await sweepAudits()).length;
+    // Nothing changed: no row (most nights).
+    await timedSweep("requests-expire", async () => ({ expired: 0 }));
+    await timedSweep("points-expiry", async () => ({ ...EMPTY_EXPIRY_RUN, checked: 40 }));
+    expect(await sweepAudits()).toHaveLength(before);
+    await timedSweep("requests-expire", async () => ({ expired: 2 }));
+    await timedSweep("requests-remind", async () => ({ reminded: 1 }));
+    await timedSweep("points-expiry", async () => ({
+      ...EMPTY_EXPIRY_RUN,
+      checked: 40,
+      warned7: 1,
+    }));
+    const rows = (await sweepAudits()).slice(before);
+    expect(rows).toEqual([
+      expect.objectContaining({
+        actorId: null,
+        actorRole: "system",
+        entity: "point_requests",
+        meta: { job: "requests-expire", expired: 2 },
+      }),
+      expect.objectContaining({
+        actorRole: "system",
+        entity: "point_requests",
+        meta: { job: "requests-remind", reminded: 1 },
+      }),
+      expect.objectContaining({
+        actorRole: "system",
+        entity: "memberships",
+        meta: { job: "points-expiry", ...EMPTY_EXPIRY_RUN, checked: 40, warned7: 1 },
+      }),
+    ]);
   });
 
   it("systemScope is the worker role: it sees every tenant's rows", async () => {

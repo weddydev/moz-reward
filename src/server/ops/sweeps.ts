@@ -13,14 +13,34 @@ export type SweepDef = {
   graceSec: number;
   /** A run longer than this is a warning sign (growth, lock waits) even when it finished. */
   maxRunSec: number;
+  /**
+   * The audit row of a run that changed rows (SECURITY §3; security review M2, P1-C close): the table it
+   * changes, and the counters in its result that count changed rows. Empty runs write none (DECISIONS P0-20).
+   */
+  audit: { entity: string; changes: readonly string[] };
 };
 
 export const SWEEPS = {
   /** P1-13: daily at 03:00 UK time; 100,000 members fit well inside 15 min. */
-  "points-expiry": { everySec: 86_400, graceSec: 2 * 3_600, maxRunSec: 15 * 60 },
+  "points-expiry": {
+    everySec: 86_400,
+    graceSec: 2 * 3_600,
+    maxRunSec: 15 * 60,
+    audit: { entity: "memberships", changes: ["warned30", "warned7", "expired", "forfeited"] },
+  },
   /** P1-11: every 5 minutes. */
-  "requests-expire": { everySec: 300, graceSec: 600, maxRunSec: 120 },
-  "requests-remind": { everySec: 300, graceSec: 600, maxRunSec: 120 },
+  "requests-expire": {
+    everySec: 300,
+    graceSec: 600,
+    maxRunSec: 120,
+    audit: { entity: "point_requests", changes: ["expired"] },
+  },
+  "requests-remind": {
+    everySec: 300,
+    graceSec: 600,
+    maxRunSec: 120,
+    audit: { entity: "point_requests", changes: ["reminded"] },
+  },
 } as const satisfies Record<string, SweepDef>;
 
 export type SweepName = keyof typeof SWEEPS;

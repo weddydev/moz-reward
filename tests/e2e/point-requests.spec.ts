@@ -1,5 +1,6 @@
 import { type APIRequestContext, type Page } from "@playwright/test";
 import { expect, test, testApiHeaders } from "./support/test";
+import { QUEUE_KEY } from "../../src/features/shop/request-queue";
 
 // P1-11 on the production build: "Request points" on the member's shop page (Molten: sparks, label roll,
 // toast), the pending state (live, kept across reloads), one request for a double tap, the offline queue (the
@@ -131,6 +132,44 @@ test.describe("offline", () => {
     await page.reload();
     await expect(page.getByTestId("request-pending")).toBeVisible();
     expect(await requestsOf(page.request, me.userId)).toHaveLength(1);
+  });
+
+  test("[P1-11] security review M1 (P1-C close): a tap another account left on the phone is never sent; signing out clears the queue", async ({
+    page,
+    signInAs,
+  }) => {
+    const me = await signInAs("customer");
+    const { shopId } = await seedShop(page.request, me.userId);
+    const queued = (userId: string) =>
+      JSON.stringify([{ userId, shopId, key: crypto.randomUUID(), at: new Date().toISOString() }]);
+    // Another account queued a tap for this shop on this phone, and its session ended without the clean-up.
+    await page.addInitScript(
+      ([k, v]) => {
+        if (!sessionStorage.getItem("seeded")) {
+          localStorage.setItem(k, v);
+          sessionStorage.setItem("seeded", "1");
+        }
+      },
+      [QUEUE_KEY, queued("someone-else")] as const,
+    );
+    await page.goto(`/shops/${shopId}`);
+    // The sender ran on load (online): it sent nothing, and the page shows no queued tap for this account.
+    await expect(page.getByTestId("request-points")).toBeVisible();
+    await expect(page.getByTestId("request-queued")).toHaveCount(0);
+    await page.waitForLoadState("networkidle");
+    expect(await requestsOf(page.request, me.userId)).toEqual([]);
+
+    // This account's own tap still in the queue at sign-out goes with the session.
+    await page.goto("/me/security");
+    await page.evaluate(
+      ([k, v]) => {
+        localStorage.setItem(k, v);
+      },
+      [QUEUE_KEY, queued(me.userId)] as const,
+    );
+    await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await expect(page).toHaveURL(/\/sign-in/);
+    expect(await page.evaluate((k) => localStorage.getItem(k), QUEUE_KEY)).toBeNull();
   });
 });
 

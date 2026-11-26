@@ -2090,6 +2090,8 @@ html:root.rm .m-tile {
   -webkit-mask: radial-gradient(closest-side, transparent 86%, black 88%);
   mask: radial-gradient(closest-side, transparent 86%, black 88%);
   animation: m-spin 2.6s linear infinite;
+  /* Decoration only: pseudo-elements hit-test as the coin, and the halo reaches past the coin's column. */
+  pointer-events: none;
 }
 .m-scan::after {
   content: "";
@@ -2098,6 +2100,8 @@ html:root.rm .m-tile {
   border-radius: 50%;
   border: 2px solid var(--gold);
   animation: m-radar 2.4s var(--ease-out) infinite;
+  /* The radar grows to 1.9× (~118 px) over Offers and Market: taps there must reach them (CI 45737171703). */
+  pointer-events: none;
 }
 @keyframes m-spin {
   to {

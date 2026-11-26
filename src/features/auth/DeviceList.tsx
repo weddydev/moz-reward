@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { browserQueueStorage, clearQueue } from "@/features/shop/request-queue";
 import { cx } from "@/lib/cx";
 import { useHydrated } from "@/lib/use-hydrated";
 import { withNetworkGuard } from "./network";
@@ -95,6 +96,8 @@ export function DeviceList({
   async function signOutEverywhere(): Promise<void> {
     const done = await run("all", () => signOutAllDevices({}));
     if (done === null) return;
+    // This phone is signed out too: its offline-queued requests go with it (security review M1, P1-C close).
+    clearQueue(browserQueueStorage());
     // Full page load: every session is gone, so no client-cached signed-in page may survive.
     window.location.assign(signInPath);
   }

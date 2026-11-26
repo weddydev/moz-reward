@@ -48,10 +48,13 @@ export function RequestPoints({
   shopId,
   shopName,
   open,
+  userId,
 }: {
   shopId: string;
   shopName: string;
   open: OpenRequestView | null;
+  /** The signed-in customer: a tap queued offline is theirs alone (request-queue.ts). */
+  userId: string;
 }): React.JSX.Element {
   const router = useRouter();
   const inFlight = useRef(false);
@@ -61,7 +64,7 @@ export function RequestPoints({
 
   useEffect(() => {
     const read = (): void => {
-      setQueued(queuedFor(browserQueueStorage(), shopId, new Date()) !== null);
+      setQueued(queuedFor(browserQueueStorage(), userId, shopId, new Date()) !== null);
     };
     read();
     window.addEventListener(QUEUE_EVENT, read);
@@ -70,7 +73,7 @@ export function RequestPoints({
       window.removeEventListener(QUEUE_EVENT, read);
       window.removeEventListener("storage", read);
     };
-  }, [shopId]);
+  }, [shopId, userId]);
 
   useEffect(() => {
     if (!rolling) return;
@@ -85,7 +88,7 @@ export function RequestPoints({
   const queue = (key: string, at: string): void => {
     const now = new Date();
     // The queued card (role=status) says it where the button was; no toast repeating it.
-    if (enqueueRequest(browserQueueStorage(), { shopId, key, at }, now)) {
+    if (enqueueRequest(browserQueueStorage(), { userId, shopId, key, at }, now)) {
       window.dispatchEvent(new Event(QUEUE_EVENT));
     } else {
       toast("You’re offline. Check your connection and try again.", "error");
@@ -177,7 +180,7 @@ export function RequestPoints({
  * page refreshes into its pending state; refused → the reason as a toast); no answer, or a short-lived refusal,
  * keeps it for next time. Mounted once, in the customer layout.
  */
-export function QueuedRequestSender(): null {
+export function QueuedRequestSender({ userId }: { userId: string }): null {
   const router = useRouter();
   const running = useRef(false);
 
@@ -188,7 +191,7 @@ export function QueuedRequestSender(): null {
       try {
         const storage = browserQueueStorage();
         let changed = false;
-        for (const entry of readQueue(storage, new Date())) {
+        for (const entry of readQueue(storage, userId, new Date())) {
           let outcome: Parameters<typeof afterSend>[0];
           let message: string | null = null;
           try {
@@ -203,7 +206,7 @@ export function QueuedRequestSender(): null {
             outcome = { thrown: true };
           }
           if (afterSend(outcome) === "keep") continue;
-          dropQueued(storage, entry.key, new Date());
+          dropQueued(storage, userId, entry.key, new Date());
           changed = true;
           toast(message ?? "Your saved request was sent.", message ? "error" : "success");
         }
@@ -223,7 +226,7 @@ export function QueuedRequestSender(): null {
     return () => {
       window.removeEventListener("online", onOnline);
     };
-  }, [router]);
+  }, [router, userId]);
 
   return null;
 }

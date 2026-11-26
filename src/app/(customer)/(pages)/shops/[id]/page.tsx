@@ -70,7 +70,7 @@ export default async function ShopPage({
         member={member}
         vault={vaultData}
         welcome={(await searchParams).welcome === "1"}
-        request={openView || takesRequests ? { open: openView } : null}
+        request={openView || takesRequests ? { open: openView, userId: scope.userId } : null}
         receipts={receipts.map(receiptRow)}
         now={now}
       />

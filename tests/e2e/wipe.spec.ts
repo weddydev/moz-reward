@@ -500,6 +500,46 @@ test.describe("[PD-08] gold wipe: Wallet card → shop and back", () => {
     ).toBe(false);
   });
 
+  test("[PD-08] (P1-C close) way back on a frozen timeline: the closing copy still leaves the stage on time", async ({
+    page,
+    signInAs,
+  }) => {
+    const me = await signInAs("customer");
+    const shopId = await seedShop(page, me.userId);
+    // As above: the Wallet can't commit for 3 s after the tap.
+    let tap = (): void => {};
+    const tapped = new Promise<void>((r) => {
+      tap = r;
+    });
+    await page.route("**/wallet*", async (route) => {
+      await tapped;
+      await new Promise((r) => setTimeout(r, 3000));
+      await route.continue().catch(() => undefined);
+    });
+    await page.goto(`/shops/${shopId}`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("member-shop-name")).toHaveText("Brew & Bloom Café");
+    tap();
+    await page.getByTestId("shop-back").click();
+    // A page that draws no frames (Linux WebKit after a load, KI-10; a throttled phone) never finishes the close:
+    // pausing it stands in for that. A timer still takes the stage down, so nothing waits on frames.
+    const paused = await page.evaluate(() => {
+      const anims =
+        document.querySelector("[data-testid='wipe-stage']")?.getAnimations({ subtree: true }) ??
+        [];
+      for (const a of anims) a.pause();
+      return anims.length;
+    });
+    expect(paused, "the closing copy was animating").toBeGreaterThan(0);
+    await expect(page.getByTestId("wipe-stage")).toBeHidden({ timeout: 2_000 });
+    expect(new URL(page.url()).pathname, "before the Wallet commits").toBe(`/shops/${shopId}`);
+    await expect(page).toHaveURL("/wallet", { timeout: 15_000 });
+    await settled(page);
+    expect(
+      await page.evaluate(() => document.querySelector<HTMLElement>("[data-route-content]")?.inert),
+      "the Wallet is live again",
+    ).toBe(false);
+  });
+
   test("[PD-08] reduced motion: no metal, no circle, no sinking; the page simply arrives", async ({
     page,
     signInAs,

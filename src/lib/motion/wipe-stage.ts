@@ -424,8 +424,18 @@ export function wipeBack(
     },
   );
   setWipeBack(href, now);
-  if (close) close.onfinish = hideStage;
-  else hideStage();
+  if (close) {
+    // A safety net, as for the circle in: if the close's `finished` never settles (a frozen or throttled
+    // timeline: no frames drawn), the copy still leaves once its time is up (and half a second), so a frozen
+    // close never keeps the stage over the page. A newer wipe has removed this copy already: nothing to do.
+    const guard = setTimeout(() => {
+      if (clone.isConnected) hideStage();
+    }, WIPE.back.ms + 500);
+    close.onfinish = () => {
+      clearTimeout(guard);
+      hideStage();
+    };
+  } else hideStage();
   abandonTimer = setTimeout(abandon, WIPE.ttlMs);
   return true;
 }

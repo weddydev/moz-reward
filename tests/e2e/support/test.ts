@@ -68,7 +68,9 @@ async function axeProblems(page: Page, baseURL: string | undefined): Promise<Gua
   // (spinners loop forever). Checked from animation frames, not from `finished` promises raced with a timer:
   // WebKit advances an animation's computed style only when it renders a frame, and Linux WebKit can go
   // without one for over a second while idle, so the timer ended the wait with items still at their start
-  // opacity (CI 43181605309, stagger list). Capped at 3 s (a hidden page gets no frames).
+  // opacity (CI 43181605309, stagger list). Capped at 8 s (a hidden page gets no frames): above Linux WebKit's
+  // longest no-frame window after a load (6.2 s, KI-10); 3 s let axe read a shop page mid-fade (iphone14, CI
+  // 45647684620).
   await page
     .evaluate(
       () =>
@@ -77,7 +79,7 @@ async function axeProblems(page: Page, baseURL: string | undefined): Promise<Gua
             clearTimeout(cap);
             resolve();
           };
-          const cap = setTimeout(done, 3000);
+          const cap = setTimeout(done, 8000);
           const check = (): void => {
             const busy = document
               .getAnimations()
