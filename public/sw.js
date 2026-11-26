@@ -12,7 +12,7 @@
  * Nothing else is cached or intercepted: only same-origin GETs are looked at, never a POST (server actions,
  * forms), and an HTTP error or redirect from the network always passes through untouched.
  *
- * Kill switch (RUNBOOK §21): replace this file with the self-unregistering version there and deploy.
+ * Kill switch (RUNBOOK §19): replace this file with the self-unregistering version there and deploy.
  */
 /** @type {ServiceWorkerGlobalScope} */
 

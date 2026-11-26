@@ -9,7 +9,7 @@ import type { ActionResult } from "@/server/actionTemplate";
 import { loadPrincipal, runAsPrincipal } from "@/server/authz/principal";
 import { testOwnerDb as db } from "@/server/db/client";
 import { MEMBER_QR_LIFETIME_MS, memberQrKeys, signMemberQr } from "@/server/security/member-qr";
-import { limit } from "@/server/security/rate-limit";
+import { limit, limiterKey, limiterRedis } from "@/server/security/rate-limit";
 import {
   makeCustomerProfile,
   makeMembership,
@@ -191,6 +191,29 @@ describe("[P1-14] member QR verify: whose card a token reveals", () => {
       verifyMemberQrAction({ shopId: t.shopA.id, token: "MQ1.junk" }),
     );
     expect(res).toMatchObject({ ok: false, error: { code: "RATE_LIMITED" } });
+  });
+
+  it("[P1-14] a team member over their own limit doesn't use up the shop's allowance (review M1)", async () => {
+    // The member ceiling stays below the shop's, so one account can never lock the counter out on its own.
+    expect((VERIFY_LIMITS.member.max * 3600) / VERIFY_LIMITS.member.windowSec).toBeLessThan(
+      (VERIFY_LIMITS.shop.max * 3600) / VERIFY_LIMITS.shop.windowSec,
+    );
+    const t = await team();
+    const colleague = await makeUser();
+    await makeStaff(t.shopA.id, colleague.id, "staff");
+    for (let i = 0; i < VERIFY_LIMITS.member.max + 5; i++) {
+      await runAsPrincipal(t.staffA, () =>
+        verifyMemberQrAction({ shopId: t.shopA.id, token: "MQ1.junk" }),
+      );
+    }
+    const spent = await limiterRedis().zcard(
+      limiterKey(`action:memberQr.verify:shop:${t.shopA.id}`),
+    );
+    expect(spent).toBe(VERIFY_LIMITS.member.max);
+    const res = await runAsPrincipal(await principal(colleague.id), () =>
+      verifyMemberQrAction({ shopId: t.shopA.id, token: "MQ1.junk" }),
+    );
+    expect(res).toEqual({ ok: true, data: { status: "invalid" } });
   });
 
   it("[P1-14] moz_rls reads only user_id, shop_id and left_at of memberships (0032)", async () => {

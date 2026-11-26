@@ -4,6 +4,7 @@
  * revisited with the P2 scanner, when real counter traffic is known.
  */
 export const VERIFY_LIMITS = {
-  member: { max: 60, windowSec: 600 },
+  // 180 an hour: below the shop's 300, so one account can't lock the counter out (security review M1).
+  member: { max: 30, windowSec: 600 },
   shop: { max: 300, windowSec: 3600 },
 } as const;

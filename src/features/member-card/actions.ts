@@ -18,20 +18,20 @@ const input = z.object({ shopId: z.uuid(), token: z.string().min(1).max(128) }).
 export const verifyMemberQrAction = defineAction({
   name: "memberQr.verify",
   input,
-  authorize: async ({ shopId }, p): Promise<ShopScope> => {
-    const scope = await requireShopRole(shopId, ["owner", "staff"], p);
-    await limitOrThrow({
-      key: `action:memberQr.verify:shop:${shopId}`,
-      ...VERIFY_LIMITS.shop,
-      onError: "closed",
-    });
-    return scope;
-  },
+  authorize: ({ shopId }, p): Promise<ShopScope> => requireShopRole(shopId, ["owner", "staff"], p),
+  // Per team member first (the template's step), then per shop in the handler: a call the member limit refuses
+  // never spends the shop's allowance (security review M1).
   rateLimit: {
     ...VERIFY_LIMITS.member,
     failMode: "closed",
     key: ({ shopId }, scope) => `${shopId}:${scope.userId}`,
   },
-  handler: ({ token }, scope): Promise<MemberQrVerify> =>
-    verifyMemberQrForShop(scope, token, Date.now()),
+  handler: async ({ shopId, token }, scope): Promise<MemberQrVerify> => {
+    await limitOrThrow({
+      key: `action:memberQr.verify:shop:${shopId}`,
+      ...VERIFY_LIMITS.shop,
+      onError: "closed",
+    });
+    return verifyMemberQrForShop(scope, token, Date.now());
+  },
 });
