@@ -39,6 +39,12 @@ SELECT 'CREATE ROLE moz_partitions' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE
 ALTER ROLE moz_partitions WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION PASSWORD NULL;
 GRANT moz_partitions TO moz_owner WITH ADMIN OPTION;
 
+-- Owner of the C-73 rejoin forfeit (P1-13, drizzle/0031): a SECURITY DEFINER wrapper that zeroes a customer's own
+-- left membership's frozen progress past the 30-day window. NOLOGIN; column grants and RLS from the migration.
+SELECT 'CREATE ROLE moz_forfeit' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'moz_forfeit') \gexec
+ALTER ROLE moz_forfeit WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION PASSWORD NULL;
+GRANT moz_forfeit TO moz_owner WITH ADMIN OPTION;
+
 -- No runtime login is a member of another (a web login must not SET ROLE to moz_worker or moz_auth; boot
 -- checks it too). Any such membership, however it was granted, is removed.
 SELECT format('REVOKE %I FROM %I CASCADE', r.rolname, m.rolname)

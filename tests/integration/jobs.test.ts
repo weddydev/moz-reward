@@ -315,6 +315,7 @@ describe("[P0-04] scheduler", () => {
       "heartbeat",
       "outbox-sweep",
       "partitions-ensure",
+      "points-expiry",
       "requests-expire",
       "requests-remind",
     ]);
@@ -322,6 +323,7 @@ describe("[P0-04] scheduler", () => {
       heartbeat: "* * * * *",
       "outbox-sweep": "* * * * *",
       "partitions-ensure": "17 3 * * *", // P1-10: daily
+      "points-expiry": "0 3 * * *", // P1-13: daily
       "requests-expire": "*/5 * * * *", // P1-11
       "requests-remind": "*/5 * * * *", // P1-11
     };
@@ -337,6 +339,7 @@ describe("[P0-04] scheduler", () => {
       "heartbeat",
       "outbox-sweep",
       "partitions-ensure",
+      "points-expiry",
       "probe",
       "requests-expire",
       "requests-remind",
@@ -348,11 +351,12 @@ describe("[P0-04] scheduler", () => {
       "heartbeat",
       "outbox-sweep",
       "partitions-ensure",
+      "points-expiry",
       "requests-expire",
       "requests-remind",
     ]);
     // One next run per schedule, never two (BullMQ keeps each scheduler's next job delayed).
-    expect(await getQueue("scheduled").getJobCountByTypes("delayed")).toBe(5);
+    expect(await getQueue("scheduled").getJobCountByTypes("delayed")).toBe(6);
     await expect(registerSchedules(base.SCHEDULES, ["heartbeat"])).rejects.toThrow(
       /both defined and retired/,
     );

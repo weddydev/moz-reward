@@ -65,9 +65,11 @@ SELECT pg_temp.backup_check('grants',
          AND NOT has_function_privilege('moz_app', 'public.ensure_notifications_partitions(integer)', 'EXECUTE'),
          'app roles keep their grants and nothing more');
 SELECT pg_temp.backup_check('definer-functions',
-         -- moz_rls owns the helpers; moz_partitions owns only the notifications partition function (P1-10).
+         -- moz_rls owns the helpers; moz_partitions owns only the notifications partition function (P1-10);
+         -- moz_forfeit only the rejoin forfeit (P1-13).
          count(*) > 0 AND count(*) FILTER (WHERE NOT (pg_get_userbyid(proowner) = 'moz_rls'
-           OR (pg_get_userbyid(proowner) = 'moz_partitions' AND proname = 'ensure_notifications_partitions'))) = 0,
+           OR (pg_get_userbyid(proowner) = 'moz_partitions' AND proname = 'ensure_notifications_partitions')
+           OR (pg_get_userbyid(proowner) = 'moz_forfeit' AND proname = 'forfeit_own_left_progress'))) = 0,
          count(*) || ' SECURITY DEFINER functions, owners: ' || string_agg(DISTINCT pg_get_userbyid(proowner), ', '))
   FROM pg_proc
  WHERE pronamespace = 'public'::regnamespace AND prosecdef;

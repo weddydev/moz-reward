@@ -151,6 +151,8 @@ export const JOBS = {
     "requests-expire": defineJob(z.object({}).strict()),
     /** P1-11: remind the shop's team once about a request pending for 30 min. */
     "requests-remind": defineJob(z.object({}).strict()),
+    /** P1-13: daily points expiry (warnings 30/7 days before, rolling expiry, left-membership forfeit). */
+    "points-expiry": defineJob(z.object({}).strict()),
   },
 } as const satisfies Record<QueueName, Record<string, JobDef>>;
 

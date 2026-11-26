@@ -13,6 +13,9 @@ import {
   computeExpiry,
   estimateVisitsToNext,
   initialMemberState,
+  leftForfeitAt,
+  planExpiry,
+  type SentExpiryWarning,
 } from "./engine";
 import type { MilestonePercent, ProgrammeRules, ProgrammeVersion } from "./programme";
 
@@ -547,6 +550,180 @@ describe("[P1-06] computeExpiry (rolling, from the last approved visit)", () => 
 
   it("is off without a programme", () => {
     expect(computeExpiry(withGold, [], lastVisit, T0)).toEqual({ kind: "off" });
+  });
+});
+
+describe("[P1-13] planExpiry (daily job: warnings 30 and 7 days before, each once, then expiry)", () => {
+  const lastVisit = new Date("2026-03-10T14:30:00Z");
+  const E = new Date("2027-03-10T14:30:00Z"); // 12 London months later
+  const W30 = new Date("2027-02-08T14:30:00Z");
+  const W7 = new Date("2027-03-03T14:30:00Z");
+  const withGold = state({
+    progress: points(400),
+    ingotsCompleted: 2,
+    milestonesReached: [25],
+    tier: "silver",
+    shortfall: points(5),
+  });
+  const sent = (daysBefore: 30 | 7, sentAt: Date, expiresAt: Date = E): SentExpiryWarning => ({
+    expiresAt,
+    daysBefore,
+    sentAt,
+  });
+  const plan = (now: Date, warnings: SentExpiryWarning[] = [], visit: Date | null = lastVisit) =>
+    planExpiry(withGold, V1, visit, now, warnings);
+
+  it("passes off and nothing through (no expiry setting, no gold, no visit)", () => {
+    const off = [version(1, rules({ expiryMonths: null }), T0)];
+    expect(planExpiry(withGold, off, lastVisit, E, [sent(30, W30), sent(7, W7)])).toEqual({
+      kind: "off",
+    });
+    expect(planExpiry(state(), V1, lastVisit, E, [])).toEqual({ kind: "nothing" });
+    expect(plan(E, [], null)).toEqual({ kind: "nothing" });
+  });
+
+  it("waits until 30 days before, then warns 30 days before with the real date", () => {
+    expect(plan(new Date(W30.getTime() - 1))).toEqual({ kind: "wait", expiresAt: E, gold: 400 });
+    expect(plan(W30)).toEqual({
+      kind: "warn",
+      daysBefore: 30,
+      nominalExpiresAt: E,
+      expiresAt: E,
+      gold: 400,
+    });
+  });
+
+  it("after the 30-day warning: waits, then warns 7 days before, then expires on the date", () => {
+    expect(plan(new Date(W7.getTime() - 1), [sent(30, W30)])).toMatchObject({ kind: "wait" });
+    expect(plan(W7, [sent(30, W30)])).toEqual({
+      kind: "warn",
+      daysBefore: 7,
+      nominalExpiresAt: E,
+      expiresAt: E,
+      gold: 400,
+    });
+    const both = [sent(30, W30), sent(7, W7)];
+    expect(plan(new Date(E.getTime() - 1), both)).toEqual({
+      kind: "wait",
+      expiresAt: E,
+      gold: 400,
+    });
+    expect(plan(E, both)).toEqual({
+      kind: "due",
+      nominalExpiresAt: E,
+      gold: 400,
+      state: { ...withGold, progress: 0 },
+    });
+  });
+
+  it("never expires more than current-ingot progress: ingots, milestones, tier and shortfall stay", () => {
+    const out = plan(E, [sent(30, W30), sent(7, W7)]);
+    expect(out.kind === "due" && out.state).toEqual({ ...withGold, progress: 0 });
+  });
+
+  it("a member never gets both warnings in one run, and never loses gold without both notices", () => {
+    // The job (or the shop's switch-on) first reaches this member long after the nominal date.
+    const late = new Date("2027-06-01T08:00:00Z"); // 09:00 BST
+    const first = plan(late);
+    expect(first).toEqual({
+      kind: "warn",
+      daysBefore: 30,
+      nominalExpiresAt: E,
+      expiresAt: new Date("2027-07-01T08:00:00Z"),
+      gold: 400,
+    });
+    const s30 = [sent(30, late)];
+    expect(plan(new Date("2027-06-24T07:59:59Z"), s30)).toMatchObject({ kind: "wait" });
+    expect(plan(new Date("2027-06-24T08:00:00Z"), s30)).toMatchObject({
+      kind: "warn",
+      daysBefore: 7,
+      expiresAt: new Date("2027-07-01T08:00:00Z"),
+    });
+    const s7 = [...s30, sent(7, new Date("2027-06-24T08:00:00Z"))];
+    expect(plan(new Date("2027-07-01T07:59:59Z"), s7)).toMatchObject({ kind: "wait" });
+    expect(plan(new Date("2027-07-01T08:00:00Z"), s7)).toMatchObject({ kind: "due", gold: 400 });
+  });
+
+  it("a 7-day warning sent late pushes the expiry to 7 days after it", () => {
+    const late7 = new Date("2027-03-08T03:00:00Z");
+    const out = plan(E, [sent(30, W30), sent(7, late7)]);
+    expect(out).toEqual({ kind: "wait", expiresAt: new Date("2027-03-15T03:00:00Z"), gold: 400 });
+    expect(plan(new Date("2027-03-15T03:00:00Z"), [sent(30, W30), sent(7, late7)]).kind).toBe(
+      "due",
+    );
+  });
+
+  it("an approved visit after a warning resets the clock: old warnings don't count, no expiry follows", () => {
+    const visit = new Date("2027-03-05T12:00:00Z");
+    const both = [sent(30, W30), sent(7, W7)];
+    expect(plan(E, both, visit)).toEqual({
+      kind: "wait",
+      expiresAt: new Date("2028-03-05T12:00:00Z"),
+      gold: 400,
+    });
+  });
+
+  it("a shop that turns expiry off after a warning: no expiry", () => {
+    const versions = [
+      version(1, rules({ expiryMonths: 12 }), T0),
+      version(2, rules({ expiryMonths: null }), new Date("2027-02-20T00:00:00Z")),
+    ];
+    expect(planExpiry(withGold, versions, lastVisit, E, [sent(30, W30), sent(7, W7)])).toEqual({
+      kind: "off",
+    });
+  });
+
+  it("a membership with a shortfall and no current gold has nothing to expire", () => {
+    const owing = state({ progress: points(0), shortfall: points(120) });
+    expect(planExpiry(owing, V1, lastVisit, E, [])).toEqual({ kind: "nothing" });
+  });
+
+  it("month ends: a 29 Feb visit expires on 28 Feb the next year, warnings by London calendar days", () => {
+    const leap = new Date("2028-02-29T10:00:00Z");
+    const nominal = new Date("2029-02-28T10:00:00Z");
+    expect(planExpiry(withGold, V1, leap, new Date("2029-01-29T10:00:00Z"), [])).toMatchObject({
+      kind: "warn",
+      daysBefore: 30,
+      nominalExpiresAt: nominal,
+      expiresAt: nominal,
+    });
+    expect(planExpiry(withGold, V1, leap, new Date("2029-01-29T09:59:59Z"), []).kind).toBe("wait");
+  });
+
+  it("DST: a 7-day warning across the spring clock change keeps the London wall time", () => {
+    const visit = new Date("2026-04-01T09:00:00Z"); // 10:00 BST
+    const nominal = new Date("2027-04-01T09:00:00Z"); // 10:00 BST
+    const at7 = new Date("2027-03-25T10:00:00Z"); // 10:00 GMT, before the 28 Mar change
+    const s30 = [sent(30, new Date("2027-03-02T10:00:00Z"), nominal)];
+    expect(planExpiry(withGold, V1, visit, new Date(at7.getTime() - 1), s30).kind).toBe("wait");
+    expect(planExpiry(withGold, V1, visit, at7, s30)).toMatchObject({
+      kind: "warn",
+      daysBefore: 7,
+    });
+  });
+});
+
+describe("[P1-13] leftForfeitAt (frozen progress: restored through day 30, forfeit on day 31)", () => {
+  it("is 00:00 UK time 31 London days after the leave day", () => {
+    expect(leftForfeitAt(new Date("2026-11-01T10:00:00Z")).toISOString()).toBe(
+      "2026-12-02T00:00:00.000Z",
+    );
+    expect(leftForfeitAt(new Date("2026-11-01T23:59:59Z")).toISOString()).toBe(
+      "2026-12-02T00:00:00.000Z",
+    );
+  });
+
+  it("uses the London day of the leave (00:30 BST is still that London day), across the autumn change", () => {
+    // 00:30 BST on 20 Oct 2026 = 23:30 UTC on 19 Oct.
+    expect(leftForfeitAt(new Date("2026-10-19T23:30:00Z")).toISOString()).toBe(
+      "2026-11-20T00:00:00.000Z",
+    );
+  });
+
+  it("lands on 00:00 BST when day 31 is after the spring change", () => {
+    expect(leftForfeitAt(new Date("2027-03-01T12:00:00Z")).toISOString()).toBe(
+      "2027-03-31T23:00:00.000Z",
+    );
   });
 });
 

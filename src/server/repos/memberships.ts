@@ -4,6 +4,7 @@ import type { CustomerScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import { memberships, shops } from "@/server/db/schema";
 import { ownedBy, withScope } from "./_base";
+import { forfeitOwnLeftProgress } from "./points-expiry";
 
 /** Whether the caller is a current member of `shopId` (P1-02 landing: per request, never cached). */
 export async function isOwnMember(scope: CustomerScope, shopId: string): Promise<boolean> {
@@ -83,7 +84,8 @@ export type JoinOutcome =
  * Joins the caller to `shopId` at most once (unique user+shop). `ON CONFLICT DO NOTHING` makes parallel calls
  * safe: the loser re-selects the winner's row and changes nothing. A left membership is re-opened with the new
  * answer; re-opening the same row is what restores the frozen progress (P1-09: leaving never touches the
- * counters, and nothing is paid on a rejoin). The DB guards (0020, 0021) refuse shops not taking members.
+ * counters, and nothing is paid on a rejoin) through London day 30 after the leave; from day 31 it is forfeit
+ * first (P1-13, C-73). The DB guards (0020, 0021) refuse shops not taking members.
  */
 export async function joinOwnMembership(
   scope: CustomerScope,
@@ -111,6 +113,9 @@ export async function joinOwnMembership(
         .for("update");
       if (!existing) throw new Error("joinOwnMembership: conflict without a row");
       if (!existing.leftAt) return { kind: "member", membershipId: existing.id };
+      // C-73 (P1-13): past the 30-day window the frozen progress is forfeit before the row re-opens, even if
+      // the daily job hasn't run yet (the database decides the window; nothing happens inside it).
+      await forfeitOwnLeftProgress(q, existing.id);
       await q
         .update(memberships)
         .set({ leftAt: null, marketingOptIn: input.marketingOptIn })

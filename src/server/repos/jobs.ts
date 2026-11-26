@@ -31,6 +31,18 @@ export async function recordFailedJob(
     });
 }
 
+/** Records a heartbeat now with a measurement (a sweep's run time in ms, P1-13 runtime alarm). */
+export async function recordHeartbeat(
+  scope: SystemScope,
+  name: string,
+  value: number,
+): Promise<void> {
+  await poolFor(scope)
+    .insert(jobHeartbeats)
+    .values({ name, lastRunAt: sql`now()`, value })
+    .onConflictDoUpdate({ target: jobHeartbeats.name, set: { lastRunAt: sql`now()`, value } });
+}
+
 /** Records that a scheduled job ran now (health check / admin System page). */
 export async function touchHeartbeat(scope: SystemScope, name: string): Promise<void> {
   await poolFor(scope)

@@ -115,7 +115,7 @@ describe("[P0-19] boot refuses the database owner role, its members and BYPASSRL
       await owner.unsafe(`ALTER ROLE moz_rls LOGIN`);
       try {
         expect(databaseRoleProblem(await databaseRoleFacts(client), false, "moz_app")).toMatch(
-          /moz_rls or moz_partitions can log in/,
+          /moz_rls, moz_partitions or moz_forfeit can log in/,
         );
       } finally {
         await owner.unsafe(`ALTER ROLE moz_rls NOLOGIN`);
@@ -131,7 +131,7 @@ describe("[P0-19] boot refuses the database owner role, its members and BYPASSRL
       await owner.unsafe(`ALTER ROLE moz_partitions LOGIN`);
       try {
         expect(databaseRoleProblem(await databaseRoleFacts(client), false, "moz_app")).toMatch(
-          /moz_rls or moz_partitions can log in/,
+          /moz_rls, moz_partitions or moz_forfeit can log in/,
         );
       } finally {
         await owner.unsafe(`ALTER ROLE moz_partitions NOLOGIN`);

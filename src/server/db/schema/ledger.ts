@@ -24,7 +24,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { id, tz } from "./_columns";
-import { shops } from "./core";
+import { memberships, shops } from "./core";
 
 export const LEDGER_TYPES = [
   "earn",
@@ -218,5 +218,29 @@ export const fraudFlags = pgTable(
   (t) => [
     uniqueIndex("fraud_flags_rule_entity_uq").on(t.rule, t.entity, t.entityId),
     index("fraud_flags_status_created_idx").on(t.status, t.createdAt),
+  ],
+);
+
+/**
+ * P1-13: the points-expiry warnings the daily job sent (PRODUCT §6), one per member, announced expiry date and
+ * notice (30 or 7 days). The job's own record that each warning went out once, and when: the notice floor
+ * (engine `planExpiry`) measures from `sentAt`. An approved visit moves the expiry date, so warnings for the old
+ * date stop counting. Worker-only (RLS on, admin read; the web role holds no write grant).
+ */
+export const pointsExpiryWarnings = pgTable(
+  "points_expiry_warnings",
+  {
+    id: id(),
+    membershipId: uuid()
+      .notNull()
+      .references(() => memberships.id, { onDelete: "cascade" }),
+    /** The nominal expiry date the warning was for (last approved visit + the shop's expiry months). */
+    expiresAt: tz().notNull(),
+    daysBefore: smallint().notNull(),
+    sentAt: tz().notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("points_expiry_warnings_once_uq").on(t.membershipId, t.expiresAt, t.daysBefore),
+    check("points_expiry_warnings_days", sql`${t.daysBefore} IN (30, 7)`),
   ],
 );

@@ -10,6 +10,7 @@ import {
   evaluateHealth,
   type HealthSnapshot,
 } from "@/server/ops/health-rules";
+import { SWEEP_NAMES, sweepHeartbeat } from "@/server/ops/sweeps";
 import { readUsage } from "@/server/ops/usage";
 import { realtimeConnections } from "@/server/realtime/presence";
 import { notificationMonthsAhead } from "@/server/repos/notifications";
@@ -236,6 +237,11 @@ export async function collectHealth(deps: MonitorDeps = {}): Promise<HealthSnaps
     sentry: { sentThisMonth: usageValue?.sentryMonth ?? null, quota: e.SENTRY_MONTHLY_QUOTA },
     sse: { connections: valueOr(sse, null) },
     partitions: { notificationsMonthsAhead: valueOr(partitions, null) },
+    sweeps: SWEEP_NAMES.map((name) => ({
+      name,
+      lastRunAt: beat(sweepHeartbeat(name)),
+      lastRunMs: measured(sweepHeartbeat(name)),
+    })),
   };
 }
 

@@ -110,6 +110,21 @@ export const NOTIFICATION_TYPES = {
       })
       .strict(),
   }),
+  /**
+   * P1-13 (PRODUCT §6): to the customer, their current-ingot gold at a shop expires on `expiresAt` (warnings 30
+   * and 7 days before, each once; in-app now, push from P3-07).
+   */
+  points_expiry_warning: defineNotificationType({
+    category: "transactional",
+    payload: z
+      .object({
+        shopId: id,
+        gold: z.number().int().min(1),
+        expiresAt: z.iso.datetime(),
+        daysBefore: z.union([z.literal(30), z.literal(7)]),
+      })
+      .strict(),
+  }),
 } as const satisfies Record<string, NotificationTypeDef>;
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES;

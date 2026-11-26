@@ -616,6 +616,7 @@ describe("[P0-20] re-review (0011): admin writes bound to the admin role; define
       "app_shop_role",
       "app_staff_award_limit",
       "ensure_notifications_partitions",
+      "forfeit_own_left_progress",
       "record_backup_heartbeat",
       "record_backup_metric",
       "record_host_heartbeat",

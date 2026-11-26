@@ -218,6 +218,13 @@
       "when": 1795636648894,
       "tag": "0030_shop_member_cards",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1795654568614,
+      "tag": "0031_points_expiry",
+      "breakpoints": true
     }
   ]
 }

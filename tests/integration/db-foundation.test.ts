@@ -117,6 +117,7 @@ describe("[P0-03] app role moz_app (least privilege)", () => {
     receipts: "IS", // P1-12: written once by the approval; pdf_key by the worker only
     shop_receipt_counters: "IS", // P1-12: UPDATE (last_number) by column grant, +1 only (guard)
     fraud_flags: "S", // P1-12: admins read; the worker writes
+    points_expiry_warnings: "S", // P1-13: admins read (RLS); only the worker writes
   };
 
   it("has exactly the reviewed grants per table, never TRUNCATE", async () => {

@@ -4,10 +4,12 @@ import { systemScope, type TenantScope } from "@/server/authz/scope";
 import { log } from "@/server/log";
 import { sendLoyaltyChangeNotices } from "@/server/notifications/loyalty-notice";
 import { deliverAlertEmail } from "@/server/ops/alerts";
+import { type SweepName, sweepHeartbeat } from "@/server/ops/sweeps";
 import { deliverRealtime } from "@/server/realtime/publish";
-import { touchHeartbeat } from "@/server/repos/jobs";
+import { recordHeartbeat, touchHeartbeat } from "@/server/repos/jobs";
 import { ensureNotificationPartitions } from "@/server/repos/notifications";
 import { expirePointRequests, remindPointRequests } from "@/server/services/point-request-jobs";
+import { runPointsExpiry } from "@/server/services/points-expiry-job";
 import { checkAwardDevice } from "./fraud-award-check";
 import { HEARTBEAT_NAME, type JobDef, type JOBS, type JobRunAs, type QueueName } from "./registry";
 import { sweepOutbox } from "./relay";
@@ -34,6 +36,20 @@ export type Handlers = {
 };
 
 const JOBS_SCOPE = systemScope("scheduled background jobs run without a user");
+
+/**
+ * Runs a scheduled sweep and, when it succeeds, records its heartbeat with the run time in ms: the health monitor
+ * alerts when a sweep is late or slow (ops/sweeps.ts, ARCHITECTURE §4 runtime alarm). A failed run records
+ * nothing (it retries; the dead-letter alert covers it) and stays late until a run succeeds.
+ */
+export async function timedSweep<T>(name: SweepName, run: () => Promise<T>): Promise<T> {
+  const start = performance.now();
+  const result = await run();
+  const ms = Math.round(performance.now() - start);
+  await recordHeartbeat(JOBS_SCOPE, sweepHeartbeat(name), ms);
+  log().info({ sweep: name, ms, result }, `sweep ${name} done`);
+  return result;
+}
 
 /** Months of notifications partitions kept ahead (the health monitor alerts below 2). */
 export const PARTITION_MONTHS_AHEAD = 3;
@@ -74,7 +90,8 @@ export const HANDLERS: Handlers = {
     },
     "outbox-sweep": () => sweepOutbox(),
     "partitions-ensure": () => ensureNotificationPartitions(JOBS_SCOPE, PARTITION_MONTHS_AHEAD),
-    "requests-expire": () => expirePointRequests(JOBS_SCOPE),
-    "requests-remind": () => remindPointRequests(JOBS_SCOPE),
+    "requests-expire": () => timedSweep("requests-expire", () => expirePointRequests(JOBS_SCOPE)),
+    "requests-remind": () => timedSweep("requests-remind", () => remindPointRequests(JOBS_SCOPE)),
+    "points-expiry": () => timedSweep("points-expiry", () => runPointsExpiry(JOBS_SCOPE)),
   },
 };

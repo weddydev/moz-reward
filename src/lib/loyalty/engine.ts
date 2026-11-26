@@ -13,7 +13,13 @@
  * The arithmetic is integer only (BigInt for the multiplier product), so nothing is lost to floating point.
  */
 import { type Pence, type Points, points } from "@/lib/brand";
-import { addDays, addLondonDays, addLondonMonths, londonWeekStart } from "@/lib/time";
+import {
+  addDays,
+  addLondonDays,
+  addLondonMonths,
+  londonDayStart,
+  londonWeekStart,
+} from "@/lib/time";
 
 import {
   type MilestonePercent,
@@ -383,3 +389,85 @@ export function computeExpiry(
     })),
   };
 }
+
+export type ExpiryWarningDays = (typeof EXPIRY_WARNING_DAYS)[number];
+
+/** A warning already sent to the member, for the expiry date it announced (the job's own record). */
+export type SentExpiryWarning = { expiresAt: Date; daysBefore: ExpiryWarningDays; sentAt: Date };
+
+export type ExpiryStep =
+  | { kind: "off" }
+  | { kind: "nothing" }
+  /** Nothing to do today; `expiresAt` is the earliest the gold can expire (the notice floor included). */
+  | { kind: "wait"; expiresAt: Date; gold: Points }
+  /** Send this warning now (once): it announces `expiresAt`, recorded against `nominalExpiresAt`. */
+  | {
+      kind: "warn";
+      daysBefore: ExpiryWarningDays;
+      nominalExpiresAt: Date;
+      expiresAt: Date;
+      gold: Points;
+    }
+  /** Write an `expiry` ledger row for `gold` (idempotency key from `nominalExpiresAt`) and store `state`. */
+  | { kind: "due"; nominalExpiresAt: Date; gold: Points; state: MemberState };
+
+const later = (a: Date, b: Date): Date => (a.getTime() >= b.getTime() ? a : b);
+
+/**
+ * What the daily expiry job (P1-13) does for one member today. On top of `computeExpiry`, the member always
+ * gets both warnings with their full notice (DECISIONS 26 Nov, "notice floor"): gold never expires earlier than
+ * 30 London days after the 30-day warning was actually sent, nor 7 days after the 7-day one, and the warnings go
+ * out one per run, 30-day first. So a shop switching expiry on for long-lapsed members, or a job that missed
+ * days, moves the expiry later instead of taking gold without notice.
+ *
+ * Warnings count only for the expiry date they announced (`nominalExpiresAt`): an approved visit moves the date,
+ * so the clock and the warnings start afresh and no expiry follows the old ones. A shop that turns expiry off
+ * gets `off` whatever was sent.
+ */
+export function planExpiry(
+  state: MemberState,
+  versions: readonly ProgrammeVersion[],
+  lastApprovedVisitAt: Date | null,
+  now: Date,
+  sent: readonly SentExpiryWarning[],
+): ExpiryStep {
+  const expiry = computeExpiry(state, versions, lastApprovedVisitAt, now);
+  if (expiry.kind === "off" || expiry.kind === "nothing") return expiry;
+  const nominal = expiry.expiresAt;
+  const gold = expiry.gold;
+  const sentAt = (days: ExpiryWarningDays): Date | undefined =>
+    sent.find((w) => w.daysBefore === days && w.expiresAt.getTime() === nominal.getTime())?.sentAt;
+  const reached = (at: Date): boolean => now.getTime() >= at.getTime();
+
+  const sent30 = sentAt(30);
+  if (!sent30) {
+    if (!reached(addLondonDays(nominal, -30))) return { kind: "wait", expiresAt: nominal, gold };
+    const expiresAt = later(nominal, addLondonDays(now, 30));
+    return { kind: "warn", daysBefore: 30, nominalExpiresAt: nominal, expiresAt, gold };
+  }
+  const after30 = later(nominal, addLondonDays(sent30, 30));
+  const sent7 = sentAt(7);
+  if (!sent7) {
+    if (!reached(addLondonDays(after30, -7))) return { kind: "wait", expiresAt: after30, gold };
+    const expiresAt = later(after30, addLondonDays(now, 7));
+    return { kind: "warn", daysBefore: 7, nominalExpiresAt: nominal, expiresAt, gold };
+  }
+  const expiresAt = later(after30, addLondonDays(sent7, 7));
+  if (!reached(expiresAt)) return { kind: "wait", expiresAt, gold };
+  return {
+    kind: "due",
+    nominalExpiresAt: nominal,
+    gold,
+    state: { ...state, progress: points(0) },
+  };
+}
+
+/**
+ * Leaving freezes progress (PRODUCT §4): a rejoin up to and including London day 30 after the leave day (day 0)
+ * restores it; from 00:00 UK time on day 31 it is forfeit. The database's `left_forfeit_at()` (migration 0031)
+ * is the authority the job and the rejoin use; this mirror is for the UI and the tests that pin them together.
+ */
+export const LEFT_FORFEIT_DAY = 31;
+
+export const leftForfeitAt = (leftAt: Date): Date =>
+  addLondonDays(londonDayStart(leftAt), LEFT_FORFEIT_DAY);

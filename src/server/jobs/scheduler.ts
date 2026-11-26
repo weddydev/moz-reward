@@ -69,6 +69,14 @@ export const SCHEDULES: readonly ScheduleDef[] = [
     pattern: "*/5 * * * *",
     data: {},
   }),
+  // P1-13 (PRODUCT §6): daily at 03:00 UK time (a quiet hour; across the clock change too, Europe/London).
+  defineSchedule({
+    id: "points-expiry",
+    queue: "scheduled",
+    name: "points-expiry",
+    pattern: "0 3 * * *",
+    data: {},
+  }),
 ];
 
 /** The schedule's data in the versioned envelope (re-sealed on every start, so a version bump applies). */

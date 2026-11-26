@@ -25,6 +25,8 @@ export const ALERT_KINDS = [
   "notifications.undelivered",
   /** P1-10: fewer than 2 months of notifications partitions exist ahead (ARCHITECTURE §4). */
   "health.partitions",
+  /** P1-13: a scheduled sweep (points expiry, request expiry/reminder) is late or ran too long (sweeps.ts). */
+  "health.sweep",
   /** Sent once a day at most: the daily alert ceiling was reached; later alerts are in the log only. */
   "alert.ceiling",
 ] as const;

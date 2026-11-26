@@ -94,7 +94,8 @@ export function redisPairProblem(queue: RedisFacts, cache: RedisFacts): string |
 
 /**
  * The data roles of drizzle/0009–0010 and 0027. A login is a member of exactly one of the first three, never of
- * the NOLOGIN owners moz_rls (definer helpers) or moz_partitions (notifications partitions, P1-10).
+ * the NOLOGIN owners moz_rls (definer helpers), moz_partitions (notifications partitions, P1-10) or
+ * moz_forfeit (the rejoin forfeit, P1-13).
  */
 export const DATA_ROLES = [
   "moz_app",
@@ -102,13 +103,14 @@ export const DATA_ROLES = [
   "moz_worker",
   "moz_rls",
   "moz_partitions",
+  "moz_forfeit",
 ] as const;
 export type DataRole = (typeof DATA_ROLES)[number];
 
 /** Each pool a process opens, the variable it comes from, its role, and whether that role must bypass RLS. */
 export function bootPools(kind: DbProcess): {
   env: "DATABASE_URL" | "DATABASE_URL_AUTH" | "DATABASE_URL_WORKER";
-  role: Exclude<DataRole, "moz_rls" | "moz_partitions">;
+  role: Exclude<DataRole, "moz_rls" | "moz_partitions" | "moz_forfeit">;
   bypassRls: boolean;
 }[] {
   if (kind === "test") return bootPools("web").concat(bootPools("worker").slice(1));
@@ -136,7 +138,10 @@ export type RoleFacts = {
   replication: boolean;
   /** DANGEROUS_BUILTIN_ROLES this login is a member of. */
   builtinMemberOf: string[];
-  /** moz_rls / moz_partitions own the SECURITY DEFINER functions (0010, 0027) and must stay NOLOGIN (C-32). */
+  /**
+   * moz_rls / moz_partitions / moz_forfeit own the SECURITY DEFINER functions (0010, 0027, 0031) and must stay
+   * NOLOGIN (C-32).
+   */
   rlsHelperCanLogin: boolean;
 };
 
@@ -175,7 +180,7 @@ export async function databaseRoleFacts(sql: postgres.Sql): Promise<RoleFacts | 
                    AND pg_has_role(current_user, b.oid, 'MEMBER')
                  ORDER BY b.rolname) AS "builtinMemberOf",
            EXISTS (SELECT 1 FROM pg_roles h
-                   WHERE h.rolname IN ('moz_rls', 'moz_partitions') AND h.rolcanlogin)
+                   WHERE h.rolname IN ('moz_rls', 'moz_partitions', 'moz_forfeit') AND h.rolcanlogin)
              AS "rlsHelperCanLogin"
     FROM pg_roles r WHERE r.rolname = current_user`;
   return row ?? null;
@@ -216,7 +221,7 @@ export function databaseRoleProblem(
     row.replication ? "can replicate" : null,
     ...row.builtinMemberOf.map((b) => `is a member of ${b}`),
     row.rlsHelperCanLogin
-      ? "is in a cluster where moz_rls or moz_partitions can log in (must be NOLOGIN, C-32)"
+      ? "is in a cluster where moz_rls, moz_partitions or moz_forfeit can log in (must be NOLOGIN, C-32)"
       : null,
   ].filter((r): r is string => r !== null);
   return reasons.length > 0 ? `the role ${row.name} ${reasons.join(", ")}` : null;

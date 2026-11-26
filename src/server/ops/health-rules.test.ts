@@ -40,6 +40,11 @@ function healthy(): HealthSnapshot {
     email: { sentToday: 10, cap: 400 },
     sentry: { sentThisMonth: 100, quota: 5000 },
     sse: { connections: null },
+    sweeps: [
+      { name: "points-expiry", lastRunAt: ago(5 * 3600), lastRunMs: 1_200 },
+      { name: "requests-expire", lastRunAt: ago(120), lastRunMs: 40 },
+      { name: "requests-remind", lastRunAt: ago(120), lastRunMs: 30 },
+    ],
   };
 }
 
@@ -373,5 +378,61 @@ describe("[P1-10] notifications partitions ahead", () => {
   it("reads a snapshot stored before P1-10 (no partitions field)", () => {
     const { partitions: _drop, ...old } = healthy();
     expect(healthSnapshotSchema.parse(old).partitions).toEqual({ notificationsMonthsAhead: null });
+  });
+});
+
+describe("[P1-13] sweep runtime alarms (ARCHITECTURE §4: late or slow scheduled sweeps)", () => {
+  const withSweep = (
+    sweep: { name: string; lastRunAt: string | null; lastRunMs: number | null },
+    uptimeSec = 3600,
+  ): HealthSnapshot => {
+    const s = healthy();
+    s.scheduler = { ...s.scheduler, uptimeSec };
+    s.sweeps = s.sweeps.map((w) => (w.name === sweep.name ? sweep : w));
+    return s;
+  };
+  const sweepAlert = (s: HealthSnapshot) =>
+    evaluateHealth(s, NOW).find((a) => a.kind === "health.sweep")?.detail;
+
+  it("a daily sweep 26 h old is fine; past 26 h (interval + 2 h grace) it is late", () => {
+    const day = 86_400;
+    expect(
+      sweepAlert(withSweep({ name: "points-expiry", lastRunAt: ago(day + 7200), lastRunMs: 900 })),
+    ).toBeUndefined();
+    expect(
+      sweepAlert(withSweep({ name: "points-expiry", lastRunAt: ago(day + 7201), lastRunMs: 900 })),
+    ).toEqual({ late: [{ name: "points-expiry", lastRunAgeSec: day + 7201 }], slow: [] });
+  });
+
+  it("a run over its limit is slow even though it finished (15 min for points expiry)", () => {
+    expect(
+      sweepAlert(withSweep({ name: "points-expiry", lastRunAt: ago(60), lastRunMs: 900_000 })),
+    ).toBeUndefined();
+    expect(
+      sweepAlert(withSweep({ name: "points-expiry", lastRunAt: ago(60), lastRunMs: 900_001 })),
+    ).toEqual({ late: [], slow: [{ name: "points-expiry", lastRunMs: 900_001 }] });
+  });
+
+  it("never run: no alarm while a fresh worker could not have run it yet, then late", () => {
+    const never = { name: "requests-expire", lastRunAt: null, lastRunMs: null };
+    expect(sweepAlert(withSweep(never, 900))).toBeUndefined();
+    expect(sweepAlert(withSweep(never, 901))).toEqual({
+      late: [{ name: "requests-expire", lastRunAgeSec: null }],
+      slow: [],
+    });
+  });
+
+  it("no false alarm while the database can't be read, and unknown names are ignored", () => {
+    const s = withSweep({ name: "points-expiry", lastRunAt: null, lastRunMs: null }, 999_999);
+    s.db = { ok: false, ms: 1500, sizeBytes: null };
+    expect(sweepAlert(s)).toBeUndefined();
+    const t = healthy();
+    t.sweeps.push({ name: "retired-sweep", lastRunAt: null, lastRunMs: 10_000_000 });
+    expect(sweepAlert(t)).toBeUndefined();
+  });
+
+  it("reads a snapshot stored before P1-13 (no sweeps field)", () => {
+    const { sweeps: _drop, ...old } = healthy();
+    expect(healthSnapshotSchema.parse(old).sweeps).toEqual([]);
   });
 });

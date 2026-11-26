@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { SWEEPS, type SweepName } from "./sweeps";
 import type { Alert } from "./alerts";
 
 /**
@@ -72,6 +73,8 @@ export type HealthSnapshot = {
   sse: { connections: number | null };
   /** P1-10: whole months after the current one with a notifications partition (null = unknown). */
   partitions: { notificationsMonthsAhead: number | null };
+  /** P1-13 runtime alarms: each scheduled sweep's last successful run and how long it took (sweeps.ts). */
+  sweeps: Array<{ name: string; lastRunAt: string | null; lastRunMs: number | null }>;
 };
 
 const n = z.number();
@@ -123,6 +126,8 @@ export const healthSnapshotSchema: z.ZodType<HealthSnapshot> = z.object({
   partitions: z
     .object({ notificationsMonthsAhead: nn })
     .default({ notificationsMonthsAhead: null }),
+  // Added in P1-13: snapshots stored before then have no such field.
+  sweeps: z.array(z.object({ name: z.string(), lastRunAt: iso, lastRunMs: nn })).default([]),
 });
 
 export const THRESHOLDS = {
@@ -207,6 +212,23 @@ export function evaluateHealth(s: HealthSnapshot, now: Date): Alert[] {
   if (ahead !== null && ahead < THRESHOLDS.partitionMonthsAhead) {
     ops("health.partitions", { table: "notifications", monthsAhead: ahead });
   }
+
+  const late: Array<{ name: string; lastRunAgeSec: number | null }> = [];
+  const slow: Array<{ name: string; lastRunMs: number }> = [];
+  for (const sweep of s.sweeps) {
+    if (!Object.hasOwn(SWEEPS, sweep.name)) continue;
+    const def = SWEEPS[sweep.name as SweepName];
+    const limit = def.everySec + def.graceSec;
+    const age = ageSec(sweep.lastRunAt, now);
+    // Never run: only once this worker has been up long enough to have run it (a fresh environment).
+    if (s.db.ok && (age === null ? s.scheduler.uptimeSec > limit : age > limit)) {
+      late.push({ name: sweep.name, lastRunAgeSec: age });
+    }
+    if (sweep.lastRunMs !== null && sweep.lastRunMs > def.maxRunSec * 1000) {
+      slow.push({ name: sweep.name, lastRunMs: sweep.lastRunMs });
+    }
+  }
+  if (late.length > 0 || slow.length > 0) ops("health.sweep", { late, slow });
 
   if ((s.failedJobs.recent ?? 0) > 0) {
     ops("health.failed_jobs", { recent: s.failedJobs.recent, unresolved: s.failedJobs.unresolved });
