@@ -7,15 +7,15 @@ Baton: held by talha.syed since 2026-11-26 05:27 IST (25 Nov 23:57 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-12 closed 26 Nov by talha.syed (Mac)**, on main. Autopilot OFF. No wip branch open (`wip/P1-12` and `wip/dbg-P1-12-f` are merged/superseded: add them to H-38's delete list).
-- **Next: P1-13 · Points expiry job** (docs/phases/P1.md; incoming CARRIED C-73). Then P1-C close (`/subphase-complete`): C-92, C-93, C-94, C-95, C-100 and the FOLLOWUPS P1-C flake lines.
-- **Not yet tested:** receipt PDFs and their download on staging (needs H-08b private bucket, C-100); P1-11/P1-12 on staging (deploy at the P1-C close); C-95.
+- **P1-13 closed 26 Nov by talha.syed (Mac)**, on main (`3b3c854`, CI 45733852636 green on re-run: the first perf red was KI-48's gate long task, runner noise; P1-13 has no client code on that page). Autopilot OFF.
+- **Now: P1-C close** on stacked branch `wip/P1-C-close` (on `3b3c854`; worktree `../moz-P1-C-close`): C-94 `46d351d` and C-92/C-93 `1b0fec1` built and tested locally (E2E 4 projects, FX parity Chromium + WebKit), **not yet pushed / no CI**. Left: rebase onto main, push, CI; C-95 (SSE on staging), C-100 (needs H-08b), reviews (`/subphase-complete`), FOLLOWUPS P1-C flake lines.
+- **Not yet tested:** receipt PDFs on staging (H-08b, C-100); P1-11..P1-13 on staging (deploy at the P1-C close); C-95; the human's side-by-side check of C-92/C-93/C-94.
 ## Status
 - **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
-- **Current sub-phase:** **P1-C** in progress (P1-10, P1-11, P1-12 done; next P1-13). P1-B closed 25 Nov (reviews, QA, H-49 approved; Sentry held until P2, C-88). PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
+- **Current sub-phase:** **P1-C** in progress (P1-10..P1-13 done; next the P1-C close). P1-B closed 25 Nov (reviews, QA, H-49 approved; Sentry held until P2, C-88). PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-26, talha.syed (P1-12 closed)
+- **Last updated:** 2026-11-26, talha.syed (P1-13 closed)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -24,9 +24,8 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. P1-13 · Points expiry job (C-73).
-2. P1-C close (`/subphase-complete`): C-92/C-93/C-94 (human side-by-side), C-95 + C-100 on staging, FOLLOWUPS flake lines.
-3. Human any time: H-45 (🟠), H-38 (branches, now also `wip/P1-12`, `wip/dbg-P1-12-f`), H-51 (b), H-08b (private bucket for receipt PDFs); H-48b at P2 start.
+1. P1-C close (`/subphase-complete`): C-92/C-93/C-94 (human side-by-side), C-95 + C-100 on staging, FOLLOWUPS flake lines.
+2. Human any time: H-45 (🟠), H-38 (branches, now also `wip/P1-12`, `wip/dbg-P1-12-f`), H-51 (b), H-08b (private bucket for receipt PDFs); H-48b at P2 start.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026, human-approved, to keep this file light): read it at every phase close and when a P2–P5 task starts, and move a phase's rows back here when that phase starts. The same rule applies there: a task can't be ticked while a row targets it.
@@ -40,7 +39,6 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 | C-67 | P1-08 | P1-16 | Gold Vault "Rewards ready" lists that shop's unredeemed, unexpired rewards with Redeem | E2E 390 + 1440 |
 | C-65 | P1-07 | P1-16 | Wallet right column: rewards list with Redeem | E2E |
 | C-70 | P1-09 | P1-16 | Leaving voids live redeem codes in `leaveShop`'s transaction (staff confirm then fails); unredeemed rewards stay with their own validity and reappear on rejoin | integration |
-| C-73 | P1-09 | P1-13 | A rejoin after the 30-day window gets no frozen progress back even if the forfeit job hasn't run yet (forfeit at rejoin, or the join refuses to restore) | integration |
 | C-79 | PD-07 CI (perf 45153452036, main 45153456299) | P1-18 (moved from PD-11, human 25 Nov) | pixel7 `@fps` FX stress (≥ 58 fps, p95 ≤ 16.8 ms at 4× CPU) un-quarantined: cause found (runner variance vs. a dock/FX frame cost), fixed if real; TEMPORARY T-7 closed | nightly perf run green on pixel7 + SESSION_LOG |
 | C-81 | PD-10 design review M3 | P1-16 | `RedeemCode` gets `receivedAt` = the phone's `Date.now()` when the redeem response arrives (not at mount), with `serverNow`/`expiresAt` from that response | E2E: a code shown after a delay counts from the response |
 | C-83 | PD-11 CI 45548579038 | P1-18 | Linux-WebKit-only failures quarantined on CI WebKit (T-9): `molten-controls` /dev/ui 320 overflow 44 px, `shop-page` leave on day 1 (iphone14): root-caused, fixed, fixmes removed. Also from PD-11 E: gate "convergence at 4× full p95 ≤ 20" (fails on main's nightly 45397054403 too); Wallet→shop commit long task (FOLLOWUPS 79) | CI WebKit green with the tests active + nightly perf |
@@ -64,6 +62,7 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (26 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
+- P1-13 closed: gate:task PASS (unit 2254/0, int 1724/0/1, sast; no E2E: no UI); points-expiry int 20/0 (injected clock, month end, BST, C-73 rejoin, 0031 walls); dry run on seed data (SESSION_LOG). CI 45733852636 green (re-run).
 - P1-12 closed: gate:task PASS on rebased `wip/P1-12` (unit 2235/0, int 1704/0/1, sast, e2e P1-12 Linux Chromium 18/0); E2E requests.spec + shop-page 55/55 on 5 projects (production build); screenshots 320/390/1440 inspected; security-reviewer final diff OK (2 LOW: FOLLOWUPS + C-104). CI 45728932726 green.
 - `e21ed4c` CI 45725890665 green (WebKit receipts fix, KI-10 resize note).
 - Main `da8a321` (gate inline script 68 ms): CI 45674369167 green (all jobs).

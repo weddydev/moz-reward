@@ -1104,3 +1104,9 @@ Commits: e21ed4c, 59dde82 (step f), 4fc879d (rebased HEAD) → main.
 Tests: view unit 10/0; member-cards int 7/0; E2E requests+shop-page 55/55 on 5 projects; gate:task PASS (unit 2235/0, int 1704/0/1, e2e 18/0); security-reviewer OK (2 LOW). CI 45728932726 green.
 Left off: P1-13 next; C-100 (staging PDFs after H-08b) at the P1-C close.
 
+
+## 2026-11-26 — P1 — P1-13 closed (points expiry job), talha.syed (Mac)
+Done: engine `planExpiry` (notice floor) + `leftForfeitAt`; daily `scheduled:points-expiry` 03:00; migration 0031 (warnings table, `left_forfeit_at`/`apply_left_forfeit`, definer `forfeit_own_left_progress` as NOLOGIN `moz_forfeit`, C-73 at rejoin); sweep runtime alarms (`health.sweep`); DECISIONS, KI-65/66, RUNBOOK row.
+Commits: 3b3c854 → main. Tests: unit engine 64/0, health-rules sweeps 5/0; int points-expiry 20/0; gate:task PASS (unit 2254/0, int 1724/0/1). CI 45733852636: perf confirm-flakes red on [PD-09] gate long task 79–85 ms (KI-48, not P1-13), green on re-run.
+Dry run on local seed (Pedal & Co., 12 months, 1,400 gold, last visit 17 Nov 2026): today nothing; 20 Oct 2027 30-day warning; 13 Nov 2027 7-day warning; 30 Nov 2027 expired 1,400; same-day re-run 0 (6–75 ms each).
+Left off: P1-C close on `wip/P1-C-close` (C-94 46d351d, C-92/C-93 1b0fec1, local only).
