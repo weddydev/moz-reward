@@ -1126,3 +1126,10 @@ Commits: 2558db4, 6c56df8, 50e4e06, 4a1a912, 31eb8dd, 7ae59ba → main `c12dfc8`
 Tests: gate:task PASS (unit 2261/0, int 1728/0/1); E2E M2/M3 3+3 Chromium; CI green on 4a1a912 (wip + main) and 7ae59ba; spec-repeats 45790734257, 45795556310, 45801054414.
 C-95 on staging (release 4a1a912, demo staff session, through Cloudflare + Caddy): /api/sse/me 200 at 156 ms, event ready in the first chunk at 157 ms, ': hb' at 25.2 s, cf-cache-status DYNAMIC, no content-encoding; signed out after
 Left off: P1-14 next; H-54 (human side-by-side C-92/93/94) by the P1-D close.
+
+## 2026-11-26 — P1 — P1-14 checkpoint (session limit), talha.syed (Mac)
+Done: member QR token (AES-CTR encrypt-then-MAC), issue route, staff verify (migration 0032), Molten card with live QR on Me + shop page, service worker + offline shell + manifest/icons; security design check (H1/H2/M3-M6 applied) + final review OK (M1 fixed).
+Commits: 200e168, 71c761f on `wip/P1-14`.
+Tests: gate:task PASS (unit 2281/0, int 1761/0/1, e2e P1-14 24/0); member-card.spec on 4 projects green; affected specs 118/0.
+Left off: CI on 71c761f, then ff main + closing progress commit (Handoff note).
+

@@ -7,16 +7,17 @@ Baton: held by talha.syed since 2026-11-26 05:27 IST (25 Nov 23:57 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-C closed (26 Nov, talha.syed, Mac).** Main `c12dfc8` (CI 45805824302 green on the branch, perf job on re-run; main's own CI was running at the close, then it auto-deploys staging). Staging runs `4a1a912` until then (the difference is tests only). Autopilot OFF. No open wip branch; the worktree `../moz-P1-C-close` can be removed.
-- **Next: P1-14** (Member QR and offline member card; security-relevant: `security-reviewer` design check first). Start from main on `wip/P1-14`. It is the first task of P1-D (not a phase start: no brief review).
-- **Carried to the P1-D close:** the human's side-by-side of C-92/C-93/C-94 (H-54; parity + E2E already green).
-- **Not yet tested:** P1-11..P1-13 flows by hand on staging (CI + local E2E only); H-54 (human).
+- **P1-14 built, not yet on main (26 Nov, talha.syed, Mac; checkpoint: session limit).** Branch `wip/P1-14`, HEAD `71c761f` (on top of main `9784a5b`, no rebase needed). gate:task PASS on `71c761f`. Security design check + final-diff review done (verdict OK; review M1 fixed in `71c761f`; LOW sw.js ref fixed). Demo guide "P1-D steps" already updated (P1-14 = Built).
+- **Next step:** check CI on `71c761f` (`gh run list --branch wip/P1-14`; it started at the checkpoint). Green → `git switch main && git merge --ff-only wip/P1-14 && git push origin main`, then the closing progress commit on main (PHASES tick P1-14, PROGRESS Now/Next/Last verified, SESSION_LOG ≤ 5 lines: evidence below), sound, then P1-15. Red → fix on `wip/P1-14` first.
+- **Untested:** CI on `71c761f` (running). CI on `200e168` (45820198352): only the int job failed (rls pinned definer list, fixed in `71c761f`); its E2E shards were still running when cancelled by the push.
+- **Evidence for the close:** gate:task PASS (unit 2281/0, int 1761/0/1, sast, e2e P1-14 Linux Chromium 24/0); member-card.spec 8 tests green on chromium, webkit, iphone14, pixel7 (production build); affected specs (join, shop-page, portal-pages, routes-axe, wallet, security-headers) 118/0 Chromium + WebKit; authz member-qr 33/0; screenshots 320/390/1440 + offline 390 inspected (Chromium, WebKit, iPhone); installability errors [] (Chromium CDP).
+- **Carried to the P1-D close:** the human's side-by-side of C-92/C-93/C-94 (H-54).
 ## Status
 - **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **P1-D** next (P1-14 first). **P1-C closed 26 Nov** (P1-10..P1-13, P1-19 + the close: reviews, QA, code-review M2/M3, C-92..C-95). P1-B closed 25 Nov. PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-26, talha.syed (P1-C closed)
+- **Last updated:** 2026-11-26, talha.syed (P1-14 checkpoint: built on `wip/P1-14` `71c761f`, CI running)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
