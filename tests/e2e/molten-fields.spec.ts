@@ -1001,11 +1001,15 @@ test("[PD-06] member card: a mouse tilts it and lights the glare; leaving fast s
   await page.mouse.move(box.x + box.width + 300, box.y - 200);
   await expect(card).not.toHaveClass(/\blive\b/);
   expect(await asked()).toEqual({ rx: 0, ry: 0 });
-  const back = await transforms();
-  expect(
-    back.some((a) => a.timing.duration === 700 && /^(linear|cubic-bezier)\(/.test(a.timing.easing)),
-    `the 0.7 s spring back started:\n${describeAnimations(back)}`,
-  ).toBe(true);
+  // Started (every engine), polled: a CSS transition exists only after the next style recalc, which a
+  // frame-starved Linux WebKit can run late (KI-10; read once, it was missed on CI 45794253914).
+  const springBack = (a: StartedAnimation): boolean =>
+    a.timing.duration === 700 && /^(linear|cubic-bezier)\(/.test(a.timing.easing);
+  await expect
+    .poll(async () => (await transforms()).some(springBack), {
+      message: "the 0.7 s spring back started",
+    })
+    .toBe(true);
   // Ended upright (the end state, polled on every engine: a frame-starved Linux WebKit reports the spring done
   // while the drawn angle is the last frame's, KI-10).
   await expect
