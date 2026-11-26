@@ -29,7 +29,8 @@ const DENIED = "42501";
 /** Every shops column, by who may write it. A new column fails this test until it is classified here (and, if
  *  the shop owner may change it, added to `owner_writable` in the trigger). */
 const CLASSIFIED = {
-  adminOnly: ["id", "slug", "shop_code", "status", "created_at"],
+  // closed_at (P1-16): stamped by the shops_closed_at trigger from status; a value the web role sends is replaced.
+  adminOnly: ["id", "slug", "shop_code", "status", "created_at", "closed_at"],
   ownerWritable: [
     "name",
     "trading_name",
