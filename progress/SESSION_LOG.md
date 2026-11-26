@@ -1114,3 +1114,8 @@ Left off: P1-C close on `wip/P1-C-close` (C-94 46d351d, C-92/C-93 1b0fec1, local
 ## 2026-11-26 — P1 — P1-C close in progress; stop (usage limit, human)
 Done: C-94, C-92/C-93 on `wip/P1-C-close` `c36deb5` (pushed; CI 45737171703 running). Not done: reviews/QA (re-run), 3 flake fixes (causes in PROGRESS handoff), C-95/C-100 retarget, close commit.
 Security review (P1-11, P1-13, C-92 hook): OK WITH CHANGES, no BLOCK/HIGH. MEDIUM 1: offline request queue (request-queue.ts) not tied to the user: tag entries with userId, send only matching, clear on sign-out (+tests). MEDIUM 2: sweeps write as moz_worker with no audit row: `auditAs` in `timedSweep` when a run changed rows (SECURITY §3). LOW → FOLLOWUPS: bound `clientRequestedAt` (now−25 h..now+5 min); COMPLIANCE §2.6 retention for `cancelled` + `points_expiry_warnings`; 0031 header comment (moz_app has admin-only SELECT) + checks.sql no-EXECUTE on `apply_left_forfeit`.
+
+## 2026-11-26 — P1 — P1-C close checkpoint 2, talha.syed (Mac)
+Done: CI 45737171703 red root-caused (Scan radar/halo hit-tested over Offers/Market, real tap bug, KI-67) + 3 flakes fixed (Linux WebKit 3/3 each); security M1/M2 fixed + re-check CLOSED; design + code reviews run, fixes in `470b216`; C-100 → P1-18; Claude does C-95 (no H-52); T-11/H-53.
+Commits: 179431d, 1f68b88, 470b216 (wip/P1-C-close). Tests: unit 2258/0; int rls P0-20 30/0, approvals+authz 77/0; E2E full 5-project on 179431d 1591/14 (10 = leftover QA worker KI-68, 4 = load; all pass alone 164/0 + requests 6/6); touched specs 142/1 (J2 Redis timeout, 6/6 on re-run).
+Left off: CI on 470b216, code-review M2/M3, P1-12 screenshots, QA, side-by-side, merge, staging (Handoff note).

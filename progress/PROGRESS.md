@@ -7,15 +7,16 @@ Baton: held by talha.syed since 2026-11-26 05:27 IST (25 Nov 23:57 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-13 closed 26 Nov by talha.syed (Mac)**, on main (`3b3c854`, CI 45733852636 green on re-run: the first perf red was KI-48's gate long task, runner noise; P1-13 has no client code on that page). Autopilot OFF.
-- **Now: P1-C close** on `wip/P1-C-close` (pushed, HEAD `c36deb5`, on main `f568546`; worktree `../moz-P1-C-close`): C-94 `a8f45aa`, C-92/C-93 `c36deb5` (E2E 4 projects + FX parity Chromium/WebKit green locally; CI 45737171703 running at stop). Reviews (code, security, design) + scoped QA were launched in the background at stop: results lost with the session, **re-run them**. Flakes (FOLLOWUPS 102/103/108) root-caused, NOT fixed yet: portal-pages = KI-10 load stall (heading wait 15 s + test 60 s); shop-page iphone14 = guard axe settle cap 3 s < Linux WebKit 6 s stall (raise cap); wipe "slow way back" = stage close needs frames on Linux WebKit (make it frame-independent). C-95 needs a human browser check (site gate + demo inbox): add H-52, retarget C-95 and C-100 (H-08b) to P1-18 with a DECISIONS line.
-- **Not yet tested:** receipt PDFs on staging (H-08b, C-100); P1-11..P1-13 on staging (deploy at the P1-C close); C-95; the human's side-by-side check of C-92/C-93/C-94.
+- **P1-C close in progress (26 Nov, talha.syed, Mac)** on `wip/P1-C-close` (pushed, HEAD `470b216`, on main `3ad7427`; worktree `../moz-P1-C-close`). Autopilot OFF. Commits: C-94 `c2c4af4`, C-92/C-93 `ab00bb4`, fixes `179431d` (Scan coin stole taps from Offers/Market, KI-67; 3 flakes fixed; security M1 queue per user, M2 sweep audit), docs `1f68b88`, review batch `470b216`.
+- **CI:** 45776909717 (`179431d`) red on WebKit: overlays toast axe + ui-gallery C-93 = the /dev/ui expiring-code toast (fixed in `470b216`), molten-fields = confirmed flake (FOLLOWUPS). **CI on `470b216` running at stop: read it first**; red → fix at the cause (spec-repeat on CI, not the Mac container: it timed out everything under load).
+- **Reviews done:** security re-check M1/M2 CLOSED; design PASS WITH FIXES (M1 entrance + roll-end swap, M2 DECISIONS, M3 = P1-12 screenshots still to capture+inspect); code APPROVE WITH FIXES (M1 reversal note fixed: reason only). **Left (MEDIUM, fix before close):** code M2 customer sees reversal shortfall (Vault/shop page + E2E), code M3 owner badge/count for `awaiting_owner` on the Requests nav (live + E2E). Then scoped QA (qa-engineer: shop page, Requests, /dev/ui; it must stop any worker/server it starts, KI-68), human side-by-side of C-92/C-93/C-94, rebase, merge to main, staging deploy + smoke + C-95 (Claude: SSE trace through the site gate, password from the human, never stored, T-11), close commit (PHASES tick, SESSION_LOG, CARRIED).
+- **Not yet tested:** CI on `470b216`; C-95 on staging; P1-11..P1-13 on staging; the human's side-by-side.
 ## Status
 - **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
 - **Current sub-phase:** **P1-C** in progress (P1-10..P1-13 done; next the P1-C close). P1-B closed 25 Nov (reviews, QA, H-49 approved; Sentry held until P2, C-88). PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-26, talha.syed (P1-13 closed)
+- **Last updated:** 2026-11-26, talha.syed (P1-C close checkpoint)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -24,8 +25,8 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. P1-C close (`/subphase-complete`): C-92/C-93/C-94 (human side-by-side), C-95 + C-100 on staging, FOLLOWUPS flake lines.
-2. Human any time: H-45 (🟠), H-38 (branches, now also `wip/P1-12`, `wip/dbg-P1-12-f`), H-51 (b), H-08b (private bucket for receipt PDFs); H-48b at P2 start.
+1. P1-C close: CI on `470b216`, code-review M2/M3, P1-12 screenshots, QA, human side-by-side C-92/93/94, merge, staging + C-95 (Handoff note).
+2. Human any time: H-45 (🟠), H-53 (🟢 rotate staging password before launch), H-38 (branches, now also `wip/P1-12`, `wip/dbg-P1-12-f`), H-51 (b), H-08b (private bucket for receipt PDFs); H-48b at P2 start.
 
 ## CARRIED (a task can't be ticked while a row targets it)
 Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026, human-approved, to keep this file light): read it at every phase close and when a P2–P5 task starts, and move a phase's rows back here when that phase starts. The same rule applies there: a task can't be ticked while a row targets it.
@@ -45,7 +46,7 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 | C-86 | P1-B close C-84 reward trace | P1-15 | The reward moment's first play has one long task of 182–288 ms at 4× CPU (repeat plays none): root-caused, fixed, `vault.spec` "[PD-10] the reward moment … @perf" un-quarantined; T-10 closed | @perf spec active and green + SESSION_LOG |
 | C-91 | P1-10 (Lighthouse on main `79b19bc` and `wip/P1-10`, 25 Nov) | P1-18 | Landing `/s/[code]` Lighthouse mobile: LCP 4.21 s (budget 2.50; was 0.80 at P1-02) and JS 163.4 KB gzip (band 140) on main itself, score 82–85: root-caused and back inside budget (FOLLOWUPS 80 trim + the LCP regression) | `pnpm test:lighthouse` landing PASS + SESSION_LOG |
 | C-95 | P1-10 (edge case: proxy buffering) | P1-C close (`/subphase-complete`) | An authenticated `/api/sse/me` stream on staging through Cloudflare + Caddy (`flush_interval -1`) delivers `ready` at once and a heartbeat comment every 25 s (no buffering) | curl/browser trace on staging + SESSION_LOG |
-| C-100 | P1-12 (receipt PDFs, private bucket) | P1-C close (`/subphase-complete`) | After H-08b: a receipt PDF downloads on staging from both routes; an anonymous GET of the private bucket and of the `cdn.` host's `receipts/` path is not 200 | curl on staging + SESSION_LOG |
+| C-100 | P1-12 (receipt PDFs, private bucket) | P1-18 (DECISIONS 26 Nov) | After H-08b: a receipt PDF downloads on staging from both routes; an anonymous GET of the private bucket and of the `cdn.` host's `receipts/` path is not 200 | curl on staging + SESSION_LOG |
 | C-92 | Human, H-49 side-by-side re-check (25 Nov) | P1-C close (`/subphase-complete`) | Button tap: the **coin animation** that plays in the Molten demo (`design/reference/molten/`) doesn't play in the app's Button. Match the demo exactly (same trigger, timing, reduced-motion fallback); add the part to the parity harness so it can't drift again | parity spec (frames) + side-by-side check by the human |
 | C-93 | Human, H-49 side-by-side re-check (25 Nov) | P1-C close (`/subphase-complete`) | Fluid tabs (gold blob gliding left/right): the **spark after the blob settles** shows in some examples but not all. It must appear on every tabs/segmented instance that the demo shows it on (every variant, every direction) | parity spec per variant + side-by-side check by the human |
 | C-94 | Human (25 Nov) | P1-C close (`/subphase-complete`) | `/dev/ui` shows **every component built** (incl. Slider, StarRating, MemberCard and any other Molten part made in PD/P1 that isn't there yet), each in its states, so the human can review them side by side with the demo | E2E: each component visible on /dev/ui + screenshot 320/1440 |
