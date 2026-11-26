@@ -938,7 +938,7 @@ const fx = (() => {
     raf = parts.length ? requestAnimationFrame(tick) : 0;
     if (!raf) ctx.clearRect(0, 0, W, H);
   }
-  return { burst };
+  return (window.__refFx = { burst });
 })();
 
 /* ---------- toasts ---------- */

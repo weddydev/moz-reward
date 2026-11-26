@@ -7,6 +7,7 @@ import {
   parityLimit,
   REFERENCE_FIXES,
   withAppFonts,
+  withFxProbe,
   withReferenceFixes,
 } from "./parity-parts";
 
@@ -32,7 +33,7 @@ describe("[PD-01] parity parts and the reference copy", () => {
   });
 
   it("[PD-01] the committed copy is the original with hooks, app fonts and the listed fixes, nothing else (pnpm parity:reference)", () => {
-    expect(copy).toBe(addParityHooks(withReferenceFixes(withAppFonts(original))));
+    expect(copy).toBe(addParityHooks(withFxProbe(withReferenceFixes(withAppFonts(original)))));
     expect(copy).not.toContain("fonts.googleapis.com");
   });
 

@@ -196,7 +196,7 @@ describe("[PD-05] Liquid choice", () => {
     expect(goo?.querySelectorAll(".m-drop")).toHaveLength(2);
   });
 
-  it("[PD-05] a click chooses; sparks rise over the choice at 520 ms (none when switched off)", () => {
+  it("[PD-05] a click chooses; sparks rise over the choice at 520 ms", () => {
     vi.useFakeTimers();
     const onChange = vi.fn();
     render(<Rewards onChange={onChange} />);
@@ -256,26 +256,6 @@ describe("[PD-05] Liquid choice", () => {
       vi.advanceTimersByTime(LIQUID.sparkAtMs);
     });
     expect(fx.burst).toHaveBeenCalledTimes(1);
-  });
-
-  it("[PD-05] sparks={false}: no sparks", () => {
-    vi.useFakeTimers();
-    render(
-      <LiquidChoice
-        label="Rating"
-        defaultValue="1"
-        sparks={false}
-        options={[
-          { value: "1", label: "1" },
-          { value: "2", label: "2" },
-        ]}
-      />,
-    );
-    fireEvent.click(screen.getByRole("radio", { name: "2" }));
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-    expect(fx.burst).not.toHaveBeenCalled();
   });
 
   it("[PD-05] arrow keys move, select and focus (wrapping, skipping a disabled option)", () => {
@@ -589,7 +569,7 @@ describe("[PD-05] review fixes (design review 22 Nov)", () => {
     expect(screen.getByRole("radio", { name: "B" })).toHaveAttribute("aria-checked", "true");
   });
 
-  it("[PD-05] SegmentedControl is a quiet filter: choosing throws no sparks", () => {
+  it("[PD-05] C-93: SegmentedControl sparks like every liquid choice, at 520 ms, both directions", () => {
     vi.useFakeTimers();
     function Range(): React.JSX.Element {
       const [v, setV] = useState("7");
@@ -608,8 +588,22 @@ describe("[PD-05] review fixes (design review 22 Nov)", () => {
     render(<Range />);
     fireEvent.click(screen.getByRole("radio", { name: "30 days" }));
     act(() => {
-      vi.advanceTimersByTime(LIQUID.sparkAtMs + 50);
+      vi.advanceTimersByTime(LIQUID.sparkAtMs - 1);
     });
     expect(fx.burst).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(fx.burst).toHaveBeenCalledTimes(1);
+    expect(fx.burst).toHaveBeenLastCalledWith(
+      expect.any(Number),
+      expect.any(Number),
+      expect.objectContaining({ type: "spark", count: 10, speed: [80, 220] }),
+    );
+    fireEvent.click(screen.getByRole("radio", { name: "7 days" }));
+    act(() => {
+      vi.advanceTimersByTime(LIQUID.sparkAtMs);
+    });
+    expect(fx.burst).toHaveBeenCalledTimes(2);
   });
 });

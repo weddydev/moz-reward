@@ -405,12 +405,52 @@ export function mountFx(canvas: HTMLCanvasElement): () => void {
  * One burst at viewport point (x, y). A no-op (returns 0) under reduced motion, before the canvas is mounted
  * and on the server. Returns how many particles were added (the cap may cut a burst short).
  */
+/** One burst as asked for, defaults filled in, and the particles it added (0 under reduced motion). */
+export type BurstRecord = {
+  x: number;
+  y: number;
+  type: ParticleType;
+  count: number;
+  speed: Range;
+  angle: number;
+  spread: number;
+  added: number;
+};
+
+/** The last bursts (newest last), for the parity harness and the dev galleries (C-92). Never sent anywhere. */
+const BURST_LOG_MAX = 32;
+let burstLog: BurstRecord[] = [];
+
+function logBurst(x: number, y: number, o: BurstOptions, added: number): void {
+  burstLog.push({
+    x,
+    y,
+    type: o.type ?? "spark",
+    count: o.count ?? FX.defaultCount,
+    speed: o.speed ?? FX.defaultSpeed,
+    angle: o.angle ?? -Math.PI / 2,
+    spread: o.spread ?? TURN,
+    added,
+  });
+  if (burstLog.length > BURST_LOG_MAX) burstLog = burstLog.slice(-BURST_LOG_MAX);
+}
+
+/** The bursts since the last `clearFxBursts()` (at most the last 32). */
+export const fxBursts = (): readonly BurstRecord[] => [...burstLog];
+export const clearFxBursts = (): void => {
+  burstLog = [];
+};
+
 export function burst(x: number, y: number, o: BurstOptions = {}): number {
   const e = engine;
-  if (!e || reduced()) return 0;
+  if (!e || reduced()) {
+    logBurst(x, y, o, 0);
+    return 0;
+  }
   if (!e.sized) size(e);
   e.sprites ??= makeSprites();
   const added = spawn(e.parts, x, y, o, { lite: htmlHas("lite"), rng });
+  logBurst(x, y, o, added);
   start(e);
   return added;
 }

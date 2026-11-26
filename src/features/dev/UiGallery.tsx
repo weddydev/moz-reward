@@ -32,6 +32,7 @@ import { Tile } from "@/components/ui/Tile";
 import { Toaster, toast } from "@/components/ui/Toast";
 import { PreferenceToggles } from "@/features/preferences/PreferenceToggles";
 import { useHydrated } from "@/lib/use-hydrated";
+import { FxBurstLog } from "./FxBurstLog";
 import { MoltenParts } from "./MoltenParts";
 import { OverlayDemos } from "./OverlayDemos";
 import { Demo, Section, State } from "./Section";
@@ -202,9 +203,25 @@ export function UiGallery(): React.JSX.Element {
             {(["molten", "orbit", "ghost", "destructive"] as const).map((variant) => (
               <div key={variant} className="flex flex-col items-start gap-3">
                 <State label={`${variant} · default`}>
-                  <Button variant={variant}>
-                    {variant === "destructive" ? "Delete account" : "Collect points"}
-                  </Button>
+                  {variant === "molten" ? (
+                    // C-92: the reference's collect button: sparks and coins from the press point, the
+                    // label rolls to the result and a toast confirms (design/reference/molten "Buttons").
+                    <Button
+                      variant="molten"
+                      resultLabel="+80 gold added"
+                      celebrate
+                      data-testid="collect-button"
+                      onClick={() => {
+                        toast("80 gold added at Brew & Bloom Café", "success");
+                      }}
+                    >
+                      Collect points
+                    </Button>
+                  ) : (
+                    <Button variant={variant}>
+                      {variant === "destructive" ? "Delete account" : "Collect points"}
+                    </Button>
+                  )}
                 </State>
                 <State label={`${variant} · disabled`}>
                   <Button variant={variant} disabled>
@@ -610,7 +627,6 @@ export function UiGallery(): React.JSX.Element {
             <LiquidChoice
               label="Rating"
               defaultValue="3"
-              sparks={false}
               options={["1", "2", "3", "4", "5"].map((v) => ({ value: v, label: v }))}
             />
             <RadioGroup
@@ -940,6 +956,7 @@ export function UiGallery(): React.JSX.Element {
         </Demo>
       </Section>
       <Toaster />
+      <FxBurstLog />
     </main>
   );
 }

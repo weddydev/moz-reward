@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/Toast";
+import { FxBurstLog } from "../FxBurstLog";
 import { IntroSection } from "./IntroSection";
 import { LabSection } from "./LabSection";
 import { LanguageSection } from "./LanguageSection";
@@ -78,6 +79,7 @@ export function MoltenGallery(): React.JSX.Element {
         })}
       </main>
       <Toaster parity="toast" />
+      <FxBurstLog />
     </div>
   );
 }

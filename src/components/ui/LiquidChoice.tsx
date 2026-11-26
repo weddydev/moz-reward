@@ -34,7 +34,6 @@ export function LiquidChoice<T extends string>({
   defaultValue,
   onChange,
   name,
-  sparks = true,
   disabled: groupDisabled = false,
   labelledBy,
   describedBy,
@@ -54,8 +53,6 @@ export function LiquidChoice<T extends string>({
   defaultValue?: T;
   onChange?: (value: T) => void;
   name?: string;
-  /** Sparks over the new choice (the reference's reward picker); off for quiet filters. */
-  sparks?: boolean;
   className?: string;
   parity?: string;
 }): React.JSX.Element {
@@ -106,7 +103,9 @@ export function LiquidChoice<T extends string>({
     const el = items.current[j];
     if (!el) return;
     if (byKeyboard.current) el.focus();
-    if (!sparks || reducedMotionNow()) return;
+    // Every liquid choice sparks once the gold settles, as the reference's does (C-93: no opt-out, so no
+    // instance can drift from it).
+    if (reducedMotionNow()) return;
     const r = el.getBoundingClientRect();
     const [x, y] = [r.left + r.width / 2, r.top + r.height / 2];
     if (sparkTimer.current !== null) window.clearTimeout(sparkTimer.current);

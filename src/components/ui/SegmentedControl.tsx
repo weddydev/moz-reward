@@ -18,14 +18,6 @@ export function SegmentedControl<T extends string>({
   value: T;
   onChange: (value: T) => void;
 }): React.JSX.Element {
-  // A quiet filter: no sparks (the reference bursts only on its reward picker; design review 22 Nov).
-  return (
-    <LiquidChoice
-      label={label}
-      options={options}
-      value={value}
-      onChange={onChange}
-      sparks={false}
-    />
-  );
+  // The reference's liquid choice, sparks included (C-93, human 25 Nov: every liquid blob sparks as it settles).
+  return <LiquidChoice label={label} options={options} value={value} onChange={onChange} />;
 }

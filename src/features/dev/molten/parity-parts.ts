@@ -337,6 +337,23 @@ export function withReferenceFixes(html: string): string {
   return out;
 }
 
+/**
+ * Harness instrumentation, not a design change (C-92): the reference keeps its particle engine private inside
+ * its script's IIFE, so the copy also hands that same object to `window.__refFx`. The FX parity spec wraps
+ * `__refFx.burst` to record every burst the reference throws (the app records its own, `fxBursts`).
+ */
+export const FX_PROBE = {
+  from: "  return { burst };\n",
+  to: "  return (window.__refFx = { burst });\n",
+};
+
+export function withFxProbe(html: string): string {
+  const hits = html.split(FX_PROBE.from).length - 1;
+  if (hits !== 1)
+    throw new Error(`FX probe matched ${String(hits)} times: the reference's fx engine changed`);
+  return html.replace(FX_PROBE.from, FX_PROBE.to);
+}
+
 /** The reference's Google Fonts links, replaced in the copy by the app's own `@font-face` rules (`fonts.css`). */
 export function withAppFonts(html: string): string {
   const links =
