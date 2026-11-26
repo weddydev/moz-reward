@@ -469,7 +469,7 @@ export type ReverseResult = {
  */
 export async function reverseAward(
   scope: ShopScope,
-  input: { receiptId: string; reason: ReversalReason; note?: string | null | undefined },
+  input: { receiptId: string; reason: ReversalReason },
   tx: Transaction,
 ): Promise<ReverseResult> {
   const now = await transactionNow(scope, tx);
@@ -533,7 +533,6 @@ export async function reverseAward(
       reason: input.reason,
     },
   });
-  const note = input.note?.trim() ? input.note.trim() : null;
   await audit(tx, {
     actor: scope,
     action: "ledger.reverse",
@@ -546,7 +545,6 @@ export async function reverseAward(
       fromProgress: outcome.fromProgress,
       toShortfall: outcome.toShortfall,
       reason: input.reason,
-      ...(note ? { note } : {}),
     },
   });
   return {

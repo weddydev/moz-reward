@@ -16,10 +16,11 @@ export function SignOutButton({ to = "/" }: { to?: string }): React.JSX.Element 
       // For the E2E axe guard, which waits for no [data-hydrating] (see DeviceList).
       data-hydrating={hydrated ? undefined : ""}
       onClick={() => {
-        // Requests queued offline go with the session (security review M1, P1-C close).
-        clearQueue(browserQueueStorage());
-        // A full page load (P0-12): nothing of the signed-in pages stays in the router cache.
-        void authClient.signOut().then(() => {
+        // A full page load (P0-12): nothing of the signed-in pages stays in the router cache. Requests queued
+        // offline go with the session, once it has really ended: a sign-out that failed (offline) keeps them
+        // (security review M1 and its re-check, P1-C close).
+        void authClient.signOut().then((res) => {
+          if (!res.error) clearQueue(browserQueueStorage());
           window.location.assign(to);
         });
       }}

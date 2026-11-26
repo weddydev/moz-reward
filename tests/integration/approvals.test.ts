@@ -609,7 +609,6 @@ describe("[P1-12] reverse", () => {
     const res = await reverse(w.staff, {
       receiptId: award.receiptId,
       reason: "mistake",
-      note: "Wrong till",
     });
     expect(res).toEqual({
       receiptId: award.receiptId,
@@ -644,7 +643,9 @@ describe("[P1-12] reverse", () => {
     });
     const [entry] = await auditOf(award.receiptId);
     expect(entry).toMatchObject({ action: "ledger.reverse" });
-    expect(entry?.meta).toMatchObject({ reason: "mistake", note: "Wrong till", gold: 100 });
+    expect(entry?.meta).toMatchObject({ reason: "mistake", gold: 100 });
+    // Code review M1 (P1-C close): the append-only audit log never holds free text (ENGINEERING §6).
+    expect(entry?.meta).not.toHaveProperty("note");
 
     // The next award pays the shortfall first.
     const r2 = await request(w.member);

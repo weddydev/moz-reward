@@ -15,6 +15,7 @@ import {
   browserQueueStorage,
   dropQueued,
   enqueueRequest,
+  keepOwnQueue,
   QUEUE_EVENT,
   queuedFor,
   readQueue,
@@ -75,11 +76,13 @@ export function RequestPoints({
     };
   }, [shopId, userId]);
 
+  // The swap to the pending card follows the Button's own roll (`onRollEnd`, design review M1, P1-C close); this
+  // timer is only a fallback for a roll that never ran (the button gone before the answer).
   useEffect(() => {
     if (!rolling) return;
     const t = setTimeout(() => {
       setRolling(false);
-    }, BUTTON.labelBackMs);
+    }, BUTTON.labelBackMs + 1000);
     return () => {
       clearTimeout(t);
     };
@@ -135,7 +138,8 @@ export function RequestPoints({
     const text = pendingRequestText(open, shopName);
     return (
       <Card
-        className="flex items-start gap-3 p-5"
+        // A quiet rise where the button was (design review M1): the taller card doesn't just appear.
+        className="stagger-item flex items-start gap-3 p-5"
         role="status"
         data-testid="request-pending"
         data-status={open.status}
@@ -154,7 +158,11 @@ export function RequestPoints({
 
   if (queued) {
     return (
-      <Card className="flex items-start gap-3 p-5" role="status" data-testid="request-queued">
+      <Card
+        className="stagger-item flex items-start gap-3 p-5"
+        role="status"
+        data-testid="request-queued"
+      >
         <Icon icon={WifiOff} className="text-gold-deep mt-1 shrink-0" />
         <p className="text-body text-ink-2">{REQUEST_QUEUED_TEXT}</p>
       </Card>
@@ -167,6 +175,9 @@ export function RequestPoints({
       resultLabel="Request sent"
       celebrate={{ coins: 0 }}
       onClick={send}
+      onRollEnd={() => {
+        setRolling(false);
+      }}
       data-testid="request-points"
     >
       Request points
@@ -194,6 +205,7 @@ export function QueuedRequestSender({ userId }: { userId: string }): null {
         for (const entry of readQueue(storage, userId, new Date())) {
           let outcome: Parameters<typeof afterSend>[0];
           let message: string | null = null;
+          let alreadyOpen = false;
           try {
             const res = await requestPointsAction({
               shopId: entry.shopId,
@@ -202,13 +214,17 @@ export function QueuedRequestSender({ userId }: { userId: string }): null {
             });
             outcome = res.ok ? { ok: true } : { ok: false, code: res.error.code };
             if (!res.ok) message = res.error.message;
+            // Another request was already waiting there: say so, not "sent" (code review LOW 4, P1-C close).
+            else alreadyOpen = res.data.outcome === "open";
           } catch {
             outcome = { thrown: true };
           }
           if (afterSend(outcome) === "keep") continue;
           dropQueued(storage, userId, entry.key, new Date());
           changed = true;
-          toast(message ?? "Your saved request was sent.", message ? "error" : "success");
+          if (message) toast(message, "error");
+          else if (alreadyOpen) toast(REQUEST_OPEN_TOAST);
+          else toast("Your saved request was sent.", "success");
         }
         if (changed) {
           window.dispatchEvent(new Event(QUEUE_EVENT));
@@ -221,6 +237,8 @@ export function QueuedRequestSender({ userId }: { userId: string }): null {
     const onOnline = (): void => {
       void flush();
     };
+    // Another account's leftovers and stale taps go before anything is sent (security review re-check, P1-C close).
+    keepOwnQueue(browserQueueStorage(), userId, new Date());
     void flush();
     window.addEventListener("online", onOnline);
     return () => {

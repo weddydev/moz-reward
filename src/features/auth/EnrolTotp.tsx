@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { useId, useState } from "react";
 import { TextField } from "@/components/ui/TextField";
 import { PORTAL_HOME } from "@/features/portal/routes";
+import { browserQueueStorage, clearQueue } from "@/features/shop/request-queue";
 import { authClient } from "@/lib/auth-client";
 import { safeReturnTo } from "@/lib/return-to";
 import { formString, formValue, useHydrated } from "@/lib/use-hydrated";
@@ -77,8 +78,9 @@ export function EnrolTotp(): React.JSX.Element {
       setError("That code didn't work. Check the time on your phone and try again.");
       return;
     }
-    // Start a fresh, MFA-verified session.
-    await authClient.signOut();
+    // Start a fresh, MFA-verified session. A sign-out clears this phone's offline-queued requests (P1-C close).
+    const out = await authClient.signOut();
+    if (!out.error) clearQueue(browserQueueStorage());
     router.push(`/staff/sign-in?enrolled=1&returnTo=${encodeURIComponent(returnTo)}`);
   }
 

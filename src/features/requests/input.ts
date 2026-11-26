@@ -33,7 +33,7 @@ export const reverseInput = z
   .object({
     shopId: uuid,
     receiptId: uuid,
+    // A reason only (PRODUCT §5): free text would land in the append-only audit log (code review M1, P1-C close).
     reason: z.enum(REVERSAL_REASONS),
-    note: note.optional(),
   })
   .strict();

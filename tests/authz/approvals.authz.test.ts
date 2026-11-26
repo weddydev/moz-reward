@@ -103,6 +103,8 @@ it("[P1-12] decisions take no gold, member, status or approver from the input", 
   for (const input of [
     { ...base, reason: "rude" },
     { ...base, reason: "other", note: "x".repeat(201) },
+    // Code review M1 (P1-C close): a reversal takes a reason only; free text would land in the audit log.
+    { shopId: w.shopA.id, receiptId: newId(), reason: "other", note: "refund for a customer" },
     { shopId: w.shopA.id, receiptId: newId(), reason: "other", points: -10 },
   ]) {
     const res: { ok: boolean } = await runAsPrincipal(

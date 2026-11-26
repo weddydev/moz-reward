@@ -33,24 +33,13 @@ _Cross-checked by Claude on 23 Nov 2026 (Mac): staging health answers without a 
 | H-51 | 🟢 | **Windows laptop in WSL2: leftovers** (your steps 1–4 done 22 Nov; Claude did the rest: `gh` installed and signed in, node 24 + pnpm, repo in `~/moz-reward`, `.wslconfig` 11 GB / 8 CPUs, Docker integration on, Ubuntu the default distro, Playwright browsers, `setup:env`, services, migrations; DECISIONS 22 Nov; (a) VPS from WSL done 22 Nov). Left, your part only: (b) **optional dev keys**: if the Windows `D:\moz-reward-git\moz-reward\.env.local` holds dev-only provider keys beyond what `pnpm setup:env` generates, copy those lines into `~/moz-reward/.env.local` (Claude never reads env files); (c) **optional tidy (H-34 leftover)**: delete the dead `.env.sentry-build-plugin` and the local branch `local/sentry-wizard` in the old Windows checkout. From now on open this laptop's work in the VS Code **WSL** window. **Ask:** (b) done? | Before the next VPS step (deploys go through CI, so not urgent) | Same results as the Mac and CI | 5 min |
 | H-46 | 🟢 | **Cloudflare rate-limit backstop on `/s/*`** (free plan, one rule; our own 60/min/IP limit is the real control) | Before launch (P5-12); any time | Stops floods of shop-code lookups before they reach the VPS (C-15, SECURITY §6) | 3 min (steps below) |
 | H-08b | 🟠 | **Storage buckets on R2 (or B2 like the backups; decide then)**, two kinds per environment: (1) **private** `moz-rewards-private-staging` / `moz-rewards-private` for receipt PDFs (P1-12): **never** connect a custom domain or public access to these; (2) uploads `moz-rewards-staging` / `moz-rewards` for P2 (its `public/` files are served by `cdn.`). One bucket-scoped read/write key per bucket; store each in the password manager. Claude's part: set them as GitHub secrets from a local file (never shown), add them to the deploy env, and smoke-test a receipt download on staging. **Ask:** buckets made? | P1-C close (receipt download on staging); uploads before P2 | Receipt PDFs need private storage (DECISIONS 26 Nov "receipt PDFs"): until then staging receipts answer "still being prepared" | 15 min |
-| H-52 | 🟠 | **Live-update stream check on staging (C-95)**: in a desktop browser signed in to staging as the demo customer, paste a 6-line snippet into the console and paste its output back (steps below; ~2 min of waiting). Proves updates aren't held back by Cloudflare/Caddy buffering. Claude can't do it: it needs a signed-in browser through the site gate. **Ask:** output? | P1-18 | C-95 (P1-10 edge case: proxy buffering) | 5 min |
+| H-53 | 🟢 | **Rotate the staging site password** (T-11): it was shared in chat on 26 Nov. Make a new strong one in the password manager, then tell Claude; Claude sets `BASIC_AUTH_PASSWORD_STAGING` from a local file you create (never shown) and redeploys. **Ask:** rotated? | After P4, before launch | A weak password that has been in a chat transcript | 5 min |
 | H-28b | 🟢 | Google OAuth **branding**: Branding → app name, logo, support email, privacy policy and terms URLs → **Publish app** → brand verification Both clients are done (H-28 in HUMAN_TASKS_DONE.md); steps below | Before P5-04 | App name and logo on the Google sign-in screen; until then only the consent screen's test users can sign in with Google if it is still in Testing | 15 min (+ Google brand review: minutes to 3 working days) |
 | H-09 | 🟢 | Gemini **paid** (pay-as-you-go) API key with a project spend cap | P3 start | AI review help; UK apps may use only Gemini's paid services | 15 min |
 | H-24 | 🟢 | Client: pen test (optional, client-funded); support after launch | P5 start | Launch readiness; see steps | 20 min with the client |
 | H-15 | 🟢 | Client's solicitor reviews the legal page drafts | P5 | Launch | Client side |
 
 ## Steps (open tasks only)
-
-### H-52 — Live-update stream check on staging (C-95)
-1. Chrome on a laptop: open the staging site, pass the site password, sign in as the demo customer (Claude prints the sign-in details with `pnpm demo:credentials` when you ask; the code arrives in the demo inbox).
-2. Open the Wallet, then DevTools (⌥⌘J) → Console, paste this and press Enter:
-   ```js
-   const r = await fetch('/api/sse/me'), rd = r.body.getReader(), dec = new TextDecoder(), t0 = performance.now();
-   setTimeout(() => rd.cancel(), 60000);
-   for (;;) { const { value, done } = await rd.read(); if (done) break;
-     console.log(Math.round(performance.now() - t0), JSON.stringify(dec.decode(value))); }
-   ```
-3. Wait 60 s, then copy the printed lines into the chat. Expected: `event: ready` within ~1,000 ms, then a `:` heartbeat line about every 25,000 ms. The output holds no personal data (the ready event is empty).
 
 ### H-46 — Cloudflare rate-limit backstop on `/s/*`
 Cloudflare dashboard → mozrewards.com → Security → WAF → Rate limiting rules → Create: name `moz-shop-lookup`; expression `starts_with(http.request.uri.path, "/s/")`; characteristics **IP**; **50 requests per 10 seconds**; action **Block**, duration 10 s → Deploy. Tell Claude when done (Claude checks it from outside). Details: RUNBOOK §17.

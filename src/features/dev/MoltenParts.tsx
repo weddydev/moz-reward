@@ -200,10 +200,9 @@ function VaultDemo(): React.JSX.Element {
 
 function RedeemDemo(): React.JSX.Element {
   const [code, setCode] = useState<{ expiresAt: number; serverNow: number } | null>(null);
-  const [soon] = useState(() => {
-    const now = Date.now();
-    return { expiresAt: now + 10_000, serverNow: now };
-  });
+  // Started by a press, never on load: a gallery that toasts by itself 10 s in breaks every test still on the page
+  // then (overlays "toast open: axe clean" saw two toasts on CI WebKit, 45776909717).
+  const [soon, setSoon] = useState<{ expiresAt: number; serverNow: number } | null>(null);
   return (
     <div className="flex flex-wrap gap-8">
       <State label="live code (15 min countdown)">
@@ -221,14 +220,26 @@ function RedeemDemo(): React.JSX.Element {
         )}
       </State>
       <State label="expiring (10 s left)">
-        <RedeemCode
-          code="R3D9VX"
-          expiresAt={soon.expiresAt}
-          serverNow={soon.serverNow}
-          onExpire={() => {
-            toast("Code expired: tap Redeem for a new one");
-          }}
-        />
+        {soon ? (
+          <RedeemCode
+            code="R3D9VX"
+            expiresAt={soon.expiresAt}
+            serverNow={soon.serverNow}
+            onExpire={() => {
+              toast("Code expired: tap Redeem for a new one");
+            }}
+          />
+        ) : (
+          <Button
+            variant="orbit"
+            onClick={() => {
+              const now = Date.now();
+              setSoon({ expiresAt: now + 10_000, serverNow: now });
+            }}
+          >
+            Show an expiring code
+          </Button>
+        )}
       </State>
     </div>
   );

@@ -217,7 +217,7 @@ export function MemberShopPage({
                           <a
                             href={r.pdfHref}
                             download
-                            className="text-caption text-ink-2 hover:text-ink inline-flex min-h-11 items-center gap-1 underline underline-offset-2"
+                            className="text-caption text-ink-2 hover:text-ink inline-flex min-h-11 min-w-11 items-center justify-center gap-1 underline underline-offset-2"
                             aria-label={`Download ${r.title} (PDF)`}
                             data-testid="shop-receipt-pdf"
                           >

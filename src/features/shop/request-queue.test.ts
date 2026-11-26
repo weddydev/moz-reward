@@ -4,6 +4,7 @@ import {
   clearQueue,
   dropQueued,
   enqueueRequest,
+  keepOwnQueue,
   QUEUE_KEY,
   QUEUE_MAX,
   QUEUE_MAX_AGE_MS,
@@ -98,6 +99,27 @@ describe("[P1-11] offline request queue", () => {
     enqueueRequest(s, entry("a", "mine"), now);
     expect(readQueue(s, ME, now).map((e) => e.key)).toEqual(["mine"]);
     expect(readQueue(s, "user-other", now)).toEqual([]);
+  });
+
+  it("security review re-check LOW (P1-C close): the signed-in account's sender keeps only its own live taps on the phone", () => {
+    const s = memory();
+    const old = new Date(now.getTime() - QUEUE_MAX_AGE_MS);
+    s.setItem(
+      QUEUE_KEY,
+      JSON.stringify([
+        entry("a", "theirs", now, "user-other"),
+        entry("b", "stale", old),
+        entry("c"),
+      ]),
+    );
+    keepOwnQueue(s, ME, now);
+    expect(JSON.parse(s.getItem(QUEUE_KEY) ?? "[]")).toEqual([entry("c")]);
+    // Nothing of this account's left: the key goes.
+    keepOwnQueue(s, "user-new", now);
+    expect(s.data.has(QUEUE_KEY)).toBe(false);
+    expect(() => {
+      keepOwnQueue(null, ME, now);
+    }).not.toThrow();
   });
 
   it("security review M1: signing out clears the queue on this phone", () => {

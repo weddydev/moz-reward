@@ -401,10 +401,6 @@ export function mountFx(canvas: HTMLCanvasElement): () => void {
   };
 }
 
-/**
- * One burst at viewport point (x, y). A no-op (returns 0) under reduced motion, before the canvas is mounted
- * and on the server. Returns how many particles were added (the cap may cut a burst short).
- */
 /** One burst as asked for, defaults filled in, and the particles it added (0 under reduced motion). */
 export type BurstRecord = {
   x: number;
@@ -441,6 +437,10 @@ export const clearFxBursts = (): void => {
   burstLog = [];
 };
 
+/**
+ * One burst at viewport point (x, y). A no-op (returns 0) under reduced motion, before the canvas is mounted
+ * and on the server. Returns how many particles were added (the cap may cut a burst short).
+ */
 export function burst(x: number, y: number, o: BurstOptions = {}): number {
   const e = engine;
   if (!e || reduced()) {

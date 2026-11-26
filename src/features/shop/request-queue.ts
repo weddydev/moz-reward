@@ -96,6 +96,23 @@ export function dropQueued(
   if (kept.length !== all.length) writeQueue(storage, kept);
 }
 
+/**
+ * Leaves only `userId`'s live taps on the device (the signed-in account's sender, on every load): another account's
+ * leftovers (a session that expired without sign-out) and stale taps don't linger on a shared phone.
+ */
+export function keepOwnQueue(storage: QueueStorage | null, userId: string, now: Date): void {
+  if (!storage) return;
+  let raw: string | null;
+  try {
+    raw = storage.getItem(QUEUE_KEY);
+  } catch {
+    return;
+  }
+  if (raw === null) return;
+  const own = readQueue(storage, userId, now);
+  if (JSON.stringify(own) !== raw) writeQueue(storage, own);
+}
+
 /** Empties the queue on this device (sign-out). */
 export function clearQueue(storage: QueueStorage | null): void {
   writeQueue(storage, []);

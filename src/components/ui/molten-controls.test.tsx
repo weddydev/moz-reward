@@ -148,6 +148,34 @@ describe("[PD-04] Molten button", () => {
     expect(btn).not.toHaveClass("ok");
   });
 
+  it("[P1-11] design review M1 (P1-C close): onRollEnd fires when the result's time is up, while the label still shows it", () => {
+    vi.useFakeTimers();
+    const ends: boolean[] = [];
+    const ref: { btn: HTMLElement | null } = { btn: null };
+    render(
+      <Button
+        resultLabel="Request sent"
+        onRollEnd={() => {
+          ends.push(ref.btn?.classList.contains("ok") ?? false);
+        }}
+      >
+        Request points
+      </Button>,
+    );
+    ref.btn = screen.getByRole("button");
+    fireEvent.click(ref.btn);
+    act(() => {
+      vi.advanceTimersByTime(BUTTON.labelBackMs - 1);
+    });
+    expect(ends).toEqual([]);
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    // Once, and before the roll back: the caller swaps on the same clock as the label.
+    expect(ends).toEqual([true]);
+    expect(ref.btn).not.toHaveClass("ok");
+  });
+
   it("[PD-04] no roll and no celebration when the action fails (false) or for a destructive button", () => {
     render(
       <>

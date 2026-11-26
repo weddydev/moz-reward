@@ -73,6 +73,8 @@ test("[P1-11] request points: a double tap makes one request; the pending state 
   await expect(pending).toBeVisible();
   await expect(pending).toHaveAttribute("data-status", "pending");
   await expect(pending).toContainText("Request sent");
+  // Design review M1 (P1-C close): the taller card rises in where the button was (quiet tier), not a jump.
+  expect(await pending.evaluate((el) => getComputedStyle(el).animationName)).toBe("moz-rise");
   await expect(page.getByTestId("request-pending-text")).toHaveText(
     new RegExp(`^Sent at \\d{2}:\\d{2}\\. Staff at ${SHOP} will approve it shortly\\.$`),
   );
@@ -158,6 +160,8 @@ test.describe("offline", () => {
     await expect(page.getByTestId("request-queued")).toHaveCount(0);
     await page.waitForLoadState("networkidle");
     expect(await requestsOf(page.request, me.userId)).toEqual([]);
+    // Nor is it left on the phone (security review re-check: the sender keeps only this account's taps).
+    expect(await page.evaluate((k) => localStorage.getItem(k), QUEUE_KEY)).toBeNull();
 
     // This account's own tap still in the queue at sign-out goes with the session.
     await page.goto("/me/security");

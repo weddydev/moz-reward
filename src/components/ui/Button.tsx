@@ -42,6 +42,11 @@ type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
   resultLabel?: string;
   /** How long the result label shows before rolling back (default 1.7 s; the reference's sign-in button: 2.2 s). */
   resultMs?: number;
+  /**
+   * Called when the result label's time is up, just before it rolls back: a caller that replaces the button
+   * then (Request points → its pending card) swaps on the same clock, so the label never starts back first.
+   */
+  onRollEnd?: () => void;
   /** Sparks (and `coins`, default 6) from the press point after a successful click. Opt-in. */
   celebrate?: boolean | { coins: number };
   /** May be async: resolving to `false` (or throwing) means "not a success": no roll, no celebration. */
@@ -79,6 +84,7 @@ export function Button({
   icon,
   resultLabel,
   resultMs = BUTTON.labelBackMs,
+  onRollEnd,
   celebrate,
   className,
   children,
@@ -113,6 +119,7 @@ export function Button({
     setRolled(true);
     clearTimeout(backTimer.current);
     backTimer.current = setTimeout(() => {
+      onRollEnd?.();
       celebrating.current = false;
       el.classList.remove("ok");
       setRolled(false);
