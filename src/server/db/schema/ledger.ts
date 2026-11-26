@@ -103,14 +103,18 @@ export const ledgerEntries = pgTable(
     check(
       "ledger_entries_ref_shape",
       sql`jsonb_typeof(${t.ref}) = 'object'
-        AND ${t.ref} - ARRAY['receiptId', 'requestId', 'rewardId', 'reason', 'multiplierPercent', 'base', 'version'] = '{}'::jsonb`,
+        AND ${t.ref} - ARRAY['receiptId', 'requestId', 'rewardId', 'redemptionId', 'reason', 'multiplierPercent', 'base', 'version'] = '{}'::jsonb`,
     ),
   ],
 );
 
 export const rewardKind = pgEnum("reward_kind", ["main", "milestone", "game", "other"]);
 
-/** A reward a member unlocked (an ingot's main reward, a milestone). Never revoked; P1-16 redeems them. */
+/**
+ * A reward a member unlocked (an ingot's main reward, a milestone). Never revoked. `expires_at` is set by the
+ * database at unlock (0034: the end of the London day `reward_valid_days` after it, from the reward's programme
+ * version) and never changes; `redeemed_at` is set once, by the team's confirm of a redeem code (P1-16).
+ */
 export const rewards = pgTable(
   "rewards",
   {
@@ -128,6 +132,8 @@ export const rewards = pgTable(
     isMystery: boolean().notNull().default(false),
     requestId: uuid(),
     unlockedAt: tz().notNull().defaultNow(),
+    /** Always set by the `rewards_guard` trigger (0034); the default is only a placeholder it replaces. */
+    expiresAt: tz().notNull().defaultNow(),
     redeemedAt: tz(),
   },
   (t) => [
@@ -139,11 +145,84 @@ export const rewards = pgTable(
     ),
     index("rewards_membership_unlocked_idx").on(t.membershipId, t.unlockedAt),
     index("rewards_shop_id_idx").on(t.shopId),
+    index("rewards_membership_ready_idx")
+      .on(t.membershipId, t.expiresAt)
+      .where(sql`${t.redeemedAt} IS NULL`),
     check("rewards_label_length", sql`char_length(${t.label}) BETWEEN 1 AND 120`),
+    check(
+      "rewards_redeemed_after_unlock",
+      sql`${t.redeemedAt} IS NULL OR ${t.redeemedAt} >= ${t.unlockedAt}`,
+    ),
     check("rewards_ingot_number_positive", sql`${t.ingotNumber} >= 1`),
     check(
       "rewards_milestone_has_percent",
       sql`(${t.kind} = 'milestone') = (${t.milestonePercent} IS NOT NULL)`,
+    ),
+  ],
+);
+
+export const REDEMPTION_STATUSES = ["live", "voided", "confirmed"] as const;
+export type RedemptionStatus = (typeof REDEMPTION_STATUSES)[number];
+export const redemptionStatus = pgEnum("redemption_status", REDEMPTION_STATUSES);
+export const REDEMPTION_VOID_REASONS = ["regenerated", "left", "erased"] as const;
+export const redemptionVoidReason = pgEnum("redemption_void_reason", REDEMPTION_VOID_REASONS);
+
+/**
+ * Redeem codes (P1-16, PRODUCT §6; ARCHITECTURE §4; SECURITY §6). The customer's Redeem creates a live code for
+ * 15 minutes; the team's confirm turns it into the redemption (`confirmed`, the reward's `redeemed_at`, a 0-gold
+ * `redeem` ledger row). The code itself is never stored: `code_hash` is an HMAC of shop + code (purpose
+ * `redeem-code`), so nobody reading the table (a team member, a leaked backup) can redeem a live code; the
+ * customer sees the code only in the response that made it. One live code per member (generating voids the
+ * previous one) and per (shop, hash). Migration 0034 holds the guards, grants and RLS. P3 claims add
+ * `offer_claim_id`.
+ */
+export const redemptionCodes = pgTable(
+  "redemption_codes",
+  {
+    id: id(),
+    shopId: uuid()
+      .notNull()
+      .references(() => shops.id, { onDelete: "cascade" }),
+    /** No FK, like rewards (pseudonymous after erasure). */
+    membershipId: uuid().notNull(),
+    rewardId: uuid()
+      .notNull()
+      .references(() => rewards.id, { onDelete: "cascade" }),
+    /** HMAC-SHA256(redeem-code key, shopId|code), hex. */
+    codeHash: text().notNull(),
+    status: redemptionStatus().notNull().default("live"),
+    expiresAt: tz().notNull(),
+    voidedAt: tz(),
+    voidReason: redemptionVoidReason(),
+    confirmedBy: uuid(),
+    confirmedAt: tz(),
+    /** The confirming transaction (database-stamped): the rewards and ledger guards check it. */
+    confirmTxId: bigint({ mode: "bigint" }),
+    createdAt: tz().notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("redemption_codes_live_code_uq")
+      .on(t.shopId, t.codeHash)
+      .where(sql`${t.status} = 'live'`),
+    uniqueIndex("redemption_codes_live_member_uq")
+      .on(t.membershipId)
+      .where(sql`${t.status} = 'live'`),
+    uniqueIndex("redemption_codes_confirmed_reward_uq")
+      .on(t.rewardId)
+      .where(sql`${t.status} = 'confirmed'`),
+    index("redemption_codes_lookup_idx").on(t.shopId, t.codeHash, t.createdAt),
+    index("redemption_codes_shop_live_idx")
+      .on(t.shopId, t.expiresAt)
+      .where(sql`${t.status} = 'live'`),
+    index("redemption_codes_reward_idx").on(t.rewardId),
+    check("redemption_codes_hash_shape", sql`${t.codeHash} ~ '^[0-9a-f]{64}$'`),
+    check("redemption_codes_window", sql`${t.expiresAt} = ${t.createdAt} + interval '15 minutes'`),
+    check(
+      "redemption_codes_status_shape",
+      sql`CASE ${t.status}
+        WHEN 'live' THEN ${t.voidedAt} IS NULL AND ${t.voidReason} IS NULL AND ${t.confirmedAt} IS NULL AND ${t.confirmedBy} IS NULL AND ${t.confirmTxId} IS NULL
+        WHEN 'voided' THEN ${t.voidedAt} IS NOT NULL AND ${t.voidReason} IS NOT NULL AND ${t.confirmedAt} IS NULL AND ${t.confirmedBy} IS NULL AND ${t.confirmTxId} IS NULL
+        ELSE ${t.voidedAt} IS NULL AND ${t.voidReason} IS NULL AND ${t.confirmedAt} IS NOT NULL AND ${t.confirmedBy} IS NOT NULL AND ${t.confirmTxId} IS NOT NULL END`,
     ),
   ],
 );

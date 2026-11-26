@@ -9,7 +9,13 @@ import { env } from "@/server/env";
  * never the master key itself (SECURITY §7, DECISIONS 10 Nov). `demo-seed` (P0-16) is the root the demo accounts'
  * passwords and TOTP secrets are derived from; the seed never runs in production.
  */
-export const PURPOSES = ["email-key", "ip-hash", "blind-index", "demo-seed"] as const;
+export const PURPOSES = [
+  "email-key",
+  "ip-hash",
+  "blind-index",
+  "demo-seed",
+  "redeem-code",
+] as const;
 export type Purpose = (typeof PURPOSES)[number];
 
 const SALT = "moz-rewards/v1";

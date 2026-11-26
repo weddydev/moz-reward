@@ -45,6 +45,7 @@ type Draft = {
   gold: string;
   expiryOn: boolean;
   expiryMonths: string;
+  rewardValidDays: string;
 };
 
 const DEFAULT_STREAK_BONUS = "50";
@@ -69,6 +70,7 @@ function toDraft(r: ProgrammeRules): Draft {
     gold: String(r.tiers.gold),
     expiryOn: r.expiryMonths !== null,
     expiryMonths: r.expiryMonths === null ? DEFAULT_EXPIRY : String(r.expiryMonths),
+    rewardValidDays: String(r.rewardValidDays),
   };
 }
 
@@ -93,6 +95,7 @@ function toPayload(d: Draft) {
       streak: d.streakOn ? { bonusGold: num(d.streakBonus) } : null,
       tiers: { silver: num(d.silver), gold: num(d.gold) },
       expiryMonths: d.expiryOn ? num(d.expiryMonths) : null,
+      rewardValidDays: num(d.rewardValidDays),
     },
   };
 }
@@ -422,6 +425,18 @@ export function LoyaltySettings({
                   error={errors["expiryMonths"]}
                 />
               ) : null}
+              <div className="border-line border-t pt-4">
+                <TextField
+                  label="Rewards valid for (days)"
+                  hint={`From the day a reward unlocks: ${String(LIMITS.rewardValidDays.min)} to ${String(LIMITS.rewardValidDays.max)} days. A change applies to rewards unlocked after it.`}
+                  inputMode="numeric"
+                  value={draft.rewardValidDays}
+                  onChange={(e) => {
+                    set("rewardValidDays", e.target.value);
+                  }}
+                  error={errors["rewardValidDays"]}
+                />
+              </div>
             </Card>
 
             <div className="flex flex-col gap-3">

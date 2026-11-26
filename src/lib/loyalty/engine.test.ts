@@ -37,6 +37,7 @@ const rules = (over: Partial<ProgrammeRules> = {}): ProgrammeRules => ({
   streak: { bonusGold: 50 },
   tiers: { silver: 2, gold: 5 },
   expiryMonths: 12,
+  rewardValidDays: 90,
   ...over,
 });
 

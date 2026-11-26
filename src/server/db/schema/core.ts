@@ -99,6 +99,8 @@ export const shops = pgTable(
     coverUrl: text(),
     vatNumber: text(),
     status: shopStatus().notNull().default("pending"),
+    /** When the shop last became `closed` (set by trigger, 0034): rewards still redeem for 30 days (PRODUCT §15). */
+    closedAt: tz(),
     ...timestamps(),
   },
   (t) => [

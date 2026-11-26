@@ -113,11 +113,12 @@ describe("[P0-03] app role moz_app (least privilege)", () => {
     notifications: "IS", // P1-10: partitioned parent; UPDATE (read_at) by column grant; partitions have no grants
     point_requests: "IS", // P1-11: member inserts/reads own, team reads; UPDATE by column grant (guard: member cancel; P1-12 team decisions)
     ledger_entries: "IS", // P1-12: append-only; team inserts earn/bonus/reversal under the guard; never UPDATE/DELETE
-    rewards: "IS", // P1-12: unlocked by the approval (guard); redeem path arrives with P1-16
+    rewards: "IS", // P1-12: unlocked by the approval (guard); P1-16: UPDATE (redeemed_at) by column grant, beside a confirm
     receipts: "IS", // P1-12: written once by the approval; pdf_key by the worker only
     shop_receipt_counters: "IS", // P1-12: UPDATE (last_number) by column grant, +1 only (guard)
     fraud_flags: "S", // P1-12: admins read; the worker writes
     points_expiry_warnings: "S", // P1-13: admins read (RLS); only the worker writes
+    redemption_codes: "IS", // P1-16: member inserts (guard); UPDATE by column grant (member void, team confirm); no DELETE
   };
 
   it("has exactly the reviewed grants per table, never TRUNCATE", async () => {

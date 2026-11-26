@@ -239,6 +239,13 @@
       "when": 1795704127454,
       "tag": "0033_celebrations",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795724182960,
+      "tag": "0034_redemptions",
+      "breakpoints": true
     }
   ]
 }

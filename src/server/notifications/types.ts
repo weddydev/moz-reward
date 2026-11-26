@@ -125,6 +125,19 @@ export const NOTIFICATION_TYPES = {
       })
       .strict(),
   }),
+  /** P1-16 (PRODUCT §6, §9 transactional "redeem"): to the customer, the shop confirmed their reward. */
+  reward_redeemed: defineNotificationType({
+    category: "transactional",
+    payload: z.object({ shopId: id, rewardId: id, redemptionId: id }).strict(),
+  }),
+  /**
+   * P1-16 (SECURITY §6): to the shop's owners, once per 24 h, too many wrong redeem codes were tried at the shop,
+   * so confirming codes is paused until `until`.
+   */
+  redeem_codes_paused: defineNotificationType({
+    category: "transactional",
+    payload: z.object({ shopId: id, until: z.iso.datetime() }).strict(),
+  }),
 } as const satisfies Record<string, NotificationTypeDef>;
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES;

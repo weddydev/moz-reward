@@ -10,6 +10,7 @@ import {
   setOwnMembershipMuted,
 } from "@/server/repos/memberships";
 import { cancelOwnOpenRequests } from "@/server/repos/point-requests";
+import { ownMembershipIdsAt, voidOwnLiveCodes } from "@/server/repos/redemptions";
 
 /** Shown when the caller isn't a current member of the shop (never joined, left, or no such shop). */
 export const NOT_A_MEMBER = "You're not a member of this shop.";
@@ -45,6 +46,9 @@ export async function leaveShop(
       );
     }
   }
+  // C-70 (PRODUCT §4): leaving voids a live redeem code (a staff confirm then fails); rewards stay, with their
+  // own validity, and show again on rejoin.
+  await voidOwnLiveCodes(scope, await ownMembershipIdsAt(scope, shopId, tx), "left", tx);
   const outcome = await leaveOwnMembership(scope, shopId, tx);
   if (outcome.kind === "not-member") throw new AppError("NOT_FOUND", NOT_A_MEMBER);
   if (outcome.kind === "already-left") return { left: false };

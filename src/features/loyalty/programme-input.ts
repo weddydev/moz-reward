@@ -88,6 +88,11 @@ export const programmeRulesInput = z
       LIMITS.expiryMonths.max,
       "the expiry period",
     ).nullable(),
+    rewardValidDays: whole(
+      LIMITS.rewardValidDays.min,
+      LIMITS.rewardValidDays.max,
+      "how long rewards stay valid",
+    ).default(LIMITS.rewardValidDays.min),
   })
   .strict()
   .superRefine((r, ctx) => {

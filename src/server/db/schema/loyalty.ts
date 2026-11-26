@@ -38,6 +38,8 @@ export const loyaltyPrograms = pgTable(
     streak: jsonb().$type<{ bonusGold: number }>(),
     tiers: jsonb().$type<{ silver: number; gold: number }>().notNull(),
     expiryMonths: smallint(),
+    /** Days a reward stays redeemable after unlock (P1-16): 90 unless the shop sets longer, at most 365. */
+    rewardValidDays: smallint().notNull().default(90),
     activeFrom: tz().notNull(),
     rewardsFrom: tz().notNull(),
     /**
@@ -75,6 +77,7 @@ export const loyaltyPrograms = pgTable(
       "loyalty_programs_expiry_range",
       sql`${t.expiryMonths} IS NULL OR ${t.expiryMonths} BETWEEN 12 AND 60`,
     ),
+    check("loyalty_programs_reward_valid_days_range", sql`${t.rewardValidDays} BETWEEN 90 AND 365`),
     check("loyalty_programs_rewards_after_active", sql`${t.rewardsFrom} >= ${t.activeFrom}`),
   ],
 );

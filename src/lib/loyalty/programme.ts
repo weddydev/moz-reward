@@ -37,6 +37,8 @@ export type ProgrammeRules = {
   tiers: { silver: number; gold: number };
   /** Rolling expiry from the last approved visit; null = off. */
   expiryMonths: number | null;
+  /** Days an unlocked reward stays redeemable (90 unless longer, P1-16); a change applies to new unlocks only. */
+  rewardValidDays: number;
 };
 
 export type ProgrammeVersion = ProgrammeRules & {
@@ -55,6 +57,7 @@ export const LIMITS = {
   streakBonus: { min: 1, max: 500 },
   tier: { min: 1, max: 1_000 },
   expiryMonths: { min: 12, max: 60 },
+  rewardValidDays: { min: 90, max: 365 },
 } as const;
 
 export const REWARD_NOTICE_DAYS = 14;
@@ -78,6 +81,7 @@ export const TEMPLATES: Readonly<Record<TemplateId, { name: string; rules: Progr
       streak: { bonusGold: 50 },
       tiers: { ...DEFAULT_TIERS },
       expiryMonths: null,
+      rewardValidDays: 90,
     },
   },
   restaurant: {
@@ -91,6 +95,7 @@ export const TEMPLATES: Readonly<Record<TemplateId, { name: string; rules: Progr
       streak: null,
       tiers: { ...DEFAULT_TIERS },
       expiryMonths: null,
+      rewardValidDays: 90,
     },
   },
   retail: {
@@ -107,6 +112,7 @@ export const TEMPLATES: Readonly<Record<TemplateId, { name: string; rules: Progr
       streak: null,
       tiers: { ...DEFAULT_TIERS },
       expiryMonths: 12,
+      rewardValidDays: 90,
     },
   },
   beauty: {
@@ -120,6 +126,7 @@ export const TEMPLATES: Readonly<Record<TemplateId, { name: string; rules: Progr
       streak: { bonusGold: 50 },
       tiers: { ...DEFAULT_TIERS },
       expiryMonths: null,
+      rewardValidDays: 90,
     },
   },
 };
@@ -137,6 +144,7 @@ export function rulesOf(v: ProgrammeRules): ProgrammeRules {
     streak: v.streak ? { bonusGold: v.streak.bonusGold } : null,
     tiers: { silver: v.tiers.silver, gold: v.tiers.gold },
     expiryMonths: v.expiryMonths,
+    rewardValidDays: v.rewardValidDays,
   };
 }
 
@@ -287,6 +295,10 @@ export function describeChanges(prev: ProgrammeRules | null, next: ProgrammeRule
     );
   if (a.expiryMonths !== b.expiryMonths)
     out.push(`Gold expiry: ${describeExpiry(a.expiryMonths)} → ${describeExpiry(b.expiryMonths)}`);
+  if (a.rewardValidDays !== b.rewardValidDays)
+    out.push(
+      `Rewards valid for: ${String(a.rewardValidDays)} → ${String(b.rewardValidDays)} days (new rewards)`,
+    );
   return out;
 }
 
