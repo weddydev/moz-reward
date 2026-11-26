@@ -31,6 +31,7 @@ import { directionsUrl, telHref } from "@/lib/shop-links";
 import { londonDate } from "@/lib/time";
 import type { ShopLandingData } from "@/server/repos/shops";
 import { MembershipControls } from "./MembershipControls";
+import { ReceiptOpen } from "./ReceiptOpen";
 import { type OpenRequestView, RequestPoints } from "./RequestPoints";
 import { SHOP_PAGE_CLASS, ShopPageHeader } from "./ShopPageHeader";
 import { leaveRestoreBy, type ReceiptRow, upcomingClosures, vaultCardText } from "./view";
@@ -210,7 +211,7 @@ export function MemberShopPage({
                         data-testid="shop-receipt"
                       >
                         <span className="flex min-w-0 flex-col">
-                          <span className="text-small font-semibold">{r.title}</span>
+                          <ReceiptOpen title={r.title} receipt={r.receipt} pdfHref={r.pdfHref} />
                           <span className="text-caption text-ink-2">{r.when}</span>
                           {r.items ? (
                             <span className="text-caption text-ink-2 truncate">{r.items}</span>

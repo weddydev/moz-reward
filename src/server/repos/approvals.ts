@@ -289,11 +289,15 @@ export async function routeTeamRequest(
   );
 }
 
-/** → approved by the caller, now. */
+/** P1-15: the ingot before and after an approval (the customer's celebration pours between them). */
+export type IngotSnapshot = { progressBefore: number; progressAfter: number; ingotSize: number };
+
+/** → approved by the caller, now, with the ingot snapshot (P1-15). */
 export async function approveTeamRequest(
   scope: ShopScope,
   requestId: string,
   award: Award,
+  snapshot: IngotSnapshot,
   tx: Transaction,
 ): Promise<void> {
   await withScope(
@@ -308,6 +312,9 @@ export async function approveTeamRequest(
           awardGold: award.awardGold,
           decidedBy: scope.userId,
           decidedAt: sql`now()`,
+          progressBefore: snapshot.progressBefore,
+          progressAfter: snapshot.progressAfter,
+          ingotSize: snapshot.ingotSize,
           updatedAt: sql`now()`,
         })
         .where(inShop(pointRequests.shopId, scope, eq(pointRequests.id, requestId))),

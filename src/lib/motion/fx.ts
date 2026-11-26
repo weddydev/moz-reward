@@ -326,9 +326,18 @@ function size(e: Engine): void {
   e.sized = true;
 }
 
+/**
+ * `<html data-fx-live>` while particles are drawing (P1-15): work that must not land mid-burst (the sound's first
+ * AudioContext, `src/lib/sound.ts`) waits for it to go. Set once per run, not per frame.
+ */
+const live = (on: boolean): void => {
+  document.documentElement.toggleAttribute("data-fx-live", on);
+};
+
 function stop(e: Engine): void {
   if (e.raf) cancelAnimationFrame(e.raf);
   e.raf = 0;
+  live(false);
 }
 
 function clear(e: Engine): void {
@@ -340,6 +349,7 @@ function clear(e: Engine): void {
 function start(e: Engine): void {
   if (e.raf || document.hidden || e.parts.length === 0) return;
   e.last = performance.now();
+  live(true);
   e.raf = requestAnimationFrame((now) => {
     tick(e, now);
   });
@@ -362,10 +372,20 @@ function tick(e: Engine, now: number): void {
     e.raf = requestAnimationFrame((t) => {
       tick(e, t);
     });
-  } else e.ctx.clearRect(0, 0, e.w, e.h);
+  } else {
+    e.ctx.clearRect(0, 0, e.w, e.h);
+    live(false);
+  }
 }
 
-/** Mounts the engine on the root layout's canvas; returns the cleanup. A second mount replaces the first. */
+/** Canvases mounted, oldest first: the newest draws; its cleanup hands back to the one before (P1-15). */
+const mounted: Engine[] = [];
+
+/**
+ * Mounts the engine on the root layout's canvas; returns the cleanup. A second mount takes over until it is
+ * cleaned up, then the previous canvas draws again (P1-15: a modal dialog sits in the top layer above the root
+ * canvas, so a moment inside one mounts its own canvas in the dialog for as long as it is open).
+ */
 export function mountFx(canvas: HTMLCanvasElement): () => void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return () => undefined;
@@ -384,6 +404,7 @@ export function mountFx(canvas: HTMLCanvasElement): () => void {
     frames: 0,
   };
   engine = e;
+  mounted.push(e);
   const onResize = (): void => {
     if (e.sized) size(e);
   };
@@ -397,7 +418,9 @@ export function mountFx(canvas: HTMLCanvasElement): () => void {
     window.removeEventListener("resize", onResize);
     document.removeEventListener("visibilitychange", onVisibility);
     clear(e);
-    if (engine === e) engine = null;
+    const i = mounted.indexOf(e);
+    if (i >= 0) mounted.splice(i, 1);
+    if (engine === e) engine = mounted.at(-1) ?? null;
   };
 }
 

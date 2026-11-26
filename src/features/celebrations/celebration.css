@@ -1,0 +1,95 @@
+/* The celebration moment (P1-15; DESIGN §8.2, §8.4). Ships with its lazy chunk only. Tokens only. */
+.m-celebrate {
+  width: min(100%, 520px);
+}
+/* Backdrop blur only for the desktop modal, and only on the full tier (DESIGN §8.2 step 1: "blur only where
+   cheap"; §11: backdrop blur on small surfaces). On phones the sheet covers most of the screen and a full-screen
+   blur would re-blur the living background every frame: a plain dim there. */
+@media (hover: hover) and (pointer: fine) {
+  html:not(.lite) .overlay:has(.m-celebrate) .overlay-backdrop {
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+}
+/* The moment's particle canvas fades with the dialog instead of vanishing when it closes. */
+.overlay[data-state="closing"] > .m-fx {
+  opacity: 0;
+  transition: opacity var(--dur-exit) var(--ease-out);
+}
+.m-cel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 4px;
+}
+.m-cel-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.m-cel-gold {
+  margin: 0;
+  font: 600 44px/1.05 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--gold-deep);
+}
+/* One shimmer once the count has landed (DESIGN §8.2 step 3): text shine, a named paint exception (§7.2). The
+   count starts with the pour, so the shine waits for it (`--cel-count`, `--cel-shine` from CELEBRATION). */
+html:not(.rm) .m-cel:not([data-state="rising"]) .m-cel-gold {
+  background: var(--metal-text);
+  background-size: 200% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: m-cel-shine var(--cel-shine) var(--ease-io) var(--cel-count) 1 both;
+}
+@keyframes m-cel-shine {
+  to {
+    background-position: 0 0;
+  }
+}
+.m-cel-line {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.m-cel-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+/* The vault, compact: the moment's own lines already say the shop, the gold and where the ingot stands, so the
+   vault's head goes, and the ingot is capped so it and the reward card fit a 320 × 640 screen. */
+.m-cel .m-vault {
+  padding: 16px;
+}
+.m-cel .m-v-head {
+  display: none;
+}
+.m-cel .m-ingot {
+  width: min(280px, 100%);
+}
+/* Short phone screens (320 × 640, iPhone SE): a smaller line and ingot so the reward card clears the footer. */
+@media (max-height: 700px) {
+  .m-cel {
+    gap: 10px;
+  }
+  .m-cel-gold {
+    font-size: 36px;
+  }
+  .m-cel .m-ingot {
+    width: min(200px, 100%);
+  }
+}
+.m-cel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.m-cel-actions > * {
+  flex: 1 1 auto;
+}

@@ -10,6 +10,8 @@ export type OwnVault = {
   shopId: string;
   name: string;
   logoUrl: string | null;
+  /** The shop's public code (`/s/<code>`; P1-15's Share link). */
+  shopCode: string;
   joinedAt: Date;
   progressGold: number;
   ingotsCompleted: number;
@@ -41,6 +43,7 @@ export async function readOwnVault(scope: CustomerScope, shopId: string): Promis
         name: shops.name,
         tradingName: shops.tradingName,
         logoUrl: shops.logoUrl,
+        shopCode: shops.shopCode,
         joinedAt: memberships.joinedAt,
         progressGold: memberships.progressGold,
         ingotsCompleted: memberships.ingotsCompleted,

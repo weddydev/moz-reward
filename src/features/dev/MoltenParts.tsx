@@ -12,6 +12,7 @@ import { GoldVault } from "@/components/ui/GoldVault";
 import { Ingot } from "@/components/ui/Ingot";
 import { MemberCard, MemberCardQrPlaceholder } from "@/components/ui/MemberCard";
 import { MiniVault } from "@/components/ui/MiniVault";
+import { ReceiptCard } from "@/components/ui/ReceiptCard";
 import { RedeemCode } from "@/components/ui/RedeemCode";
 import { RewardUnlocked } from "@/components/ui/RewardUnlocked";
 import { ShopCoin, ShopImage } from "@/components/ui/ShopImage";
@@ -337,6 +338,47 @@ export function MoltenParts(): React.JSX.Element {
             imageUrl={photo("bake-offer1")}
             unoptimized
           />
+        </div>
+      </Demo>
+      <Demo
+        name="ReceiptCard"
+        note="A digital receipt at rest; it prints on arrival (/dev/motion Celebrations)."
+      >
+        <div className="flex w-full max-w-md flex-col gap-4">
+          <State label="Amount and items">
+            <ReceiptCard
+              receipt={{
+                id: "00000000-0000-4000-8000-000000000301",
+                number: 128,
+                shopName: "Brew & Bloom Café",
+                address: "12 Market Street, Leeds LS1 6DT",
+                vatNumber: null,
+                approvedAt: "2026-11-26T14:05:00.000Z",
+                items: ["Flat white", "Almond croissant"],
+                amountPence: 840,
+                goldEarned: 80,
+                bonusGold: 0,
+                staffInitials: "SL",
+              }}
+            />
+          </State>
+          <State label="VAT number, streak bonus, per visit">
+            <ReceiptCard
+              receipt={{
+                id: "00000000-0000-4000-8000-000000000302",
+                number: 1_204,
+                shopName: "Camden Bakehouse",
+                address: null,
+                vatNumber: "GB123456789",
+                approvedAt: "2026-11-26T09:30:00.000Z",
+                items: [],
+                amountPence: null,
+                goldEarned: 100,
+                bonusGold: 50,
+                staffInitials: "AK",
+              }}
+            />
+          </State>
         </div>
       </Demo>
       <Demo name="RedeemCode">

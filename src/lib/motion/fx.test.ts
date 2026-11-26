@@ -227,3 +227,39 @@ describe("[PD-03] paint order (reference: one backwards loop, so the oldest part
     expect(painted).toEqual(["coin", "coin", "glow", "glow"]);
   });
 });
+
+describe("[P1-15] FX engine: a canvas inside a modal dialog takes over, then hands back", () => {
+  it("[P1-15] the root canvas draws again once the dialog's canvas is cleaned up", async () => {
+    const { mountFx } = await import("./fx");
+    const ctx = { clearRect: () => undefined } as unknown as CanvasRenderingContext2D;
+    const canvas = { getContext: () => ctx } as unknown as HTMLCanvasElement;
+    const listeners = { addEventListener: () => undefined, removeEventListener: () => undefined };
+    const g = globalThis as Record<string, unknown>;
+    const saved = { window: g.window, document: g.document };
+    g.window = listeners;
+    g.document = {
+      ...listeners,
+      hidden: false,
+      documentElement: { classList: { contains: () => false }, toggleAttribute: () => true },
+    };
+    try {
+      const root = mountFx(canvas);
+      const dialog = mountFx(canvas);
+      expect(fxStats().mounted).toBe(true);
+      dialog();
+      expect(fxStats().mounted).toBe(true); // back on the root canvas, not left without one
+      root();
+      expect(fxStats().mounted).toBe(false);
+      // Cleaned up out of order (the root first): the dialog's canvas keeps drawing, then nothing.
+      const root2 = mountFx(canvas);
+      const dialog2 = mountFx(canvas);
+      root2();
+      expect(fxStats().mounted).toBe(true);
+      dialog2();
+      expect(fxStats().mounted).toBe(false);
+    } finally {
+      g.window = saved.window;
+      g.document = saved.document;
+    }
+  });
+});

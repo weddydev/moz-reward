@@ -1,4 +1,4 @@
-import { type APIRequestContext, type Page } from "@playwright/test";
+import { type APIRequestContext, type Page, type Response } from "@playwright/test";
 import { expect, test, testApiHeaders } from "./support/test";
 
 // P1-09 on the production build: the customer shop page (screen 4) for a member and for a non-member, "Mute
@@ -157,14 +157,17 @@ test("[P1-09] mute notifications: immediate, kept after a reload, and back off a
 
   // The whole action response (its body carries the refreshed page) before reloading: a reload mid-body is
   // an aborted fetch ("Load failed" in WebKit), not what is being tested.
-  const saved = page.waitForResponse((r) => r.request().method() === "POST" && r.ok());
+  // The mute action posts to the page itself (P1-15: other POSTs, e.g. the celebration claim on load, don't count).
+  const muteSaved = (r: Response): boolean =>
+    r.request().method() === "POST" && new URL(r.url()).pathname === `/shops/${shopId}` && r.ok();
+  const saved = page.waitForResponse(muteSaved);
   await toggle.click();
   await expect(toggle).toBeChecked();
   await (await saved).finished();
   await page.reload();
   await expect(toggle).toBeChecked();
 
-  const unsaved = page.waitForResponse((r) => r.request().method() === "POST" && r.ok());
+  const unsaved = page.waitForResponse(muteSaved);
   await toggle.click();
   await expect(toggle).not.toBeChecked();
   await (await unsaved).finished();

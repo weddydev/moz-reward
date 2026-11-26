@@ -9,7 +9,7 @@ import {
   calculateAward,
   type MemberState,
 } from "@/lib/loyalty/engine";
-import { type ProgrammeVersion, versionActiveAt } from "@/lib/loyalty/programme";
+import { ingotTerms, type ProgrammeVersion, versionActiveAt } from "@/lib/loyalty/programme";
 import type { ShopScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import type { ReceiptData, RejectReason, ReversalReason } from "@/server/db/schema";
@@ -259,7 +259,22 @@ async function decide(
     return { outcome: "awaiting_owner", requestId: request.id, gold };
   }
 
-  await approveTeamRequest(scope, request.id, { amountPence, items, awardGold: gold }, tx);
+  const before = memberState(membership);
+  const outcome = applyAward(before, award, versions, now);
+  // P1-15: the celebration pours from this ingot's level before the award to the level after it (in the next
+  // ingot when one filled). The engine has already refused an award without programme terms.
+  const snapshot = {
+    progressBefore: before.progress,
+    progressAfter: outcome.state.progress,
+    ingotSize: ingotTerms(versions, before.ingotStartedAt)?.ingotSize ?? 0,
+  };
+  await approveTeamRequest(
+    scope,
+    request.id,
+    { amountPence, items, awardGold: gold },
+    snapshot,
+    tx,
+  );
 
   const receiptId = newId();
   const ref = { requestId: request.id, receiptId, version: award.version, base: award.base };
@@ -289,7 +304,6 @@ async function decide(
   }
   await insertLedgerRows(scope, ledger, tx);
 
-  const outcome = applyAward(memberState(membership), award, versions, now);
   await updateMembershipLoyalty(
     scope,
     membership.id,
