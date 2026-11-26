@@ -163,6 +163,7 @@ test.describe("[P0-09] UI gallery: Molten FX (C-92, C-93; P1-C close)", () => {
 
   test("[P0-09] C-93: every liquid choice and segmented control sparks over the new choice, both directions", async ({
     page,
+    browserName,
   }) => {
     const groups = page.locator('.m-liquid[role="radiogroup"]');
     const n = await groups.count();
@@ -186,7 +187,12 @@ test.describe("[P0-09] UI gallery: Molten FX (C-92, C-93; P1-C close)", () => {
         const radio = radios.nth(k);
         await radio.scrollIntoViewIfNeeded();
         await clearBursts(page);
-        await radio.click();
+        // The sparks follow the value, not the press (LiquidChoice). Linux WebKit can draw no frame for many
+        // seconds on this long page (KI-10), and a real click waits for one after scrolling (CI spec-repeat
+        // 45793773854: 2 of 6 timed out there), so WebKit chooses with the click event itself; Chromium keeps
+        // the real pointer click and its hit test.
+        if (browserName === "webkit") await radio.dispatchEvent("click");
+        else await radio.click();
         await expect
           .poll(async () => (await burstsOn(page)).length, { message: `${name} ${dir}` })
           .toBe(1);
