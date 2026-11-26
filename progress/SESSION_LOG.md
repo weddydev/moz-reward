@@ -1146,3 +1146,10 @@ Commits: f36b952, 4267b57 on `wip/P1-15`.
 Tests: gate:task PASS on f36b952; @perf/@fps ×3 18/18 real taps; coverage 4097/0; CI 45860370074 red only on KI-64 (fixed in 4267b57).
 Left off: CI on 4267b57, then ff main + closing progress commit (Handoff note).
 
+## 2026-11-27 — P1 — P1-15 closed, talha.syed (Mac)
+Done: approval snapshot + seen_at (0033), claim route `POST /api/me/celebration` (once across tabs), CelebrationHost + lazy moment (pour, count, sparks on a dialog canvas, reward chain, Share/Done, skip, reduced motion, live region), ReceiptCard print (shop page + moment; dashboard variant → C-107/P2-02); C-86 root cause = first AudioContext in the tap (195–470 ms cold): built off the tap at idle; haptics wait for user activation.
+Commits: 4267b57, 6ae17f9 (wip/P1-15) → main.
+CI fixes 27 Nov: ui-gallery parts count from GALLERY_PARTS (ReceiptCard = 16), chunk-preload test polls past networkidle (KI-49 widened); CI 45863303550 had both red.
+Tests: gate:task PASS (unit 2299/0, int 1799/0/1, e2e P1-15 21/0, perf 3/0); @perf/@fps ×3 18/18 real taps; coverage 4097/0; CI 45886425001 green.
+Left off: P1-16 next (C-108 new); demo guide P1-15 steps updated (Built).
+
