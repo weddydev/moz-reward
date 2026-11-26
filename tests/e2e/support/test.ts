@@ -247,7 +247,7 @@ const RESOURCE_ECHO = /^Failed to load resource: the server responded with a sta
  * every shop page; `fetchCard` catches it; P1-14).
  */
 const WEBKIT_CANCELLED_PREFETCH =
-  /^pageerror: .*(?:[?&]_rsc=\S*|\/api\/sse\/(?:me|shop\/[0-9a-f-]{36})|\/api\/me\/member-qr) due to access control checks\.$/;
+  /^pageerror: .*(?:[?&]_rsc=\S*|\/api\/sse\/(?:me|shop\/[0-9a-f-]{36})|\/api\/me\/(?:member-qr|celebration)) due to access control checks\.$/;
 
 function watch(page: Page, problems: GuardProblem[]): void {
   page.on("pageerror", (err) => problems.push({ kind: "pageerror", text: err.message }));

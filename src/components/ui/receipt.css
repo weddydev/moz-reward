@@ -1,0 +1,78 @@
+/* Digital receipt (P1-15; PRODUCT §11, DESIGN §8.5). Ships with the receipt chunks only (celebration, receipt
+   sheet), never in the global CSS. Tokens only (css-hex lint). The print's clip-path is a named paint exception
+   (DESIGN §7.2, clip reveals) on one small element. */
+.m-receipt {
+  position: relative;
+  padding: 18px 20px 20px;
+  border-radius: var(--r-md);
+  background:
+    var(--surface-placed) padding-box,
+    var(--edge) border-box;
+  border: 1px solid transparent;
+  box-shadow: var(--inner), var(--lift);
+  color: var(--ink);
+  overflow: hidden;
+}
+.m-receipt-kind {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.m-receipt-shop {
+  margin: 6px 0 0;
+  font: 600 20px/1.15 var(--font-display);
+  overflow-wrap: anywhere;
+}
+.m-receipt-meta {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.m-receipt-rows {
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px dashed var(--line);
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+.m-receipt-rows > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.m-receipt-rows dt {
+  color: var(--ink-2);
+  flex-shrink: 0;
+}
+.m-receipt-rows dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+/* The stamp: the Molten vault's `.stamp` (obsidian, gold-light, 800, radius 12; never gold text on gold, DESIGN
+   §3), tilted, in the top-right corner. */
+.m-receipt-stamp {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--obsidian);
+  color: var(--gold-light);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transform: rotate(-8deg);
+}
+.m-receipt:has(.m-receipt-stamp) .m-receipt-kind,
+.m-receipt:has(.m-receipt-stamp) .m-receipt-shop {
+  padding-right: 96px;
+}

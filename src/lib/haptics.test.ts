@@ -32,6 +32,22 @@ describe("[P0-11] haptics (DESIGN §10)", () => {
     expect(vibrate).toHaveBeenCalledExactlyOnceWith(pattern);
   });
 
+  it("[P1-15] stays still before the page has had a tap (a moment on app open: Chrome blocks it and logs an error)", () => {
+    const vibrate = stubVibrate(() => true);
+    Object.defineProperty(navigator, "userActivation", {
+      configurable: true,
+      value: { hasBeenActive: false, isActive: false },
+    });
+    expect(haptic("credit")).toBe(false);
+    expect(vibrate).not.toHaveBeenCalled();
+    Object.defineProperty(navigator, "userActivation", {
+      configurable: true,
+      value: { hasBeenActive: true, isActive: false },
+    });
+    expect(haptic("credit")).toBe(true); // after any tap, a later moment may vibrate
+    Reflect.deleteProperty(navigator, "userActivation");
+  });
+
   it("is a no-op where there is no vibration API (iOS Safari, desktop)", () => {
     expect("vibrate" in navigator).toBe(false);
     expect(haptic("press")).toBe(false);

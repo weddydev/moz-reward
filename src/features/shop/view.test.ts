@@ -106,21 +106,45 @@ describe("[P1-11] pending request copy", () => {
 describe("[P1-12] recent receipts rows (C-69)", () => {
   it("number, UK date and 24h time, the visit's gold with its bonus, items when there are any", () => {
     const base = { id: "r1", number: 1_204, createdAt: new Date("2026-07-07T13:05:00Z") };
-    expect(
-      receiptRow({
-        ...base,
-        data: { goldEarned: 100, bonusGold: 50, items: ["Flat white", "Croissant"] },
-      }),
-    ).toEqual({
+    const snapshot = {
+      shopName: "Pedal & Co.",
+      address: null,
+      vatNumber: null,
+      requestedAt: "2026-07-07T13:00:00.000Z",
+      approvedAt: "2026-07-07T13:05:00.000Z",
+      amountPence: 1_250,
+      staffInitials: "SL",
+    };
+    const data = {
+      ...snapshot,
+      goldEarned: 100,
+      bonusGold: 50,
+      items: ["Flat white", "Croissant"],
+    };
+    expect(receiptRow({ ...base, data })).toEqual({
       id: "r1",
       title: "Receipt 1,204",
       when: "7 Jul 2026, 14:05",
       gold: "+150 gold",
       items: "Flat white, Croissant",
       pdfHref: "/api/me/receipts/r1/pdf",
+      // P1-15: the card's view of the same receipt (opening the row prints it); no request time, no customer data.
+      receipt: {
+        id: "r1",
+        number: 1_204,
+        shopName: "Pedal & Co.",
+        address: null,
+        vatNumber: null,
+        approvedAt: "2026-07-07T13:05:00.000Z",
+        items: ["Flat white", "Croissant"],
+        amountPence: 1_250,
+        goldEarned: 100,
+        bonusGold: 50,
+        staffInitials: "SL",
+      },
     });
     expect(
-      receiptRow({ ...base, data: { goldEarned: 1_000, bonusGold: 0, items: [] } }),
+      receiptRow({ ...base, data: { ...snapshot, goldEarned: 1_000, bonusGold: 0, items: [] } }),
     ).toMatchObject({
       gold: "+1,000 gold",
       items: null,

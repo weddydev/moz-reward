@@ -557,30 +557,36 @@ async function rewardRun(page: Page, info: TestInfo) {
   const fill = page.getByRole("button", { name: "Fill the vault", exact: true });
   await fill.scrollIntoViewIfNeeded();
   await page.waitForLoadState("networkidle");
-  const run = await page.evaluate(async () => {
-    const button = [...document.querySelectorAll("button")].find(
-      (b) => b.textContent.trim() === "Fill the vault",
-    );
-    if (!button) throw new Error("no Fill the vault button");
+  // The vault must have been seen (its first-view pour played) before it fills: gold that arrives before the
+  // first view is shown by that view's pour, which doesn't unlock (P1-15: the first run's missing card).
+  await expect(page.locator('[data-parity="vault"] .ingot-pour')).toHaveAttribute(
+    "data-ingot-state",
+    "done",
+  );
+  // A real (trusted) tap, the page's first gesture (P1-15 review: a script click hid the sound's first
+  // AudioContext from this run), measured until the card's animations and the falling leaves have finished.
+  const measuring = page.evaluate(async () => {
     const w = window as unknown as { __long: number[] };
     w.__long = []; // only what happens while the moment plays
-    button.click();
     const times: number[] = [];
     const start = performance.now();
     let card: Element | null = null;
-    // Frame-bounded, not wall-clock alone (TESTING §10): at most ~6 s of frames.
-    while (times.length < 400 && performance.now() - start < 8_000) {
+    // Frame-bounded, not wall-clock alone (TESTING §10): at most ~12 s of frames.
+    while (times.length < 700 && performance.now() - start < 12_000) {
       times.push(await new Promise<number>(requestAnimationFrame));
       card ??= document.querySelector('[data-testid="reward-card"]');
       if (
         card &&
         times.length > 10 &&
+        !document.documentElement.hasAttribute("data-fx-live") &&
         card.getAnimations({ subtree: true }).every((a) => a.playState !== "running")
       )
         break;
     }
     return { times, rewarded: card !== null, long: [...w.__long] };
   });
+  await fill.click();
+  const run = await measuring;
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
   const frames = run.times;
   const gaps = frames.slice(1).map((t, i) => t - (frames[i] ?? t));
@@ -603,9 +609,8 @@ test("[PD-10] the reward moment plays under 4× CPU throttling with no long task
   browserName,
 }) => {
   test.skip(browserName !== "chromium", "CPU throttling is a Chromium DevTools feature");
-  // Quarantined (TEMPORARY T-10, CARRIED C-86 → P1-15): the first play has one long task of 182–288 ms at 4× CPU
-  // (repeat plays: none). Root-cause where the moment ships into the real vault, then remove this line.
-  test.fixme(true, "T-10 / C-86: first reward play has a long task at 4× CPU");
+  // Un-quarantined in P1-15 (C-86, T-10): the first play's long task was the sound unlock building the browser's
+  // first AudioContext (195–470 ms cold) inside the tap; it is now built off the tap, at an idle moment.
   const run = await rewardRun(page, test.info());
   expect(run.rewarded, "the reward moment started").toBe(true);
   expect(run.frames.length).toBeGreaterThan(30);

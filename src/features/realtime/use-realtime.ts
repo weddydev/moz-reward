@@ -17,14 +17,18 @@ export const REFRESH_COALESCE_MS = 300;
 export function useRealtime(
   url: string,
   relevant: (type: RealtimeEventType) => boolean,
+  /** P1-15: every event by name, and `"reconnect"` when the stream comes back (events may have been missed). */
+  onHint?: (hint: RealtimeEventType | "reconnect") => void,
 ): { state: RealtimeState; events: number } {
   const router = useRouter();
   const [state, setState] = useState<RealtimeState>("idle");
   const [events, setEvents] = useState(0);
   const relevantRef = useRef(relevant);
+  const hintRef = useRef(onHint);
   useEffect(() => {
     relevantRef.current = relevant;
-  }, [relevant]);
+    hintRef.current = onHint;
+  }, [relevant, onHint]);
 
   useEffect(() => {
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -40,8 +44,12 @@ export function useRealtime(
       onEvent: (type) => {
         setEvents((n) => n + 1);
         if (relevantRef.current(type)) refresh();
+        hintRef.current?.(type);
       },
-      refetch: refresh,
+      refetch: () => {
+        refresh();
+        hintRef.current?.("reconnect");
+      },
       onSignedOut: () => {
         router.refresh();
       },

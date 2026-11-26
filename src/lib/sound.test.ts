@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetPreferencesForTest, setSoundPreference, STORAGE_KEYS } from "./preferences";
-import { armSound, play, resetSoundForTest, SOUNDS, type SoundName } from "./sound";
+import { armSound, play, resetSoundForTest, SOUNDS, type SoundName, soundTestMode } from "./sound";
 
 type Ramp = { kind: "set" | "linear" | "exp"; value: number; at: number };
 type FakeParam = { ramps: Ramp[]; value: number };
@@ -98,6 +98,9 @@ beforeEach(() => {
   window.localStorage.clear();
   resetPreferencesForTest();
   resetSoundForTest();
+  // jsdom can't dispatch a trusted event: these tests' gestures stand in for real ones, and the context is built
+  // inside the gesture (the deferred build has its own tests below).
+  soundTestMode({ trustSynthetic: true, buildNow: true });
   hidden(false);
 });
 afterEach(() => {
@@ -125,6 +128,16 @@ describe("[P0-11] sound: nothing before a gesture", () => {
   it.each(["pointerup", "touchend", "click", "keydown"])("unlocks on %s", (type) => {
     armSound();
     gesture(type);
+    expect(contexts).toHaveLength(1);
+  });
+
+  it("[P1-15] ignores events the page dispatched itself (C-86: a script click built the context, 190 ms)", () => {
+    soundTestMode({ trustSynthetic: false, buildNow: true });
+    armSound();
+    for (const type of ["pointerup", "touchend", "click", "keydown"]) gesture(type);
+    expect(contexts).toHaveLength(0); // a synthetic event can't unlock audio, so it builds nothing
+    soundTestMode({ trustSynthetic: true, buildNow: true });
+    gesture("click"); // a real gesture still does
     expect(contexts).toHaveLength(1);
   });
 
@@ -366,5 +379,122 @@ describe("[P0-11] sound: what each name plays (DESIGN §9)", () => {
     ctx.currentTime = 42;
     play("tick");
     expect(ctx.oscillators[1]?.startedAt).toBe(42);
+  });
+});
+
+describe("[P1-15] sound: the first context is built off the tap (C-86 review: 195–470 ms cold in every engine)", () => {
+  const idle: Array<() => void> = [];
+  beforeEach(() => {
+    vi.useFakeTimers();
+    idle.length = 0;
+    vi.stubGlobal("requestIdleCallback", (cb: () => void) => idle.push(cb));
+    soundTestMode({ trustSynthetic: true, buildNow: false });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    delete (document as { getAnimations?: unknown }).getAnimations;
+  });
+  const runIdle = (): void => {
+    for (const cb of idle.splice(0)) cb();
+  };
+
+  it("[P1-15] builds nothing inside the gesture; builds it at the next idle moment, then it runs", () => {
+    armSound();
+    gesture();
+    expect(contexts).toHaveLength(0); // the tap's own handler stays cheap
+    runIdle();
+    const ctx = only();
+    expect(ctx.resume).toHaveBeenCalledTimes(1);
+  });
+
+  it("[P1-15] waits while a finite animation is running; an endless loop doesn't hold it", () => {
+    const running = [
+      { playState: "running", effect: { getComputedTiming: () => ({ iterations: 1 }) } },
+    ];
+    const loop = [
+      { playState: "running", effect: { getComputedTiming: () => ({ iterations: Infinity }) } },
+    ];
+    let animations: unknown[] = running;
+    document.getAnimations = () => animations as Animation[];
+    armSound();
+    gesture();
+    runIdle();
+    expect(contexts).toHaveLength(0); // the moment is still playing
+    animations = loop;
+    vi.advanceTimersByTime(250);
+    runIdle();
+    expect(contexts).toHaveLength(1);
+  });
+
+  it("[P1-15] waits while particles are falling (fx sets data-fx-live)", () => {
+    document.getAnimations = () => [];
+    document.documentElement.setAttribute("data-fx-live", "");
+    armSound();
+    gesture();
+    runIdle();
+    expect(contexts).toHaveLength(0);
+    document.documentElement.removeAttribute("data-fx-live");
+    vi.advanceTimersByTime(250);
+    runIdle();
+    expect(contexts).toHaveLength(1);
+  });
+
+  it("[P1-15] gives up waiting after 10 s and builds it anyway", () => {
+    const running = [
+      { playState: "running", effect: { getComputedTiming: () => ({ iterations: 1 }) } },
+    ];
+    document.getAnimations = () => running as unknown as Animation[];
+    armSound();
+    gesture();
+    for (let t = 0; t < 10_000; t += 250) {
+      runIdle();
+      vi.advanceTimersByTime(250);
+    }
+    runIdle();
+    expect(contexts).toHaveLength(1);
+  });
+
+  it("[P1-15] without requestIdleCallback (WebKit) it is built on the next task, which keeps the gesture", () => {
+    vi.stubGlobal("requestIdleCallback", undefined);
+    const running = [
+      { playState: "running", effect: { getComputedTiming: () => ({ iterations: 1 }) } },
+    ];
+    document.getAnimations = () => running as unknown as Animation[]; // not waited on here
+    armSound();
+    gesture();
+    expect(contexts).toHaveLength(0);
+    vi.advanceTimersByTime(0);
+    expect(contexts).toHaveLength(1);
+  });
+
+  it("[P1-15] a sound asked for inside the unlocking tap builds it there and plays (P0-11 still holds)", async () => {
+    document.getAnimations = () => [];
+    armSound();
+    gesture();
+    expect(play("credit")).toBe(true); // same task as the tap: built now, sounds once awake
+    const ctx = only();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ctx.oscillators.length).toBeGreaterThan(0);
+  });
+
+  it("[P1-15] a sound asked for after the tap's task (a moment's timer) stays silent until the idle build", () => {
+    document.getAnimations = () => [];
+    armSound();
+    gesture();
+    vi.advanceTimersByTime(1); // the tap's task is over
+    expect(play("credit")).toBe(false);
+    expect(contexts).toHaveLength(0);
+    runIdle();
+    expect(contexts).toHaveLength(1);
+  });
+
+  it("[P1-15] two taps before it is built schedule one build", () => {
+    document.getAnimations = () => [];
+    armSound();
+    gesture();
+    gesture("keydown");
+    runIdle();
+    runIdle();
+    expect(contexts).toHaveLength(1);
   });
 });

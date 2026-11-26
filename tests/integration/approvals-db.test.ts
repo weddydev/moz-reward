@@ -135,7 +135,11 @@ const receipt = (
 /** The whole approval, as the service writes it (the order matters: each guard checks the step before). */
 const approval = (scope: ShopScope, m: Membership, requestId: string, gold: number) =>
   run(scope, (rid) => [
-    decide(requestId, scope.userId, sql`status = 'approved', award_gold = ${gold}`),
+    decide(
+      requestId,
+      scope.userId,
+      sql`status = 'approved', progress_before = 0, progress_after = 0, ingot_size = 1000, award_gold = ${gold}`,
+    ),
     earn(m, requestId, scope.userId, gold, rid),
     bumpMember(m, gold),
     bumpCounter(m.shopId),
@@ -215,7 +219,7 @@ describe("[P1-12] approvals: the database walls on point_requests", () => {
         decide(
           r.id,
           w.owner.userId,
-          sql`status = 'approved', award_gold = 10, amount_pence = 50001`,
+          sql`status = 'approved', progress_before = 0, progress_after = 0, ingot_size = 1000, award_gold = 10, amount_pence = 50001`,
         ),
       ]);
     expect(await pgCode(pence)).toBe(CHECK);
@@ -287,7 +291,11 @@ describe("[P1-12] ledger_entries: append-only, tied to an approval", () => {
     expect(
       await pgCode(() =>
         run(w.staff, (rid) => [
-          decide(r.id, w.staff.userId, sql`status = 'approved', award_gold = 50`),
+          decide(
+            r.id,
+            w.staff.userId,
+            sql`status = 'approved', progress_before = 0, progress_after = 0, ingot_size = 1000, award_gold = 50`,
+          ),
           earn(w.member, r.id, w.staff.userId, 51, rid),
         ]),
       ),
@@ -296,7 +304,11 @@ describe("[P1-12] ledger_entries: append-only, tied to an approval", () => {
     expect(
       await pgCode(() =>
         run(w.staff, (rid) => [
-          decide(r.id, w.staff.userId, sql`status = 'approved', award_gold = 50`),
+          decide(
+            r.id,
+            w.staff.userId,
+            sql`status = 'approved', progress_before = 0, progress_after = 0, ingot_size = 1000, award_gold = 50`,
+          ),
           earn(w.member, r.id, w.owner.userId, 50, rid),
         ]),
       ),
@@ -362,7 +374,11 @@ describe("[P1-12] rewards and receipts: only beside an approval; numbers gapless
       VALUES (${newId()}, ${w.member.id}, ${w.shop.id}, 'main', 'Free coffee', 1, 1, ${r.id})`;
     expect(await pgCode(() => run(w.owner, () => [reward]))).toBe(DENIED);
     await run(w.owner, (rid) => [
-      decide(r.id, w.owner.userId, sql`status = 'approved', award_gold = 100`),
+      decide(
+        r.id,
+        w.owner.userId,
+        sql`status = 'approved', progress_before = 0, progress_after = 0, ingot_size = 1000, award_gold = 100`,
+      ),
       earn(w.member, r.id, w.owner.userId, 100, rid),
       bumpMember(w.member, 100),
       reward,
@@ -383,7 +399,11 @@ describe("[P1-12] rewards and receipts: only beside an approval; numbers gapless
     expect(
       await pgCode(() =>
         run(w.owner, (rid) => [
-          decide(r.id, w.owner.userId, sql`status = 'approved', award_gold = 10`),
+          decide(
+            r.id,
+            w.owner.userId,
+            sql`status = 'approved', progress_before = 0, progress_after = 0, ingot_size = 1000, award_gold = 10`,
+          ),
           earn(w.member, r.id, w.owner.userId, 10, rid),
           bumpCounter(w.shop.id),
           receipt(w.member, r.id, w.owner.userId, rid, 9),

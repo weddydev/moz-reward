@@ -1,4 +1,5 @@
 import type { VaultView } from "@/features/vault/view";
+import { type CelebrationReceipt, receiptView, type ReceiptSnapshot } from "@/lib/celebration";
 import { formatDate, formatTime } from "@/lib/format-date";
 import { addLondonDays } from "@/lib/time";
 
@@ -91,13 +92,15 @@ export type ReceiptRow = {
   items: string | null;
   /** The PDF download (the customer route; the file is rendered by the worker). */
   pdfHref: string;
+  /** P1-15: the receipt as its card shows it (opening a row prints it). */
+  receipt: CelebrationReceipt;
 };
 
 export function receiptRow(receipt: {
   id: string;
   number: number;
   createdAt: Date;
-  data: { goldEarned: number; bonusGold: number; items: readonly string[] };
+  data: ReceiptSnapshot;
 }): ReceiptRow {
   const gold = receipt.data.goldEarned + receipt.data.bonusGold;
   return {
@@ -107,5 +110,6 @@ export function receiptRow(receipt: {
     gold: `+${gold.toLocaleString("en-GB")} gold`,
     items: receipt.data.items.length > 0 ? receipt.data.items.join(", ") : null,
     pdfHref: `/api/me/receipts/${encodeURIComponent(receipt.id)}/pdf`,
+    receipt: receiptView(receipt),
   };
 }

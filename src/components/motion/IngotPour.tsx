@@ -73,6 +73,8 @@ export function IngotPour({
   seenKey,
   ingots = 0,
   unlocked = false,
+  still = false,
+  skipKey = 0,
   onFull,
   onLanded,
   count,
@@ -81,6 +83,13 @@ export function IngotPour({
 }: Omit<IngotProps, "animated" | "decorative" | "topGold"> & {
   /** Which ingot this is for the "first view in this session" rule (the shop id). */
   seenKey: string;
+  /**
+   * P1-15: the first view shows the level as it is, with no pour (a celebration starts from the level before
+   * the award and pours only the gold it adds).
+   */
+  still?: boolean;
+  /** P1-15: a change lands whatever is pouring at once, as a tap on the ingot does (the moment's skip). */
+  skipKey?: number;
   /** Ingots completed so far: a rise with `gold` lower than before is an overflow into a new ingot. */
   ingots?: number;
   /** A reward is ready: with a full ingot on show, it lifts and its top face is gold. */
@@ -111,6 +120,7 @@ export function IngotPour({
     landedRef.current = onLanded;
   });
   const prev = useRef({ gold: ingot.gold, ingots });
+  const lastSkip = useRef(skipKey);
   usePauseOffscreen(ref);
   const { size } = ingot;
 
@@ -153,7 +163,7 @@ export function IngotPour({
       ingotFill(ingot.gold, size).fraction > 0 &&
       typeof el.animate === "function" &&
       motionOn();
-    if (!canAnimate) {
+    if (!canAnimate || still) {
       seen.current = true;
       setPhase("done");
       return () => {
@@ -195,7 +205,17 @@ export function IngotPour({
     land.current(); // a pour still running lands first; this one starts from what it left
     clearTimers();
     const el = ref.current;
-    if (!seen.current || !onScreen.current || document.hidden || !motionOn() || !el?.animate) {
+    // Skipped in the same commit as this gold arrived (a tap before the pour began): land it at once.
+    const skippedNow = skipKey !== lastSkip.current;
+    lastSkip.current = skipKey;
+    if (
+      skippedNow ||
+      !seen.current ||
+      !onScreen.current ||
+      document.hidden ||
+      !motionOn() ||
+      !el?.animate
+    ) {
       if (seen.current) settle(steps);
       else {
         setShown(next.gold); // not shown yet: the first view pours to the new level
@@ -365,6 +385,14 @@ export function IngotPour({
     // The step is read once at its start; a change mid-pour lands this one first (effect above).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [play]);
+
+  // The owner's skip (P1-15): lands the running step and everything queued, like a tap on the ingot. A skip
+  // that came with new gold was already handled by the effect above (it settles instead of pouring).
+  useEffect(() => {
+    if (skipKey === lastSkip.current) return;
+    lastSkip.current = skipKey;
+    land.current();
+  }, [skipKey]);
 
   // Unmount (navigation mid-pour): nothing left waiting.
   useEffect(

@@ -1,5 +1,6 @@
 import { SharedElement, TransitionLink } from "@/components/motion";
 import { Section } from "../Section";
+import { CelebrationDemo } from "./CelebrationDemo";
 import { DEMO_SHOPS, DEMO_TABS } from "./demo-data";
 import { FxPlayground } from "./FxPlayground";
 import { GatePreview } from "./GatePreview";
@@ -104,6 +105,8 @@ export function MotionGallery(): React.JSX.Element {
       <GatePreview />
 
       <IngotDemo />
+
+      <CelebrationDemo />
 
       <MotionPrimitives />
     </main>

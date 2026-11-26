@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./support/test";
+import { GALLERY_PARTS } from "../../src/features/dev/gallery-list";
 import type { Page } from "@playwright/test";
 
 /**
@@ -76,7 +77,8 @@ test.describe("[P0-09] UI gallery", () => {
       await page.reload();
       await expect(page.locator('[data-overlay-trigger="modal"]')).toBeEnabled();
       await section.scrollIntoViewIfNeeded();
-      await expect(section.locator("[data-primitive]")).toHaveCount(15);
+      // One block per Molten part (from the list, so a new part never leaves a stale count: P1-15 added ReceiptCard).
+      await expect(section.locator("[data-primitive]")).toHaveCount(GALLERY_PARTS.length);
       const box = await section.boundingBox();
       expect(box?.width ?? Infinity).toBeLessThanOrEqual(width);
       // Pours, digit flips and count-ups play on view: shoot once every finite animation has ended (the

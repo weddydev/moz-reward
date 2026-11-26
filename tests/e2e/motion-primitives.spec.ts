@@ -341,6 +341,7 @@ test.describe("[P0-10] motion gallery", () => {
       "Tab order",
       "Gilded Gate",
       "Ingot pour", // P1-08
+      "Celebrations", // P1-15
       "Presets",
       "Popover",
       "Stagger",

@@ -57,6 +57,7 @@ export const GALLERY_PARTS = [
   "IngotPour",
   "MemberCard",
   "MiniVault",
+  "ReceiptCard",
   "RedeemCode",
   "RewardUnlocked",
   "ShopCoin",
@@ -75,6 +76,8 @@ export const NOT_A_GALLERY_PART: Readonly<Record<string, string>> = {
   DockScan: "a dock glyph (shown inside Dock)",
   DockMarket: "a dock glyph (shown inside Dock)",
   DockMe: "a dock glyph (shown inside Dock)",
+  DialogFx:
+    "a second particle canvas inside a modal's top layer (P1-15 celebration; /dev/motion Celebrations)",
   FxCanvas: "the page's one particle canvas (root layout; every burst on this page draws on it)",
   GooFilter: "the SVG goo filter (root layout; LiquidChoice and Dock use it)",
   GateScene: "the Gilded Gate's markup (the full scene plays on /dev/molten and on shop landings)",

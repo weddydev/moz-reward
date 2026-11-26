@@ -2,6 +2,7 @@ import type { MemberId } from "@/lib/brand";
 import { formatMemberId } from "@/lib/codes";
 import { formatDate, formatDateTime, formatTime, londonDay } from "@/lib/format-date";
 import { type EarnMode, versionActiveAt, type VersionDates } from "@/lib/loyalty/programme";
+import { formatPence } from "@/lib/money";
 import { AMOUNT_PENCE_MAX, REQUEST_ITEMS, type RejectReason } from "@/lib/requests";
 import type { TeamRequest } from "@/server/repos/point-requests";
 
@@ -43,8 +44,7 @@ export const REJECT_REASON_LABELS: Readonly<Record<RejectReason, string>> = {
   other: "Another reason",
 };
 
-const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
-export const formatPence = (p: number): string => gbp.format(p / 100);
+export { formatPence };
 
 const visitsText = (n: number): string =>
   n === 0 ? "First visit" : n === 1 ? "1 visit" : `${n.toLocaleString("en-GB")} visits`;

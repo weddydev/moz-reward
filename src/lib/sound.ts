@@ -54,9 +54,70 @@ let waking: Promise<void> | null = null;
 /** Keys that are not a user gesture for audio (HTML user activation leaves them out). */
 const NOT_A_GESTURE = new Set(["Escape", "Shift", "Control", "Alt", "Meta"]);
 
+/** Tests only: jsdom can't dispatch a trusted event; `buildNow` builds the context inside the gesture. */
+let test = { trustSynthetic: false, buildNow: false };
+/** A build is waiting for an idle moment (one at a time, however many taps). */
+let building = false;
+/** Inside the unlocking tap's own task: a sound asked for now builds the context at once (it is wanted now). */
+let tapping = false;
+/** Longest a build waits for running animations to end. */
+const BUILD_WAIT_MS = 10_000;
+
+/**
+ * A finite animation is playing (a moment's pour or flip) or particles are falling (`data-fx-live`, fx.ts);
+ * endless loops (rays, glints) don't count.
+ */
+const busy = (): boolean =>
+  document.documentElement.hasAttribute("data-fx-live") ||
+  (typeof document.getAnimations === "function" &&
+    document
+      .getAnimations()
+      .some(
+        (a) => a.playState === "running" && a.effect?.getComputedTiming().iterations !== Infinity,
+      ));
+
 function unlock(event: Event): void {
+  // Only a real gesture can unlock audio; an event the page dispatched itself (a script's `el.click()`) builds
+  // nothing (C-86).
+  if (!event.isTrusted && !test.trustSynthetic) return;
   if ("key" in event && NOT_A_GESTURE.has(String(event.key))) return;
   if (!readSoundPreference()) return; // keep listening: the toggle's own tap unlocks later
+  if (ctx || test.buildNow) {
+    wake();
+    return;
+  }
+  tapping = true;
+  window.setTimeout(() => {
+    tapping = false;
+  }, 0);
+  // The first AudioContext costs 195–470 ms cold in every engine (the audio service starting). Not inside the
+  // tap, where it would delay what the tap starts: at the next idle moment with no finite animation playing (at
+  // most 10 s later), which the tap's sticky activation allows (Chromium, Firefox). Without
+  // requestIdleCallback (WebKit) on the very next task, which keeps WebKit's gesture.
+  if (building) return;
+  building = true;
+  const since = Date.now();
+  const build = (): void => {
+    if (busy() && Date.now() - since < BUILD_WAIT_MS) {
+      window.setTimeout(later, 250);
+      return;
+    }
+    building = false;
+    wake();
+  };
+  const later = (): void => {
+    window.requestIdleCallback(build);
+  };
+  if (typeof window.requestIdleCallback === "function") later();
+  else
+    window.setTimeout(() => {
+      building = false;
+      wake(); // no waiting on animations: a chain of timers could lose the gesture
+    }, 0);
+}
+
+/** Builds the context if needed and asks it to run; stays armed until it really runs. */
+function wake(): void {
   try {
     const audio = (ctx ??= new AudioContext());
     if (audio.state === "running") {
@@ -116,6 +177,10 @@ function schedule(audio: AudioContext, name: SoundName): void {
  * soon as the context finishes waking inside the tap that unlocked it.
  */
 export function play(name: SoundName): boolean {
+  if (!ctx && tapping && readSoundPreference()) {
+    building = false; // the idle build finds the context there and only resumes it
+    wake();
+  }
   const audio = ctx;
   if (!audio || !readSoundPreference() || document.hidden) return false;
   if (audio.state === "running") {
@@ -133,9 +198,16 @@ export function play(name: SoundName): boolean {
   return true;
 }
 
+/** Tests only: see `test` above. */
+export function soundTestMode(mode: { trustSynthetic: boolean; buildNow: boolean }): void {
+  test = mode;
+}
+
 /** Test helper: forget the context and listeners. */
 export function resetSoundForTest(): void {
   if (typeof window !== "undefined") disarm();
   ctx = null;
   waking = null;
+  building = false;
+  tapping = false;
 }

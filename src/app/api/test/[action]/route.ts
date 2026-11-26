@@ -33,7 +33,7 @@ import {
 } from "@/server/testing/factories";
 import { relayShopRealtime } from "@/server/testing/realtime";
 import { testApiAllowed } from "@/server/testing/test-api";
-import { approvedVisit, storeStubReceiptPdfs } from "@/server/testing/visits";
+import { approvedVisit, currentMembership, storeStubReceiptPdfs } from "@/server/testing/visits";
 
 /**
  * Test-only seeding API (APP_ENV=test). Lets E2E specs create exactly the data they need and sign in
@@ -175,6 +175,8 @@ const shopInput = z
      * owner through the approvals service (ledger, counters, rewards, receipt). Needs a member and a programme.
      */
     visits: z.number().int().min(0).max(12).default(0),
+    /** P1-15: leave the seeded visits unseen, so the customer's app celebrates the newest (default: seen). */
+    celebrate: z.boolean().default(false),
     /**
      * P1-07: a loyalty programme (Café classic template, ingot 1,000 gold), version 1, owned by nobody real.
      * P1-08: "sample" = the DESIGN §15 sample rewards (milestones 25/50 and a mystery at 75).
@@ -198,6 +200,18 @@ const pointRequestsInput = z.object({ userId: z.uuid() }).strict();
 const receiptPdfsInput = z.object({ shopId: z.uuid() }).strict();
 /** P1-12: deliver the realtime hints a shop's actions queued (the worker's publish job; no worker in E2E). */
 const relayRealtimeInput = z.object({ shopId: z.uuid() }).strict();
+/**
+ * P1-15: one approved visit for an existing member (the owner approves a real request through the service),
+ * left unseen so the member's app celebrates it. Its realtime hints wait in the outbox for `relay-realtime`.
+ */
+const approveVisitInput = z
+  .object({
+    shopId: z.uuid(),
+    userId: z.uuid(),
+    amountPence: z.number().int().min(1).max(100_000).optional(),
+    items: z.array(z.string().min(1).max(40)).max(10).optional(),
+  })
+  .strict();
 
 type Ctx = { params: Promise<{ action: string }> };
 const invalid = (): Response => NextResponse.json({ error: "invalid input" }, { status: 400 });
@@ -241,6 +255,22 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
       const parsed = relayRealtimeInput.safeParse(body);
       if (!parsed.success) return invalid();
       return NextResponse.json({ delivered: await relayShopRealtime(parsed.data.shopId) });
+    }
+    case "approve-visit": {
+      const parsed = approveVisitInput.safeParse(body);
+      if (!parsed.success) return invalid();
+      const { shopId, userId, amountPence, items } = parsed.data;
+      const membership = await currentMembership(shopId, userId);
+      if (!membership) return invalid();
+      const approved = await approvedVisit(membership, {
+        ...(amountPence === undefined ? {} : { amountPence }),
+        ...(items === undefined ? {} : { items }),
+      });
+      return NextResponse.json({
+        requestId: approved.requestId,
+        receiptNumber: approved.receiptNumber,
+        gold: approved.gold,
+      });
     }
     case "point-requests": {
       const parsed = pointRequestsInput.safeParse(body);
@@ -297,6 +327,7 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
         programme,
         closureInDays,
         visits,
+        celebrate,
       } = parsed.data;
       if (visits > 0 && (!memberUserId || !programme)) return invalid();
       const shop = await makeShop({
@@ -341,7 +372,7 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
             ? {}
             : { streakWeeks, streakLastWeekStart: londonWeekStart(new Date()) }),
         });
-        for (let i = 0; i < visits; i += 1) await approvedVisit(membership);
+        for (let i = 0; i < visits; i += 1) await approvedVisit(membership, { seen: !celebrate });
       }
       return NextResponse.json({ shopId: shop.id, shopCode: shop.shopCode });
     }

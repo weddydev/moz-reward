@@ -18,6 +18,8 @@ export type HapticName = keyof typeof HAPTICS;
 
 export function haptic(name: HapticName): boolean {
   if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return false;
+  // Before any tap the browser refuses it and logs an error (a moment that plays on app open, P1-15).
+  if ("userActivation" in navigator && !navigator.userActivation.hasBeenActive) return false;
   if (!readSoundPreference()) return false;
   const pattern = HAPTICS[name];
   try {

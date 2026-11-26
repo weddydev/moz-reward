@@ -83,6 +83,15 @@ export const pointRequests = pgTable(
     routedBy: uuid(),
     routedAt: tz(),
     source: pointRequestSource().notNull().default("request"),
+    /**
+     * P1-15: the ingot before and after this approval (gold in the ingot being filled, and that ingot's size), so
+     * the customer's celebration pours from the old level to the new one. Set with `approved` only (guard, 0033).
+     */
+    progressBefore: integer(),
+    progressAfter: integer(),
+    ingotSize: integer(),
+    /** P1-15: when the customer's app claimed this approval's celebration (once: never shown twice). */
+    seenAt: tz(),
     ...timestamps(),
   },
   (t) => [
@@ -96,6 +105,14 @@ export const pointRequests = pgTable(
     index("point_requests_open_requested_idx")
       .on(t.requestedAt)
       .where(sql`${t.status} IN ('pending', 'awaiting_owner')`),
+    index("point_requests_unseen_idx")
+      .on(t.userId, t.decidedAt.desc())
+      .where(sql`${t.status} = 'approved' AND ${t.seenAt} IS NULL`),
+    check(
+      "point_requests_celebration_shape",
+      sql`(${t.progressBefore} IS NULL) = (${t.progressAfter} IS NULL) AND (${t.progressBefore} IS NULL) = (${t.ingotSize} IS NULL)
+        AND (${t.ingotSize} IS NULL OR (${t.ingotSize} > 0 AND ${t.progressBefore} >= 0 AND ${t.progressAfter} >= 0))`,
+    ),
     check("point_requests_amount_positive", sql`${t.amountPence} IS NULL OR ${t.amountPence} > 0`),
     check("point_requests_award_gold_positive", sql`${t.awardGold} IS NULL OR ${t.awardGold} > 0`),
     check(

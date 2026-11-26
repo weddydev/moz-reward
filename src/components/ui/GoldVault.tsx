@@ -28,6 +28,8 @@ export function GoldVault({
   owed = 0,
   seenKey,
   unlocked = false,
+  still = false,
+  skipKey = 0,
   onFull,
   onLanded,
   reward,
@@ -48,6 +50,10 @@ export function GoldVault({
   owed?: number;
   seenKey: string;
   unlocked?: boolean;
+  /** P1-15: show the level as it is on the first view (no pour); later gold still pours (`IngotPour`). */
+  still?: boolean;
+  /** P1-15: a change lands the running pour at once (`IngotPour`). */
+  skipKey?: number;
   onFull?: () => void;
   /** Each time a pour lands, with the gold it shows. */
   onLanded?: (gold: number) => void;
@@ -116,6 +122,8 @@ export function GoldVault({
         ingots={ingots}
         seenKey={seenKey}
         unlocked={unlocked}
+        still={still}
+        skipKey={skipKey}
         onFull={onFull}
         onLanded={(g) => {
           setLanded(g);
