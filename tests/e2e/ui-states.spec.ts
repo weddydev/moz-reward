@@ -1,5 +1,5 @@
 import { expect, test } from "./support/test";
-import { GALLERY_PRIMITIVES } from "../../src/features/dev/gallery-list";
+import { GALLERY_PARTS, GALLERY_PRIMITIVES } from "../../src/features/dev/gallery-list";
 import type { Page, Route } from "@playwright/test";
 
 /**
@@ -28,17 +28,19 @@ async function gallery(page: Page): Promise<void> {
 const block = (page: Page, name: string) => page.locator(`[data-primitive="${name}"]`);
 
 test.describe("[P0-09] UI gallery states", () => {
-  test("[P0-09] AC1: a block with a heading for every primitive in the gallery list", async ({
+  test("[P0-09] AC1 + C-94 (P1-C close): a block with a heading for every primitive and Molten part", async ({
     page,
   }) => {
     await gallery(page);
-    for (const name of GALLERY_PRIMITIVES) {
+    for (const name of [...GALLERY_PRIMITIVES, ...GALLERY_PARTS]) {
       await expect(block(page, name), name).toHaveCount(1);
       await expect(
         block(page, name).getByRole("heading", { level: 3, name, exact: true }),
       ).toBeVisible();
     }
-    expect(await page.locator("[data-primitive]").count()).toBe(GALLERY_PRIMITIVES.length);
+    expect(await page.locator("[data-primitive]").count()).toBe(
+      GALLERY_PRIMITIVES.length + GALLERY_PARTS.length,
+    );
   });
 
   test("[P0-09] AC3: Tab reaches every enabled control once, in DOM order; no positive tabindex", async ({
@@ -359,6 +361,11 @@ test.describe("[P0-09] UI gallery states", () => {
         if (el.closest("dialog") || el.closest(".sr-only")) continue;
         const r = el.getBoundingClientRect();
         if (r.width === 0 || r.right <= vw + 0.5) continue;
+        // SVG geometry under a clip path (C-94: the ingot's wave is wider than the ingot on purpose) is cut to
+        // shapes inside its own <svg>: fine when that svg ends inside the viewport.
+        const svg = el.closest("svg");
+        if (el.closest("[clip-path]") && svg && svg.getBoundingClientRect().right <= vw + 0.5)
+          continue;
         // Fine if a clipping/scrolling ancestor inside the viewport contains it.
         let a = el.parentElement;
         let contained = false;
@@ -404,7 +411,8 @@ test.describe("[P0-09] UI gallery states", () => {
     expect(result.chipRowScrolls).toBe(true);
 
     // SegmentedControl labels sit on one line in their 40px pill and are shown in full at 320.
-    const segments = page.locator('[role="radiogroup"] > button[role="radio"]');
+    // Icon-only radios (StarRating's stars, C-94) have no label text to fit.
+    const segments = page.locator('[role="radiogroup"]:not(.m-stars) > button[role="radio"]');
     expect(await segments.count()).toBeGreaterThan(0);
     for (const seg of await segments.all()) {
       const fit = await seg.evaluate((el) => {

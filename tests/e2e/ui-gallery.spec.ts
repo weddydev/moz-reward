@@ -63,6 +63,43 @@ test.describe("[P0-09] UI gallery", () => {
     }
   });
 
+  test("[P0-09] C-94 (P1-C close): the Molten parts section at 320 and 1440 (screenshots)", async ({
+    page,
+    isMobile,
+  }, testInfo) => {
+    test.skip(isMobile, "set widths: desktop projects");
+    test.setTimeout(60_000);
+    const section = page.locator("section", { has: page.locator("h2#s-molten-parts") });
+    for (const width of [320, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.reload();
+      await expect(page.locator('[data-overlay-trigger="modal"]')).toBeEnabled();
+      await section.scrollIntoViewIfNeeded();
+      await expect(section.locator("[data-primitive]")).toHaveCount(15);
+      const box = await section.boundingBox();
+      expect(box?.width ?? Infinity).toBeLessThanOrEqual(width);
+      // Pours, digit flips and count-ups play on view: shoot once every finite animation has ended (the
+      // vault's ray loop and the dock's orbit are infinite and keep running).
+      await section.evaluate(async (el) => {
+        el.scrollIntoView();
+        for (const block of el.querySelectorAll("[data-primitive]")) {
+          block.scrollIntoView({ block: "center" });
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        const finite = (): Animation[] =>
+          el
+            .getAnimations({ subtree: true })
+            .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity);
+        const deadline = Date.now() + 8_000;
+        while (finite().some((a) => a.playState === "running") && Date.now() < deadline)
+          await new Promise((r) => setTimeout(r, 100));
+      });
+      await section.screenshot({
+        path: `.artifacts/screens/P1-C/molten-parts-${String(width)}--${testInfo.project.name}.png`,
+      });
+    }
+  });
+
   test("[P0-09] a toast appears when triggered", async ({ page }) => {
     await page.getByRole("button", { name: "Success toast" }).click();
     await expect(

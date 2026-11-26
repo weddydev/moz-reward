@@ -32,6 +32,7 @@ import { Tile } from "@/components/ui/Tile";
 import { Toaster, toast } from "@/components/ui/Toast";
 import { PreferenceToggles } from "@/features/preferences/PreferenceToggles";
 import { useHydrated } from "@/lib/use-hydrated";
+import { MoltenParts } from "./MoltenParts";
 import { OverlayDemos } from "./OverlayDemos";
 import { Demo, Section, State } from "./Section";
 import { TokenPage } from "./TokenPage";
@@ -913,6 +914,10 @@ export function UiGallery(): React.JSX.Element {
 
       <Section title="Overlays">
         <OverlayDemos />
+      </Section>
+
+      <Section title="Molten parts">
+        <MoltenParts />
       </Section>
 
       <Section title="People">

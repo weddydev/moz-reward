@@ -40,4 +40,54 @@ export const GALLERY_PRIMITIVES = [
   "Toaster",
 ] as const;
 
-export type GalleryPrimitive = (typeof GALLERY_PRIMITIVES)[number];
+/**
+ * C-94 (P1-C close): every other component built (Molten parts from PD and P1 that `src/components/ui` doesn't
+ * re-export, and the motion components a person looks at), each in its states on `/dev/ui` so the human can
+ * review it side by side with the Molten demo. `gallery-list.test.ts` scans `src/components/ui` and
+ * `src/components/motion` for component exports: each one is here, in GALLERY_PRIMITIVES, or in
+ * NOT_A_GALLERY_PART with the reason it isn't shown on its own.
+ */
+export const GALLERY_PARTS = [
+  "CountUp",
+  "CoverPhoto",
+  "Dock",
+  "GildedEdge",
+  "GoldVault",
+  "Ingot",
+  "IngotPour",
+  "MemberCard",
+  "MiniVault",
+  "RedeemCode",
+  "RewardUnlocked",
+  "ShopCoin",
+  "ShopImage",
+  "Slider",
+  "StarRating",
+] as const;
+
+/** Component exports that have no block of their own, and why. */
+export const NOT_A_GALLERY_PART: Readonly<Record<string, string>> = {
+  Overlay: "the base of Modal, SidePanel and BottomSheet (shown as those)",
+  FieldMessage: "the error/hint line inside TextField, Select and TextArea (shown there)",
+  MemberCardQrPlaceholder: "the back face of MemberCard (shown by flipping it)",
+  DockWallet: "a dock glyph (shown inside Dock)",
+  DockOffers: "a dock glyph (shown inside Dock)",
+  DockScan: "a dock glyph (shown inside Dock)",
+  DockMarket: "a dock glyph (shown inside Dock)",
+  DockMe: "a dock glyph (shown inside Dock)",
+  FxCanvas: "the page's one particle canvas (root layout; every burst on this page draws on it)",
+  GooFilter: "the SVG goo filter (root layout; LiquidChoice and Dock use it)",
+  GateScene: "the Gilded Gate's markup (the full scene plays on /dev/molten and on shop landings)",
+  GildedGate: "a full-screen entry animation (/dev/molten Intro, and /s/<code> on first visit)",
+  GildedGateMorph: "the Gilded Gate's hand-over to the landing (/dev/molten Intro)",
+  GildedGateLoader: "loads the Gilded Gate's lazy chunk (no UI of its own)",
+  LivingBackground: "the page background itself (root layout; this page shows it)",
+  Popover: "positioning for menus (shown as Select's list)",
+  RouteContent: "route transition wrapper (no UI of its own; /dev/motion)",
+  RouteTransition: "route transition wrapper (no UI of its own; /dev/motion)",
+  SharedElement: "shared-element morph between routes (/dev/motion)",
+  TransitionLink: "a link that runs route transitions (/dev/motion)",
+  WipeStage: "the card-to-shop gold wipe stage (/dev/molten phone)",
+};
+
+export type GalleryPrimitive = (typeof GALLERY_PRIMITIVES)[number] | (typeof GALLERY_PARTS)[number];
