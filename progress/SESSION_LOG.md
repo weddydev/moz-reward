@@ -1153,3 +1153,8 @@ CI fixes 27 Nov: ui-gallery parts count from GALLERY_PARTS (ReceiptCard = 16), c
 Tests: gate:task PASS (unit 2299/0, int 1799/0/1, e2e P1-15 21/0, perf 3/0); @perf/@fps ×3 18/18 real taps; coverage 4097/0; CI 45886425001 green.
 Left off: P1-16 next (C-108 new); demo guide P1-15 steps updated (Built).
 
+## 2026-11-27 — P1 — P1-16 closed, talha.syed (Mac)
+Done: migration 0034 (redemption_codes as HMAC, one live code per member, reward_valid_days + rewards.expires_at by trigger, shops.closed_at, ledger/rewards/memberships guards for the 0-gold redeem path); Redeem/confirm services + actions; guessing guard (weighted 24 h shop budget < 1e-6/day, per-person lock + share, fail closed); RedeemFlow in the reward card (Wallet C-65, Vault C-67, celebration C-108; receivedAt from the response C-81); staff confirm on Requests; leave voids codes (C-70); demo guide P1-16 steps → Built.
+Commits: f1d3936, 9957483, e15088a, 10ede11, abb942c, d486c7a (wip/P1-16) → main (ff).
+Tests: gate:task PASS (unit 2307/0, int 1873/0/1, e2e P1-16/J3 9/0); coverage 4180/0; spec-repeat ×5 webkit/iphone14 (hydration fix held); security design check + final review OK; CI 45900700721 green (CI 45896261969 red: confirm typed before hydration, KI-20 fourth face).
+Left off: P1-17 next (this session continues into it, human 27 Nov, session-only).

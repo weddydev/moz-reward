@@ -121,7 +121,7 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 
 - [x] P1-14 · Member QR and offline member card
 - [x] P1-15 · Celebrations: points credited, reward unlocked, receipt
-- [ ] P1-16 · Rewards and redemption
+- [x] P1-16 · Rewards and redemption
 - [ ] P1-17 · Data-integrity reconciliation
 - [ ] P1-18 · Phase hardening
 - [ ] P1-D closed with `/subphase-complete`
