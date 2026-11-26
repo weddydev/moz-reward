@@ -7,27 +7,27 @@ Baton: held by talha.syed since 2026-11-26 05:27 IST (25 Nov 23:57 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1-14 built, not yet on main (26 Nov, talha.syed, Mac; checkpoint: session limit).** Branch `wip/P1-14`, HEAD `28ecafb` (rebased onto main `e2444b7`, the checkpoint commit). gate:task PASS on `71c761f`. Security design check + final-diff review done (verdict OK; review M1 fixed in `71c761f`; LOW sw.js ref fixed). Demo guide "P1-D steps" already updated (P1-14 = Built).
-- **Next step:** check CI on `28ecafb` (`gh run list --branch wip/P1-14`; it started at the checkpoint). Green → `git switch wip/P1-14 && git rebase origin/main` (main only gained progress-file commits after `e2444b7`, so the rebased commit differs from `28ecafb` only in progress files and rides on its CI run), then `git switch main && git merge --ff-only wip/P1-14 && git push origin main`, then the closing progress commit on main (PHASES tick P1-14, PROGRESS Now/Next/Last verified, SESSION_LOG ≤ 5 lines: evidence below), sound, then P1-15. Red → fix on `wip/P1-14` first.
-- **Untested:** CI on `28ecafb` (running). CI on `200e168` (45820198352): only the int job failed (rls pinned definer list, fixed in `71c761f`); its E2E shards were still running when cancelled by the push.
-- **Evidence for the close:** gate:task PASS (unit 2281/0, int 1761/0/1, sast, e2e P1-14 Linux Chromium 24/0); member-card.spec 8 tests green on chromium, webkit, iphone14, pixel7 (production build); affected specs (join, shop-page, portal-pages, routes-axe, wallet, security-headers) 118/0 Chromium + WebKit; authz member-qr 33/0; screenshots 320/390/1440 + offline 390 inspected (Chromium, WebKit, iPhone); installability errors [] (Chromium CDP).
+- **P1-14 closed (26 Nov, talha.syed, Mac).** On main `fcccd87`; `wip/P1-14` can be deleted. CI on `28ecafb` had failed only on services branch coverage (KI-73); fixed in `2c94edc` (new `tests/integration/member-qr-issue.test.ts`), CI 45834404486 green.
+- **Next step:** P1-15 · Celebrations: points credited, reward unlocked, receipt. Read its section in `docs/phases/P1.md` and its Read list; C-86 (reward moment's first-play long task, T-10) targets P1-15. Start a `wip/P1-15` branch from main. When built, update its step in the demo guide (Next item 1).
+- **Untested:** nothing open for P1-14.
 - **Carried to the P1-D close:** the human's side-by-side of C-92/C-93/C-94 (H-54).
 ## Status
 - **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
-- **Current sub-phase:** **P1-D** next (P1-14 first). **P1-C closed 26 Nov** (P1-10..P1-13, P1-19 + the close: reviews, QA, code-review M2/M3, C-92..C-95). P1-B closed 25 Nov. PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
+- **Current sub-phase:** **P1-D** (P1-14 done 26 Nov; P1-15 next). **P1-C closed 26 Nov** (P1-10..P1-13, P1-19 + the close: reviews, QA, code-review M2/M3, C-92..C-95). P1-B closed 25 Nov. PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-26, talha.syed (P1-14 checkpoint: built on `wip/P1-14` `28ecafb`, CI running)
+- **Last updated:** 2026-11-26, talha.syed (P1-14 closed, on main `fcccd87`)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
+- **P1-D:** P1-14 closed 26 Nov (member QR token, staff verify, Molten member card with live QR, offline card via service worker). P1-15 next.
 - **P1-C:** closed 26 Nov (P1-10..P1-13, P1-19, the close; C-95 SSE through Cloudflare + Caddy verified on staging).
 - **Staging live** (release `4a1a912` since 26 Nov, `c12dfc8` next once main's CI is green, P1-C close; real Sentry DSN verified 22 Nov; backups on: nightly dump, WAL, weekly base, drill): every release runs the demo sign-in check; weekly demo reset timer; auth-gated curls in deploy.yml. Demo guide `docs/DEMO_GUIDE.md`. Deploys succeed again (H-48 DSN real).
 - **P1-B:** closed 25 Nov (P1-05..P1-09 + the close: reviews, QA fixes, Wallet header, H-49).
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. P1-14 · Member QR and offline member card (security design check first), then P1-15..P1-17, P1-D close. **Each P1-D task (human 26 Nov):** when it is built, update its step in the human's training doc "Moz Rewards: Phase 1 demo guide" (https://claude.ai/artifact/EMEPhqufVhTCbBnxiqWtyw, section "P1-D steps": wording to match the real screens, status table → Built).
+1. P1-15 · Celebrations (C-86 targets it), then P1-16, P1-17, P1-D close. **Each P1-D task (human 26 Nov):** when it is built, update its step in the human's training doc "Moz Rewards: Phase 1 demo guide" (https://claude.ai/artifact/EMEPhqufVhTCbBnxiqWtyw, section "P1-D steps": wording to match the real screens, status table → Built).
 2. Human any time: H-45 (🟠), H-53 (🟢 rotate staging password before launch), H-54 (🟢 side-by-side C-92/93/94, by the P1-D close), H-38 (branches, list updated 26 Nov), H-51 (b), H-08b (private bucket for receipt PDFs); H-48b at P2 start.
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -66,10 +66,10 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (26 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
+- P1-14 closed: gate:task PASS (unit 2281/0, int 1761/0/1, sast, e2e P1-14 Linux Chromium 24/0); member-card.spec on chromium/webkit/iphone14/pixel7 green; affected specs 118/0; screenshots 320/390/1440 + offline 390 inspected; security design check + final review OK; coverage fix `2c94edc`: `pnpm test:coverage` 4048/0, services branches 92.38%; CI 45834404486 green.
 - P1-C closed: `c12dfc8` CI 45805824302 green (perf job on re-run, C-106); main `4a1a912` CI 45801863694 green + deployed; scoped QA PASS (1 LOW fixed); C-95 on staging (release 4a1a912, demo staff session, through Cloudflare + Caddy): /api/sse/me 200 at 156 ms, event ready in the first chunk at 157 ms, ': hb' at 25.2 s, cf-cache-status DYNAMIC, no content-encoding; signed out after.
 - P1-13 closed: gate:task PASS (unit 2254/0, int 1724/0/1, sast; no E2E: no UI); points-expiry int 20/0 (injected clock, month end, BST, C-73 rejoin, 0031 walls); dry run on seed data (SESSION_LOG). CI 45733852636 green (re-run).
 - P1-12 closed: gate:task PASS on rebased `wip/P1-12` (unit 2235/0, int 1704/0/1, sast, e2e P1-12 Linux Chromium 18/0); E2E requests.spec + shop-page 55/55 on 5 projects (production build); screenshots 320/390/1440 inspected; security-reviewer final diff OK (2 LOW: FOLLOWUPS + C-104). CI 45728932726 green.
-- `e21ed4c` CI 45725890665 green (WebKit receipts fix, KI-10 resize note).
 ## Follow-ups (LOW)
 In **`progress/FOLLOWUPS.md`** (read when the owner task starts and at every sub-phase close).
 

@@ -76,6 +76,10 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 ## Tests in general
 
+**KI-74 · Push to main refused "[pre-push] no CI run for <sha>: push it to its wip/ branch first" right after rebasing a green wip branch onto main** — P1-14, 26 Nov.
+- Cause: `ciVerdict` (scripts/pre-push.ts) lets a commit ride only on a green run of an ANCESTOR that differs by docs/progress files. A rebase rewrites the commit, so the old green run is no longer an ancestor, even when main only gained progress commits.
+- Fix: after the rebase, `git push --force-with-lease origin wip/<task>` and wait for that run (it is quick when the diff is progress-only); then main (rebased commit + the closing progress commit) rides on it. Never write "rides on its pre-rebase run" in a handoff.
+
 **KI-73 · CI job "unit + integration + authz (coverage)" red with `Coverage for branches (89.32%) does not meet "src/server/services/**" threshold (90%)`, every test passing; gate:task was green** — P1-14, 26 Nov (CI 45822334087).
 - Cause: `gate:task` runs `test:int` without coverage; thresholds (`vitest.config` per folder) are checked only by CI's `pnpm test:coverage` and gate:phase. A new route/service tested only by E2E (and the authz matrix's NOT_FOUND path) leaves its success and limit branches uncovered.
 - Fix: give every new `src/server/services/*` file an integration test of its own branches (success, each limit, error mapping). Check one file locally: `pnpm exec vitest run <tests> --coverage.enabled --coverage.include='src/server/services/<file>.ts' --coverage.reporter=text-summary` (thresholds pass on a subset only if set to 0 on the command line).

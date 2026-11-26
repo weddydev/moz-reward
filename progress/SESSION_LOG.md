@@ -1133,3 +1133,9 @@ Commits: 200e168, 71c761f on `wip/P1-14`.
 Tests: gate:task PASS (unit 2281/0, int 1761/0/1, e2e P1-14 24/0); member-card.spec on 4 projects green; affected specs 118/0.
 Left off: CI on 71c761f, then ff main + closing progress commit (Handoff note).
 
+
+## 2026-11-26 — P1 — P1-14 closed, talha.syed (Mac)
+Done: CI on `28ecafb` red only on services branch coverage 89.32% < 90% (KI-73: gate:task has no coverage step); new `tests/integration/member-qr-issue.test.ts` (200 payload, blank name, per-IP + per-user 429, AppError/rethrow) → member-qr files 100%; P1-14 ticked.
+Commits: 200e168, 71c761f, 2c94edc (rebased) → main `fcccd87`; docs: both client docs reworked with diagrams (human, 26 Nov).
+Tests: gate:task PASS (unit 2281/0, int 1761/0/1, e2e P1-14 24/0); `pnpm test:coverage` 4048/0, services branches 92.38%; CI 45834404486 green.
+Left off: P1-15 next (C-86 targets it).
