@@ -118,6 +118,7 @@ describe("[P0-03] app role moz_app (least privilege)", () => {
     shop_receipt_counters: "IS", // P1-12: UPDATE (last_number) by column grant, +1 only (guard)
     fraud_flags: "S", // P1-12: admins read; the worker writes
     points_expiry_warnings: "S", // P1-13: admins read (RLS); only the worker writes
+    integrity_issues: "S", // P1-17: admins read (RLS); only the worker writes
     redemption_codes: "IS", // P1-16: member inserts (guard); UPDATE by column grant (member void, team confirm); no DELETE
   };
 

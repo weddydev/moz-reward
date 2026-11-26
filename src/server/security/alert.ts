@@ -25,7 +25,8 @@ export type OpsAlertEvent =
   | "outbox.lost"
   | "codes.exhausted"
   | "notifications.undelivered"
-  | "health.partitions";
+  | "health.partitions"
+  | "integrity.issue";
 
 export function opsAlert(event: OpsAlertEvent, detail: Record<string, unknown>): void {
   log().warn({ alert: event, category: "ops", ...detail }, `ops alert: ${event}`);

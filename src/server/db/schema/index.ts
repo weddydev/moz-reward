@@ -9,3 +9,4 @@ export * from "./loyalty";
 export * from "./notifications";
 export * from "./requests";
 export * from "./ledger";
+export * from "./integrity";

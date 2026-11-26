@@ -13,6 +13,7 @@ import {
   accounts,
   adminMembers,
   customerProfiles,
+  ledgerEntries,
   loyaltyPrograms,
   memberships,
   shopStaff,
@@ -475,8 +476,29 @@ export async function runDemoSeed(
             })),
           )
           .onConflictDoNothing()
-          .returning({ id: memberships.id });
+          .returning({
+            id: memberships.id,
+            shopId: memberships.shopId,
+            progressGold: memberships.progressGold,
+            ingotsCompleted: memberships.ingotsCompleted,
+          });
         result.memberships += rows.length;
+        // P1-17: an opening balance on the ledger for those counters, so the nightly reconciliation finds the
+        // seeded memberships consistent (an `adjustment` with reason "opening": progress + ingots completed before
+        // the ledger began; DECISIONS 27 Nov). Only for a new membership (a re-seed keeps the old row and its own).
+        const opening = rows.filter((m) => m.progressGold > 0);
+        if (opening.length > 0) {
+          await tx.insert(ledgerEntries).values(
+            opening.map((m) => ({
+              membershipId: m.id,
+              shopId: m.shopId,
+              type: "adjustment" as const,
+              points: m.progressGold,
+              idempotencyKey: `opening:${m.id}`,
+              ref: { reason: "opening", ingots: m.ingotsCompleted },
+            })),
+          );
+        }
       }
     }
     // P1-05: Brew & Bloom starts on the Café classic template, saved by its demo owner (the shop the demo

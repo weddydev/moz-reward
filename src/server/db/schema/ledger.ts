@@ -103,7 +103,7 @@ export const ledgerEntries = pgTable(
     check(
       "ledger_entries_ref_shape",
       sql`jsonb_typeof(${t.ref}) = 'object'
-        AND ${t.ref} - ARRAY['receiptId', 'requestId', 'rewardId', 'redemptionId', 'reason', 'multiplierPercent', 'base', 'version'] = '{}'::jsonb`,
+        AND ${t.ref} - ARRAY['receiptId', 'requestId', 'rewardId', 'redemptionId', 'reason', 'multiplierPercent', 'base', 'version', 'ingots'] = '{}'::jsonb`,
     ),
   ],
 );

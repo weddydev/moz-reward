@@ -27,6 +27,8 @@ export const ALERT_KINDS = [
   "health.partitions",
   /** P1-13: a scheduled sweep (points expiry, request expiry/reminder) is late or ran too long (sweeps.ts). */
   "health.sweep",
+  /** P1-17: the nightly reconciliation found new mismatches (counts per check; details on the System page). */
+  "integrity.issue",
   /** Sent once a day at most: the daily alert ceiling was reached; later alerts are in the log only. */
   "alert.ceiling",
 ] as const;

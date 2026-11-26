@@ -28,6 +28,13 @@ export const SWEEPS = {
     maxRunSec: 15 * 60,
     audit: { entity: "memberships", changes: ["warned30", "warned7", "expired", "forfeited"] },
   },
+  /** P1-17: daily at 04:00 UK time; read-only (it records issues, never changes business rows). */
+  "integrity-check": {
+    everySec: 86_400,
+    graceSec: 2 * 3_600,
+    maxRunSec: 15 * 60,
+    audit: { entity: "integrity_issues", changes: ["newIssues"] },
+  },
   /** P1-11: every 5 minutes. */
   "requests-expire": {
     everySec: 300,

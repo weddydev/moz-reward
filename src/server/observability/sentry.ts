@@ -108,6 +108,16 @@ export function captureJobFailure(err: unknown, ctx: { queue: string; job: strin
   });
 }
 
+/** P1-17: a reconciliation run found new issues: a warning in Sentry with the counts per check (ids stay in the table). */
+export function captureIntegrityIssues(counts: Record<string, number>): void {
+  if (!Sentry.isInitialized()) return;
+  Sentry.withScope((scope) => {
+    scope.setTag("where", "job scheduled:integrity-check");
+    scope.setContext("integrity", counts);
+    Sentry.captureMessage("Data-integrity issues found", "warning");
+  });
+}
+
 /**
  * A crash about to end the process (worker `uncaughtException`): unlike reportUnexpected, this waits — at most
  * `timeoutMs` — for the developers' alert email and the Sentry flush, so the process can't exit first.

@@ -313,6 +313,7 @@ describe("[P0-04] scheduler", () => {
       (await getQueue("scheduled").getJobSchedulers()).map((s) => s.key).sort();
     expect(await keys()).toEqual([
       "heartbeat",
+      "integrity-check",
       "outbox-sweep",
       "partitions-ensure",
       "points-expiry",
@@ -321,6 +322,7 @@ describe("[P0-04] scheduler", () => {
     ]);
     const PATTERNS: Record<string, string> = {
       heartbeat: "* * * * *",
+      "integrity-check": "0 4 * * *", // P1-17: daily
       "outbox-sweep": "* * * * *",
       "partitions-ensure": "17 3 * * *", // P1-10: daily
       "points-expiry": "0 3 * * *", // P1-13: daily
@@ -337,6 +339,7 @@ describe("[P0-04] scheduler", () => {
     expect(older).toMatchObject({ removed: [], unknown: ["probe"] });
     expect(await keys()).toEqual([
       "heartbeat",
+      "integrity-check",
       "outbox-sweep",
       "partitions-ensure",
       "points-expiry",
@@ -349,6 +352,7 @@ describe("[P0-04] scheduler", () => {
     expect(retired).toMatchObject({ removed: ["probe"], unknown: [] });
     expect(await keys()).toEqual([
       "heartbeat",
+      "integrity-check",
       "outbox-sweep",
       "partitions-ensure",
       "points-expiry",
@@ -356,7 +360,7 @@ describe("[P0-04] scheduler", () => {
       "requests-remind",
     ]);
     // One next run per schedule, never two (BullMQ keeps each scheduler's next job delayed).
-    expect(await getQueue("scheduled").getJobCountByTypes("delayed")).toBe(6);
+    expect(await getQueue("scheduled").getJobCountByTypes("delayed")).toBe(7);
     await expect(registerSchedules(base.SCHEDULES, ["heartbeat"])).rejects.toThrow(
       /both defined and retired/,
     );

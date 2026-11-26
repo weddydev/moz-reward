@@ -246,6 +246,13 @@
       "when": 1795724182960,
       "tag": "0034_redemptions",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795731009678,
+      "tag": "0035_integrity_issues",
+      "breakpoints": true
     }
   ]
 }

@@ -77,6 +77,14 @@ export const SCHEDULES: readonly ScheduleDef[] = [
     pattern: "0 3 * * *",
     data: {},
   }),
+  // P1-17 (TESTING §10): data-integrity reconciliation, daily at 04:00 UK time (after the expiry sweep).
+  defineSchedule({
+    id: "integrity-check",
+    queue: "scheduled",
+    name: "integrity-check",
+    pattern: "0 4 * * *",
+    data: {},
+  }),
 ];
 
 /** The schedule's data in the versioned envelope (re-sealed on every start, so a version bump applies). */

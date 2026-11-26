@@ -153,6 +153,13 @@ export const JOBS = {
     "requests-remind": defineJob(z.object({}).strict()),
     /** P1-13: daily points expiry (warnings 30/7 days before, rolling expiry, left-membership forfeit). */
     "points-expiry": defineJob(z.object({}).strict()),
+    /** P1-17: nightly data-integrity reconciliation (read-only; issues to integrity_issues, Sentry, alert). */
+    "integrity-check": defineJob(z.object({}).strict()),
+    /**
+     * P1-17: an admin owner's on-demand run. Queued with the admin's scope (a request never holds a SystemScope);
+     * the worker checks that scope again, then runs the same reconciliation as the nightly job.
+     */
+    "integrity-check-requested": defineJob(z.object({}).strict(), { runAs: "tenant" }),
   },
 } as const satisfies Record<QueueName, Record<string, JobDef>>;
 

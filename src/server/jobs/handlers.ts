@@ -9,6 +9,7 @@ import { deliverRealtime } from "@/server/realtime/publish";
 import { recordHeartbeat, touchHeartbeat } from "@/server/repos/jobs";
 import { ensureNotificationPartitions } from "@/server/repos/notifications";
 import { auditAs } from "@/server/services/audit";
+import { runIntegrityCheck } from "@/server/services/integrity-job";
 import { expirePointRequests, remindPointRequests } from "@/server/services/point-request-jobs";
 import { runPointsExpiry } from "@/server/services/points-expiry-job";
 import { checkAwardDevice } from "./fraud-award-check";
@@ -109,5 +110,12 @@ export const HANDLERS: Handlers = {
     "requests-expire": () => timedSweep("requests-expire", () => expirePointRequests(JOBS_SCOPE)),
     "requests-remind": () => timedSweep("requests-remind", () => remindPointRequests(JOBS_SCOPE)),
     "points-expiry": () => timedSweep("points-expiry", () => runPointsExpiry(JOBS_SCOPE)),
+    "integrity-check": () => timedSweep("integrity-check", () => runIntegrityCheck(JOBS_SCOPE)),
+    "integrity-check-requested": async (_payload, _job, { scope }) => {
+      // Only an admin owner may start a run (the action checked it; this re-checks the queued scope).
+      if (scope.kind !== "admin" || scope.role !== "owner")
+        throw new Error("integrity-check-requested: not an admin owner's request");
+      await runIntegrityCheck(JOBS_SCOPE);
+    },
   },
 };
