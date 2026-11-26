@@ -65,7 +65,7 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 - Cause: headless WebKit flattens 3D; `backface-visibility` alone isn't enough.
 - Fix: hide the face turned away with `visibility` driven by state at the 90° point (member card, PD-06). Real Safari evidence = H-13.
 
-**KI-13 · WebKit-only flake that survives two fix attempts** — quarantine per TESTING §7 (`test.fixme("C-xx")` + CARRIED row targeting the phase gate / owner task), carry on. Open: **C-78** WebKit slider track press (CI only, → PD-11).
+**KI-13 · WebKit-only flake that survives two fix attempts** — quarantine per TESTING §7 (`test.fixme("C-xx")` + CARRIED row targeting the phase gate / owner task), carry on. Open: **C-78** WebKit slider track press (CI only, → PD-11); **C-105** WebKit slider drag "pointer over the input" (CI only, → P1-18, T-12).
 
 **KI-43 · "Cannot take screenshot larger than 32767 pixels on any dimension" (WebKit, `shoot`)** — 23 Nov, CI 45155151040.
 - Cause: `/dev/ui` at 320 px grew past 32,767 **CSS** px (OfferCard added in PD-08), so the CSS-scale fallback for phones no longer fits.

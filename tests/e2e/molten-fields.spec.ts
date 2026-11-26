@@ -576,6 +576,10 @@ test("[PD-06] slider drag: the coin follows the pointer, the fill grows, the bub
   browserName,
 }) => {
   test.skip(isMobile, "a mouse drag; touch drags are the browser's own range input");
+  test.fixme(
+    process.env.CI !== undefined && browserName === "webkit",
+    "C-105 / T-12: Linux WebKit (CI only) never gets the pointer over the slider's input (KI-11, KI-13; failed again alone, CI 45803161974)",
+  );
   await recordAnimations(page);
   await open(page);
   await sliderAtRest(page);
