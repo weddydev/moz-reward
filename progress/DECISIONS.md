@@ -1367,3 +1367,8 @@ Consequence / revisit when: a cached value starts feeding a decision, or an owne
 Decision: the Dockerfile runtime stage runs `apt-get upgrade` (no recommends, lists removed) on top of the digest-pinned `node:24-bookworm-slim`.
 Why: Trivy on main (run 45931424080) failed on libpam CVE-2025-6020 (HIGH, fixed in `deb12u3`); the newest upstream digest (27 Nov) still ships `deb12u2`. Skipping the CVE would weaken the no-skips gate (C-21).
 Consequence / revisit when: builds are no longer byte-reproducible across days (the base stays pinned; only Debian's fixed packages move). Drop the step if a future base digest carries the fixes and image size matters.
+
+## 2026-11-27 — P1-18 closed fast: demo-relevant leftovers to the P1 close, the rest to P2-16 (human)
+Decision: the human asked to close P1-18 fast. Items the P1 demo or P1 features depend on (C-91 landing/wallet/shop Lighthouse, Demo 2 walkthrough on staging after `db:seed --reset`, C-49's demo half, FOLLOWUPS 104/108–110 on celebration/redeem/receipt screens, C-92/93/94) are done at the P1 `/phase-complete`. Proof and operations work (`gate:phase` + axe, k6, rollback rehearsal, reconciliation on staging, C-35, C-40, C-48, C-49 gate half, C-79, C-83, C-100, C-105, C-106, the other P1-18 FOLLOWUPS) moves to P2-16 (CARRIED_LATER, P2.md AC12; TEMPORARY T-7/T-9/T-12 now by P2-16).
+Why: none of the moved items changes how a P1 feature works (CI runs the full suite on every push); the migration 0037 pre-check on staging (17 checks, 0 failing rows) was done before merge, so the deploy is safe.
+Consequence / revisit when: P1's phase gate evidence arrives at P2-16; a P1 regression found there is fixed first. P2-16 can't be ticked while these rows are open.
