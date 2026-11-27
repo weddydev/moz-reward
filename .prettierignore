@@ -20,3 +20,4 @@ tsconfig.json
 
 # Molten parity: generated copy of the frozen reference, compared byte for byte (pnpm parity:reference)
 tests/parity/reference
+.next-*

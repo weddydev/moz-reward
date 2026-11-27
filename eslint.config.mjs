@@ -274,6 +274,7 @@ const eslintConfig = defineConfig([
   globalIgnores([
     ".next/**",
     ".next-e2e/**",
+    ".next-*/**", // analyzer and other one-off builds (`NEXT_DIST_DIR=.next-analyze next analyze`)
     ".stryker-tmp/**",
     ".artifacts/**", // screenshots, traces and QA output (git-ignored)
     "out/**",

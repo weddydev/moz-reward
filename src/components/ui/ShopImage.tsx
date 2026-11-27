@@ -1,12 +1,13 @@
-import Image from "next/image";
+import { getImageProps } from "next/image";
 import { initialsOf } from "@/lib/initials";
 
 /** Self-hosted photos the image optimiser may serve (next.config `images.localPatterns`): the demo shops'. */
 export const OPTIMISED_PHOTO = /^\/demo\/shops\/[a-z0-9-]+\.(jpg|png|webp)$/;
 
 /**
- * A shop's photo (cover or logo; PD-08). The demo shops' self-hosted photos go through `next/image` (AVIF/WebP at
- * the size shown, DESIGN §12); uploaded photos are already sized variants on the CDN (ARCHITECTURE §8, P2-05) and
+ * A shop's photo (cover or logo; PD-08). The demo shops' self-hosted photos go through the image optimiser (AVIF/WebP
+ * at the size shown, DESIGN §12) as a plain `<img>` from `getImageProps`: no `next/image` client component, so a
+ * server-rendered photo ships no JS (C-91; we use none of its client features: no placeholder, no onLoad); uploaded photos are already sized variants on the CDN (ARCHITECTURE §8, P2-05) and
  * load as they are. Decorative (`alt=""`): the shop is named by the text beside it. `fill` covers the positioned
  * parent (cover); otherwise `size` gives the box (logo). `unoptimized` serves the file as it is (the /dev/molten
  * phone, compared pixel for pixel with the reference's own JPEGs).
@@ -39,29 +40,13 @@ export function ShopImage({
     ...(testId ? { "data-testid": testId } : {}),
   };
   if (OPTIMISED_PHOTO.test(src)) {
-    return size === undefined ? (
-      <Image
-        src={src}
-        alt=""
-        fill
-        sizes={sizes ?? "100vw"}
-        loading={loading}
-        unoptimized={unoptimized}
-        className={className}
-        {...extra}
-      />
-    ) : (
-      <Image
-        src={src}
-        alt=""
-        width={size}
-        height={size}
-        loading={loading}
-        unoptimized={unoptimized}
-        className={className}
-        {...extra}
-      />
+    const { props } = getImageProps(
+      size === undefined
+        ? { src, alt: "", fill: true, sizes: sizes ?? "100vw", loading, unoptimized }
+        : { src, alt: "", width: size, height: size, loading, unoptimized },
     );
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text -- alt="" is in `props` (decorative)
+    return <img {...props} className={className} {...extra} />;
   }
   return (
     // Uploaded photos are already sized WebP/AVIF variants on the CDN (ARCHITECTURE §8).
