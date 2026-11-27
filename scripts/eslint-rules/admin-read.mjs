@@ -26,6 +26,8 @@ const rule = {
     if (!services?.program || !services.esTreeNodeToTSNodeMap) return {};
     const checker = services.program.getTypeChecker();
     const imported = new Set();
+    /** `import * as base from "./_base"`: `base.withScope(...)` is the same call (P1-01..03 security review). */
+    const namespaces = new Set();
 
     const kindIsAdmin = (t, at) => {
       const kind = t.getProperty("kind");
@@ -73,16 +75,29 @@ const rule = {
           if (s.type === "ImportSpecifier" && s.imported.type === "Identifier") {
             if (BASE_CALLS.has(s.imported.name)) imported.add(s.local.name);
           }
+          if (s.type === "ImportNamespaceSpecifier") namespaces.add(s.local.name);
         }
       },
       CallExpression(node) {
-        if (node.callee.type !== "Identifier" || !imported.has(node.callee.name)) return;
+        const { callee } = node;
+        const name =
+          callee.type === "Identifier" && imported.has(callee.name)
+            ? callee.name
+            : callee.type === "MemberExpression" &&
+                !callee.computed &&
+                callee.object.type === "Identifier" &&
+                namespaces.has(callee.object.name) &&
+                callee.property.type === "Identifier" &&
+                BASE_CALLS.has(callee.property.name)
+              ? `${callee.object.name}.${callee.property.name}`
+              : null;
+        if (!name) return;
         const arg = node.arguments[0];
         if (!arg) return;
         const tsNode = services.esTreeNodeToTSNodeMap.get(arg);
         if (!mayBeAdmin(checker.getTypeAtLocation(tsNode), tsNode)) return;
         if (hasMarker(node)) return;
-        context.report({ node: arg, messageId: "adminScope", data: { callee: node.callee.name } });
+        context.report({ node: arg, messageId: "adminScope", data: { callee: name } });
       },
     };
   },

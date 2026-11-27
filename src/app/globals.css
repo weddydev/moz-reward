@@ -231,6 +231,11 @@
   outline: none;
   box-shadow: var(--lift-placed);
 }
+/* A page's heading takes focus after a client navigation (`RouteContent`); it is not a control either. */
+[data-route-content] h1[tabindex="-1"]:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
 
 /*
  * Global reduced-motion safety net (DESIGN §7): nothing moves. Only colour and opacity may still transition

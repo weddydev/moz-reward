@@ -51,7 +51,11 @@ export function RouteContent({
     claimParent?.(pathname);
     const type = takeNavIntent(pathname);
     const el = ref.current;
-    if (!el || typeof el.animate !== "function") return;
+    // Focus went with the old page (the pressed link is gone): give it to the new page's heading, so keyboard
+    // and screen reader users carry on from the top of it, not from <body> (P1-B close QA L4). Focus that is
+    // still somewhere (the dock, the rail) stays where it is.
+    const stopFocus = el ? focusNewPage(el) : () => undefined;
+    if (!el || typeof el.animate !== "function") return stopFocus;
     // A Wallet card's gold wipe (or its way back) waiting for this page plays instead of the slide (PD-08).
     const wiped = openWipe(el, pathname) ?? returnWipe(el, pathname);
     if (wiped) {
@@ -65,13 +69,14 @@ export function RouteContent({
       return () => {
         wiped.cancel();
         unwatchWipe();
+        stopFocus();
       };
     }
     // Any other page: a wipe still showing (it pointed elsewhere, or the user left mid-way) goes now.
     settleWipe();
     const root = getComputedStyle(document.documentElement);
     const duration = cssTimeMs(root.getPropertyValue("--dur-expressive"));
-    if (duration <= 0) return;
+    if (duration <= 0) return stopFocus;
     const motionOn = root.getPropertyValue("--motion-on").trim() !== "0";
     const inPlace =
       viewTransitionActive(document) || window.matchMedia(FADE_IN_PLACE_QUERY).matches;
@@ -113,6 +118,7 @@ export function RouteContent({
       animation.cancel();
       unclip();
       unwatch();
+      stopFocus();
     };
   }, [pathname, claimParent]);
   return (
@@ -122,6 +128,41 @@ export function RouteContent({
       </div>
     </Claim>
   );
+}
+
+/** How long a page that streams in after its loading skeleton may take to show its heading. */
+export const FOCUS_HEADING_WAIT_MS = 5_000;
+
+/**
+ * Moves focus to the page's `h1` (focusable from script only) when focus was lost with the old page. A page that
+ * streams in after its loading skeleton (which has no `h1`) gets it when the heading arrives, if focus is still
+ * lost then. Returns the function that stops waiting (the next navigation).
+ */
+export function focusNewPage(content: HTMLElement): () => void {
+  const lost = (): boolean => {
+    const active = document.activeElement;
+    return !active || active === document.body || !active.isConnected;
+  };
+  const tryFocus = (): boolean => {
+    const heading = content.querySelector<HTMLElement>("h1");
+    if (!heading) return false;
+    if (lost()) {
+      if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+      heading.focus({ preventScroll: true });
+    }
+    return true;
+  };
+  if (!lost() || tryFocus()) return () => undefined;
+  const watch = new MutationObserver(() => {
+    if (tryFocus()) stop();
+  });
+  const timer = window.setTimeout(stop, FOCUS_HEADING_WAIT_MS);
+  function stop(): void {
+    watch.disconnect();
+    window.clearTimeout(timer);
+  }
+  watch.observe(content, { childList: true, subtree: true });
+  return stop;
 }
 
 /**

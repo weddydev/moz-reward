@@ -1,6 +1,7 @@
 import { type APIRequestContext, type Page } from "@playwright/test";
 import { expect, test, testApiHeaders } from "./support/test";
 import { vtName } from "../../src/lib/motion/route-transitions";
+import { TIER_OVERRIDE_KEY } from "../../src/lib/motion/tier";
 
 // P1-07 Wallet on the production build: seed memberships render in PRODUCT §4 order with engine progress, the
 // summary strip, a suspended shop greyed with its state, a 60-character name without a layout break, the empty
@@ -293,10 +294,30 @@ test("[PD-08] wallet stack: phones stack cards in threes with their header strip
   await shoot("wallet-stack-1440");
 });
 
+test("[P1-18] Enter on a Wallet card: focus lands on the shop page's heading, not on <body> (P1-B close QA L4)", async ({
+  page,
+  signInAs,
+}) => {
+  const me = await signInAs("customer");
+  await seedMembership(page.request, me.userId, { name: "Focus Café", programme: true });
+  await page.goto("/wallet");
+  await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
+  await cards(page).first().focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/shops\/[0-9a-f-]{36}$/);
+  const heading = page.locator("[data-route-content] h1").last();
+  await expect(heading).toContainText("Focus Café");
+  await expect(heading, "focus carries on from the new page's heading").toBeFocused();
+});
+
 test("[P1-18] wallet card shine: it glides on the full tier and holds still on the lite tier (DESIGN §7.2)", async ({
   page,
   signInAs,
 }) => {
+  // A full-tier device whatever runs the test: CI's 4-core runners are lite (KI-50).
+  await page.addInitScript((key) => {
+    window.sessionStorage.setItem(key, "full");
+  }, TIER_OVERRIDE_KEY);
   const me = await signInAs("customer");
   await seedMembership(page.request, me.userId, { name: "Shine Café", programme: true });
   await page.goto("/wallet");

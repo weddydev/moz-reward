@@ -45,7 +45,9 @@ export async function registerNfcTag(
  * Replaces a tag with a new one for the same shop. The old tag, and every tag it had replaced earlier, now
  * point straight at the new tag, so a scan of any old tag's record leads to the current one in one hop (the
  * deferred `nfc_tags_one_hop` trigger checks this at commit). Runs in a savepoint of the caller's transaction.
- * admin-scope: an audited admin write of one shop's tags, never a read of other shops' rows.
+ * admin-scope: an audited admin write of one shop's tags. The old tag is looked up by its ID alone (an admin may
+ * replace any shop's tag), and the shop the write touches is the one that tag belongs to; no other shop's rows
+ * are read or written.
  */
 export async function replaceNfcTag(
   scope: AdminScope,

@@ -6,7 +6,6 @@ import { CoverPhoto } from "@/components/ui/CoverPhoto";
 import { Icon } from "@/components/ui/Icon";
 import { Ingot } from "@/components/ui/Ingot";
 import { ShopCoin, ShopImage } from "@/components/ui/ShopImage";
-import { initialsOf } from "@/lib/initials";
 import { openStatus } from "@/lib/open-status";
 import { directionsUrl, telHref } from "@/lib/shop-links";
 import { londonDate } from "@/lib/time";
@@ -225,30 +224,6 @@ export function CoverArt({
       )}
       <span className="m-art-shade" aria-hidden="true" />
     </>
-  );
-}
-
-export function ShopLogo({
-  name,
-  logoUrl,
-}: {
-  name: string;
-  logoUrl: string | null;
-}): React.JSX.Element {
-  return (
-    <span
-      data-testid="shop-logo"
-      className="border-surface bg-champagne shadow-lift grid size-20 shrink-0 place-items-center overflow-hidden rounded-[var(--r-md)] border-4"
-    >
-      {logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl} alt="" width={80} height={80} className="size-full object-cover" />
-      ) : (
-        <span className="text-h2 text-ink" data-testid="landing-logo-fallback">
-          {initialsOf(name)}
-        </span>
-      )}
-    </span>
   );
 }
 

@@ -5,6 +5,7 @@ import { env } from "@/server/env";
 import { securityHeaders } from "@/server/security/headers";
 import { checkLandingLimit } from "@/server/security/landing-limit";
 import { retryAfterSec } from "@/server/security/rate-limit";
+import { colourTokens } from "@/styles/tokens";
 
 /**
  * Proxy (Next 16's middleware; Node runtime) — P0-05, SECURITY §5.
@@ -44,7 +45,7 @@ export const isLandingPath = (pathname: string): boolean => /^\/s\/[^/]+\/?$/.te
 
 function tooManyLookups(waitSec: number, nonce: string): NextResponse {
   const minutes = waitSec <= 60 ? "a minute" : `${String(Math.ceil(waitSec / 60))} minutes`;
-  const html = `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Too many shop lookups · Moz Rewards</title><style nonce="${nonce}">body{margin:0;min-height:100vh;display:grid;place-items:center;font:16px/1.5 system-ui,sans-serif;background:#fffcf5;color:#2a2418;padding:16px}main{max-width:28rem;text-align:center}h1{font-size:1.5rem;margin:0 0 .5rem}</style></head><body><main><h1>Too many shop lookups</h1><p>You've looked up a lot of shops in a short time. Please try again in ${minutes}.</p></main></body></html>`;
+  const html = `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Too many shop lookups · Moz Rewards</title><style nonce="${nonce}">body{margin:0;min-height:100vh;display:grid;place-items:center;font:16px/1.5 system-ui,sans-serif;background:${colourTokens.pearl};color:${colourTokens.ink};padding:16px}main{max-width:28rem;text-align:center}h1{font-size:1.5rem;margin:0 0 .5rem}</style></head><body><main><h1>Too many shop lookups</h1><p>You've looked up a lot of shops in a short time. Please try again in ${minutes}.</p></main></body></html>`;
   return new NextResponse(html, {
     status: 429,
     headers: { "Content-Type": "text/html; charset=utf-8", "Retry-After": String(waitSec) },
