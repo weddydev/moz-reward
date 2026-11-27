@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { usePauseOffscreen } from "@/components/motion/usePauseOffscreen";
-import { buttonClasses } from "@/components/ui/button-classes";
+import { Button } from "@/components/ui/Button";
 import { STACK_SIZE, stackGroups } from "./view";
 
 /**
@@ -55,9 +55,11 @@ export function WalletStack({
       {more > 0 ? (
         // The breakpoint sits on a wrapper: `.m-btn` sets its own display, which a `md:hidden` on it can't beat.
         <div className="self-center md:hidden">
-          <button
-            type="button"
-            className={buttonClasses({ variant: "ghost", size: 46 })}
+          {/* `Button`, not its classes on a plain element: the press scale and ripple live in it (P1 close design
+              review M1: the only Molten button that didn't answer a tap). */}
+          <Button
+            variant="ghost"
+            size={46}
             aria-expanded={all}
             aria-controls="wallet-stacks"
             data-testid="wallet-show-all"
@@ -66,7 +68,7 @@ export function WalletStack({
             }}
           >
             {all ? "Show fewer" : `Show all ${String(cards.length)} shops`}
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

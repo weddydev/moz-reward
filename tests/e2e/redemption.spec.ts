@@ -500,3 +500,73 @@ test("[J3][P1-18] two tabs: back on the first tab after a Redeem in the second, 
     await tabB.close();
   }
 });
+
+test.describe("[P1-18] the redeem sheet's chunk on a slow line", () => {
+  // The failed load below is on purpose. How each engine reports a chunk the route aborts: Chromium's failed
+  // request and its console echo, WebKit's "Blocked by Web Inspector". Static chunks only; nothing else may fail.
+  // One pattern: Playwright reads a two-item array in `test.use` as [value, options] (portal-shells.spec).
+  test.use({
+    guardAllow: [
+      /^(?:requestfailed: GET \S+\/_next\/static\/chunks\/\S+\.js (?:net::ERR_FAILED|Blocked by Web Inspector)|console: Failed to load resource: net::ERR_FAILED)$/,
+    ],
+  });
+
+  test("[J3][P1-18] Redeem before the sheet's chunk arrives shows the row busy; a failed load says so and a retry opens it", async ({
+    page,
+    signInAs,
+  }) => {
+    // P1-D close QA MINOR 5: on slow 3G Redeem gave no feedback for 4–5 s while the sheet's chunk loaded. The
+    // chunk names are hashed, so it is told apart by what it holds (only RedeemSheet renders "redeem-sheet").
+    test.setTimeout(90_000);
+    const me = await signInAs("customer");
+    const { shopId } = await seedReward(page.request, me.userId);
+    let mode: "pass" | "hold" | "fail" = "hold";
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let sheetFetches = 0;
+    await page.route("**/_next/static/chunks/*.js", async (route) => {
+      const res = await route.fetch();
+      const body = await res.text();
+      if (!body.includes("redeem-sheet")) return route.fulfill({ response: res, body });
+      sheetFetches += 1;
+      if (mode === "fail") return route.abort("failed");
+      if (mode === "hold") await held;
+      return route.fulfill({ response: res, body });
+    });
+
+    // Held: the idle preload asked for it, and a press waits on the same load with the row busy.
+    await page.goto(`/vault/${shopId}`);
+    await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
+    const redeem = page.getByTestId("vault-rewards").getByTestId("reward-redeem").first();
+    await expect(redeem).toBeVisible();
+    await expect.poll(() => sheetFetches, { message: "fetched at idle, before any press" }).toBe(1);
+    await redeem.click();
+    await expect(redeem).toHaveAttribute("aria-busy", "true");
+    await expect(page.getByTestId("redeem-sheet")).toHaveCount(0);
+    release();
+    await expect(page.getByTestId("redeem-sheet")).toBeVisible();
+    await expect(redeem).not.toHaveAttribute("aria-busy");
+
+    // Failing: the idle preload fails quietly; a press asks again, fails, and says so; the row is not left busy.
+    mode = "fail";
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
+    const again = page.getByTestId("vault-rewards").getByTestId("reward-redeem").first();
+    await expect.poll(() => sheetFetches).toBeGreaterThanOrEqual(2);
+    await again.click();
+    await expect(
+      page
+        .getByRole("region", { name: "Notifications" })
+        .getByText("Couldn’t open the reward just now. Check your connection and try again."),
+    ).toBeVisible();
+    await expect(again).not.toHaveAttribute("aria-busy");
+    await expect(page.getByTestId("redeem-sheet")).toHaveCount(0);
+
+    // Back online: the next press loads it and the sheet opens.
+    mode = "pass";
+    await again.click();
+    await expect(page.getByTestId("redeem-sheet")).toBeVisible();
+  });
+});
