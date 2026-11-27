@@ -1166,7 +1166,7 @@ Tests: gate:task PASS (unit 2313/0, int 1898/0/1); integrity int 11/0; coverage 
 Left off: the P1-D close next (review stop, Cadence).
 
 ## 2026-11-27 — P1 — P1-D closed, talha.syed (Mac)
-CI: f07def4 45916814961 green; 2972bc7 45920008983 green; main ff to 2972bc7. `pnpm ci:usage` checked. Staging smoke (P1-D area) OK; Sentry deferred (H-48b).
+CI: f07def4 45916814961 green; 2972bc7 45920008983 green; main ff to 2972bc7. `pnpm ci:usage` NOT VERIFIED (hung > 2 min, no output; re-run at P1-18 start). Staging smoke (P1-D area) OK; Sentry deferred (H-48b).
 Reviews: code APPROVE WITH FIXES (1 HIGH bind-param overflow + 5 MEDIUM fixed: readSnapshot, batched upsert, lock renew, redeem index 0036, timedSweep audit); security PASS (4 MEDIUM fixed: staff lock window, redeem retry); design PASS WITH FIXES (1 HIGH + 3 MEDIUM fixed; D-M4 kept, DECISIONS).
 QA: 2 MAJOR fixed (New code contrast on obsidian ≥ 4.5; celebration layout shift 0.189 → ≤ 0.05, Chromium CLS spec); 5 MINOR → FOLLOWUPS.
 J1 confirmed flake root-caused (KI-10, WebKit frame starvation): gate wait 15 s + 60 s test budget; spec-repeat on wip/dbg-J1 green.
