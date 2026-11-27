@@ -6,7 +6,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { level, minutesFromBilling, minutesFromJobs } from "./ci-usage";
+import { level, mapLimit, minutesFromBilling, minutesFromJobs } from "./ci-usage";
 import { buildFingerprint } from "./e2e";
 import { cpuSkips, phaseNumber, requireAll, runPhaseSteps, type PhaseStep } from "./gate-phase";
 import { checkParts, grepFor, nextUntickedTask, resolveTaskIds } from "./gate-task";
@@ -163,6 +163,21 @@ describe("[P0-14] gate:phase", () => {
 });
 
 describe("[P0-14] ci:usage", () => {
+  it("[P1-18] fetches with at most `limit` calls in flight and keeps the input order", async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const out = await mapLimit([5, 1, 4, 2, 3, 0], 3, async (n) => {
+      inFlight++;
+      peak = Math.max(peak, inFlight);
+      await new Promise((r) => setTimeout(r, n));
+      inFlight--;
+      return n * 10;
+    });
+    expect(out).toEqual([50, 10, 40, 20, 30, 0]);
+    expect(peak).toBe(3);
+    expect(await mapLimit([], 16, async (n: number) => n)).toEqual([]);
+  });
+
   it("counts only Actions minutes from the billing report", () => {
     expect(
       minutesFromBilling([

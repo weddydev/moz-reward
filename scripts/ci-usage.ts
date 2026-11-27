@@ -10,7 +10,7 @@
  * still printed). Going private before launch (CARRIED C-43) brings the budget back automatically.
  * Env: ACTIONS_MONTHLY_MINUTES (default 2000, GitHub Free).
  */
-import { spawnSync } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { isDirectRun } from "../src/lib/is-direct-run";
 
@@ -41,6 +41,24 @@ export function minutesFromJobs(jobs: Job[]): number {
 
 export type Visibility = "public" | "private" | "internal";
 
+/** Runs `fn` over `items` with at most `limit` in flight; results keep the input order. */
+export async function mapLimit<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i] as T);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker));
+  return out;
+}
+
 export function level(
   used: number,
   allowance: number,
@@ -54,6 +72,14 @@ export function level(
 function gh(args: string[]): { ok: boolean; out: string } {
   const r = spawnSync("gh", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   return { ok: r.status === 0, out: r.status === 0 ? r.stdout : `${r.stdout}${r.stderr}` };
+}
+
+function ghAsync(args: string[]): Promise<{ ok: boolean; out: string }> {
+  return new Promise((resolve) => {
+    execFile("gh", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
+      resolve({ ok: !err, out: stdout });
+    });
+  });
 }
 
 function repo(): { owner: string; name: string; visibility: Visibility } {
@@ -83,7 +109,8 @@ function exactMinutes(owner: string, now: Date): number | null {
   return minutesFromBilling(body.usageItems ?? []);
 }
 
-function estimatedMinutes(owner: string, name: string, now: Date): number {
+/** One `gh api` call per run; ~500 runs a month took ~6 min one at a time (KI: ci:usage hang), so 16 at once. */
+async function estimatedMinutes(owner: string, name: string, now: Date): Promise<number> {
   const since = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
   const runs = gh([
     "api",
@@ -93,28 +120,31 @@ function estimatedMinutes(owner: string, name: string, now: Date): number {
     ".workflow_runs[].id",
   ]);
   if (!runs.ok) throw new Error(`can't list workflow runs: ${runs.out.trim()}`);
-  const jobs: Job[] = [];
-  for (const id of runs.out.split("\n").filter(Boolean)) {
-    const r = gh([
+  const ids = runs.out.split("\n").filter(Boolean);
+  const perRun = await mapLimit(ids, 16, async (id) => {
+    const r = await ghAsync([
       "api",
       "--paginate",
       `repos/${owner}/${name}/actions/runs/${id}/jobs?per_page=100`,
       "--jq",
       ".jobs[]",
     ]);
-    if (!r.ok) continue;
-    for (const line of r.out.split("\n").filter(Boolean)) jobs.push(JSON.parse(line) as Job);
-  }
-  return minutesFromJobs(jobs);
+    if (!r.ok) return [];
+    return r.out
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as Job);
+  });
+  return minutesFromJobs(perRun.flat());
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const enforce = process.argv.includes("--enforce");
   const allowance = Number(process.env.ACTIONS_MONTHLY_MINUTES ?? 2000);
   const now = new Date();
   const { owner, name, visibility } = repo();
   const exact = exactMinutes(owner, now);
-  const used = exact ?? estimatedMinutes(owner, name, now);
+  const used = exact ?? (await estimatedMinutes(owner, name, now));
   const source =
     exact !== null
       ? "billing report (exact, all of the owner's repos)"
@@ -146,4 +176,4 @@ function main(): void {
   process.exit(state === "pause" && !enforce ? 2 : 0);
 }
 
-if (isDirectRun(import.meta.url)) main();
+if (isDirectRun(import.meta.url)) void main();
