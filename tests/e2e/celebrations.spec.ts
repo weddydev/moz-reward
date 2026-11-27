@@ -132,11 +132,26 @@ test("[P1-15] gold approved while the app is open plays from the stream, once; D
   await expectInView(page, m.locator(".m-ingot"));
   await shoot("celebration-credit-320", { fullPage: false });
 
+  // Mark the heading, so a failure below says whether it was re-rendered away or focus went elsewhere.
+  await page.locator("[data-route-content] h1").evaluate((h) => {
+    h.setAttribute("data-probe", "");
+  });
   await page.getByTestId("celebration-done").click();
   await expect(dialog).toHaveCount(0);
   await expect(page.locator("dialog canvas.m-fx")).toHaveCount(0);
   // Nothing opened the moment, so focus lands on the page's heading, not <body> (P1-D close QA MINOR 7).
-  await expect(page.locator("[data-route-content] h1")).toBeFocused();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const a = document.activeElement;
+        const h1 = document.querySelector("[data-route-content] h1");
+        if (a && a === h1) return "h1";
+        const tag = a ? `<${a.tagName.toLowerCase()}${a.id ? `#${a.id}` : ""}>` : "none";
+        const id = a?.getAttribute("data-testid") ?? a?.getAttribute("aria-label") ?? "";
+        return `${tag} ${id} (h1 ${h1 ? (h1.hasAttribute("data-probe") ? "same node" : "re-rendered") : "gone"})`;
+      }),
+    )
+    .toBe("h1");
 
   // Seen on the server: a reload claims nothing.
   await page.reload();
@@ -290,10 +305,18 @@ test("[P1-15] a tap skips to the end state at once", async ({ page }) => {
   const m = moment(page);
   await expect(m).toBeVisible();
   type Bursts = { __mozFxBursts?: { list: () => Array<{ type: string }>; clear: () => void } };
-  await page.evaluate(() => {
+  // The tap is dispatched in the page, in the same task that reads the state: a Playwright click waits for the
+  // line to be stable, and on a loaded CI iPhone14 that wait outlasted the natural unlock (~1.6 s), whose coins
+  // are then rightly there (CI 45962514589). The skip handler is a click, not pointerdown, so this is the tap.
+  const before = await m.evaluate((el) => {
     (window as unknown as Bursts).__mozFxBursts?.clear();
+    const state = el.getAttribute("data-state");
+    el.querySelector('[data-testid="celebration-gold"]')?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
+    return state;
   });
-  await m.getByTestId("celebration-gold").click(); // mid-pour
+  expect(before, "the tap came before the unlock").not.toBe("unlocked");
   await expect(m).toHaveAttribute("data-state", "unlocked", { timeout: 1_000 });
   await expect(m.locator(".ingot-pour")).toHaveAttribute("data-ingot-state", "done", {
     timeout: 1_000,

@@ -85,6 +85,8 @@ export function Overlay({
   const releaseScroll = useRef<(() => void) | null>(null);
   const onCloseRef = useRef(onClose);
   const fallbackRef = useRef(fallbackFocus);
+  /** The phase as last committed, read by the unmount cleanup (which sees no fresh state). */
+  const phaseRef = useRef<Phase>(phase);
   const openedAt = useRef(0);
   const hydrated = useHydrated();
   const titleId = useId();
@@ -93,6 +95,7 @@ export function Overlay({
   useEffect(() => {
     onCloseRef.current = onClose;
     fallbackRef.current = fallbackFocus;
+    phaseRef.current = phase;
   });
   useEffect(trackTriggers, []);
   const requestClose = useCallback(() => {
@@ -103,11 +106,8 @@ export function Overlay({
   if (open && phase !== "open") setPhase("open");
   else if (!open && phase === "open") setPhase("closing");
 
-  const finish = useCallback(() => {
-    const dialog = dialogRef.current;
-    if (dialog?.open) dialog.close();
-    releaseScroll.current?.();
-    releaseScroll.current = null;
+  /** Focus back to the trigger; with none, to `fallbackFocus` if focus was left nowhere useful. Runs once per open. */
+  const restoreFocus = useCallback((dialog: HTMLDialogElement | null) => {
     const target = returnFocus.current;
     returnFocus.current = null;
     // Trigger removed while open: focus stays on the page (the browser falls back to <body>), no error, unless
@@ -120,8 +120,16 @@ export function Overlay({
         fallback.focus({ preventScroll: true });
       }
     }
-    setPhase("closed");
   }, []);
+
+  const finish = useCallback(() => {
+    const dialog = dialogRef.current;
+    if (dialog?.open) dialog.close();
+    releaseScroll.current?.();
+    releaseScroll.current = null;
+    restoreFocus(dialog);
+    setPhase("closed");
+  }, [restoreFocus]);
 
   // Open: into the top layer, lock the page, move focus in.
   useLayoutEffect(() => {
@@ -187,14 +195,17 @@ export function Overlay({
     };
   }, [phase, hydrated]);
 
-  // Unmounted while open (route change): give the page back.
-  useEffect(
-    () => () => {
+  // Unmounted while open (route change): give the page back. Unmounted while closing (the parent's own exit timer
+  // beat the transition's `finished`, e.g. on a loaded phone): `finish` never ran, so put focus back here, or it is
+  // left on <body> (CI 45962514589). Not while open: a route change's new page places focus itself.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    return () => {
       releaseScroll.current?.();
       releaseScroll.current = null;
-    },
-    [],
-  );
+      if (phaseRef.current === "closing") restoreFocus(dialog);
+    };
+  }, [restoreFocus]);
 
   // Keyboard and native close paths, on the dialog itself (never the document), so only the top one reacts.
   useEffect(() => {
