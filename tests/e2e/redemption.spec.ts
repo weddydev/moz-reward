@@ -447,6 +447,11 @@ test("[J3][P1-18] a session that ended mid-action: Redeem and the team's Confirm
   const staff = await device(browser, baseURL ?? "", { role: "staff", shopId });
   try {
     await staff.page.goto("/dashboard/requests");
+    // The stream must be up before the session goes: one that first connects signed out refreshes the page,
+    // whose gate then (rightly) redirects to sign-in and the Confirm field is gone (CI 45952507494, KI-82).
+    await expect(staff.page.getByTestId("shop-realtime")).toHaveAttribute("data-realtime", "open", {
+      timeout: SERVER_MS,
+    });
     await staff.context.clearCookies();
     await confirm(staff.page, "ABCDEF");
     const again = staff.page.getByTestId("redeem-confirm-sign-in");
