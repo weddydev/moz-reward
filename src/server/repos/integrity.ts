@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, count, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 import type { ProgrammeVersion } from "@/lib/loyalty/programme";
 import type { LedgerRowForReplay } from "@/lib/loyalty/replay";
 import type { SystemScope } from "@/server/authz/scope";
@@ -332,4 +332,50 @@ export async function versionsOf(
     out.set(r.shopId, list);
   }
   return out;
+}
+
+export type OpenIssue = {
+  check: IntegrityCheck;
+  entity: string;
+  entityId: string;
+  shopId: string | null;
+  detectedAt: Date;
+  details: unknown;
+};
+
+/**
+ * The open issues for an operator (RUNBOOK §20, `integrity-check` CLI): how many per check, and the oldest `limit`
+ * of each. Ids and numbers only, never personal data (the table holds nothing else).
+ */
+export async function openIssueSummary(
+  scope: SystemScope,
+  limit: number,
+): Promise<{ counts: Partial<Record<IntegrityCheck, number>>; oldest: OpenIssue[] }> {
+  return withScope(scope, async (q) => {
+    const rows = await q
+      .select({ check: integrityIssues.check, n: count() })
+      .from(integrityIssues)
+      .where(isNull(integrityIssues.resolvedAt))
+      .groupBy(integrityIssues.check);
+    const counts: Partial<Record<IntegrityCheck, number>> = {};
+    for (const r of rows) counts[r.check] = r.n;
+    const oldest: OpenIssue[] = [];
+    for (const check of Object.keys(counts) as IntegrityCheck[])
+      oldest.push(
+        ...(await q
+          .select({
+            check: integrityIssues.check,
+            entity: integrityIssues.entity,
+            entityId: integrityIssues.entityId,
+            shopId: integrityIssues.shopId,
+            detectedAt: integrityIssues.detectedAt,
+            details: integrityIssues.details,
+          })
+          .from(integrityIssues)
+          .where(and(eq(integrityIssues.check, check), isNull(integrityIssues.resolvedAt)))
+          .orderBy(asc(integrityIssues.detectedAt), asc(integrityIssues.id))
+          .limit(limit)),
+      );
+    return { counts, oldest };
+  });
 }

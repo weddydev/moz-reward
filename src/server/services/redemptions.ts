@@ -28,6 +28,7 @@ import {
 } from "@/server/security/redeem-code";
 import {
   type RedeemGuardDecision,
+  forgetShopRefusal,
   RedeemGuardUnavailable,
   releaseRedeemAttempt,
   reserveRedeemAttempt,
@@ -82,6 +83,10 @@ export async function createRedemptionCode(
   if (!(await lockOwnCurrentMembership(scope, reward.shopId, tx)))
     throw new AppError("FORBIDDEN", REDEEM_MESSAGES.left);
   await voidOwnLiveCodes(scope, [reward.membershipId], "regenerated", tx);
+  // Voiding waited for any confirm holding the old code's row: if that confirm redeemed this reward, say so
+  // (the insert guard would refuse with a bare 42501; P1-16 security review LOW 2).
+  if ((await readOwnReward(scope, rewardId, tx))?.redeemedAt)
+    throw new AppError("CONFLICT", REDEEM_MESSAGES.alreadyRedeemed);
   const { code, row } = await withUniqueCode(
     async (c: string) => ({
       code: c,
@@ -156,7 +161,16 @@ export async function confirmRedemption(scope: ShopScope, input: string): Promis
   }
   if (decision.kind !== "reserved") {
     if (decision.kind === "shop_exhausted" && decision.firstRefusal) {
-      await pausedNotice(scope, decision.retryAfterSec);
+      // The team member still gets the 429, whatever happens to the owners' notice.
+      try {
+        await pausedNotice(scope, decision.retryAfterSec);
+      } catch (err) {
+        log().error(
+          { err, shopId: scope.shopId },
+          "redeem paused notice failed; next refusal retries",
+        );
+        await forgetShopRefusal(scope.shopId);
+      }
     }
     throw refused(decision);
   }
@@ -195,7 +209,13 @@ async function confirmInTransaction(
   if (!locked) throw new AppError("NOT_FOUND", REDEEM_MESSAGES.notRecognised);
   if (locked.status === "confirmed")
     throw new AppError("CONFLICT", REDEEM_MESSAGES.alreadyRedeemed);
-  if (locked.status === "voided") throw new AppError("NOT_FOUND", REDEEM_MESSAGES.replaced);
+  if (locked.status === "voided")
+    throw new AppError(
+      "NOT_FOUND",
+      locked.voidReason === "regenerated"
+        ? REDEEM_MESSAGES.replaced
+        : REDEEM_MESSAGES.notRecognised,
+    );
   if (locked.checkedAt.getTime() >= locked.expiresAt.getTime())
     throw new AppError("CONFLICT", REDEEM_MESSAGES.codeExpired);
   const target = await readConfirmTarget(scope, locked, tx);

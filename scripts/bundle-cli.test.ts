@@ -40,6 +40,7 @@ describe("[P0-15] bundle-cli: one bundle per entry; only the entry keeps its dir
       [
         "demo-credentials",
         "demo-signin-check",
+        "integrity-check",
         "keys-reencrypt",
         "migrate",
         "relay",

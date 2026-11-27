@@ -15,6 +15,10 @@ const config = {
     "src/lib/return-to.ts",
     "src/lib/codes.ts",
     "src/lib/loyalty/engine.ts",
+    // P1 (P1-18 AC4): redemption rules and the integrity replay. Not programme.ts: mostly template constants,
+    // whose ~280 static mutants re-run every test each (a ~6 h run); its rules are pinned by programme.test.ts.
+    "src/lib/loyalty/redeem.ts",
+    "src/lib/loyalty/replay.ts",
   ],
   coverageAnalysis: "perTest",
   thresholds: { high: 90, low: 80, break: 80 },

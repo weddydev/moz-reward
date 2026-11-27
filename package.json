@@ -9,6 +9,7 @@
     "worker": "tsx --import ./scripts/server-only-hook.mjs src/worker/index.ts",
     "relay": "tsx --import ./scripts/server-only-hook.mjs scripts/relay.ts",
     "keys:reencrypt": "tsx --import ./scripts/server-only-hook.mjs scripts/keys-reencrypt.ts",
+    "integrity:check": "tsx --import ./scripts/server-only-hook.mjs scripts/integrity-check.ts",
     "bundle:cli": "tsx scripts/bundle-cli.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint --max-warnings=0 && tsx scripts/check-css-hex.ts && tsx scripts/check-migrations.ts && tsx scripts/check-authz-coverage.ts",

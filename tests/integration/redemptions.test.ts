@@ -201,6 +201,27 @@ describe("[P1-16] the redeem code", () => {
     await confirmRedemption(w.staff, second.code);
   });
 
+  it("[P1-18] Redeem while the team confirms the old code waits, then says Already redeemed (not a 500)", async () => {
+    const r = await redeem();
+    let again: Promise<unknown> | undefined;
+    // The team's confirm, as the table owner past the guards: it holds the code row while the customer taps
+    // Redeem again, then commits the redemption (P1-16 security review LOW 2).
+    await db().transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL session_replication_role = replica`);
+      await tx.execute(sql`SELECT id FROM redemption_codes WHERE id = ${r.codeId} FOR UPDATE`);
+      again = appError(() => redeem());
+      await new Promise((res) => setTimeout(res, 400));
+      await tx.execute(
+        sql`UPDATE redemption_codes SET status = 'confirmed', confirmed_at = now(), confirmed_by = ${w.staff.userId},
+              confirm_tx_id = txid_current() WHERE id = ${r.codeId}`,
+      );
+      await tx.execute(sql`UPDATE rewards SET redeemed_at = now() WHERE id = ${w.rewardId}`);
+    });
+    const err = (await again) as AppError;
+    expect(err.code).toBe("CONFLICT");
+    expect(err.message).toBe(REDEEM_MESSAGES.alreadyRedeemed);
+  });
+
   it("[P1-16] someone else's reward is not found; an expired or redeemed one is refused", async () => {
     const stranger = mintCustomerScope({ userId: (await makeUser()).id });
     expect((await appError(() => redeem(stranger))).code).toBe("NOT_FOUND");
@@ -395,7 +416,10 @@ describe("[P1-16] leave and rejoin (C-70)", () => {
     const expiresAt = (await rewardRow()).expiresAt;
     await transaction(w.customer, (tx) => leaveShop(w.customer, w.shop.id, tx));
     expect((await codeRow(r.codeId)).voidReason).toBe("left");
-    expect((await appError(() => confirmRedemption(w.staff, r.code))).code).toBe("NOT_FOUND");
+    const err = await appError(() => confirmRedemption(w.staff, r.code));
+    expect(err.code).toBe("NOT_FOUND");
+    // Not "replaced by a newer one": no newer code exists (P1-D close review LOW).
+    expect(err.message).toBe(REDEEM_MESSAGES.notRecognised);
     expect(await readOwnReadyRewards(w.customer, { now: new Date() })).toEqual([]);
     expect((await appError(() => redeem())).message).toBe(REDEEM_MESSAGES.left);
     await db().update(memberships).set({ leftAt: null }).where(eq(memberships.id, w.member.id));

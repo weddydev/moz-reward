@@ -202,6 +202,8 @@ export async function countLiveCodes(scope: ShopScope): Promise<number> {
 export type LockedCode = {
   id: string;
   status: "live" | "voided" | "confirmed";
+  /** Why a voided code was voided ("regenerated": a newer code exists; "left": the member left the shop). */
+  voidReason: string | null;
   expiresAt: Date;
   rewardId: string;
   membershipId: string;
@@ -252,6 +254,7 @@ export async function lockCodeByHash(
       q
         .select({
           status: redemptionCodes.status,
+          voidReason: redemptionCodes.voidReason,
           checkedAt: sql<Date>`clock_timestamp()`.mapWith(redemptionCodes.createdAt),
         })
         .from(redemptionCodes)
@@ -259,7 +262,7 @@ export async function lockCodeByHash(
     tx,
   );
   if (!fresh) return null;
-  return { ...row, status: fresh.status, checkedAt: fresh.checkedAt };
+  return { ...row, status: fresh.status, voidReason: fresh.voidReason, checkedAt: fresh.checkedAt };
 }
 
 export type ConfirmTarget = {

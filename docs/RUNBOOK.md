@@ -2,7 +2,7 @@
 
 For the two developers on call (best effort, business hours; ARCHITECTURE §11). Each procedure says **when** to use it, **steps**, and **how you know it worked**. Steps marked *(P0-15)* need the VPS and staging stack, which P0-15 builds; until then they are the plan, not yet rehearsed. Every phase extends this file for what it added.
 
-Sections: [1 Alerts](#1-alerts-what-each-email-means) · [2 System page](#2-reading-the-system-page) · [3 Health endpoints](#3-health-endpoints) · [4 Deploy](#4-deploy) · [5 Rollback](#5-rollback) · [6 Restore and outbox replay](#6-restore-and-outbox-replay) · [7 Redis loss](#7-redis-loss) · [8 Worker down](#8-worker-down) · [9 Key leak](#9-key-leak) · [10 Email outage or quota](#10-email-provider-outage-or-quota) · [11 Free-tier quota exhausted](#11-free-tier-quota-exhausted) · [12 Disk full](#12-disk-nearly-full) · [13 Tunnel down](#13-cloudflare-tunnel-down) · [14 VPS rebuild](#14-full-vps-rebuild) · [15 Logs](#15-logs)
+Sections: [1 Alerts](#1-alerts-what-each-email-means) · [2 System page](#2-reading-the-system-page) · [3 Health endpoints](#3-health-endpoints) · [4 Deploy](#4-deploy) · [5 Rollback](#5-rollback) · [6 Restore and outbox replay](#6-restore-and-outbox-replay) · [7 Redis loss](#7-redis-loss) · [8 Worker down](#8-worker-down) · [9 Key leak](#9-key-leak) · [10 Email outage or quota](#10-email-provider-outage-or-quota) · [11 Free-tier quota exhausted](#11-free-tier-quota-exhausted) · [12 Disk full](#12-disk-nearly-full) · [13 Tunnel down](#13-cloudflare-tunnel-down) · [14 VPS rebuild](#14-full-vps-rebuild) · [15 Logs](#15-logs) · [18 Data key](#18-rotate-the-data-encryption-key-data_encryption_key) · [20 Integrity issues](#20-integrity-issues-reconciliation-triage) · [21 Stuck outbox or receipts](#21-stuck-outbox-rows-or-receipt-pdfs) · [22 SSE storms](#22-sse-reconnect-storms)
 
 Ground rules: rotate or contain first, investigate second. Never paste a secret into chat, a ticket or a log. Record what happened in `progress/SESSION_LOG.md` (and a DECISIONS entry if you changed how something works).
 
@@ -21,6 +21,7 @@ Alert emails go to every address in `ALERT_EMAILS` (both developers). Subject: `
 | `notifications.undelivered` | *(P1-10)* A notice job could not read what it announces (today: a programme change notice whose owner lost the role before the job ran; RLS hides the version), so nothing was sent. Detail: `job`, `shopId`, `version`. | Rare by design. Check the shop's team; if the notice still matters, a current owner re-saves (or wait for the admin re-send tool). |
 | `health.partitions` | *(P1-10)* Fewer than 2 months of `notifications` partitions exist ahead; inserts fail once a month has none. | Check the `partitions-ensure` job (daily 03:17, §8); run it by hand: `SELECT ensure_notifications_partitions(3)` as `moz_worker` (`pnpm worker` must be healthy). |
 | `health.sweep` | *(P1-13)* A scheduled sweep is **late** (no successful run within its interval + grace: points-expiry 26 h, request sweeps 15 min) or **slow** (last run over its limit: points-expiry 15 min, request sweeps 2 min). Detail: `late[]` (`name`, `lastRunAgeSec`), `slow[]` (`name`, `lastRunMs`). Limits in `src/server/ops/sweeps.ts`. | Late: is the worker up and the `scheduled` queue moving (`health.queue_lag`, `health.failed_jobs`)? A failing run retries and dead-letters: read its error on the System page. Slow: the worker log line `sweep <name> done` (ms, counts); look for lock waits or growth. Points expiry is idempotent: re-running it by hand is safe (`runPointsExpiry`). |
+| `integrity.issue` | *(P1-17)* The integrity run (04:00 or on demand) found **new** mismatches between the ledger and the cached counters, receipts, rewards or requests. Detail: new and open counts per check. Nothing was changed. | §20. |
 | `codes.exhausted` | Five random public codes in a row were taken (shop code, member ID…); nothing was created and the caller saw an error. Detail: `kind`, `attempts`. | One alert is chance-level impossible at today's size (30⁶ ≈ 729 M codes): look for a bug in the generator or a unique index on the wrong column; if the code space is genuinely filling up, lengthen the code (DECISIONS). |
 | `health.db` | Postgres did not answer the monitor within 2 s. | `docker compose ps postgres`, its logs; disk (§12). |
 | `health.redis` | redis-queue did not answer. Jobs, rate limits and alert dedup are affected; requests needing limits fail closed (503). | §7. |
@@ -63,7 +64,7 @@ On staging these three URLs (exactly these paths) skip the basic-auth password, 
 1. Check CI is green on the commit (`gh run list --limit 1`) and the System page shows no open alerts.
 2. Production: `gh workflow run deploy.yml -f tag=vX.Y.Z` (GitHub Free mode refuses a tag without a green CI run).
 - *(P1-10)* Migration 0027 needs the NOLOGIN role `moz_partitions`, which only the bootstrap can create on the VPS (moz_owner has no CREATEROLE). Nothing to do by hand: every deploy runs the **new** release's `bootstrap.sql` before its migrations. If the migration ever reports `role "moz_partitions" does not exist`, the bootstrap step didn't run: the deploy stops before switching replicas.
-- *(P1-18)* A migration that runs `VALIDATE CONSTRAINT` (0037 validates every CHECK added `NOT VALID` so far) fails if an old row breaks the check, and the deploy then stops before switching replicas. Before such a deploy, count the failing rows on the target as `moz_owner` (`docker exec -i moz-postgres psql -U moz_owner -d moz -X -q`), and fix the data first if any count is above 0:
+- *(P1-18)* A migration that runs `VALIDATE CONSTRAINT` (0037 validates every CHECK added `NOT VALID` so far) fails if an old row breaks the check, and the deploy then stops before switching replicas. Before such a deploy, count the failing rows on the target (`sudo docker exec -i moz-<env>-postgres-1 psql -U postgres -d moz -X -q`, paste the block), and fix the data first if any count is above 0:
   ```sql
   DO $$ DECLARE c record; n bigint; BEGIN
     FOR c IN SELECT conrelid::regclass AS t, conname, pg_get_expr(conbin, conrelid) AS e
@@ -327,3 +328,97 @@ self.addEventListener("activate", (event) => {
 ```
 Each phone drops the worker and its caches on its next visit (the offline card stops working until the fix ships).
 
+## 20. Integrity issues (reconciliation triage)
+
+*(P1-17, P1-18)* The nightly run (04:00 UK, `sweep:integrity-check`) compares each membership's ledger, replayed
+through the loyalty engine, with its cached counters, and checks receipts, rewards and requests. It is read-only:
+it records into `integrity_issues` and never fixes anything. One open row per check and entity; a later run that
+no longer finds it marks it resolved. The System page lists them from P2; until then use the CLI or SQL.
+1. **Run it now and list what is open** (worker container; read-only, safe any time):
+   ```
+   sudo docker exec moz-<env>-worker-1 node cli/integrity-check.mjs --show 20
+   ```
+   `PASS, no open issues` (exit 0) or `FAIL, N open issue(s)` with the oldest per check (exit 1). Exit 3: another
+   run holds the lock (wait a minute). Locally: `pnpm integrity:check`.
+2. **Triage by check** (ids only in the output; look the rows up as `postgres` in `moz`):
+   - `membership_counters`: cached `progress`/`ingots` differ from the ledger (`ledgerProgress`/`ledgerIngots`).
+     First suspect a write that bypassed the approval services (a manual SQL fix, a half-applied restore). On
+     **staging**, demo members seeded before P1-17 have counters but no ledger: `pnpm db:seed --reset` there (§16)
+     fixes them. On production: compare the member's ledger (`ledger_entries` by `membership_id`, oldest first)
+     with their requests and receipts, decide which side is right, and correct it with a **new ledger row**
+     (an adjustment, never an UPDATE of the ledger: it is append-only) or the counters, in one transaction, with
+     a DECISIONS line. Tell the shop if a customer's balance changes.
+   - `receipt_numbers` (a gap or a repeat in a shop's 1..n): never renumber (numbers are on customers' PDFs).
+     A gap after a restore means receipts were lost with the restore window: note it in SESSION_LOG; it stays open
+     as the record. A repeat is a bug: Sentry, fix the counter, keep both receipts.
+   - `reward_redeemed_twice` / `redeem_not_zero`: a reward was given twice or a redeem moved gold. Read the
+     `redemption_codes` and `redeem` rows for the reward; tell the shop owner; fix the code path before anything else.
+   - `request_approved_twice` / `approved_without_ledger`: an approval wrote twice or not at all (the services make
+     both impossible inside one transaction): treat as a bug (Sentry, the request's audit rows), then correct as
+     for counters.
+   - `approved_without_receipt`: an approved request has no receipt row 15 min later. Receipts are written in the
+     approval transaction, so this also means a bypassed write or a partial restore; a missing **PDF** is not this
+     check (§21).
+3. **Worked when:** after the fix, step 1 prints `PASS` (the fixed issues show as `resolved`). Write the cause and
+   the fix in SESSION_LOG.
+- **The run itself is slow or missing:** `health.sweep` names `integrity-check` (late > 26 h, slow > 15 min). It
+  pages by key; at 100k memberships it takes ~7 s locally (C-110, `pnpm test:scale`). Slow on the VPS means the
+  database is starved (§12 disk, `docker stats`), not that the run needs a bigger limit.
+
+## 21. Stuck outbox rows or receipt PDFs
+
+*(P0-18, P1-12, P1-18)* Every side effect (jobs, realtime events, emails, receipt PDFs) is an `outbox` row written in
+the same transaction as the data; the relay inside the worker dispatches it to redis-queue and the worker marks it
+complete. Alerts: `outbox.stale` (waiting > 2 min), `outbox.lost` (dispatched but gone from Redis, re-sent
+automatically), `health.failed_jobs` (dead-lettered).
+1. **See where rows are stuck** (`sudo docker exec -i moz-<env>-postgres-1 psql -U postgres -d moz -X`):
+   ```sql
+   -- waiting (never dispatched): the relay or redis-queue is down → §8, §7
+   SELECT queue, job_name, count(*), min(created_at), max(attempts), max(last_error)
+     FROM outbox WHERE dispatched_at IS NULL AND failed_at IS NULL GROUP BY 1, 2;
+   -- dispatched but not complete after 10 min: the worker is stuck or the job keeps failing
+   SELECT queue, job_name, count(*), min(dispatched_at)
+     FROM outbox WHERE dispatched_at < now() - interval '10 minutes'
+      AND completed_at IS NULL AND failed_at IS NULL GROUP BY 1, 2;
+   -- dead-lettered in the last day (left replay and the sweeps)
+   SELECT queue, job_name, count(*), max(last_error) FROM outbox
+    WHERE failed_at > now() - interval '1 day' GROUP BY 1, 2;
+   ```
+2. **Waiting rows:** fix the worker (§8) or redis-queue (§7); the relay picks them up by itself. Many `attempts`
+   with one `last_error` = Redis refuses writes (memory, AOF): §7.
+3. **Dead-lettered rows:** read the error in Sentry (`where: job <queue>:<name>`) and fix the cause first. Jobs are
+   idempotent, so once fixed, re-send the window they failed in: `node cli/relay.mjs --replay-since "<ISO time
+   with zone>" --dry-run`, then without `--dry-run` (§6 step 4; dead-lettered rows are left out by design, so
+   re-sending one needs a new outbox row written by the action that owns it, not an UPDATE).
+4. **Receipt PDFs** (`pdf:receipt`): a receipt row always exists after an approval; only its file can be missing
+   (`receipts.pdf_key IS NULL`). A download that finds no file queues a new render and answers "Your receipt is still being
+   prepared. Please try again in a minute." (404 + `Retry-After`), so each download heals its own file. Many missing at once: check the private bucket (`S3_PRIVATE_*`
+   credentials, H-08b) and the `pdf:receipt` failures in Sentry; after the fix, a download re-renders each one.
+   `SELECT count(*) FROM receipts WHERE pdf_key IS NULL AND created_at < now() - interval '15 minutes';`
+5. **Worked when:** the three queries return no rows (or only rows you decided to leave), the System page shows
+   outbox waiting 0, and a receipt PDF downloads.
+
+## 22. SSE reconnect storms
+
+*(P1-10, P1-18)* Live updates use Server-Sent Events (`/api/sse/me`, `/api/sse/shop/<id>`) through Cloudflare and
+Caddy to both web replicas. Built-in brakes: clients reconnect with exponential backoff and full jitter (1 s
+doubling to 30 s, `src/lib/realtime/backoff.ts`); a deploy or shutdown sends each stream a jittered `retry:` before
+closing; a full or stopping process answers 503 with `Retry-After` 5–15 s; caps per process are 5 streams per
+user, 50 per shop channel, 2,000 in total (`REALTIME_CAPS`); over a per-user or per-shop cap the **oldest** stream
+closes, so a looping tab can't hold more than its share. If Redis pub/sub is lost every stream gets `degraded`
+and pages poll every 15 s instead.
+- **Symptoms:** System page "Live connections (SSE)" jumping up and down; many 503s on `/api/sse/*` in the Caddy
+  log (§15); web CPU high right after a deploy or a Redis restart.
+1. **After a deploy or Redis restart** it settles by itself within ~1 min (the jitter spreads the returns).
+   Watch the connection count fall back to its usual level; do nothing else.
+2. **It doesn't settle:** find who reconnects. Caddy log by path and client (§15): one user or one shop with a
+   loop → a client bug (a page re-opening its stream on every render): Sentry for that release, roll back (§5) if
+   it came with it. Many IPs at once with no deploy → treat as abuse: Cloudflare → Security → WAF → rate limiting
+   rule on `starts_with(http.request.uri.path, "/api/sse/")` (Managed Challenge, per IP), and remove it when
+   it stops.
+3. **Turn realtime down without an outage:** the pages work without it (they poll and refetch on focus). If the
+   web replicas are overloaded, lower the total cap in `REALTIME_CAPS` and deploy, or restart one web replica at a
+   time (`sudo docker restart moz-<env>-web-1-1`, wait for `/api/health/ready`, then `moz-<env>-web-2-1`): each stream gets `restart` and returns
+   spread over 5–15 s.
+4. **Worked when:** connection count steady, no 503 bursts on `/api/sse/*`, a staff approval reaches a customer's
+   phone live again (Demo step 2).

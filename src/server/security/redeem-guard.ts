@@ -164,6 +164,18 @@ export async function reserveRedeemAttempt(opts: {
   }
 }
 
+/**
+ * The owners' "codes paused" notice didn't commit: clear the shop's "told" flag, so the next refusal is the
+ * first again and the notice is tried again (P1-16 security review LOW 1). Best effort, like the release.
+ */
+export async function forgetShopRefusal(shopId: string, redis?: Redis): Promise<void> {
+  try {
+    await (redis ?? limiterRedis()).del(keysFor(shopId, "-")[2] as string);
+  } catch (err) {
+    log().error({ err }, "redeem guard: could not clear the shop's told flag");
+  }
+}
+
 /** After a confirm committed (the code was right): its attempt was not a failed guess. */
 export async function releaseRedeemAttempt(r: RedeemReservation, redis?: Redis): Promise<void> {
   try {
