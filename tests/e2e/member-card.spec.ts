@@ -141,6 +141,8 @@ test("[P1-14] the card renders offline after one online visit; deep links fall b
   await expect(page.getByRole("heading", { level: 1, name: "You’re offline" })).toBeVisible();
   await expect(page.getByTestId("member-id")).toHaveText(payload.memberId);
   await expect(card(page)).toContainText(payload.firstName);
+  // The front's corner says nothing it doesn't know (P1-D close design review LOW: it read "Offline").
+  await expect(card(page).locator(".m-mc-since")).toHaveCount(0);
   await flipToQr(page);
   await expect(page.getByTestId("member-qr").locator("path")).toHaveAttribute(
     "d",

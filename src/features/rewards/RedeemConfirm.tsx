@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { TextField } from "@/components/ui/TextField";
+import { SignInAgain } from "@/features/auth/SignInAgain";
 import { haptic } from "@/lib/haptics";
 import { useHydrated } from "@/lib/use-hydrated";
 import { confirmRedeemCodeAction } from "./actions";
 
-type Outcome = { kind: "done"; label: string } | { kind: "error"; message: string } | null;
+type Outcome =
+  { kind: "done"; label: string } | { kind: "error"; message: string; signIn?: boolean } | null;
 
 /**
  * "Redeem a reward" for the shop's team (P1-16, PRODUCT §6): the customer shows their 6-character code; the team
@@ -52,7 +54,11 @@ export function RedeemConfirm({ shopId }: { shopId: string }): React.JSX.Element
       setCode("");
       haptic("reward");
     } else {
-      setOutcome({ kind: "error", message: res.error.message });
+      setOutcome({
+        kind: "error",
+        message: res.error.message,
+        signIn: res.error.code === "UNAUTHENTICATED",
+      });
       setTries((n) => n + 1);
       field.current?.focus();
     }
@@ -112,6 +118,11 @@ export function RedeemConfirm({ shopId }: { shopId: string }): React.JSX.Element
           data-testid="redeem-confirmed"
         >
           Redeemed: {outcome.label}. Hand it over.
+        </p>
+      ) : null}
+      {outcome?.kind === "error" && outcome.signIn ? (
+        <p className="text-small">
+          <SignInAgain base="/staff/sign-in" testId="redeem-confirm-sign-in" />
         </p>
       ) : null}
     </Card>

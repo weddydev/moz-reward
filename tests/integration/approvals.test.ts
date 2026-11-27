@@ -596,6 +596,35 @@ describe("[P1-12] reject", () => {
 });
 
 describe("[P1-12] reverse", () => {
+  it("[P1-18] a member who left after the award: the reversal still goes through (leaving never dodges a correction)", async () => {
+    // DECISIONS 27 Nov (P1-C close code review LOW 6): the gold they would get back on rejoin shrinks by it.
+    await db()
+      .update(memberships)
+      .set({ progressGold: 200 })
+      .where(eq(memberships.id, w.member.id));
+    const r = await request(w.member, 120_000);
+    const award = await approve(w.staff, { requestId: r.id });
+    if (award.outcome !== "approved") throw new Error("not approved");
+    await db()
+      .update(memberships)
+      .set({ leftAt: new Date() })
+      .where(eq(memberships.id, w.member.id));
+    expect(await reverse(w.staff, { receiptId: award.receiptId, reason: "mistake" })).toMatchObject(
+      {
+        receiptId: award.receiptId,
+        gold: 100,
+        fromProgress: 100,
+        toShortfall: 0,
+      },
+    );
+    const m = await membershipRow(w.member.id);
+    expect(m.progressGold).toBe(200);
+    expect(m.leftAt).not.toBeNull();
+    // No notification from a shop they left (RLS would refuse it); the ledger and audit still record it.
+    expect(await noticesOf(w.member.userId, "award_reversed")).toHaveLength(0);
+    expect((await auditOf(award.receiptId)).map((a) => a.action)).toContain("ledger.reverse");
+  });
+
   it("[P1-12] takes gold off current progress only, floored at 0; the rest is a shortfall paid off by later earns", async () => {
     await db()
       .update(memberships)

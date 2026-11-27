@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { RedeemCode } from "@/components/ui/RedeemCode";
+import { SignInAgain } from "@/features/auth/SignInAgain";
 import { haptic } from "@/lib/haptics";
 import { reducedMotionNow } from "@/lib/motion/anim";
 import { celebrate } from "@/lib/motion/press";
@@ -25,7 +26,7 @@ type State =
   | { kind: "pending" }
   | { kind: "code"; code: Code; expired: boolean }
   | { kind: "redeemed" }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string; signIn?: boolean };
 
 /**
  * The redeem slot of a reward card (P1-16; DESIGN §8.6; reference `.reward-card` → `.code`): Redeem, then the
@@ -92,7 +93,11 @@ export function RedeemFlow({
           settle(
             res.ok
               ? { kind: "code", code: { ...res.data, receivedAt }, expired: false }
-              : { kind: "error", message: res.error.message },
+              : {
+                  kind: "error",
+                  message: res.error.message,
+                  signIn: res.error.code === "UNAUTHENTICATED",
+                },
             receivedAt,
           );
         },
@@ -138,9 +143,16 @@ export function RedeemFlow({
         () => undefined,
       );
     };
+    // Back to this tab: another tab may have made a newer code meanwhile (voiding this one, with no hint), so ask
+    // again (P1-D close QA MINOR 3).
+    const onVisible = (): void => {
+      if (document.visibilityState === "visible") check();
+    };
     window.addEventListener(REDEMPTION_HINT_EVENT, check);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.removeEventListener(REDEMPTION_HINT_EVENT, check);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [codeId, router]);
 
@@ -224,6 +236,12 @@ export function RedeemFlow({
         {state.kind === "error" ? (
           <p role="alert" className="m-redeem-note" data-testid="redeem-error">
             {state.message}
+            {state.signIn ? (
+              <>
+                {" "}
+                <SignInAgain base="/sign-in" testId="redeem-sign-in" />
+              </>
+            ) : null}
           </p>
         ) : null}
       </div>

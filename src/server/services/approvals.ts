@@ -535,18 +535,21 @@ export async function reverseAward(
     tx,
   );
 
-  await notify(scope, tx, [membership.userId], {
-    type: "award_reversed",
-    shopId: scope.shopId,
-    payload: {
+  // A member who has left gets no notifications from the shop (RLS refuses the row): the reversal still
+  // stands, and they see it in their history if they rejoin (DECISIONS 27 Nov, P1-18).
+  if (!membership.leftAt)
+    await notify(scope, tx, [membership.userId], {
+      type: "award_reversed",
       shopId: scope.shopId,
-      receiptId: seen.id,
-      receiptNumber: seen.number,
-      gold,
-      shortfall: outcome.state.shortfall,
-      reason: input.reason,
-    },
-  });
+      payload: {
+        shopId: scope.shopId,
+        receiptId: seen.id,
+        receiptNumber: seen.number,
+        gold,
+        shortfall: outcome.state.shortfall,
+        reason: input.reason,
+      },
+    });
   await audit(tx, {
     actor: scope,
     action: "ledger.reverse",

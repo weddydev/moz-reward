@@ -4,6 +4,7 @@ import {
   type APIRequestContext,
   type Browser,
   type BrowserContext,
+  type Locator,
   type Page,
 } from "@playwright/test";
 import { expect, newClientContext, test, testApiHeaders } from "./support/test";
@@ -414,4 +415,83 @@ test.describe("redeem by keyboard, and with no connection", () => {
     const second = await shownCode(page);
     expect(second).not.toBe(first);
   });
+});
+
+test("[J3][P1-18] a session that ended mid-action: Redeem and the team's Confirm offer Sign in back to the page", async ({
+  page,
+  signInAs,
+  browser,
+  baseURL,
+}) => {
+  // P1-D close QA MINOR 4: "Please sign in to continue." had no way on.
+  const me = await signInAs("customer");
+  const { shopId } = await seedReward(page.request, me.userId);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/vault/${shopId}`);
+  const list = page.getByTestId("vault-rewards").getByTestId("reward-ready");
+  await expect(list).toHaveCount(4);
+  await list.first().getByTestId("reward-redeem").click();
+  const sheet = page.getByTestId("redeem-sheet");
+  await expect(sheet).toBeVisible();
+  await page.context().clearCookies();
+  await sheet.getByTestId("redeem-button").click();
+  await expect(sheet.getByTestId("redeem-error")).toContainText("Please sign in to continue.", {
+    timeout: SERVER_MS,
+  });
+  const back = sheet.getByTestId("redeem-sign-in");
+  await expect(back).toHaveAttribute(
+    "href",
+    `/sign-in?returnTo=${encodeURIComponent(`/vault/${shopId}`)}`,
+  );
+
+  const staff = await device(browser, baseURL ?? "", { role: "staff", shopId });
+  try {
+    await staff.page.goto("/dashboard/requests");
+    await staff.context.clearCookies();
+    await confirm(staff.page, "ABCDEF");
+    const again = staff.page.getByTestId("redeem-confirm-sign-in");
+    await expect(again).toBeVisible({ timeout: SERVER_MS });
+    await expect(again).toHaveAttribute(
+      "href",
+      `/staff/sign-in?returnTo=${encodeURIComponent("/dashboard/requests")}`,
+    );
+    await again.click();
+    await expect(staff.page).toHaveURL(/\/staff\/sign-in\?returnTo=%2Fdashboard%2Frequests$/);
+  } finally {
+    await staff.context.close();
+  }
+});
+
+test("[J3][P1-18] two tabs: back on the first tab after a Redeem in the second, its old code is dead (New code)", async ({
+  page,
+  signInAs,
+}) => {
+  // P1-D close QA MINOR 3: a newer code voids the old one with no realtime hint; the old tab asks again when
+  // it is shown.
+  const me = await signInAs("customer");
+  const { shopId } = await seedReward(page.request, me.userId);
+  const open = async (tab: Page): Promise<Locator> => {
+    await tab.setViewportSize({ width: 390, height: 844 });
+    await tab.goto(`/vault/${shopId}`);
+    const list = tab.getByTestId("vault-rewards").getByTestId("reward-ready");
+    await expect(list).toHaveCount(4);
+    await list.first().getByTestId("reward-redeem").click();
+    const sheet = tab.getByTestId("redeem-sheet");
+    await sheet.getByTestId("redeem-button").click();
+    await shownCode(tab);
+    return sheet;
+  };
+  const first = await open(page);
+  const tabB = await page.context().newPage();
+  try {
+    await open(tabB);
+    await page.bringToFront();
+    // Headless pages stay "visible", so the browser's own event is raised the way a tab switch raises it.
+    await page.evaluate(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await expect(first.getByTestId("redeem-new-code")).toBeVisible({ timeout: SERVER_MS });
+  } finally {
+    await tabB.close();
+  }
 });

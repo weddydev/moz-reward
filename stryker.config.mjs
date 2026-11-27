@@ -21,6 +21,10 @@ const config = {
     "src/lib/loyalty/replay.ts",
   ],
   coverageAnalysis: "perTest",
+  // Static mutants (module-level constants: message tables, limits) re-run every related test, integration
+  // included: 185 of 637 took 96% of a ~16 h run (P1-18, DECISIONS 27 Nov). They are reported as ignored, not
+  // dropped; the constants they touch are pinned by the rules' unit tests.
+  ignoreStatic: true,
   thresholds: { high: 90, low: 80, break: 80 },
   reporters: ["clear-text", "progress", "html"],
   htmlReporter: { fileName: ".artifacts/mutation/index.html" },

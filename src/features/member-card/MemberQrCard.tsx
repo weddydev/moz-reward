@@ -234,7 +234,6 @@ export function OfflineMemberCard(): React.JSX.Element {
         name={payload.firstName}
         memberId={payload.memberId}
         tier="Member"
-        since="Offline"
         memberIdTestId="member-id"
         backText={BACK_TEXT[view.kind]}
         back={<Back view={view} memberId={payload.memberId} token={payload.token} />}

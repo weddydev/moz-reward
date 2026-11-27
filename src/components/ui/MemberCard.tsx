@@ -71,8 +71,8 @@ export function MemberCard({
   memberId: string;
   /** The badge top right, e.g. "Gold member". */
   tier: string;
-  /** The line bottom right, e.g. "since Nov 2026". */
-  since: string;
+  /** The line bottom right, e.g. "since Nov 2026"; none where it isn't known (the offline card). */
+  since?: string | undefined;
   /** The line under the QR code. */
   backText: string;
   brand?: string;
@@ -208,7 +208,7 @@ export function MemberCard({
                 {memberId}
               </span>
             </span>
-            <span className="m-mc-since">{since}</span>
+            {since ? <span className="m-mc-since">{since}</span> : null}
           </span>
         </span>
         <span className="m-mface m-back">
