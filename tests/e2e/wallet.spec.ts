@@ -326,6 +326,9 @@ test("[P1-18] wallet card shine: it glides on the full tier and holds still on t
       .first()
       .evaluate((el) => getComputedStyle(el, "::after").animationName);
   await expect.poll(shine, { message: "the full tier keeps the card shine" }).toBe("m-cardshine");
+  // Hydration re-applies the tier (`applyTier()` honours the "full" override): a class set before it is undone
+  // (CI 45954702751, WebKit; KI-50).
+  await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
   await page.evaluate(() => {
     document.documentElement.classList.add("lite");
   });
