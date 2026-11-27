@@ -52,6 +52,9 @@ test("[J1][P1-04] scan → gate → Collect points → email link → profile �
   mail,
   shoot,
 }) => {
+  // The whole journey (gate, email link, profile, join) on frame-starved Linux WebKit runs past the default
+  // 30 s (KI-10; spec-repeat 45916159059: 2 of 20 over 30 s once the gate wait was fixed).
+  test.setTimeout(60_000);
   const shopName = "Brew & Bloom Café";
   const { shopId, shopCode } = await seedShop(page.request, { status: "active", name: shopName });
 
