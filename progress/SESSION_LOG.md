@@ -1179,3 +1179,9 @@ Done on `wip/P1-18` (`a37761e`): ci:usage 6 min hang fixed (KI-79); C-110 100k i
 Tests: test:scale 1/0; integrity + redemptions int 51/0; check unit 2316/0; CI cd18c4b 45933446184 green; a37761e CI running.
 Not verified: mutation — Stryker dry run fails on redemptions.test "reward that expires during the code's window" under instrumentation.
 Next: fix that test's timing (or unit-only Stryker + DECISIONS), run `pnpm test:mutation`, review survivors (C-17); then quarantines, C-91, staging steps (NOT-VALID pre-check before 0037 lands), gate:phase.
+
+## 2026-11-27 — P1 — P1-18 checkpoint (in progress), talha.syed (Mac)
+`wip/P1-18` `3424140`: Stryker dry run fixed (KI-80); mutation 93.22% with `ignoreStatic` (DECISIONS); C-17: 25 survivors → 9 killed by new tests (re-applied by hand), 6 messages pinned, 9 static reload artefacts (killed when applied by hand), 1 equivalent; ~20 FOLLOWUPS fixed with tests (list in PROGRESS Handoff); reversal after leaving was a raw RLS error (fixed, int test).
+Evidence: unit 2336 (gallery fix after), int 48/0 + 24/0, E2E changed specs 3 projects green; CI 45939468028 (`99493c4`) red on the shine spec only (lite CI, KI-50; fixed).
+NOT VERIFIED: full local 5-project E2E (void: Docker paused, laptop froze; Docker now capped 4 GB); CI on `3424140` running at checkpoint.
+Next: check CI on `3424140`, fix reds; then the Handoff's next steps.
