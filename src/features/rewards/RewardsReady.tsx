@@ -1,15 +1,43 @@
 "use client";
 
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { toast } from "@/components/ui/Toast";
 import type { ReadyRewardView } from "./view";
 
-const loadSheet = () => import("./RedeemSheet");
+/** Set once the sheet's chunk has arrived: Redeem then opens it at once, with no busy state. */
+let sheetLoaded = false;
+const loadSheet = () =>
+  import("./RedeemSheet").then((m) => {
+    sheetLoaded = true;
+    return m;
+  });
 const RedeemSheet = lazy(loadSheet);
+
+/** At an idle moment once there is something to redeem (1 s later where there is no idle callback: WebKit). */
+function preloadSheet(): () => void {
+  const load = (): void => {
+    loadSheet().catch(() => {
+      /* asked for again on press; a failure then says so */
+    });
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    const id = window.requestIdleCallback(load);
+    return () => {
+      window.cancelIdleCallback(id);
+    };
+  }
+  const id = window.setTimeout(load, 1_000);
+  return () => {
+    window.clearTimeout(id);
+  };
+}
 
 /**
  * "Rewards ready" with Redeem (P1-16): the Wallet's right column (every shop, C-65) and the Gold Vault's card (one
- * shop, C-67). Each Redeem opens the same redeem flow in a sheet; the sheet's chunk loads on press or focus.
+ * shop, C-67). Each Redeem opens the same redeem flow in a sheet. The sheet's chunk is fetched at idle once the
+ * list shows (and on press or focus); a press before it has arrived shows that row busy until the sheet opens
+ * (P1-D close QA MINOR 5: 4–5 s of nothing on slow 3G), and a chunk that fails to load says so.
  */
 export function RewardsReady({
   rewards,
@@ -21,6 +49,36 @@ export function RewardsReady({
 }): React.JSX.Element {
   const [open, setOpen] = useState<ReadyRewardView | null>(null);
   const [shown, setShown] = useState<ReadyRewardView | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
+  /** The latest press: a slower earlier load never opens a sheet the person has moved on from. */
+  const latest = useRef<string | null>(null);
+  const any = rewards.length > 0;
+
+  useEffect(() => (any && !sheetLoaded ? preloadSheet() : undefined), [any]);
+
+  const show = (r: ReadyRewardView): void => {
+    latest.current = r.id;
+    if (sheetLoaded) {
+      setShown(r);
+      setOpen(r);
+      return;
+    }
+    setPending(r.id);
+    loadSheet().then(
+      () => {
+        if (latest.current !== r.id) return;
+        setPending(null);
+        setShown(r);
+        setOpen(r);
+      },
+      () => {
+        if (latest.current !== r.id) return;
+        setPending(null);
+        toast("Couldn’t open the reward just now. Check your connection and try again.", "error");
+      },
+    );
+  };
+
   return (
     <>
       <ul className="flex flex-col gap-3" data-testid="rewards-ready-list">
@@ -45,9 +103,9 @@ export function RewardsReady({
                 void loadSheet();
               }}
               onClick={() => {
-                setShown(r);
-                setOpen(r);
+                show(r);
               }}
+              loading={pending === r.id}
               aria-label={`Redeem ${r.label}`}
               data-testid="reward-redeem"
             >

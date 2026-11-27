@@ -1,4 +1,5 @@
 import { SharedElement, TransitionLink } from "@/components/motion";
+import { FxBurstLog } from "../FxBurstLog";
 import { Section } from "../Section";
 import { CelebrationDemo } from "./CelebrationDemo";
 import { DEMO_SHOPS, DEMO_TABS } from "./demo-data";
@@ -17,6 +18,7 @@ export function MotionGallery(): React.JSX.Element {
   return (
     <main id="main" className="mx-auto w-full max-w-5xl px-5 py-10">
       <p className="text-small text-gold-deep font-semibold">Dev only</p>
+      <FxBurstLog />
       <h1 className="text-display">Motion gallery</h1>
       <p className="text-ink-2 mt-2 mb-8 max-w-prose">
         Page transitions and motion primitives (DESIGN.md §7). Navigation never waits for an

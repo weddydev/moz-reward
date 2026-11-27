@@ -75,6 +75,7 @@ export function IngotPour({
   unlocked = false,
   still = false,
   skipKey = 0,
+  quiet = false,
   onFull,
   onLanded,
   count,
@@ -94,6 +95,11 @@ export function IngotPour({
   ingots?: number;
   /** A reward is ready: with a full ingot on show, it lifts and its top face is gold. */
   unlocked?: boolean;
+  /**
+   * P1-18: `unlocked` turning true shows the lifted end state only: no ring pulse, no coin or spark burst (a skip
+   * before the unlock lands everything; the card's flip and leaves already stay off then, P1-15 design LOW 13).
+   */
+  quiet?: boolean;
   /** Called 250 ms after a pour lands at the top (at once when skipped or under reduced motion). */
   onFull?: (() => void) | undefined;
   /** Called with the gold shown each time a pour lands (the vault's "N gold to go" line follows it). */
@@ -407,7 +413,7 @@ export function IngotPour({
   useEffect(() => {
     if (unlocked === wasUnlocked.current) return;
     wasUnlocked.current = unlocked;
-    if (!unlocked) return;
+    if (!unlocked || quiet) return;
     // Reduced motion: no ring pulse (its scale is movement; DESIGN §7.2), the lifted end state just shows.
     if (!reducedMotionNow())
       anim(ring.current, ringKeyframes(), { duration: VAULT.unlock.ring.ms, fill: "none" });
@@ -424,6 +430,8 @@ export function IngotPour({
       spread: u.coins.spread,
     });
     burst(cx, cy, { type: "spark", count: u.sparks.count, speed: u.sparks.speed });
+    // `quiet` is read as the unlock lands, not watched: turning it on later stops nothing already playing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unlocked]);
 
   // Announce changes after the first render (never on page load: the image's own label says it then).

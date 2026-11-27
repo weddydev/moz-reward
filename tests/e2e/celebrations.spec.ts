@@ -20,12 +20,12 @@ const SERVER_MS = 15_000;
 async function seedShop(
   request: APIRequestContext,
   userId: string,
-  opts: { progressGold?: number; visits?: number; celebrate?: boolean } = {},
+  opts: { progressGold?: number; visits?: number; celebrate?: boolean; name?: string } = {},
 ): Promise<{ shopId: string; shopCode: string }> {
   const res = await request.post("/api/test/shop", {
     data: {
       status: "active",
-      name: SHOP,
+      name: opts.name ?? SHOP,
       details: true,
       programme: "sample",
       memberUserId: userId,
@@ -135,6 +135,8 @@ test("[P1-15] gold approved while the app is open plays from the stream, once; D
   await page.getByTestId("celebration-done").click();
   await expect(dialog).toHaveCount(0);
   await expect(page.locator("dialog canvas.m-fx")).toHaveCount(0);
+  // Nothing opened the moment, so focus lands on the page's heading, not <body> (P1-D close QA MINOR 7).
+  await expect(page.locator("[data-route-content] h1")).toBeFocused();
 
   // Seen on the server: a reload claims nothing.
   await page.reload();
@@ -160,6 +162,23 @@ test("[P1-15] an unseen approval plays on app open, in one tab only", async ({
   await page.waitForTimeout(1_000);
   expect(await shown()).toBe(1);
   await second.close();
+});
+
+test("[P1-18] Escape closes a moment that opened by itself and focus lands on the page's heading", async ({
+  page,
+  signInAs,
+}) => {
+  // P1-D close QA MINOR 7: after Done/Escape focus was on <body>, so Tab restarted from the top of the document.
+  const me = await signInAs("customer");
+  const { shopId } = await seedShop(page.request, me.userId, { visits: 1, celebrate: true });
+  await page.goto(`/shops/${shopId}`);
+  await claimsDone(page, 1);
+  await expect(moment(page)).toBeVisible({ timeout: SERVER_MS });
+  await page.keyboard.press("Escape");
+  await expect(moment(page)).toHaveCount(0);
+  const heading = page.getByTestId("member-shop-name");
+  await expect(heading).toBeFocused();
+  await expect(heading).toHaveAttribute("tabindex", "-1");
 });
 
 test("[P1-15] a filled ingot chains into the reward unlocked; reward chime state, card and text", async ({
@@ -270,12 +289,25 @@ test("[P1-15] a tap skips to the end state at once", async ({ page }) => {
   await page.getByTestId("demo-celebrate-reward").click();
   const m = moment(page);
   await expect(m).toBeVisible();
+  type Bursts = { __mozFxBursts?: { list: () => Array<{ type: string }>; clear: () => void } };
+  await page.evaluate(() => {
+    (window as unknown as Bursts).__mozFxBursts?.clear();
+  });
   await m.getByTestId("celebration-gold").click(); // mid-pour
   await expect(m).toHaveAttribute("data-state", "unlocked", { timeout: 1_000 });
   await expect(m.locator(".ingot-pour")).toHaveAttribute("data-ingot-state", "done", {
     timeout: 1_000,
   });
   await expect(m.getByTestId("celebration-gold")).toHaveText("+80 gold");
+  // A skip before the unlock lands it quietly (P1-15 design LOW 13): no ingot coins, no card leaves. The pour's
+  // own sparks may already have flown if the tap came after they started.
+  await page.waitForTimeout(500);
+  const types = await page.evaluate(() =>
+    ((window as unknown as Bursts).__mozFxBursts?.list() ?? [null]).map(
+      (b) => b?.type ?? "no hook",
+    ),
+  );
+  expect(types.filter((t) => t !== "spark")).toEqual([]);
   // Done works at any point: closing never waits for an animation.
   await page.getByTestId("celebration-done").click();
   await expect(m).toHaveCount(0);
@@ -410,6 +442,49 @@ test("[P1-15] opening a receipt prints it (800 ms clip reveal and stamp); the da
     stamp: el.querySelector(".m-receipt-stamp")?.getAnimations().length ?? -1,
   }));
   expect(d).toEqual({ card: [400], stamp: 0 });
+});
+
+test("[P1-18] a receipt for a long shop name at 320: the title hyphenates and the card stays inside the sheet", async ({
+  page,
+  signInAs,
+  shoot,
+}) => {
+  // P1-D close QA MINOR 6: "Extraordinarily" broke mid-word with no hyphen at 320 (`overflow-wrap: anywhere`
+  // alone). The title now hyphenates (en-GB) like the shop header; `anywhere` stays the last resort.
+  const me = await signInAs("customer");
+  const long = "The Extraordinarily Long-Named Neighbourhood Coffee House Ltd";
+  const { shopId } = await seedShop(page.request, me.userId, { visits: 1, name: long });
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto(`/shops/${shopId}`);
+  await claimsDone(page, 1);
+  await page.getByTestId("shop-receipt-open").first().click();
+  const card = page.getByRole("dialog", { name: "Receipt 1" }).getByTestId("receipt-card");
+  const title = card.getByRole("heading", { name: long });
+  await expect(title).toBeVisible();
+  expect(await page.locator("html").getAttribute("lang")).toBe("en-GB");
+  const style = await title.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { hyphens: cs.hyphens || cs.getPropertyValue("-webkit-hyphens"), wrap: cs.overflowWrap };
+  });
+  expect(style).toEqual({ hyphens: "auto", wrap: "anywhere" });
+  await expect
+    .poll(() =>
+      card.evaluate((el) =>
+        el.getAnimations({ subtree: true }).every((a) => a.playState === "finished"),
+      ),
+    )
+    .toBe(true);
+  const fits = await card.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const t = el.querySelector("h3")?.getBoundingClientRect();
+    return {
+      page: document.documentElement.scrollWidth <= window.innerWidth,
+      title: !!t && t.right <= box.right + 0.5,
+      card: box.right <= window.innerWidth + 0.5,
+    };
+  });
+  expect(fits).toEqual({ page: true, title: true, card: true });
+  await shoot("receipt-sheet-long-name-320", { fullPage: false });
 });
 
 test("[P1-15] the moment is its own chunk, ≤ 35 KB gzip, fetched at idle before any moment", async ({
