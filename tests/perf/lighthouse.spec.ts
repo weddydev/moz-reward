@@ -87,6 +87,41 @@ const ROUTES: Route[] = [
       return { path: "/wallet", headers: { cookie } };
     },
   },
+  {
+    // P1-18 AC6 (C-91): a member's shop page (header, Gold Vault, rewards ready, history with receipts).
+    name: "shop-page",
+    task: "P1-18",
+    budget: CUSTOMER_BUDGET,
+    setup: async (request) => {
+      const session = await request.post("/api/test/session", {
+        data: { role: "customer" },
+        headers: testApiHeaders(),
+      });
+      expect(session.ok()).toBe(true);
+      const { userId } = (await session.json()) as { userId: string };
+      const cookie = session
+        .headersArray()
+        .filter((h) => h.name.toLowerCase() === "set-cookie")
+        .map((h) => h.value.split(";")[0])
+        .join("; ");
+      expect(cookie).not.toBe("");
+      const res = await request.post("/api/test/shop", {
+        data: {
+          status: "active",
+          name: "Brew & Bloom Café",
+          details: true,
+          programme: "sample",
+          memberUserId: userId,
+          member: { purchaseCount: 3, progressGold: 720 },
+          visits: 3,
+        },
+        headers: testApiHeaders(),
+      });
+      expect(res.ok()).toBe(true);
+      const { shopId } = (await res.json()) as { shopId: string };
+      return { path: `/shops/${shopId}`, headers: { cookie } };
+    },
+  },
 ];
 
 function freePort(): Promise<number> {
@@ -105,7 +140,7 @@ function freePort(): Promise<number> {
 
 for (const route of ROUTES) {
   // Tags are literal for the title check: landing is P1-02, wallet-50 is P1-07 (`route.task`).
-  test(`[P1-02][P1-07] Lighthouse mobile: ${route.task} ${route.name} within DESIGN §12 budget`, async ({
+  test(`[P1-02][P1-07][P1-18] Lighthouse mobile: ${route.task} ${route.name} within DESIGN §12 budget`, async ({
     request,
     baseURL,
   }) => {

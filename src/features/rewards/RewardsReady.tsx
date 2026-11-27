@@ -14,13 +14,17 @@ const loadSheet = () =>
   });
 const RedeemSheet = lazy(loadSheet);
 
+/** A load quicker than this shows no busy state (no spinner flashing for a frame; P1 close design review L2). */
+const BUSY_AFTER_MS = 150;
+const fetchSheet = (): void => {
+  loadSheet().catch(() => {
+    /* asked for again on press; a failure then says so (no unhandled ChunkLoadError per press) */
+  });
+};
+
 /** At an idle moment once there is something to redeem (1 s later where there is no idle callback: WebKit). */
 function preloadSheet(): () => void {
-  const load = (): void => {
-    loadSheet().catch(() => {
-      /* asked for again on press; a failure then says so */
-    });
-  };
+  const load = fetchSheet;
   if (typeof window.requestIdleCallback === "function") {
     const id = window.requestIdleCallback(load);
     return () => {
@@ -52,6 +56,13 @@ export function RewardsReady({
   const [pending, setPending] = useState<string | null>(null);
   /** The latest press: a slower earlier load never opens a sheet the person has moved on from. */
   const latest = useRef<string | null>(null);
+  const busyTimer = useRef(0);
+  useEffect(
+    () => () => {
+      window.clearTimeout(busyTimer.current);
+    },
+    [],
+  );
   const any = rewards.length > 0;
 
   useEffect(() => (any && !sheetLoaded ? preloadSheet() : undefined), [any]);
@@ -63,15 +74,20 @@ export function RewardsReady({
       setOpen(r);
       return;
     }
-    setPending(r.id);
+    window.clearTimeout(busyTimer.current);
+    busyTimer.current = window.setTimeout(() => {
+      if (latest.current === r.id) setPending(r.id);
+    }, BUSY_AFTER_MS);
     loadSheet().then(
       () => {
+        window.clearTimeout(busyTimer.current);
         if (latest.current !== r.id) return;
         setPending(null);
         setShown(r);
         setOpen(r);
       },
       () => {
+        window.clearTimeout(busyTimer.current);
         if (latest.current !== r.id) return;
         setPending(null);
         toast("Couldn’t open the reward just now. Check your connection and try again.", "error");
@@ -96,12 +112,8 @@ export function RewardsReady({
             <Button
               size={46}
               variant="orbit"
-              onPointerDown={() => {
-                void loadSheet();
-              }}
-              onFocus={() => {
-                void loadSheet();
-              }}
+              onPointerDown={fetchSheet}
+              onFocus={fetchSheet}
               onClick={() => {
                 show(r);
               }}

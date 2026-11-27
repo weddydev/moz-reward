@@ -74,6 +74,12 @@ afterEach(() => {
 async function load(): Promise<typeof RewardsReadyModule> {
   return import("./RewardsReady");
 }
+/** Past the 150 ms before a slow load shows the row busy. */
+const pastBusyDelay = async (): Promise<void> => {
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 170));
+  });
+};
 const flush = async (): Promise<void> => {
   await act(async () => {
     for (let i = 0; i < 5; i++) await Promise.resolve();
@@ -95,13 +101,15 @@ describe("[P1-18] Rewards ready: the redeem sheet's chunk on a slow line", () =>
     expect(chunk.state.loads).toBe(1);
   });
 
-  it("Redeem before the chunk arrives: that row is busy at once, then the sheet opens and the row is not busy", async () => {
+  it("Redeem before the chunk arrives: that row is busy after 150 ms, then the sheet opens and the row is not busy", async () => {
     chunk.hold();
     const { RewardsReady } = await load();
     render(<RewardsReady rewards={REWARDS} showShop />);
     const button = screen.getByRole("button", { name: "Redeem Free coffee" });
     fireEvent.click(button);
     await flush();
+    expect(button, "not busy before 150 ms").not.toHaveAttribute("aria-busy");
+    await pastBusyDelay();
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(screen.getByRole("button", { name: "Redeem Free cake" })).not.toHaveAttribute(
       "aria-busy",
@@ -119,7 +127,7 @@ describe("[P1-18] Rewards ready: the redeem sheet's chunk on a slow line", () =>
     render(<RewardsReady rewards={REWARDS} showShop />);
     const button = screen.getByRole("button", { name: "Redeem Free coffee" });
     fireEvent.click(button);
-    await flush();
+    await pastBusyDelay();
     expect(button).toHaveAttribute("aria-busy", "true");
     chunk.fail(new Error("ChunkLoadError"));
     await flush();
@@ -129,6 +137,20 @@ describe("[P1-18] Rewards ready: the redeem sheet's chunk on a slow line", () =>
       "Couldn’t open the reward just now. Check your connection and try again.",
       "error",
     );
+  });
+
+  it("a load quicker than 150 ms never shows the row busy (no spinner flash)", async () => {
+    chunk.hold();
+    const { RewardsReady } = await load();
+    render(<RewardsReady rewards={REWARDS} showShop />);
+    const button = screen.getByRole("button", { name: "Redeem Free coffee" });
+    fireEvent.click(button);
+    await flush();
+    chunk.release();
+    await flush();
+    expect(await screen.findByRole("dialog", { name: "Redeem Free coffee" })).toBeTruthy();
+    await pastBusyDelay();
+    expect(button).not.toHaveAttribute("aria-busy");
   });
 
   it("chunk already here: Redeem opens the sheet with no busy state", async () => {
