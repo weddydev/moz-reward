@@ -251,6 +251,30 @@ export async function openStill(
   await instantScroll(page);
   await page.evaluate(() => document.fonts.ready);
   await edgesDrawn(page);
+  await photosLoaded(page);
+}
+
+/**
+ * Every eager `<img>` has loaded and decoded: a still capture must not race the photos (C-91: as plain `<img>` from
+ * `getImageProps` the covers painted after Linux CI's shot; nothing here waited for them). Polled, like
+ * `edgesDrawn`. A photo that never loads fails here by name instead of as a pixel diff.
+ */
+export async function photosLoaded(page: Page): Promise<void> {
+  const deadline = Date.now() + 10_000;
+  for (;;) {
+    const pending = await page.evaluate(async () => {
+      const imgs = [...document.images].filter((i) => i.loading !== "lazy");
+      await Promise.all(
+        imgs.filter((i) => i.complete).map((i) => i.decode().catch(() => undefined)),
+      );
+      return imgs
+        .filter((i) => !i.complete || i.naturalWidth === 0)
+        .map((i) => i.currentSrc || i.src);
+    });
+    if (pending.length === 0) return;
+    if (Date.now() > deadline) throw new Error(`photos never loaded: ${pending.join(", ")}`);
+    await new Promise((r) => setTimeout(r, 100));
+  }
 }
 
 /** Writes both images of a mismatch next to the test's results and attaches them to the report. */
