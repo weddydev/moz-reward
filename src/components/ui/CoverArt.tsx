@@ -1,5 +1,4 @@
 import { CoverPhoto } from "@/components/ui/CoverPhoto";
-import { ShopImage } from "@/components/ui/ShopImage";
 
 /** The cover photo's widths: the page column (560 px phones and tablets, half of the 1280 px row from 1024px). */
 const COVER_SIZES = "(min-width: 1024px) 580px, (min-width: 592px) 560px, 100vw";
@@ -20,16 +19,14 @@ export function CoverArt({
   return (
     <>
       {coverUrl ? (
-        <CoverPhoto src={coverUrl}>
-          <ShopImage
-            src={coverUrl}
-            className="m-art-photo"
-            sizes={COVER_SIZES}
-            eager
-            priority={page}
-            {...(page ? { testId: "landing-cover" } : {})}
-          />
-        </CoverPhoto>
+        <CoverPhoto
+          src={coverUrl}
+          className="m-art-photo"
+          sizes={COVER_SIZES}
+          eager
+          priority={page}
+          {...(page ? { testId: "landing-cover" } : {})}
+        />
       ) : (
         <span
           className="m-art-ground"

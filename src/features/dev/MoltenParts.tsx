@@ -435,20 +435,16 @@ export function MoltenParts(): React.JSX.Element {
         <div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
           <State label="photo">
             <div className="relative aspect-video w-full overflow-hidden rounded-2xl">
-              <CoverPhoto src={photo("brew-cover")}>
-                <ShopImage
-                  src={photo("brew-cover")}
-                  sizes="(min-width: 640px) 320px, 100vw"
-                  unoptimized
-                />
-              </CoverPhoto>
+              <CoverPhoto
+                src={photo("brew-cover")}
+                sizes="(min-width: 640px) 320px, 100vw"
+                unoptimized
+              />
             </div>
           </State>
           <State label="broken image">
             <div className="bg-champagne relative aspect-video w-full overflow-hidden rounded-2xl">
-              <CoverPhoto src="/demo/shops/missing-cover.jpg">
-                <ShopImage src="/demo/shops/missing-cover.jpg" sizes="320px" unoptimized />
-              </CoverPhoto>
+              <CoverPhoto src="/demo/shops/missing-cover.jpg" sizes="320px" unoptimized />
             </div>
           </State>
         </div>
