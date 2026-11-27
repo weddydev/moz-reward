@@ -123,7 +123,7 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 - [x] P1-15 · Celebrations: points credited, reward unlocked, receipt
 - [x] P1-16 · Rewards and redemption
 - [x] P1-17 · Data-integrity reconciliation
-- [ ] P1-18 · Phase hardening
+- [x] P1-18 · Phase hardening (closed fast on the human's instruction 27 Nov; demo-relevant leftovers C-49 demo half, C-91, C-112 → P1 `/phase-complete`; the rest C-35/40/48/79/83/100/105/106/111 → P2-16)
 - [x] P1-D closed with `/subphase-complete` — closed 27 Nov (C-92/93/94 human side-by-side moved to the P1 phase close, H-54; C-110 → P1-18)
 - [ ] P1 closed with `/phase-complete`
 - [ ] P1 definition of done met and demo delivered

@@ -1185,3 +1185,9 @@ Next: fix that test's timing (or unit-only Stryker + DECISIONS), run `pnpm test:
 Evidence: unit 2336 (gallery fix after), int 48/0 + 24/0, E2E changed specs 3 projects green; CI 45939468028 (`99493c4`) red on the shine spec only (lite CI, KI-50; fixed).
 NOT VERIFIED: full local 5-project E2E (void: Docker paused, laptop froze; Docker now capped 4 GB); CI on `3424140` running at checkpoint.
 Next: check CI on `3424140`, fix reds; then the Handoff's next steps.
+
+## 2026-11-27 — P1 — P1-18 closed fast (human), talha.syed (Mac)
+Human: "close it fast"; leftovers tied to the P1 demo/features → P1 `/phase-complete` (C-49 demo half, C-91, C-112), the rest → P2-16 (C-35/40/48/79/83/100/105/106, new C-111). AC2/AC4/AC8 + C-17/C-53/C-110 met earlier (93.22% mutation, 100k integrity 6.8 s).
+CI 45952507494 on `3424140` red: RuleTester cold start 42 s > 30 s (KI-81, warm-up in beforeAll: first case 4.6 s → 40 ms locally), lapsed-session E2E on Staff sign in (KI-82, snapshot confirmed; wait for `data-realtime=open`), playwright install (infra); main's Trivy red on libpam CVE-2025-6020 → runtime `apt-get upgrade` (deb12u3 checked in the base).
+Staging 0037 pre-check (RUNBOOK §4): 17 NOT VALID checks, 0 failing rows. `pnpm check` 2336/0. WebKit iphone14 focus flake root-caused (KI-83: focus() on the wipe's inert content ignored): unit test red → green. CI 45954702751: KI-82 fix confirmed (redemption green everywhere); WebKit wallet shine reset by hydration (KI-50 note, test waits for `data-hydrated`).
+CI 45957402977 on `a49a316`: green, 0 failed, 0 flaky (WebKit focus + shine active). Pushed to main.
