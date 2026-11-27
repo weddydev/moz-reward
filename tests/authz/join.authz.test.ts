@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { expect, it } from "vitest";
 import { joinShopAction } from "@/features/join/actions";
-import { MARKETING_CONSENT_VERSION } from "@/features/join/consent";
 import type { ShopId } from "@/lib/brand";
+import { MARKETING_CONSENT_VERSION } from "@/lib/marketing-consent";
 import { runAsPrincipal } from "@/server/authz/principal";
 import { testOwnerDb as db } from "@/server/db/client";
 import { customerProfiles, memberships, shops } from "@/server/db/schema";

@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { MARKETING_CONSENT_VERSION, marketingConsentText } from "@/features/join/consent";
 import { generateMemberId } from "@/lib/codes";
+import { MARKETING_CONSENT_VERSION, marketingConsentText } from "@/lib/marketing-consent";
 import { mintCustomerScope, mintShopScope } from "@/server/authz/scope";
 import { testOwnerDb as db } from "@/server/db/client";
 import { customerProfiles, marketingConsents, memberships } from "@/server/db/schema";

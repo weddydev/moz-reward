@@ -2,7 +2,6 @@ import { and, eq, sql } from "drizzle-orm";
 import { Redis } from "ioredis";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { joinShopAction } from "@/features/join/actions";
-import { MARKETING_CONSENT_VERSION } from "@/features/join/consent";
 import {
   BIRTHDAY_INVALID,
   OVER_13_REQUIRED,
@@ -10,6 +9,7 @@ import {
   UK_MOBILE_ONLY,
 } from "@/features/join/profile-input";
 import { normaliseShopCode } from "@/lib/codes";
+import { MARKETING_CONSENT_VERSION } from "@/lib/marketing-consent";
 import { loadPrincipal, runAsPrincipal } from "@/server/authz/principal";
 import { testOwnerDb as db } from "@/server/db/client";
 import {

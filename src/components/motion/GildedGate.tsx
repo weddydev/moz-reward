@@ -1,5 +1,5 @@
 import "./gilded-gate.css";
-import { CoverArt } from "@/features/landing/ShopLanding";
+import { CoverArt } from "@/components/ui/CoverArt";
 import {
   GATE,
   gateMorphScript,

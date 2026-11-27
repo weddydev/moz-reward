@@ -1,10 +1,10 @@
-import { MARKETING_CONSENT_VERSION, marketingConsentParts } from "@/features/join/consent";
 import { JoinCta } from "@/features/join/JoinCta";
 import { PortalNotFound } from "@/features/portal/StatePage";
 import { MemberShopPage } from "@/features/shop/MemberShopPage";
 import { receiptRow } from "@/features/shop/view";
 import { vaultView } from "@/features/vault/view";
 import { parseShopId } from "@/lib/brand";
+import { MARKETING_CONSENT_VERSION, marketingConsentParts } from "@/lib/marketing-consent";
 import { requireCustomer } from "@/server/authz";
 import { gateCustomerRoute } from "@/server/portal/gate";
 import { readOwnMemberShop } from "@/server/repos/memberships";

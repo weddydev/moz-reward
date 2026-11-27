@@ -22,7 +22,7 @@ export const marketingConsents = pgTable(
     shopId: uuid().notNull(),
     optedIn: boolean().notNull(),
     source: consentSource().notNull(),
-    /** Version of the consent wording shown (src/features/join/consent.ts). */
+    /** Version of the consent wording shown (src/lib/marketing-consent.ts). */
     wordingVersion: text().notNull(),
     /** SHA-256 (hex) of the exact text the server rendered, shop name included. */
     wordingHash: text().notNull(),

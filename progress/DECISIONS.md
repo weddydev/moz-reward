@@ -1357,3 +1357,8 @@ Consequence / revisit when: a product rule says left members are frozen against 
 Decision: `stryker.config.mjs` sets `ignoreStatic: true`. Static mutants (constants evaluated once at module load: messages, limits, tables) can't use per-test coverage, so each re-runs every related test, the integration suites included: 185 of 637 mutants (29%) were estimated at 96% of a ~16 h run. They show as "ignored" in the report (not silently dropped), and the score counts the rest.
 Why: P1-18 AC4 / C-17 need a run that finishes; a 16 h run would block every DB and E2E check on the laptop for a day. The constants are values the rules' unit tests assert directly (e.g. REDEEM, message tables).
 Consequence / revisit when: a constant whose change no test notices would not show up here; review the ignored list in the HTML report at each phase close. Revisit if Stryker gains per-test coverage for static code, or if the run moves to CI (where time isn't the laptop's).
+
+## 2026-11-27 — P1-18: the landing cache may hold a pre-edit value for up to its TTL
+Decision: `cached()` keeps its plain GET → load → SET. A load that started before an owner's edit can SET the old value just after the edit's invalidating DEL, and the landing then shows it for at most the 60 s TTL. No generation key or compare-and-set.
+Why: P1-01..03 security review LOW: display only (the landing never decides anything; actions read the database), bounded by the TTL; a generation check would add a Redis round trip to every miss.
+Consequence / revisit when: a cached value starts feeding a decision, or an owner reports an edit not showing after a minute.

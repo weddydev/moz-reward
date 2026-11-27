@@ -10,12 +10,12 @@ import {
   gateVars,
 } from "@/components/motion/GildedGate";
 import { buttonClasses } from "@/components/ui/button-classes";
-import { MARKETING_CONSENT_VERSION, marketingConsentParts } from "@/features/join/consent";
 import { JoinCta } from "@/features/join/JoinCta";
 import { LandingFooter, ShopLanding } from "@/features/landing/ShopLanding";
 import { areaLine } from "@/features/landing/view";
 import { StatePage } from "@/features/portal/StatePage";
 import { normaliseShopCode } from "@/lib/codes";
+import { MARKETING_CONSENT_VERSION, marketingConsentParts } from "@/lib/marketing-consent";
 import { gateEntrySource } from "@/lib/motion/gilded-gate";
 import { requireCustomer } from "@/server/authz";
 import { currentPrincipal } from "@/server/authz/principal";

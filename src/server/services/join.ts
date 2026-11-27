@@ -1,6 +1,6 @@
 import "server-only";
-import { MARKETING_CONSENT_VERSION } from "@/features/join/consent";
 import type { MemberId } from "@/lib/brand";
+import { MARKETING_CONSENT_VERSION } from "@/lib/marketing-consent";
 import type { CustomerScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import { AppError } from "@/server/errors";

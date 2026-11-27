@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { MARKETING_CONSENT_VERSION } from "@/features/join/consent";
+import { MARKETING_CONSENT_VERSION } from "@/lib/marketing-consent";
 import { mintCustomerScope } from "@/server/authz/scope";
 import { testOwnerDb as db } from "@/server/db/client";
 import { marketingConsents, memberships } from "@/server/db/schema";

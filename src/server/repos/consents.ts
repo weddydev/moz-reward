@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { MARKETING_CONSENT_VERSION, marketingConsentText } from "@/features/join/consent";
+import { MARKETING_CONSENT_VERSION, marketingConsentText } from "@/lib/marketing-consent";
 import type { CustomerScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import { marketingConsents } from "@/server/db/schema";

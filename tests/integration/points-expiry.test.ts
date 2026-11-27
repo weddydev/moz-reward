@@ -1,9 +1,9 @@
 import { and, eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { MARKETING_CONSENT_VERSION } from "@/features/join/consent";
 import { newId } from "@/lib/id";
 import { leftForfeitAt } from "@/lib/loyalty/engine";
 import { TEMPLATES } from "@/lib/loyalty/programme";
+import { MARKETING_CONSENT_VERSION } from "@/lib/marketing-consent";
 import { addLondonDays } from "@/lib/time";
 import { mintCustomerScope, mintShopScope, type Scope, systemScope } from "@/server/authz/scope";
 import { testOwnerDb as db } from "@/server/db/client";
