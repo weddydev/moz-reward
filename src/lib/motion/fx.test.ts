@@ -264,8 +264,8 @@ describe("[P1-15] FX engine: a canvas inside a modal dialog takes over, then han
   });
 });
 
-describe("[PD-03] FX engine: a dialog's canvas carries on the sparks already flying", () => {
-  it("[PD-03] a burst on the page, then a sheet opens over it: its particles move to the sheet's canvas", async () => {
+describe("[PD-03] FX engine: a dialog's canvas draws the presses inside it", () => {
+  it("[PD-03] a burst on the page, then a sheet opens over it: the page's particles stop, the sheet's canvas starts empty and draws its own (KI-89)", async () => {
     const { mountFx } = await import("./fx");
     const noop = (): undefined => undefined;
     const ctx = new Proxy(
@@ -302,7 +302,9 @@ describe("[PD-03] FX engine: a dialog's canvas carries on the sparks already fly
       const added = burst(100, 100, { type: "spark", count: 12 });
       expect(added).toBeGreaterThan(0);
       const sheet = mountFx(canvas());
-      expect(fxStats()).toMatchObject({ mounted: true, live: added, running: true });
+      expect(fxStats()).toMatchObject({ mounted: true, live: 0, running: false });
+      expect(burst(50, 50, { type: "spark", count: 12 })).toBeGreaterThan(0);
+      expect(fxStats()).toMatchObject({ live: 12, running: true });
       sheet();
       root();
     } finally {

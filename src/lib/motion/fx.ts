@@ -382,24 +382,11 @@ function tick(e: Engine, now: number): void {
 const mounted: Engine[] = [];
 
 /**
- * Moves `from`'s live particles onto `to` (a dialog's canvas taking over): a press that opens a sheet keeps its
- * sparks flying, now above the sheet, instead of losing them under the top layer. `from` is left empty and still.
- */
-function adopt(to: Engine, from: Engine): void {
-  const parts = from.parts.splice(0);
-  const sprites = from.sprites;
-  clear(from);
-  if (parts.length === 0 || reduced()) return;
-  if (!to.sized) size(to);
-  to.sprites ??= sprites ?? makeSprites();
-  to.parts.push(...parts);
-  start(to);
-}
-
-/**
  * Mounts the engine on the root layout's canvas; returns the cleanup. A second mount takes over until it is
  * cleaned up, then the previous canvas draws again. Every modal dialog (Overlay: Modal, SidePanel, BottomSheet)
- * mounts its own canvas, as it sits in the top layer above the root one; particles already flying move up to it.
+ * mounts its own canvas, as it sits in the top layer above the root one. Particles still flying on the page stop
+ * when a dialog opens (KI-89: carried into the dialog, the trigger's coins kept Linux WebKit drawing through the
+ * dialog's entrance and exit, so its animations crawled); presses inside the dialog draw above it.
  */
 export function mountFx(canvas: HTMLCanvasElement): () => void {
   const ctx = canvas.getContext("2d");
@@ -420,7 +407,7 @@ export function mountFx(canvas: HTMLCanvasElement): () => void {
   };
   engine = e;
   mounted.push(e);
-  if (previous) adopt(e, previous);
+  if (previous) clear(previous);
   const onResize = (): void => {
     if (e.sized) size(e);
   };

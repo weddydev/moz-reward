@@ -122,6 +122,8 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 **KI-88 · A request tapped offline stays on "You're offline" after the connection is back** — demo rehearsal, 27 Nov. The saved tap was only retried on the `online` event: the first send right after it often fails (the line isn't really up yet), and a phone in Settings while Wi-Fi returns can miss the event, so nothing retried until a reload. Fix: `QueuedRequestSender` also sends when the page is shown again (`visibilitychange`, `pageshow`), on the card's "Send now", and retries after 3 / 10 / 30 s while a tap waits and the phone says it is online; the card says "Sending…" once online. Never rely on `online` alone for a retry.
 
+**KI-89 · CI iPhone14/WebKit: a sheet won't close on Escape, or a confirm button inside a dialog is never "stable" (`redemption.spec` Wallet at 1440, `shop-leave-confirm`)** — main CI 46025672484, 27 Nov. Every Button now throws coins, and the new FX hand-over moved the trigger's coins into the dialog's own canvas, which drew full-viewport through the dialog's entrance and exit; on Linux WebKit's CPU compositor (KI-10) that held the animations up. Fix: a dialog's canvas starts empty and the page's particles stop when it opens (`mountFx`), as before 27 Nov.
+
 ## CSS / build surprises
 
 **KI-30 · An inline `svg` is taller than expected (e.g. 46 vs 52 px)** — Tailwind preflight makes every `svg` `display:block`; set `display:inline; vertical-align:baseline` explicitly (stars, PD-06).
