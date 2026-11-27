@@ -249,6 +249,79 @@ describe.each(Object.keys(KINDS) as Kind[])("[P1-18] %s overlay fallback focus",
     expect(heading.getAttribute("tabindex")).toBe("-1");
   });
 
+  it("[P1-18] unmounted before its exit finished (the host's own timer won): focus still lands on `fallbackFocus`", async () => {
+    // CI 45962514589 (iphone14): the celebration host unmounts the moment EXIT_MS after Done; on a loaded runner
+    // the exit transition hadn't reported finished yet, so `finish` never ran and focus fell to <body>.
+    const Overlay = KINDS[kind];
+    const proto = HTMLElement.prototype as { getAnimations?: () => Animation[] };
+    const had = proto.getAnimations;
+    proto.getAnimations = () => [{ finished: new Promise<Animation>(() => {}) } as Animation];
+    try {
+      function Moment() {
+        const [open, setOpen] = useState(true);
+        const [mounted, setMounted] = useState(true);
+        return (
+          <>
+            <h1 id="page-title">Brew &amp; Bloom</h1>
+            <button
+              type="button"
+              onClick={() => {
+                setMounted(false);
+              }}
+            >
+              Unmount
+            </button>
+            {mounted ? (
+              <Overlay
+                open={open}
+                onClose={() => {
+                  setOpen(false);
+                }}
+                title="Gold added"
+                fallbackFocus={() => document.getElementById("page-title")}
+              >
+                <button type="button">Done</button>
+              </Overlay>
+            ) : null}
+          </>
+        );
+      }
+      (document.activeElement as HTMLElement | null)?.blur();
+      render(<Moment />);
+      key("Escape");
+      await settle();
+      expect(dialogs()).toHaveLength(1); // still leaving: its exit never reports finished here
+      fireEvent.click(screen.getByRole("button", { name: "Unmount", hidden: true }));
+      await settle();
+      expect(dialogs()).toHaveLength(0);
+      expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Brew & Bloom" }));
+    } finally {
+      if (had) proto.getAnimations = had;
+      else Reflect.deleteProperty(proto, "getAnimations");
+    }
+  });
+
+  it("[P1-18] unmounted while still open (a route change): `fallbackFocus` is not called", async () => {
+    const Overlay = KINDS[kind];
+    const fallback = vi.fn(() => document.getElementById("page-title"));
+    function Page({ show }: { show: boolean }) {
+      return (
+        <>
+          <h1 id="page-title">Brew &amp; Bloom</h1>
+          {show ? (
+            <Overlay open onClose={() => {}} title="Gold added" fallbackFocus={fallback}>
+              <button type="button">Done</button>
+            </Overlay>
+          ) : null}
+        </>
+      );
+    }
+    const { rerender } = render(<Page show />);
+    rerender(<Page show={false} />);
+    await settle();
+    expect(fallback).not.toHaveBeenCalled();
+  });
+
   it("[P1-18] a trigger to return to wins over `fallbackFocus`", async () => {
     const Overlay = KINDS[kind];
     const fallback = vi.fn(() => document.getElementById("page-title"));
