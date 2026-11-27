@@ -97,7 +97,7 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 - [x] P1-02 · Shop landing page `/s/[code]`
 - [x] P1-03 · Gilded Gate entry animation
 - [x] P1-04 · Join flow, profile completion, member ID
-- [ ] P1-A closed with `/subphase-complete` (everything done except the staging step: waits for H-48)
+- [x] P1-A closed with `/subphase-complete` (staging step: H-48 done 22 Nov; staging smoke covered by the P1-B/P1-C closes; ticked 27 Nov at the P1 close)
 
 **P1-B · Loyalty engine, Wallet, Vault**
 
