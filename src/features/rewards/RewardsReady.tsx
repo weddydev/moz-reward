@@ -98,13 +98,9 @@ export function RewardsReady({
 
   return (
     <>
-      <ul className="flex flex-col gap-3" data-testid="rewards-ready-list">
+      <ul className="m-ready-list flex flex-col gap-3" data-testid="rewards-ready-list">
         {rewards.map((r) => (
-          <li
-            key={r.id}
-            className="flex items-center justify-between gap-3"
-            data-testid="reward-ready"
-          >
+          <li key={r.id} className="m-ready-row" data-testid="reward-ready">
             {r.imageUrl ? (
               <ShopImage src={r.imageUrl} size={44} className="m-r-thumb" />
             ) : (

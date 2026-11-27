@@ -3081,9 +3081,31 @@ html:root.rm .m-cover > .m-cover-back {
   box-shadow: 0 0 0 1.5px rgba(255, 206, 74, 0.6);
 }
 /* A reward with no photo: the shop's coin in the photo's place (the coin is round; the ring stays off it). */
-.m-r-coin {
+.m-r-img.m-r-coin,
+.m-r-thumb.m-r-coin {
   display: block;
   box-shadow: none;
+}
+/* A Rewards ready row: photo, what and until when, Redeem. In a narrow column (the desktop Wallet's side rail)
+   Redeem moves under the text, so the photo never squeezes the label to a few letters. */
+.m-ready-list {
+  container-type: inline-size;
+}
+.m-ready-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+@container (max-width: 300px) {
+  .m-ready-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: 8px;
+  }
+  .m-ready-row > button {
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 /* The reward's photo in a Rewards ready row (the card's 56 px photo at list size). */
 .m-r-thumb {
