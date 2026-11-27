@@ -125,8 +125,8 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 - [x] P1-17 · Data-integrity reconciliation
 - [x] P1-18 · Phase hardening (closed fast on the human's instruction 27 Nov; demo-relevant leftovers C-49 demo half, C-91, C-112 → P1 `/phase-complete`; the rest C-35/40/48/79/83/100/105/106/111 → P2-16)
 - [x] P1-D closed with `/subphase-complete` — closed 27 Nov (C-92/93/94 human side-by-side moved to the P1 phase close, H-54; C-110 → P1-18)
-- [ ] P1 closed with `/phase-complete`
-- [ ] P1 definition of done met and demo delivered
+- [x] P1 closed with `/phase-complete` — closed 27 Nov by the human's decision ("close it fast"): C-91 (human-accepted JS), C-112 done; `gate:phase` + DoD evidence at P2-16 (C-111); H-54 / H-55 with the human
+- [ ] P1 definition of done met and demo delivered (human: H-55 Demo 2 walkthrough, H-54; DoD evidence at P2-16, C-111)
 
 ## P2 — Shop dashboard, onboarding and admin core
 Details: [`docs/phases/P2.md`](phases/P2.md)

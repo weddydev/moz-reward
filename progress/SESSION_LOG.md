@@ -1203,3 +1203,8 @@ C-91 (Turbopack analyzer, `next analyze export`): Lucide runtime ×3 on the land
 Human accepted landing 161.5 / wallet 193.3 / shop page 219.0 KB (DECISIONS, ceilings in the spec). LCP 4.66 s readings = lantern (observed 0.15–0.2 s; KI-86).
 E2E touched screens 107/0 (3 projects); CI f6ba211 45989769059 green; rebased onto main, CI on the rebased commit green.
 
+## 2026-11-27 — P1 — P1 closed (human: "close it fast"), talha.syed (Mac)
+Human: demo walkthrough is theirs (H-55), so it doesn't block the close; Claude ran the staging reset (human allowed): `ssh talha@` (root login off) → `seed-reset staging: done` 11:58, demo sign-in check ok.
+Scheduled 45988427357 red: celebration @fps timed out (30 s): reward card's infinite `m-flow` shimmer held the measuring loop to its 12 s cap ×3 (KI-87). Fix in the spec; @fps + @perf 2/2 locally. Found on the way: a 229 ms idle long task ~0.2 s after the moment (FOLLOWUPS P2-16).
+C-49 demo half → H-55, C-92/93/94 → H-54 (CARRIED_LATER, P2-16 can't tick while open). KI-87 spec fix on `wip/P1-close` `55f44ab` (CI 45995805698 running; lands on main after it is green).
+

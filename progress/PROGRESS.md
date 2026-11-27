@@ -7,16 +7,16 @@ Baton: held by talha.syed since 2026-11-27 (resume)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **P1 `/phase-complete` in progress (27 Nov, talha.syed, Mac).** Code work is on **main** (C-91 + C-112 + the CI fixes, from `wip/P1-close` rebased; CI green on the rebased commit). Phase not ticked: the demo half is left.
-- **Done today:** CI reds on iPhone14 fixed and proven on CI ×10 (KI-85: Overlay restores focus when unmounted mid-exit; skip spec taps in the page). **C-91 closed (human accepted the JS):** error pages without the Lucide runtime, card-cache guard loads after the page → landing 161.5 KB, wallet 193.3, shop page 219.0 (ceilings in `tests/perf/lighthouse.spec.ts`, DECISIONS 27 Nov). The `getImageProps` photo trim was undone (Linux parity stills lacked photos; FOLLOWUPS P2-16). Lighthouse LCP flips 1 s ↔ 3–4.7 s on the same build (KI-86, lantern; observed 0.15–0.2 s): FOLLOWUPS P2-16. **C-112 closed** (on main).
-- **Blocked on the human:** staging `db:seed --reset` (`sudo systemctl start moz-seed-reset` over SSH; Claude's run was refused by the auto-mode classifier); then Demo 2 walkthrough on staging (C-49 demo half); H-54 side-by-side (C-92/93/94).
-- **Next steps:** (1) human: staging reset + H-54, or say to carry them to P2-16; (2) Demo 2 walkthrough, DoD walk, demo guide artifact; (3) tick P1, `/phase-complete` reply.
+- **P1 closed 27 Nov (human: "close it fast"; talha.syed, Mac).** On main: C-91 (human-accepted JS ceilings 161.5 / 193.3 / 219.0 KB), C-112, the iPhone14 CI fixes (KI-85), the celebration @fps loop fix (KI-87, scheduled 45988427357 timed out). Staging demo data reset 27 Nov 11:58 (`seed-reset staging: done`, as `talha@`; root login is off).
+- **With the human (not blocking P2 work; P2-16 can't tick while open):** H-55 Demo 2 walkthrough (C-49 demo half), H-54 side-by-side (C-92/93/94). Rows in CARRIED_LATER.
+- **Watch:** FOLLOWUPS P2-16: a 229 ms idle long task right after a celebration at 4× CPU (outside the moment's window); Lighthouse LCP flips under lantern (KI-86); the undone `getImageProps` trim.
+- **Next steps:** P2 start: brief review of `docs/phases/P2.md` (CLAUDE.md §1 "Phase start"), move P2 rows from CARRIED_LATER into the CARRIED table, H-48b (Sentry) at P2 start; then the first P2 task.
 ## Status
-- **Phase:** **P1 — Core loyalty** (PD closed 25 Nov; P1-B closed 25 Nov). P0 closed 17 Nov (human); its leftovers are carried to P1-18 (C-35, C-40, C-17, C-48, C-49). Don't wait on human tasks.
-- **Current sub-phase:** **P1 `/phase-complete` in progress** (`wip/P1-close`). **P1-18 closed fast 27 Nov** (human; leftovers split, see Handoff). **P1-D closed 27 Nov** (P1-14..P1-17 + the close: reviews, QA, migration 0036). **P1-C closed 26 Nov** (P1-10..P1-13, P1-19 + the close: reviews, QA, code-review M2/M3, C-92..C-95). P1-B closed 25 Nov. PD-C closed 25 Nov, PD-B 23 Nov, PD-A 22 Nov.
+- **Phase:** **P2 next.** P1 — Core loyalty **closed 27 Nov** (human; demo walkthrough H-55 and side-by-side H-54 with the human). PD closed 25 Nov. P0 closed 17 Nov (human).
+- **Current sub-phase:** none open: P2 starts with its brief review. **P1 closed 27 Nov** (P1-18 closed fast 27 Nov; P1-D, P1-C 26–27 Nov; P1-B 25 Nov). PD-C closed 25 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-27, talha.syed (P1 close: C-91 + C-112 on main; demo half left)
+- **Last updated:** 2026-11-27, talha.syed (P1 closed; P2 next)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -27,7 +27,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. P1 `/phase-complete` demo half: staging `db:seed --reset` (human), Demo 2 walkthrough, H-54 (C-92/93/94), C-49. Demo guide artifact https://claude.ai/artifact/EMEPhqufVhTCbBnxiqWtyw ("P1-D steps": wording to match the real screens, status → Built).
+1. P2 start: brief review of `docs/phases/P2.md`, P2 rows from CARRIED_LATER into CARRIED, H-48b; then the first P2 task. Human: H-55 demo walkthrough, H-54 side-by-side.
 2. Human any time: H-45 (🟠), H-53 (🟢 rotate staging password before launch), H-54 (🟢 side-by-side C-92/93/94, by the P1 phase close), H-38 (branches, list updated 26 Nov), H-51 (b), H-08b (private bucket for receipt PDFs); H-48b at P2 start.
 
 ## CARRIED (a task can't be ticked while a row targets it)
@@ -36,10 +36,6 @@ Rows that target P2–P5 live in `progress/CARRIED_LATER.md` (moved 23 Nov 2026,
 |---|---|---|---|---|
 | C-16 | B-CR-12 | passkey UI task | Passkey re-sign-in over a stale session | E2E |
 | C-39 | P0-10 review | first P1 task that puts a menu, select or popover inside a Modal/SidePanel/BottomSheet | `Popover` portals to `<body>`, so inside a `showModal()` dialog it renders under the top layer and is inert: portal into the open dialog (or the top layer) and re-check placement | E2E: popover opened inside a modal is visible and clickable |
-| C-92 | Human (25 Nov); built at the P1-C close | P1 `/phase-complete` (moved from the P1-D close 27 Nov; H-54 still open) | Button coin animation (parity frames spec `tests/parity/fx.spec.ts` green): only the **human side-by-side check** against `design/reference/molten/` is left (H-54) | human's OK in SESSION_LOG |
-| C-93 | Human (25 Nov); built at the P1-C close | P1 `/phase-complete` (moved from the P1-D close 27 Nov; H-54 still open) | Fluid tabs spark on every variant and direction (parity per variant + /dev/ui E2E green): only the **human side-by-side check** against `design/reference/molten/` is left (H-54) | human's OK in SESSION_LOG |
-| C-94 | Human (25 Nov); built at the P1-C close | P1 `/phase-complete` (moved from the P1-D close 27 Nov; H-54 still open) | /dev/ui shows every component built (E2E + screenshots 320/1440 done): only the **human side-by-side check** against `design/reference/molten/` is left (H-54) | human's OK in SESSION_LOG |
-| C-49 | P0 close (human 17 Nov) | P1 `/phase-complete` (demo half); gate half → C-111 at P2-16 (human 27 Nov) | Client demo covers P0 + P1 together (`docs/DEMO_GUIDE.md` + Demo 2 screenshot walkthrough on staging after `db:seed --reset`). The `gate:phase` / P0 DoD half moved to C-111 (CARRIED_LATER, P2-16). | DEMO_NOTES + SESSION_LOG |
 
 ## Blockers
 - Human: none blocking (H-48 human part done; staging deploys again). Now: H-45 (UptimeRobot staging monitors, after the `e9aa786` deploy), H-42 tail (delete the old `moz-backups` B2 key). Needed later: at the P0 close H-29 (`backup:verify`), H-13 (real devices), H-23 (drafts to the solicitor), H-14 (send demo notes).
@@ -50,6 +46,7 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (27 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
+- P1 close: celebration @fps + @perf (FPS=1 PERF=1, chromium) 2/2 after KI-87 (each sample ends with the moment, ~3.9 s, was 12 s cap); staging `seed-reset staging: done` 11:58 + demo sign-in check ok; KI-87 spec fix on `wip/P1-close` `55f44ab` (CI 45995805698 running; lands on main after it is green).
 - P1 close (main): CI on rebased `3a87a43` 45992063576 green (f6ba211 45989769059 green); celebrations focus ×10 + skip ×10 green on CI iPhone14; overlay unit 43/0; E2E landing/shop-page/ui-states/member-card chromium+webkit+iphone14 107/0; Lighthouse JS 161.5 / 193.3 / 219.0 KB (accepted ceilings), LCP observed 0.15–0.2 s (lantern varies, KI-86).
 - P1 close (wip `d1bc003`): unit 321/0 (rewards + components/ui), E2E celebrations/redemption/vault/wallet/shop-page chromium+webkit+iphone14 113/0 + 15/0 + 3/0; receipt 320 screenshots inspected (words whole); Lighthouse: landing LCP 0.77–0.80 s ×6, JS 164.8 KB (fail), wallet 196.4 KB (fail), shop page LCP 1.06 s / JS 221.4 KB (fail). NOT VERIFIED: CI on `d1bc003`.
 - P1-18 (wip, not ticked): `pnpm test:mutation` 93.22% (break 80; engine 94.97, redeem 90.32, replay 90.63, codes 92.06, return-to 88.57, policies 93.75); C-17 survivors reviewed; `pnpm check` 2336 unit (gallery fix after); int redemptions+alerts 48/0, approvals 24/0; E2E wallet/vault/member-card/redemption chromium+webkit+iphone14 green locally; CI `99493c4` red (shine spec on lite CI, fixed). NOT VERIFIED: full 5-project E2E (local run void), CI on `3424140`.
