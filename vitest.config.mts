@@ -54,7 +54,11 @@ export default defineConfig({
           name: "integration",
           sequence: { groupOrder: 1 },
           environment: "node",
-          include: ["tests/integration/**/*.test.ts", "tests/authz/**/*.test.ts"],
+          // `tests/scale` (C-110 timings, minutes of seeding) only with SCALE=1: `pnpm test:scale`.
+          include:
+            process.env.SCALE === "1"
+              ? ["tests/scale/**/*.scale.test.ts"]
+              : ["tests/integration/**/*.test.ts", "tests/authz/**/*.test.ts"],
           globalSetup: ["./tests/global-setup.integration.ts"],
           setupFiles: ["./tests/setup.ts", "./tests/setup.integration.ts"],
           restoreMocks: true,

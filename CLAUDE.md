@@ -140,6 +140,7 @@ pnpm gate:task         # task gate: check + test:int + build + task E2E on the p
 pnpm gate:phase        # the one heavy gate (TESTING §4)  [built in P0-14]
 pnpm test:unit         # vitest unit project
 pnpm test:int          # integration + authz (per-worker DBs; needs services:up)
+pnpm test:scale        # opt-in scale timings (tests/scale, e.g. C-110 integrity at 100k); never part of test:int
 pnpm e2e               # Playwright against a PRODUCTION build (APP_ENV=test) — the evidence run
 pnpm e2e:dev           # Playwright against next dev — fast inner loop only, never evidence
 pnpm e2e:linux         # same production-build E2E, browsers in the Linux Playwright container (CLAUDE.md "Linux check")

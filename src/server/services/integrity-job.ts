@@ -13,6 +13,7 @@ import {
   type FoundIssue,
   receiptNumberIssues,
   recordIssues,
+  REQUEST_CHECKS,
   rowIssues,
   versionsOf,
 } from "@/server/repos/integrity";
@@ -50,13 +51,7 @@ export type IntegrityRun = {
   resolved: number;
 };
 
-const ROW_CHECKS = [
-  "reward_redeemed_twice",
-  "redeem_not_zero",
-  "request_approved_twice",
-  "approved_without_ledger",
-  "approved_without_receipt",
-] as const satisfies readonly IntegrityCheck[];
+const SINGLE_ROW_CHECKS = ["reward_redeemed_twice", "redeem_not_zero"] as const;
 
 const lockKey = (): string => `${env().REDIS_KEY_PREFIX}lock:integrity-check`;
 const RELEASE = `if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0`;
@@ -155,10 +150,18 @@ export async function runIntegrityCheck(
       "receipt_numbers",
       await pagedIssues((after) => receiptNumberIssues(scope, after, batch.rows)),
     );
-    for (const check of ROW_CHECKS) {
+    for (const check of SINGLE_ROW_CHECKS) {
       await renew();
       found.set(check, await pagedIssues((after) => rowIssues(scope, check, after, batch.rows)));
     }
+    await renew();
+    // One pass over requests feeds all three request checks; each still records (and resolves) on its own.
+    const requests = await pagedIssues((after) => rowIssues(scope, "requests", after, batch.rows));
+    for (const check of REQUEST_CHECKS)
+      found.set(
+        check,
+        requests.filter((i) => i.check === check),
+      );
 
     let total = 0;
     let resolved = 0;

@@ -1,5 +1,5 @@
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { createCipheriv, randomBytes } from "node:crypto";
 import {
   chmodSync,
   mkdirSync,
@@ -84,6 +84,50 @@ const tampered = (): Buffer => {
   c[c.length - 100] = (c[c.length - 100] ?? 0) ^ 0x01;
   return c;
 };
+
+/** A new-format OpenPGP packet (RFC 4880 §4.2.2). */
+const packet = (tag: number, body: Buffer): Buffer => {
+  const n = body.length;
+  const len =
+    n < 192 ? Buffer.from([n])
+    : n < 8384 ? Buffer.from([((n - 192) >> 8) + 192, (n - 192) & 0xff])
+    : Buffer.concat([Buffer.from([0xff]), Buffer.from([n >>> 24, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff])]);
+  return Buffer.concat([Buffer.from([0xc0 | tag]), len, body]);
+}; // prettier-ignore
+/** The first packet of an OpenPGP message, header included (old or new format; no partial lengths). */
+const firstPacket = (b: Buffer): { tag: number; bytes: Buffer } => {
+  const h = b[0] ?? 0;
+  if (h & 0x40) {
+    const l0 = b[1] ?? 0;
+    const end = l0 < 192 ? 2 + l0 : l0 < 224 ? 3 + ((l0 - 192) << 8) + (b[2] ?? 0) + 192 : 6 + b.readUInt32BE(2);
+    return { tag: h & 0x3f, bytes: b.subarray(0, end) };
+  }
+  const n = [1, 2, 4][h & 3] ?? 1;
+  const len = n === 1 ? (b[1] ?? 0) : n === 2 ? b.readUInt16BE(1) : b.readUInt32BE(1);
+  return { tag: (h >> 2) & 0x0f, bytes: b.subarray(0, 1 + n + len) };
+}; // prettier-ignore
+const CFB: Record<string, string> = { "7": "aes-128-cfb", "8": "aes-192-cfb", "9": "aes-256-cfb" };
+/**
+ * A message with no integrity protection at all: gpg's own session-key packet (PKESK, tag 1) followed by a
+ * hand-built Symmetrically Encrypted Data packet (tag 9, RFC 4880 §5.7: OpenPGP CFB with the resync step, §13.9)
+ * around a binary literal packet. gpg ≥ 2.5 writes AEAD even with `--rfc2440` once the key advertises it, so the
+ * fixture can't come from gpg itself; built this way it is the same on every gpg (C-53).
+ */
+const unprotected = (plain: Buffer): Buffer => {
+  const whole = encrypt(Buffer.from("x"));
+  const pkesk = firstPacket(whole);
+  if (pkesk.tag !== 1) throw new Error(`expected a PKESK packet first, got tag ${pkesk.tag}`);
+  const shown = sh("gpg", ["--homedir", gpgPath(GNUPG), "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--show-session-key", "--decrypt", "--output", "-"], whole).stderr.toString(); // prettier-ignore
+  const [, algo = "", hex = ""] = /session key: '(\d+)(?:\.\d+)?:([0-9A-F]+)'/i.exec(shown) ?? [];
+  const cipher = CFB[algo];
+  if (!cipher) throw new Error(`no AES session key in gpg's output: ${shown.slice(0, 300)}`);
+  const key = Buffer.from(hex, "hex");
+  const literal = packet(11, Buffer.concat([Buffer.from([0x62, 0]), Buffer.alloc(4), plain]));
+  const prefix = randomBytes(16);
+  const head = createCipheriv(cipher, key, Buffer.alloc(16)).update(Buffer.concat([prefix, prefix.subarray(14)]));
+  const body = createCipheriv(cipher, key, head.subarray(2, 18)).update(literal);
+  return Buffer.concat([pkesk.bytes, packet(9, Buffer.concat([head, body]))]);
+}; // prettier-ignore
 
 async function until(check: () => boolean, what: string, ms = 120_000): Promise<void> {
   const end = Date.now() + ms;
@@ -333,15 +377,13 @@ describe("[P0-15] backup:verify --wal: point-in-time restore from the WAL archiv
     }
   }, 300_000); // prettier-ignore
 
-  it("[P0-15] fails on a WAL object without integrity protection (the plaintext gpg already wrote is never used)", async (ctx) => {
+  it("[P0-15] fails on a WAL object without integrity protection (the plaintext gpg already wrote is never used)", async () => {
     const key = `staging/wal/wal_005/${startSegment.slice(0, 8)}00000000000000F2.zst`;
-    const body = encrypt(Buffer.from("28b52ffd00", "hex"), ["--rfc2440"]);
-    // gpg ≥ 2.5 writes an AEAD (OCB) packet even with --rfc2440 when the key advertises AEAD, so it can no longer
-    // build an unprotected fixture: the case runs where gpg still can (CI, gpg 2.4) — CARRIED C-53.
+    const body = unprotected(Buffer.from("28b52ffd00", "hex"));
+    // The fixture really is unprotected: an old-style encrypted data packet, no MDC and no AEAD (C-53).
     const packets = sh("gpg", ["--homedir", gpgPath(GNUPG), "--list-packets"], body).stdout.toString();
-    if (/aead|ocb|mdc_method/i.test(packets)) {
-      ctx.skip("local gpg cannot write an unprotected message (gpg 2.5+); covered in CI");
-    }
+    expect(packets).toMatch(/:encrypted data packet:/);
+    expect(packets).not.toMatch(/aead|ocb|mdc_method/i);
     await admin.send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body }));
     try {
       const result = await verifyPitr(opts());

@@ -45,6 +45,7 @@
     "services:down": "tsx scripts/services.ts down",
     "test:unit": "vitest run --project unit",
     "test:int": "vitest run --project integration",
+    "test:scale": "SCALE=1 vitest run --project integration",
     "gate:task": "tsx scripts/gate-task.ts",
     "gate:phase": "tsx scripts/gate-phase.ts",
     "ci:usage": "tsx scripts/ci-usage.ts",

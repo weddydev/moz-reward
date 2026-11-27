@@ -63,6 +63,16 @@ On staging these three URLs (exactly these paths) skip the basic-auth password, 
 1. Check CI is green on the commit (`gh run list --limit 1`) and the System page shows no open alerts.
 2. Production: `gh workflow run deploy.yml -f tag=vX.Y.Z` (GitHub Free mode refuses a tag without a green CI run).
 - *(P1-10)* Migration 0027 needs the NOLOGIN role `moz_partitions`, which only the bootstrap can create on the VPS (moz_owner has no CREATEROLE). Nothing to do by hand: every deploy runs the **new** release's `bootstrap.sql` before its migrations. If the migration ever reports `role "moz_partitions" does not exist`, the bootstrap step didn't run: the deploy stops before switching replicas.
+- *(P1-18)* A migration that runs `VALIDATE CONSTRAINT` (0037 validates every CHECK added `NOT VALID` so far) fails if an old row breaks the check, and the deploy then stops before switching replicas. Before such a deploy, count the failing rows on the target as `moz_owner` (`docker exec -i moz-postgres psql -U moz_owner -d moz -X -q`), and fix the data first if any count is above 0:
+  ```sql
+  DO $$ DECLARE c record; n bigint; BEGIN
+    FOR c IN SELECT conrelid::regclass AS t, conname, pg_get_expr(conbin, conrelid) AS e
+               FROM pg_constraint WHERE contype = 'c' AND NOT convalidated ORDER BY 1, 2 LOOP
+      EXECUTE format('SELECT count(*) FROM %s WHERE NOT (%s)', c.t, c.e) INTO n;
+      RAISE NOTICE '% %: % failing rows', c.t, c.conname, n;
+    END LOOP;
+  END $$;
+  ```
 3. The job ships the image (`docker save | zstd | ssh … docker load`), runs migrations in a one-off container, then replaces `web-1`, waits for `/api/health/ready`, replaces `web-2`, then the worker (it drains for 60 s).
 4. **Worked when:** the job is green, `/api/health/ready` and `/api/health/worker` are 200, the System page snapshot is fresh, Sentry shows no new issues for the release (`APP_RELEASE` = the SHA).
 - A failing health check aborts the deploy and leaves the previous version serving: read the job log, fix, deploy again.

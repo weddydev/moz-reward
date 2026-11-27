@@ -152,8 +152,17 @@ export async function receiptNumberIssues(
   });
 }
 
+/** The passes over rows: one per reward/ledger check, and one over requests that feeds all three request checks. */
+export type RowPass = "reward_redeemed_twice" | "redeem_not_zero" | "requests";
+export const REQUEST_CHECKS = [
+  "request_approved_twice",
+  "approved_without_ledger",
+  "approved_without_receipt",
+] as const satisfies readonly IntegrityCheck[];
+
 /**
- * The set checks on ledger rows, rewards and requests, each a page by the driving row's id:
+ * The set checks on ledger rows, rewards and requests, each a page by the driving row's id (the three request
+ * checks share one pass over `point_requests`: P1-D close review LOW):
  * - reward_redeemed_twice: a reward with more than one confirmed code or more than one `redeem` row;
  * - redeem_not_zero: a `redeem` row whose gold isn't 0;
  * - request_approved_twice: a request with more than one `earn` row or more than one receipt;
@@ -162,7 +171,7 @@ export async function receiptNumberIssues(
  */
 export async function rowIssues(
   scope: SystemScope,
-  check: Exclude<IntegrityCheck, "membership_counters" | "receipt_numbers">,
+  pass: RowPass,
   after: string,
   limit: number,
 ): Promise<{ issues: FoundIssue[]; last: string | null }> {
@@ -170,7 +179,7 @@ export async function rowIssues(
     const page = (driving: ReturnType<typeof sql>) => q.execute(driving);
     let res: unknown;
     let entity: string;
-    switch (check) {
+    switch (pass) {
       case "reward_redeemed_twice":
         entity = "rewards";
         // The redeem count goes through the partial index on `ref->>'rewardId'` (drizzle/concurrent/0036): one
@@ -190,9 +199,7 @@ export async function rowIssues(
           SELECT id, shop_id, points, true AS bad FROM ledger_entries
            WHERE id > ${after}::uuid AND type = 'redeem' AND points <> 0 ORDER BY id LIMIT ${limit}`);
         break;
-      case "request_approved_twice":
-      case "approved_without_ledger":
-      case "approved_without_receipt":
+      case "requests":
         entity = "point_requests";
         res = await page(sql`
           WITH page AS (SELECT id, shop_id, status, decided_at FROM point_requests
@@ -210,25 +217,29 @@ export async function rowIssues(
         entityId: str(r["id"]),
         shopId: r["shop_id"] ? str(r["shop_id"]) : null,
       };
-      if (check === "reward_redeemed_twice") {
+      if (pass === "reward_redeemed_twice") {
         if (num(r["confirmed"]) > 1 || num(r["redeems"]) > 1)
           issues.push({
             ...base,
-            check,
+            check: pass,
             details: { confirmedCodes: num(r["confirmed"]), redeemRows: num(r["redeems"]) },
           });
-      } else if (check === "redeem_not_zero") {
+      } else if (pass === "redeem_not_zero") {
         if (r["bad"] === true)
-          issues.push({ ...base, check, details: { points: num(r["points"]) } });
+          issues.push({ ...base, check: pass, details: { points: num(r["points"]) } });
       } else if (r["status"] === "approved") {
         const earns = num(r["earns"]);
         const receipts = num(r["receipts"]);
-        if (check === "request_approved_twice" && (earns > 1 || receipts > 1))
-          issues.push({ ...base, check, details: { earnRows: earns, receipts } });
-        if (check === "approved_without_ledger" && earns === 0)
-          issues.push({ ...base, check, details: { earnRows: 0 } });
-        if (check === "approved_without_receipt" && receipts === 0 && r["settled"] === true)
-          issues.push({ ...base, check, details: { receipts: 0 } });
+        if (earns > 1 || receipts > 1)
+          issues.push({
+            ...base,
+            check: "request_approved_twice",
+            details: { earnRows: earns, receipts },
+          });
+        if (earns === 0)
+          issues.push({ ...base, check: "approved_without_ledger", details: { earnRows: 0 } });
+        if (receipts === 0 && r["settled"] === true)
+          issues.push({ ...base, check: "approved_without_receipt", details: { receipts: 0 } });
       }
     }
     const lastRow = rows[rows.length - 1];
