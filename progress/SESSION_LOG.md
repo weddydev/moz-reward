@@ -1191,3 +1191,8 @@ Human: "close it fast"; leftovers tied to the P1 demo/features → P1 `/phase-co
 CI 45952507494 on `3424140` red: RuleTester cold start 42 s > 30 s (KI-81, warm-up in beforeAll: first case 4.6 s → 40 ms locally), lapsed-session E2E on Staff sign in (KI-82, snapshot confirmed; wait for `data-realtime=open`), playwright install (infra); main's Trivy red on libpam CVE-2025-6020 → runtime `apt-get upgrade` (deb12u3 checked in the base).
 Staging 0037 pre-check (RUNBOOK §4): 17 NOT VALID checks, 0 failing rows. `pnpm check` 2336/0. WebKit iphone14 focus flake root-caused (KI-83: focus() on the wipe's inert content ignored): unit test red → green. CI 45954702751: KI-82 fix confirmed (redemption green everywhere); WebKit wallet shine reset by hydration (KI-50 note, test waits for `data-hydrated`).
 CI 45957402977 on `a49a316`: green, 0 failed, 0 flaky (WebKit focus + shine active). Pushed to main.
+
+## 2026-11-27 — P1 — P1 `/phase-complete` checkpoint (in progress), talha.syed (Mac)
+`wip/P1-close` `d1bc003`: C-112 done test-first (104 quiet unlock, 108 sheet preload/busy/toast + production-build E2E holding/aborting the chunk, 109 receipt title fits its longest word (Chromium had no hyphenation), 110 Overlay `fallbackFocus`); E2E chromium/webkit/iphone14 green. Main `141b136` CI 45959632024 + deploy 45961551766 green (Trivy fix verified).
+Reviews of `2972bc7..0662ac5`: code/security/design no BLOCK/HIGH; MEDIUMs fixed (Show all `Button`, 108 E2E); LOWs → FOLLOWUPS (10 lines); KI-84 (`test.use` two-item array).
+C-91: landing LCP 0.77–0.80 s ×6 (pass; 4.21 s of 25 Nov not reproducible); JS gzip over band: landing 164.8, wallet 196.4, shop page 221.4 KB (new route in the spec). Staging `seed-reset` over SSH refused by the auto-mode classifier → human.
