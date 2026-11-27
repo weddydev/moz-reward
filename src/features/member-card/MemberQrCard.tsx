@@ -203,7 +203,7 @@ export function MemberQrCard({
         back={<Back view={view} memberId={memberId} token={held?.payload.token ?? null} />}
       />
       <p className="text-small text-ink-2 mt-3 text-center">
-        Tap the card to show your QR code. Staff can also type your member ID.
+        Tap or click the card to show your QR code. Staff can also type your member ID.
       </p>
     </section>
   );

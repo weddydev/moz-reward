@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { usePauseOffscreen } from "@/components/motion/usePauseOffscreen";
+import { buttonClasses } from "@/components/ui/button-classes";
 import { STACK_SIZE, stackGroups } from "./view";
 
 /**
@@ -52,18 +53,21 @@ export function WalletStack({
         ))}
       </div>
       {more > 0 ? (
-        <button
-          type="button"
-          className="text-small hit-44 self-center font-semibold underline underline-offset-4 md:hidden"
-          aria-expanded={all}
-          aria-controls="wallet-stacks"
-          data-testid="wallet-show-all"
-          onClick={() => {
-            setAll((v) => !v);
-          }}
-        >
-          {all ? "Show fewer" : `Show all ${String(cards.length)} shops`}
-        </button>
+        // The breakpoint sits on a wrapper: `.m-btn` sets its own display, which a `md:hidden` on it can't beat.
+        <div className="self-center md:hidden">
+          <button
+            type="button"
+            className={buttonClasses({ variant: "ghost", size: 46 })}
+            aria-expanded={all}
+            aria-controls="wallet-stacks"
+            data-testid="wallet-show-all"
+            onClick={() => {
+              setAll((v) => !v);
+            }}
+          >
+            {all ? "Show fewer" : `Show all ${String(cards.length)} shops`}
+          </button>
+        </div>
       ) : null}
     </div>
   );

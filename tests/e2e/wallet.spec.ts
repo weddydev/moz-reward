@@ -293,6 +293,24 @@ test("[PD-08] wallet stack: phones stack cards in threes with their header strip
   await shoot("wallet-stack-1440");
 });
 
+test("[P1-18] wallet card shine: it glides on the full tier and holds still on the lite tier (DESIGN §7.2)", async ({
+  page,
+  signInAs,
+}) => {
+  const me = await signInAs("customer");
+  await seedMembership(page.request, me.userId, { name: "Shine Café", programme: true });
+  await page.goto("/wallet");
+  const shine = () =>
+    cards(page)
+      .first()
+      .evaluate((el) => getComputedStyle(el, "::after").animationName);
+  await expect.poll(shine, { message: "the full tier keeps the card shine" }).toBe("m-cardshine");
+  await page.evaluate(() => {
+    document.documentElement.classList.add("lite");
+  });
+  await expect.poll(shine, { message: "lite devices get no light glide" }).toBe("none");
+});
+
 test("[P1-07] wallet header as the reference (P1-B close design review): greeting, placed bell, the gold total under a turning light", async ({
   page,
   signInAs,
@@ -395,9 +413,10 @@ test("[P1-07] wallet: no memberships shows the empty state with scan guidance", 
     "/scan",
   );
   await expect(cards(page)).toHaveCount(0);
-  await expect(page.getByTestId("summary-ingots")).toContainText("0");
-  // No shops, no "0 gold across 0 shops": the empty state says what to do instead.
+  // No shops, no "0 gold across 0 shops" and no "0 Rewards ready / 0 Ingots filled" tiles (P1-B close QA L2):
+  // the empty state says what to do instead.
   await expect(page.getByTestId("wallet-total")).toHaveCount(0);
+  await expect(page.getByRole("list", { name: "Summary" })).toHaveCount(0);
   for (const width of [390, 320, 1440]) {
     await page.setViewportSize({ width, height: 844 });
     await noHorizontalScroll(page);

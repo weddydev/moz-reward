@@ -120,6 +120,8 @@ test("[P1-14] Me shows the member card; the QR is the signed token, never the me
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
+    // The pointer off the rail, so the shot shows the rail at rest (it expands under a hovering pointer).
+    await page.mouse.move(width - 1, 1);
     await shoot(`me-card-qr-${width}`);
   }
 });

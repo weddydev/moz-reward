@@ -657,6 +657,16 @@ test("[P1-08] C-50: the shop landing previews the first reward with a static ing
   await expect(card).toContainText("at 1,000 gold");
   await expect(card.locator("svg[data-ingot]")).toHaveAttribute("aria-hidden", "true");
   expect(await page.content()).not.toContain("Secret brownie");
+  // The cards row rises in reading order (P1-B close design review L4): reward, hours, Find us.
+  const riseOrder = () =>
+    page
+      .locator(
+        "[data-testid=landing-reward], [data-testid=landing-hours], [data-testid=landing-details]",
+      )
+      .evaluateAll((els) =>
+        els.map((el) => (el as HTMLElement).style.getPropertyValue("--rise-i")),
+      );
+  expect(await riseOrder()).toEqual(["4", "5", "6"]);
   for (const width of [390, 320, 1440]) {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
     await noHorizontalScroll(page);
@@ -667,6 +677,7 @@ test("[P1-08] C-50: the shop landing previews the first reward with a static ing
   await page.goto(`/s/${bare.shopCode}`);
   await expect(page.getByTestId("landing-hours")).toBeVisible();
   await expect(page.getByTestId("landing-reward")).toHaveCount(0);
+  expect(await riseOrder(), "no reward card: hours and Find us close the gap").toEqual(["4", "5"]);
 });
 
 test("[P1-08] C-59: the loyalty settings preview is the real ingot (static)", async ({

@@ -2539,8 +2539,10 @@ html:root.rm .rail .m-blob {
     display: none;
   }
 }
-/* Reduced motion: the shine holds still (off the card) and nothing fans or scales. */
-html:root.rm .m-wcard::after {
+/* Reduced motion: the shine holds still (off the card) and nothing fans or scales. Lite tier: no light glides
+   either (DESIGN §7.2); the cards still fan and press. */
+html:root.rm .m-wcard::after,
+.lite .m-wcard::after {
   animation: none;
 }
 html:root.rm .m-wslot,

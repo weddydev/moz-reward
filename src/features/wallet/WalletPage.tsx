@@ -54,10 +54,13 @@ export function WalletPage({
                 gold={summary.gold}
                 shops={summary.shops}
               >
-                <SummaryStrip
-                  rewardsReady={summary.rewardsReady}
-                  ingotsCompleted={summary.ingotsCompleted}
-                />
+                {/* No shops yet: no "0 / 0" tiles, like the total panel (P1-B close QA L2); the empty state speaks. */}
+                {cards.length > 0 ? (
+                  <SummaryStrip
+                    rewardsReady={summary.rewardsReady}
+                    ingotsCompleted={summary.ingotsCompleted}
+                  />
+                ) : null}
               </WalletHeader>
             </header>
 

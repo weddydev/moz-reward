@@ -342,9 +342,11 @@ describe("[P1-16] confirming a code", () => {
 
   it("[P1-16] a reward that expires during the code's window can't be confirmed", async () => {
     const r = await redeem();
+    // The database's clock, as the confirm reads it (`clock_timestamp()`): a host-clock time a millisecond back
+    // lost to a container clock a few ms behind (Stryker dry run, P1-18), so the test never mixes the two clocks.
     await db()
       .update(rewards)
-      .set({ expiresAt: new Date(Date.now() - 1) })
+      .set({ expiresAt: sql`clock_timestamp()` })
       .where(eq(rewards.id, w.rewardId));
     expect((await appError(() => confirmRedemption(w.staff, r.code))).message).toBe(
       REDEEM_MESSAGES.rewardExpired,

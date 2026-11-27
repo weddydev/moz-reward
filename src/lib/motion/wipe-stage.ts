@@ -34,6 +34,8 @@ let sinking: Animation | null = null;
 /** The Wallet as it was at the tap, for `openWipe` to sink under the metal if the shop commits early. */
 let walletCopy: HTMLElement | null = null;
 let abandonTimer: ReturnType<typeof setTimeout> | undefined;
+/** The 80 ms sparks; an abandoned wipe (dock tap, back) cancels them so they never burst over the new page. */
+let sparksTimer: ReturnType<typeof setTimeout> | undefined;
 
 export function registerWipeStage(el: HTMLElement | null): void {
   stage = el;
@@ -148,6 +150,7 @@ function unsink(content: HTMLElement | null): void {
 
 function abandon(): void {
   clearTimeout(abandonTimer);
+  clearTimeout(sparksTimer);
   clearWipe();
   walletCopy = null;
   const content = contentEl();
@@ -207,7 +210,8 @@ export function startWipe(
     content.inert = true;
   }
   const at = { x: p.x + box.left, y: p.y + box.top };
-  setTimeout(() => {
+  clearTimeout(sparksTimer);
+  sparksTimer = setTimeout(() => {
     burst(at.x, at.y, { type: "spark", count: WIPE.sparks.count, speed: WIPE.sparks.speed });
   }, WIPE.sparks.delayMs);
   clearTimeout(abandonTimer);

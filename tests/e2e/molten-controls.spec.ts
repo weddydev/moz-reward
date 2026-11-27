@@ -228,7 +228,34 @@ test("[PD-04] /dev/molten and /dev/ui at 320, 390 and 1440: no horizontal scroll
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
-      expect(overflow, `${path} at ${String(width)}`).toBeLessThanOrEqual(0);
+      // On failure, name what sticks out past the viewport (C-83: only Linux WebKit overflowed, by 44 px).
+      const culprits =
+        overflow > 0
+          ? await page.evaluate(() => {
+              const vw = document.documentElement.clientWidth;
+              return [...document.querySelectorAll("body *")]
+                .filter((el) => el.getBoundingClientRect().right > vw + 0.5)
+                .filter(
+                  (el) =>
+                    !el.parentElement || el.parentElement.getBoundingClientRect().right <= vw + 0.5,
+                )
+                .slice(0, 8)
+                .map((el) => {
+                  const r = el.getBoundingClientRect();
+                  const id = el.id ? `#${el.id}` : "";
+                  const cls =
+                    typeof el.className === "string"
+                      ? `.${el.className.trim().split(/\s+/).slice(0, 3).join(".")}`
+                      : "";
+                  return `${el.tagName.toLowerCase()}${id}${cls} right ${String(Math.round(r.right))} width ${String(Math.round(r.width))}`;
+                })
+                .join("\n");
+            })
+          : "";
+      expect(
+        overflow,
+        `${path} at ${String(width)}; past the viewport:\n${culprits}`,
+      ).toBeLessThanOrEqual(0);
       if (path === "/dev/molten") {
         await page.locator('[data-parity="tile"]').scrollIntoViewIfNeeded();
         await shoot(`molten-buttons-${String(width)}`, { fullPage: false });

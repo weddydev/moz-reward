@@ -43,6 +43,8 @@ export function ShopLanding({
   now: Date;
 }): React.JSX.Element {
   const { shop } = data;
+  /** The cards row rises in reading order: reward 4 (when shown), then hours, then Find us. */
+  const after = data.reward ? 5 : 4;
   const status = statusLabel(openStatus(data, now), londonDate(now));
   const address = addressLine([shop.addressLine1, shop.addressLine2, shop.town, shop.postcode]);
   const directions = directionsUrl(shop.location);
@@ -92,7 +94,7 @@ export function ShopLanding({
         className={`mx-auto grid w-full max-w-[560px] gap-4 px-4 pb-10 lg:mt-10 lg:max-w-[1280px] lg:gap-6 lg:px-10 ${data.reward ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}
       >
         {data.reward ? <RewardPreviewCard reward={data.reward} /> : null}
-        <Card className="flex flex-col gap-3 p-5" data-testid="landing-hours" {...rise(4)}>
+        <Card className="flex flex-col gap-3 p-5" data-testid="landing-hours" {...rise(after)}>
           <h2 className="text-h2 flex items-center gap-2">
             <Icon icon={Clock} className="text-gold-deep" /> Opening hours
           </h2>
@@ -110,7 +112,11 @@ export function ShopLanding({
           )}
         </Card>
 
-        <Card className="flex flex-col gap-3 p-5" data-testid="landing-details" {...rise(5)}>
+        <Card
+          className="flex flex-col gap-3 p-5"
+          data-testid="landing-details"
+          {...rise(after + 1)}
+        >
           <h2 className="text-h2 flex items-center gap-2">
             <Icon icon={MapPin} className="text-gold-deep" /> Find us
           </h2>

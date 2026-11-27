@@ -131,23 +131,45 @@ describe("[P0-13] C-22: alerts are deduplicated per kind with a count", () => {
 
 describe("[P0-13] security review HIGH-2: alert email has a hard budget", () => {
   it("a kind that keeps firing gets longer windows: 1×, then 6×, then 12× the base window", async () => {
+    // No wall-clock sleeps (FOLLOWUPS, 22 Nov: a busy gate overran a 1,200 ms window): the base window is a
+    // minute, so nothing expires on its own here; each window's length is read from Redis (PTTL), and a window
+    // is closed by deleting its key, which is all its expiry does.
     const box = capture();
+    const base = 60_000;
+    const keyPrefix = `t-${newId()}`;
     const alerter = createAlerter({
       redis: limiterRedis,
       send: box.send,
-      windowMs: 100,
-      keyPrefix: `t-${newId()}`,
+      windowMs: base,
+      keyPrefix,
     });
+    const openKey = `${env().REDIS_KEY_PREFIX}alert:${keyPrefix}:open:auth.lockout`;
     const raise = () => alerter.raise({ kind: "auth.lockout", category: "security", detail: {} });
-    expect(await raise()).toBe("sent"); // window 1: 100 ms
-    await new Promise((r) => setTimeout(r, 150));
-    expect(await raise()).toBe("sent"); // window 2: 600 ms
-    await new Promise((r) => setTimeout(r, 300));
-    expect(await raise()).toBe("suppressed"); // still inside the 600 ms window
-    await new Promise((r) => setTimeout(r, 400));
-    expect(await raise()).toBe("sent"); // window 3: 1,200 ms
-    await new Promise((r) => setTimeout(r, 700));
-    expect(await raise()).toBe("suppressed");
+    const windowLeft = () => limiterRedis().pttl(openKey);
+    /** The open window is `factor` × the base (10 s of slack for a slow run, far below the 5× gap). */
+    const expectWindow = async (factor: number) => {
+      const left = await windowLeft();
+      expect(left, `window should be ${factor}× the base`).toBeLessThanOrEqual(base * factor);
+      expect(left, `window should be ${factor}× the base`).toBeGreaterThan(base * factor - 10_000);
+    };
+    const closeWindow = () => limiterRedis().del(openKey);
+
+    expect(await raise()).toBe("sent");
+    await expectWindow(1);
+    expect(await raise()).toBe("suppressed"); // inside window 1
+    await closeWindow();
+    expect(await raise()).toBe("sent");
+    await expectWindow(6);
+    expect(await raise()).toBe("suppressed"); // inside window 2
+    await closeWindow();
+    expect(await raise()).toBe("sent");
+    await expectWindow(12);
+    expect(await raise()).toBe("suppressed"); // inside window 3
+    await closeWindow();
+    expect(await raise()).toBe("sent"); // the streak stays at 12×
+    await expectWindow(12);
+    expect(box.sent).toHaveLength(4);
+    await limiterRedis().del(openKey, openKey.replace(":open:", ":streak:"));
   });
 
   it("worst case: every kind firing all day: each pool sends at most its ceiling + one notice", async () => {

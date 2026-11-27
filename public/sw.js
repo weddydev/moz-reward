@@ -14,9 +14,7 @@
  *
  * Kill switch (RUNBOOK §19): replace this file with the self-unregistering version there and deploy.
  */
-/** @type {ServiceWorkerGlobalScope} */
-
-const sw = /** @type {any} */ (self);
+const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
 
 const SHELL_CACHE = "moz-shell-v1";
 const CARD_CACHE = "moz-card-token";
