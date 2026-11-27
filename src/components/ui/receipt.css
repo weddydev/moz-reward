@@ -21,11 +21,18 @@
   text-transform: uppercase;
   color: var(--ink-2);
 }
-.m-receipt-shop {
+/* The title's column, a size container: a block child, so it always has the card's width to give. */
+.m-receipt-title {
   margin: 6px 0 0;
-  font: 600 20px/1.15 var(--font-display);
-  /* A word too long for the line breaks with a hyphen (en-GB, root `lang`), like the shop header's title;
-     `anywhere` stays the last resort and keeps the card from growing to the word (P1-D close QA MINOR 6). */
+  container-type: inline-size;
+}
+.m-receipt-shop {
+  margin: 0;
+  /* 20 px; smaller only when the name's longest word (`--lw`, its letters) wouldn't fit the column, so a long
+     name's "Extraordinarily" keeps its letters together at 320 (P1-D close QA MINOR 6: it broke mid-word with no
+     hyphen; Chromium without a hyphenation dictionary never hyphenates). Fraunces 600 averages about 0.58 em a
+     letter, as the shop cover's title (molten.css). `hyphens` and `anywhere` stay as the last resort. */
+  font: 600 clamp(14px, calc(100cqi / (var(--lw, 1) * 0.58)), 20px) / 1.15 var(--font-display);
   overflow-wrap: anywhere;
   hyphens: auto;
 }
@@ -76,6 +83,6 @@
   transform: rotate(-8deg);
 }
 .m-receipt:has(.m-receipt-stamp) .m-receipt-kind,
-.m-receipt:has(.m-receipt-stamp) .m-receipt-shop {
+.m-receipt:has(.m-receipt-stamp) .m-receipt-title {
   padding-right: 96px;
 }
