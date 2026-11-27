@@ -69,6 +69,8 @@ export const GALLERY_PARTS = [
 /** Component exports that have no block of their own, and why. */
 export const NOT_A_GALLERY_PART: Readonly<Record<string, string>> = {
   Overlay: "the base of Modal, SidePanel and BottomSheet (shown as those)",
+  CoverArt:
+    "the shop landing cover's picture inside the page and the Gilded Gate (shown with CoverPhoto)",
   FieldMessage: "the error/hint line inside TextField, Select and TextArea (shown there)",
   MemberCardQrPlaceholder: "the back face of MemberCard (shown by flipping it)",
   DockWallet: "a dock glyph (shown inside Dock)",
