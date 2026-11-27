@@ -138,6 +138,10 @@ test("[J3][P1-16] Gold Vault: Redeem shows the code; the team confirms it; the m
     await list.first().getByTestId("reward-redeem").click();
     const sheet = member.page.getByTestId("redeem-sheet");
     await expect(sheet).toBeVisible();
+    // Each row carries its reward's photo (human, 27 Nov: no empty image slots).
+    await expect(list.first().locator("img.m-r-thumb, .m-r-coin")).toHaveCount(1);
+    // The sheet has its own particle canvas above it: Redeem's sparks and coins never fall behind it (human, 27 Nov).
+    await expect(member.page.locator("dialog[open] > canvas.m-fx")).toHaveCount(1);
     // C-81: the Redeem response held back 3 s on the network. The ring still starts from the response (15:00),
     // not from the tap or the server's send (which would read 14:56).
     await member.page.route(`**/vault/${shopId}`, async (route) => {

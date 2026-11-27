@@ -176,6 +176,29 @@ describe("[PD-04] Molten button", () => {
     expect(ref.btn).not.toHaveClass("ok");
   });
 
+  it("[demo-fixes] every button throws sparks and coins on a successful click by default (human, 27 Nov); celebrate={false} opts out", () => {
+    render(
+      <>
+        <Button>Molten</Button>
+        <Button variant="orbit">Orbit</Button>
+        <Button variant="ghost">Ghost</Button>
+        <Button celebrate={false}>Quiet</Button>
+        <Button variant="destructive">Delete</Button>
+      </>,
+    );
+    for (const name of ["Molten", "Orbit", "Ghost"]) {
+      press.celebrate.mockClear();
+      fireEvent.click(screen.getByRole("button", { name }), { clientX: 5, clientY: 5 });
+      expect(press.celebrate, name).toHaveBeenCalledTimes(1);
+      // The default coin count (the press kit's 6), never 0.
+      expect(press.celebrate.mock.calls[0]?.[2], name).toBeUndefined();
+    }
+    press.celebrate.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Quiet" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(press.celebrate).not.toHaveBeenCalled();
+  });
+
   it("[PD-04] no roll and no celebration when the action fails (false) or for a destructive button", () => {
     render(
       <>

@@ -279,7 +279,7 @@ export function PhoneSection(): React.JSX.Element {
                 <div data-rise={3}>
                   <MiniVault gold={shop.gold} target={shop.target} />
                 </div>
-                <Button block resultLabel="Request sent" data-rise={4}>
+                <Button block resultLabel="Request sent" celebrate={false} data-rise={4}>
                   Request points
                 </Button>
                 <div className="m-offer-row" data-rise={5}>

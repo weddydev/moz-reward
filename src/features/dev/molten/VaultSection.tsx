@@ -103,6 +103,7 @@ export function VaultSection(): React.JSX.Element {
       <div className="m-v-btns">
         <Button
           size={46}
+          celebrate={false}
           resultLabel="Pouring…"
           resultMs={1_100}
           onClick={() => {
@@ -117,6 +118,7 @@ export function VaultSection(): React.JSX.Element {
           data-parity="orbit-button"
           variant="orbit"
           size={46}
+          celebrate={false}
           onClick={() => {
             pour(MAX);
           }}
@@ -127,6 +129,7 @@ export function VaultSection(): React.JSX.Element {
           data-parity="ghost-button"
           variant="ghost"
           size={46}
+          celebrate={false}
           icon={<GhostArrow />}
           onClick={() => {
             if (busy.current) return;

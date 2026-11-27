@@ -34,12 +34,14 @@ const REWARDS: ReadyRewardView[] = [
     id: "r1",
     label: "Free coffee",
     shopName: "Brew & Bloom",
+    imageUrl: "/demo/shops/brew-logo.jpg",
     validUntil: "Use by 7 Dec 2026",
   },
   {
     id: "r2",
     label: "Free cake",
     shopName: "Brew & Bloom",
+    imageUrl: null,
     validUntil: "Use by 7 Dec 2026",
   },
 ];
@@ -99,6 +101,15 @@ describe("[P1-18] Rewards ready: the redeem sheet's chunk on a slow line", () =>
       await Promise.resolve();
     });
     expect(chunk.state.loads).toBe(1);
+  });
+
+  it("[demo-fixes] each row shows the reward's photo, or the shop's coin when there is none", async () => {
+    const { RewardsReady } = await load();
+    render(<RewardsReady rewards={REWARDS} showShop />);
+    const rows = screen.getAllByTestId("reward-ready");
+    expect(rows[0]?.querySelector("img")).not.toBeNull();
+    expect(rows[1]?.querySelector("img")).toBeNull();
+    expect(rows[1]?.querySelector("[data-testid='shop-coin']")).not.toBeNull();
   });
 
   it("Redeem before the chunk arrives: that row is busy after 150 ms, then the sheet opens and the row is not busy", async () => {

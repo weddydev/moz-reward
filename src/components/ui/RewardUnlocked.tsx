@@ -4,7 +4,7 @@ import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { anim, reducedMotionNow } from "@/lib/motion/anim";
 import { burst } from "@/lib/motion/fx";
 import { cardKeyframes, VAULT } from "@/lib/motion/vault";
-import { ShopImage } from "./ShopImage";
+import { ShopCoin, ShopImage } from "./ShopImage";
 import { toast } from "./Toast";
 
 /**
@@ -18,6 +18,7 @@ import { toast } from "./Toast";
 export function RewardUnlocked({
   detail,
   imageUrl,
+  shopName,
   celebrate = false,
   testId = "reward-card",
   toastText,
@@ -26,7 +27,10 @@ export function RewardUnlocked({
 }: {
   /** What the reward is and where: "Free coffee & cake · Brew & Bloom Café". */
   detail: string;
+  /** The reward's photo (the shop's logo until rewards carry their own, P2-05). */
   imageUrl: string | null;
+  /** Without a photo, the shop's metal coin fills the slot (DESIGN §6.4), never an empty gap. */
+  shopName?: string;
   celebrate?: boolean;
   /** A still placeholder copy names itself apart (the celebration's reserved slot, P1-D close). */
   testId?: string;
@@ -68,6 +72,10 @@ export function RewardUnlocked({
       <div className="m-r-left">
         {imageUrl ? (
           <ShopImage src={imageUrl} size={56} className="m-r-img" unoptimized={unoptimized} eager />
+        ) : shopName ? (
+          <span className="m-r-img m-r-coin">
+            <ShopCoin name={shopName} size={56} />
+          </span>
         ) : null}
         <div>
           <h3>Your reward is ready</h3>

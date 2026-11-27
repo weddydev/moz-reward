@@ -120,6 +120,8 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 - An animation paused at its end with `fill: none` (`freezeTimed(p, true)`) is neither current nor in effect, so `document.getAnimations()` drops it and nothing can resume it: keep the list (`window.__frozen`) and resume from it (`vault.spec` `release`).
 - Also: `pnpm test:parity <spec>` needs `--project=x` (the `=` form); `--project x <spec>` reads the spec as a project name (fixed in `scripts/e2e.ts`).
 
+**KI-88 · A request tapped offline stays on "You're offline" after the connection is back** — demo rehearsal, 27 Nov. The saved tap was only retried on the `online` event: the first send right after it often fails (the line isn't really up yet), and a phone in Settings while Wi-Fi returns can miss the event, so nothing retried until a reload. Fix: `QueuedRequestSender` also sends when the page is shown again (`visibilitychange`, `pageshow`), on the card's "Send now", and retries after 3 / 10 / 30 s while a tap waits and the phone says it is online; the card says "Sending…" once online. Never rely on `online` alone for a retry.
+
 ## CSS / build surprises
 
 **KI-30 · An inline `svg` is taller than expected (e.g. 46 vs 52 px)** — Tailwind preflight makes every `svg` `display:block`; set `display:inline; vertical-align:baseline` explicitly (stars, PD-06).

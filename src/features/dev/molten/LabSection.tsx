@@ -91,8 +91,11 @@ export function LabSection(): React.JSX.Element {
             >
               Collect gold
             </Button>
-            <Button variant="orbit">View rewards</Button>
-            <Button variant="ghost" icon={<GhostArrow />}>
+            {/* The reference's quiet buttons stay quiet here (parity); the app's buttons all celebrate (human, 27 Nov). */}
+            <Button variant="orbit" celebrate={false}>
+              View rewards
+            </Button>
+            <Button variant="ghost" icon={<GhostArrow />} celebrate={false}>
               Maybe later
             </Button>
             <IconButton

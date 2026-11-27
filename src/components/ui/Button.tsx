@@ -24,8 +24,9 @@ import { Spinner } from "./Spinner";
  * - `destructive`: the molten language in danger red (no celebration).
  * Sizes 54 (default) and 46. `loading` keeps the width (the label stays in layout, hidden) and blocks clicks.
  * `resultLabel` rolls the label to the result after a successful click (an `onClick` that doesn't throw or
- * resolve to `false`) and back after 1.7 s; `celebrate` (opt-in) throws 28 sparks and coins from the press
- * point then. A second click while the result shows restarts the roll without a second celebration.
+ * resolve to `false`) and back after 1.7 s. Every successful click throws 28 sparks and 6 coins from the press
+ * point (human, 27 Nov 2026: "it should appear in every button"); `celebrate={false}` opts a button out and a
+ * destructive one never celebrates. A second click while the result shows restarts the roll without a second celebration.
  * Hover effects are fine-pointer only; under reduced motion there is no lean, no particles, and the roll
  * swaps within 150 ms.
  */
@@ -47,7 +48,10 @@ type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
    * then (Request points → its pending card) swaps on the same clock, so the label never starts back first.
    */
   onRollEnd?: () => void;
-  /** Sparks (and `coins`, default 6) from the press point after a successful click. Opt-in. */
+  /**
+   * Sparks (and `coins`, default 6) from the press point after a successful click. On by default for every
+   * variant but `destructive`; `false` turns it off.
+   */
   celebrate?: boolean | { coins: number };
   /** May be async: resolving to `false` (or throwing) means "not a success": no roll, no celebration. */
   onClick?: (e: MouseEvent<HTMLButtonElement>) => unknown;
@@ -101,6 +105,7 @@ export function Button({
   const celebrating = useRef(false);
   const backTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const flowing = variant === "molten" || variant === "destructive";
+  const celebrates = variant !== "destructive" && celebrate !== false;
   // Molten, destructive and orbit buttons loop while idle: the loops sleep off screen (FOLLOWUPS 73).
   usePauseOffscreen(variant === "ghost" ? NO_ELEMENT : ref);
   usePress(ref, { ripple: flowing });
@@ -136,15 +141,15 @@ export function Button({
     // One celebration per roll: a click while the result shows, or while an earlier async click is still
     // pending, doesn't celebrate again (design review M2).
     const showing = (el?.classList.contains("ok") ?? false) || celebrating.current;
-    if (celebrate) celebrating.current = true;
+    if (celebrates) celebrating.current = true;
     const result = onClick?.(e);
-    if (resultLabel === undefined && !celebrate) return;
+    if (resultLabel === undefined && !celebrates) return;
     onSettled(result, (ok) => {
       if (!ok || !ref.current) {
         if (!showing) celebrating.current = false;
         return;
       }
-      if (celebrate && !showing && variant !== "destructive")
+      if (celebrates && !showing)
         burstAt(ref.current, point, typeof celebrate === "object" ? celebrate.coins : undefined);
       roll();
     });

@@ -263,3 +263,53 @@ describe("[P1-15] FX engine: a canvas inside a modal dialog takes over, then han
     }
   });
 });
+
+describe("[demo-fixes] FX engine: a dialog's canvas carries on the sparks already flying", () => {
+  it("[demo-fixes] a burst on the page, then a sheet opens over it: its particles move to the sheet's canvas", async () => {
+    const { mountFx } = await import("./fx");
+    const noop = (): undefined => undefined;
+    const ctx = new Proxy(
+      {},
+      {
+        get: (_, k) =>
+          k === "createRadialGradient" || k === "createLinearGradient"
+            ? () => ({ addColorStop: noop })
+            : noop,
+        set: () => true,
+      },
+    ) as unknown as CanvasRenderingContext2D;
+    const canvas = (): HTMLCanvasElement =>
+      ({ getContext: () => ctx, width: 0, height: 0 }) as unknown as HTMLCanvasElement;
+    const listeners = { addEventListener: noop, removeEventListener: noop };
+    const g = globalThis as Record<string, unknown>;
+    const saved = {
+      window: g.window,
+      document: g.document,
+      raf: g.requestAnimationFrame,
+      caf: g.cancelAnimationFrame,
+    };
+    g.window = { ...listeners, innerWidth: 390, innerHeight: 844, devicePixelRatio: 2 };
+    g.document = {
+      ...listeners,
+      hidden: false,
+      createElement: canvas,
+      documentElement: { classList: { contains: () => false }, toggleAttribute: () => true },
+    };
+    g.requestAnimationFrame = () => 1;
+    g.cancelAnimationFrame = noop;
+    try {
+      const root = mountFx(canvas());
+      const added = burst(100, 100, { type: "spark", count: 12 });
+      expect(added).toBeGreaterThan(0);
+      const sheet = mountFx(canvas());
+      expect(fxStats()).toMatchObject({ mounted: true, live: added, running: true });
+      sheet();
+      root();
+    } finally {
+      g.window = saved.window;
+      g.document = saved.document;
+      g.requestAnimationFrame = saved.raf;
+      g.cancelAnimationFrame = saved.caf;
+    }
+  });
+});

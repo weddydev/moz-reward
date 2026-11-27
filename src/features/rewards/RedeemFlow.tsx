@@ -75,7 +75,8 @@ export function RedeemFlow({
   const request = useCallback(
     (from: HTMLElement | null, e?: React.MouseEvent<HTMLButtonElement>): void => {
       focusInside.current = root.current?.contains(document.activeElement) ?? false;
-      if (from && e) celebrate(from, e, 0);
+      // Sparks and coins, as every button (human, 27 Nov 2026).
+      if (from && e) celebrate(from, e);
       const pressedAt = Date.now();
       setState({ kind: "pending" });
       const settle = (next: State, receivedAt: number): void => {

@@ -448,6 +448,11 @@
     opacity: 0;
     transition-duration: var(--dur-exit);
   }
+  /* The dialog's own particle canvas (Overlay.tsx) fades with it instead of vanishing when it closes. */
+  .overlay[data-state="closing"] > .m-fx {
+    opacity: 0;
+    transition: opacity var(--dur-exit) var(--ease-out);
+  }
 
   /* Modal: centred, scales from .96 with a fade (never from 0); not anchored to its trigger. */
   .overlay[data-kind="modal"] {

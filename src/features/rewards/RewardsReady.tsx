@@ -2,6 +2,7 @@
 
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { ShopCoin, ShopImage } from "@/components/ui/ShopImage";
 import { toast } from "@/components/ui/Toast";
 import type { ReadyRewardView } from "./view";
 
@@ -104,7 +105,14 @@ export function RewardsReady({
             className="flex items-center justify-between gap-3"
             data-testid="reward-ready"
           >
-            <div className="min-w-0">
+            {r.imageUrl ? (
+              <ShopImage src={r.imageUrl} size={44} className="m-r-thumb" />
+            ) : (
+              <span className="m-r-thumb m-r-coin">
+                <ShopCoin name={r.shopName} size={44} />
+              </span>
+            )}
+            <div className="min-w-0 flex-1">
               <p className="text-body truncate font-semibold">{r.label}</p>
               {showShop ? <p className="text-small text-ink-2 truncate">{r.shopName}</p> : null}
               <p className="text-small text-ink-2">{r.validUntil}</p>

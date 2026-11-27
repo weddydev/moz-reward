@@ -3,7 +3,6 @@
 import { Share2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CountUp } from "@/components/motion/CountUp";
-import { DialogFx } from "@/components/motion/DialogFx";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { GoldVault } from "@/components/ui/GoldVault";
@@ -283,7 +282,8 @@ export default function CelebrationMoment({
               <RewardUnlocked
                 celebrate={false}
                 detail={rewardDetail}
-                imageUrl={null}
+                imageUrl={shop.logoUrl}
+                shopName={shop.name}
                 testId="reward-card-placeholder"
               >
                 {/* The Redeem slot's idle height (a 46 px button in `.m-code`). */}
@@ -299,7 +299,8 @@ export default function CelebrationMoment({
                 // Skipped before it arrived: the card simply shows, without the flip and the leaves.
                 celebrate={skipKey === 0}
                 detail={rewardDetail}
-                imageUrl={null}
+                imageUrl={shop.logoUrl}
+                shopName={shop.name}
               >
                 {/* C-108: Redeem right here opens the same redeem flow as the Wallet and the Vault. */}
                 <RedeemFlow
@@ -324,7 +325,6 @@ export default function CelebrationMoment({
           {said}
         </p>
       </div>
-      <DialogFx />
     </Overlay>
   );
 }

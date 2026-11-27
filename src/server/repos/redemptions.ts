@@ -15,6 +15,8 @@ export type ReadyReward = {
   id: string;
   shopId: string;
   shopName: string;
+  /** The shop's logo: the reward's picture until rewards carry their own (P2-05). */
+  shopLogoUrl: string | null;
   label: string;
   kind: "main" | "milestone" | "game" | "other";
   isMystery: boolean;
@@ -39,6 +41,7 @@ export async function readOwnReadyRewards(
           id: rewards.id,
           shopId: rewards.shopId,
           shopName: shops.name,
+          shopLogoUrl: shops.logoUrl,
           label: rewards.label,
           kind: rewards.kind,
           isMystery: rewards.isMystery,

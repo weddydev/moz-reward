@@ -31,7 +31,11 @@ export default function RedeemSheet({
       description={`At the till, show the code to the team at ${reward.shopName}. ${reward.validUntil}.`}
     >
       <div data-testid="redeem-sheet">
-        <RewardUnlocked detail={`${reward.label} · ${reward.shopName}`} imageUrl={null}>
+        <RewardUnlocked
+          detail={`${reward.label} · ${reward.shopName}`}
+          imageUrl={reward.imageUrl}
+          shopName={reward.shopName}
+        >
           {open ? <RedeemFlow rewardId={reward.id} /> : null}
         </RewardUnlocked>
       </div>

@@ -3080,6 +3080,20 @@ html:root.rm .m-cover > .m-cover-back {
   flex: none;
   box-shadow: 0 0 0 1.5px rgba(255, 206, 74, 0.6);
 }
+/* A reward with no photo: the shop's coin in the photo's place (the coin is round; the ring stays off it). */
+.m-r-coin {
+  display: block;
+  box-shadow: none;
+}
+/* The reward's photo in a Rewards ready row (the card's 56 px photo at list size). */
+.m-r-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex: none;
+  box-shadow: 0 0 0 1.5px rgba(255, 206, 74, 0.6);
+}
 .m-code {
   display: flex;
   align-items: center;

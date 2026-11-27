@@ -12,6 +12,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { FxCanvas } from "@/components/motion/FxCanvas";
 import { cx } from "@/lib/cx";
 import { useHydrated } from "@/lib/use-hydrated";
 import { trapTab } from "./focus-trap";
@@ -318,6 +319,8 @@ export function Overlay({
           </div>
         )}
       </div>
+      {/* Sparks and coins from a press in here draw above the dialog: the root canvas sits under the top layer. */}
+      <FxCanvas />
     </dialog>,
     document.body,
   );

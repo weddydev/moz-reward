@@ -402,6 +402,21 @@ describe("[PD-10] Reward unlocked", () => {
     expect(fx.toast).not.toHaveBeenCalled();
   });
 
+  it("[demo-fixes] the card shows the reward's photo; without one, the shop's metal coin (never an empty slot)", () => {
+    const { container, unmount } = render(
+      <RewardUnlocked
+        detail="d"
+        imageUrl="/demo/shops/brew-logo.jpg"
+        shopName="Brew & Bloom Café"
+      />,
+    );
+    expect(container.querySelector("img.m-r-img")).not.toBeNull();
+    expect(screen.queryByTestId("shop-coin")).toBeNull();
+    unmount();
+    render(<RewardUnlocked detail="d" imageUrl={null} shopName="Patel's Corner Store" />);
+    expect(screen.getByTestId("shop-coin")).toHaveTextContent("PS");
+  });
+
   it("[PD-10] celebrate: the card flips in (700 ms after 350 ms), 70 leaves fall, the toast says so", () => {
     render(
       <RewardUnlocked

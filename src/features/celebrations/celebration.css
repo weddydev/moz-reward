@@ -11,11 +11,6 @@
     -webkit-backdrop-filter: blur(6px);
   }
 }
-/* The moment's particle canvas fades with the dialog instead of vanishing when it closes. */
-.overlay[data-state="closing"] > .m-fx {
-  opacity: 0;
-  transition: opacity var(--dur-exit) var(--ease-out);
-}
 .m-cel {
   display: flex;
   flex-direction: column;
