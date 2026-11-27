@@ -1173,3 +1173,9 @@ J1 confirmed flake root-caused (KI-10, WebKit frame starvation): gate wait 15 s 
 Tests: gate:task PASS (unit 2315/0, int 1904/0/1, sast); integrity int incl. 66k issues, lost lock, read-only snapshot, RLS wall; redemptions int (lock doubling).
 Docker tidy: 27 volumes + 122.6 MB images freed. C-92/93/94 → P1 phase close (H-54); C-110 → P1-18.
 code-review done 2972bc7
+
+## 2026-11-27 — P1 — P1-18 checkpoint (in progress), talha.syed (Mac)
+Done on `wip/P1-18` (`a37761e`): ci:usage 6 min hang fixed (KI-79); C-110 100k integrity 6.8 s / 0 issues / index scan (`pnpm test:scale`); C-53 hand-built SED fixture (backup-pitr 9/0 on gpg 2.5); 0037 validates 17 NOT VALID checks; integrity-check CLI + RUNBOOK §20–22 (AC8); FOLLOWUPS 117/118/125 fixed test-first.
+Tests: test:scale 1/0; integrity + redemptions int 51/0; check unit 2316/0; CI cd18c4b 45933446184 green; a37761e CI running.
+Not verified: mutation — Stryker dry run fails on redemptions.test "reward that expires during the code's window" under instrumentation.
+Next: fix that test's timing (or unit-only Stryker + DECISIONS), run `pnpm test:mutation`, review survivors (C-17); then quarantines, C-91, staging steps (NOT-VALID pre-check before 0037 lands), gate:phase.
