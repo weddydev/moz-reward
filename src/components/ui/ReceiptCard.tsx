@@ -9,6 +9,7 @@ import {
 } from "@/lib/celebration";
 import { cx } from "@/lib/cx";
 import { formatDateTime } from "@/lib/format-date";
+import { longestWord } from "@/lib/longest-word";
 import { formatPence } from "@/lib/money";
 import { anim, reducedMotionNow } from "@/lib/motion/anim";
 import "./receipt.css";
@@ -82,7 +83,15 @@ export function ReceiptCard({
       data-print={print ? (print === "dashboard" ? "dashboard" : "") : undefined}
     >
       <p className="m-receipt-kind">Digital receipt — not a VAT invoice</p>
-      <h3 className="m-receipt-shop">{receipt.shopName}</h3>
+      <div className="m-receipt-title">
+        <h3
+          className="m-receipt-shop"
+          // The longest word's letters: the title steps down only when that word wouldn't fit (receipt.css).
+          style={{ "--lw": longestWord(receipt.shopName) } as React.CSSProperties}
+        >
+          {receipt.shopName}
+        </h3>
+      </div>
       {receipt.address ? <p className="m-receipt-meta">{receipt.address}</p> : null}
       {receipt.vatNumber ? <p className="m-receipt-meta">VAT {receipt.vatNumber}</p> : null}
       <dl className="m-receipt-rows">

@@ -444,13 +444,13 @@ test("[P1-15] opening a receipt prints it (800 ms clip reveal and stamp); the da
   expect(d).toEqual({ card: [400], stamp: 0 });
 });
 
-test("[P1-18] a receipt for a long shop name at 320: the title hyphenates and the card stays inside the sheet", async ({
+test("[P1-18] a receipt for a long shop name at 320: every word of the title fits its column and the card stays inside the sheet", async ({
   page,
   signInAs,
   shoot,
 }) => {
   // P1-D close QA MINOR 6: "Extraordinarily" broke mid-word with no hyphen at 320 (`overflow-wrap: anywhere`
-  // alone). The title now hyphenates (en-GB) like the shop header; `anywhere` stays the last resort.
+  // alone). The title steps down until its longest word fits, like the shop header's.
   const me = await signInAs("customer");
   const long = "The Extraordinarily Long-Named Neighbourhood Coffee House Ltd";
   const { shopId } = await seedShop(page.request, me.userId, { visits: 1, name: long });
@@ -462,11 +462,21 @@ test("[P1-18] a receipt for a long shop name at 320: the title hyphenates and th
   const title = card.getByRole("heading", { name: long });
   await expect(title).toBeVisible();
   expect(await page.locator("html").getAttribute("lang")).toBe("en-GB");
-  const style = await title.evaluate((el) => {
-    const cs = getComputedStyle(el);
-    return { hyphens: cs.hyphens || cs.getPropertyValue("-webkit-hyphens"), wrap: cs.overflowWrap };
+  // Every word fits the title's column, so none breaks mid-word (Chromium has no hyphenation dictionary in every
+  // build; the title steps down to fit instead, like the shop cover's). Measured unhyphenated, as in shop-page.
+  const split = await title.evaluate((el) => {
+    const probe = document.createElement("span");
+    probe.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap;hyphens:none";
+    el.append(probe);
+    const out = (el.firstChild?.textContent ?? "").split(/\s+/).filter((w) => {
+      probe.textContent = w;
+      return probe.getBoundingClientRect().width > el.clientWidth;
+    });
+    probe.remove();
+    return { out, size: parseFloat(getComputedStyle(el).fontSize) };
   });
-  expect(style).toEqual({ hyphens: "auto", wrap: "anywhere" });
+  expect(split.out, "words split at 320").toEqual([]);
+  expect(split.size).toBeGreaterThanOrEqual(14);
   await expect
     .poll(() =>
       card.evaluate((el) =>

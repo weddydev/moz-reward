@@ -1,7 +1,7 @@
 import { ChevronLeft } from "lucide-react";
 import { TransitionLink } from "@/components/motion/TransitionLink";
 import { ShopCoin, ShopImage } from "@/components/ui/ShopImage";
-import { longestWord } from "./view";
+import { longestWord } from "@/lib/longest-word";
 
 /** The customer shop page's column; its loading state uses the same one, so nothing moves when it arrives. */
 export const SHOP_PAGE_CLASS =

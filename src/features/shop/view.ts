@@ -51,12 +51,6 @@ export function upcomingClosures(
 /** The last day a rejoin restores the frozen progress, if the member leaves at `now` (`19 Dec 2026`). */
 export const leaveRestoreBy = (now: Date): string => formatDate(addLondonDays(now, RESTORE_DAYS));
 
-/** Letters in a shop name's longest word (at least 1): the cover title steps down only when it wouldn't fit. */
-export function longestWord(name: string): number {
-  const letters = new Intl.Segmenter("en-GB", { granularity: "grapheme" });
-  return Math.max(1, ...name.split(/\s+/).map((w) => [...letters.segment(w)].length));
-}
-
 /**
  * The pending state's copy (P1-11): when the request reached us (UK time) and who it waits for. A request goes
  * to the owner when the award is above the staff member's limit (P1-12); either way it expires after 24 h.
