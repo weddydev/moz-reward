@@ -85,6 +85,14 @@ describe("[P1-17] ledger replay (the counters a membership's ledger implies)", (
     });
   });
 
+  it("[P1-18] an expiry row larger than the progress left floors it at 0, never below", () => {
+    const rows: LedgerRowForReplay[] = [
+      earn("r1", 100, 1),
+      { type: "expiry", points: -400, requestId: null, createdAt: at(2), ref: {} },
+    ];
+    expect(replayLedger({ joinedAt: T0, versions: V1, rows }).progress).toBe(0);
+  });
+
   it("[P1-17] an opening adjustment (demo seed) sets the starting counters", () => {
     const rows: LedgerRowForReplay[] = [
       {

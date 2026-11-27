@@ -26,7 +26,9 @@ describe("[P1-16] reward validity", () => {
   });
 
   it("refuses validity outside 90–365 days", () => {
-    expect(() => rewardExpiresAt(at("2027-01-01T00:00:00Z"), 89)).toThrow(RangeError);
+    expect(() => rewardExpiresAt(at("2027-01-01T00:00:00Z"), 89)).toThrow(
+      new RangeError("reward validity must be 90–365 days"),
+    );
     expect(() => rewardExpiresAt(at("2027-01-01T00:00:00Z"), 366)).toThrow(RangeError);
     expect(() => rewardExpiresAt(at("2027-01-01T00:00:00Z"), 90.5)).toThrow(RangeError);
     expect(REDEEM.validDays).toEqual({ default: 90, min: 90, max: 365 });

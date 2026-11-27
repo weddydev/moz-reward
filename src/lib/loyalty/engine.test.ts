@@ -114,7 +114,13 @@ describe("[P1-06] calculateAward: earning", () => {
 
   it("per-pound without an amount is refused (the server always asks for one)", () => {
     const perPound = [version(1, rules({ earnMode: "per_pound", earnRate: 10 }), T0)];
-    expect(() => visit(perPound, T0)).toThrow(RangeError);
+    expect(() => visit(perPound, T0)).toThrow(
+      new RangeError("a per-pound award needs the amount spent"),
+    );
+  });
+
+  it("[P1-18] a shop with no programme version is refused, saying so", () => {
+    expect(() => visit([], T0)).toThrow(new RangeError("the shop has no loyalty programme"));
   });
 
   it("stacks multipliers by multiplying them: 1.5 × 2 on 7 gold is 21", () => {
@@ -139,9 +145,15 @@ describe("[P1-06] calculateAward: earning", () => {
       expect(
         () => visit(V1, T0, { multipliers: [{ source: "x", percent }] }),
         String(percent),
-      ).toThrow(RangeError);
+      ).toThrow(
+        new RangeError(
+          `multiplier must be a whole percent from 100 to 1000, got ${String(percent)}`,
+        ),
+      );
     }
+    // Both ends are allowed (P1-18: the mutation run's `>=` survivor).
     expect(visit(V1, T0, { multipliers: [{ source: "x", percent: 100 }] }).total).toBe(100);
+    expect(visit(V1, T0, { multipliers: [{ source: "x", percent: 1_000 }] }).total).toBe(1_000);
   });
 
   it("uses the earn rules of the version active at requestedAt, not at approval", () => {

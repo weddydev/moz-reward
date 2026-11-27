@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { adminRole, shopStaffRole } from "@/server/db/schema/core";
 import { parseAdminAllowlist } from "@/server/security/admin-allowlist";
 import {
   ADMIN_SESSION_MAX_MS,
+  ALL_ADMIN_ROLES,
+  ALL_SHOP_ROLES,
   type Principal,
   STAFF_SESSION_MAX_MS,
   decideAdminRole,
@@ -193,6 +196,20 @@ describe("[P0-07] decideStaffAwardLimit (SECURITY §3: per-award limit enforced 
     });
   });
 
+  it("[P1-18] staff in two shops: each shop's award uses that shop's own limit", () => {
+    const both = principal({
+      shopRoles: [
+        { shopId: SHOP_A, role: "staff", perAwardLimit: 500 },
+        { shopId: SHOP_B, role: "staff", perAwardLimit: 50 },
+      ],
+    });
+    expect(decideStaffAwardLimit(both, SHOP_B, 51, NOW)).toEqual({
+      ok: false,
+      reason: "over_limit",
+    });
+    expect(decideStaffAwardLimit(both, SHOP_A, 51, NOW).ok).toBe(true);
+  });
+
   it("owners and staff without a limit set have no cap", () => {
     const owner = principal({ shopRoles: [{ shopId: SHOP_A, role: "owner", perAwardLimit: 5 }] });
     expect(decideStaffAwardLimit(owner, SHOP_A, 10_000, NOW).ok).toBe(true);
@@ -222,5 +239,12 @@ describe("[P0-07] decideStaffAwardLimit (SECURITY §3: per-award limit enforced 
         },
       );
     }
+  });
+});
+
+describe("[P1-18] role lists (mutation survivors, C-17)", () => {
+  it("[P1-18] 'any admin' and 'any shop role' are exactly the database's roles", () => {
+    expect([...ALL_ADMIN_ROLES].sort()).toEqual([...adminRole.enumValues].sort());
+    expect([...ALL_SHOP_ROLES].sort()).toEqual([...shopStaffRole.enumValues].sort());
   });
 });

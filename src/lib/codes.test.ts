@@ -5,7 +5,13 @@ import {
   formatCode,
   formatMemberId,
   generateCode,
+  generateMemberId,
+  generateShopCode,
+  MEMBER_ID_LENGTH,
   normaliseCode,
+  normaliseMemberId,
+  normaliseShopCode,
+  SHOP_CODE_LENGTH,
   withUniqueCode,
 } from "./codes";
 import type { MemberId } from "./brand";
@@ -73,7 +79,9 @@ describe("[P0-03] code format and length", () => {
   it("formats codes in configurable groups and separators", () => {
     expect(formatCode("K7Q42MXA", { group: 4 })).toBe("K7Q4-2MXA");
     expect(formatCode("K7Q42MX", { group: 3, separator: " " })).toBe("K7Q 42M X");
-    expect(() => formatCode("ABC", { group: 0 })).toThrow(RangeError);
+    expect(() => formatCode("ABC", { group: 0 })).toThrow(
+      new RangeError("group must be a positive integer"),
+    );
   });
 
   it("refuses lengths too short to be safe or not whole numbers", () => {
@@ -128,5 +136,30 @@ describe("[P1-01] code generator injection (collision tests)", () => {
     );
     expect(out).toBe("BBBBBB");
     expect(seen).toEqual(["AAAAAA", "AAAAAA", "BBBBBB"]);
+  });
+});
+
+describe("[P1-18] shop code and member ID helpers (mutation survivors, C-17)", () => {
+  it("[P1-18] a fresh shop code and member ID: their own length, from the code alphabet only", () => {
+    for (const [code, length] of [
+      [generateShopCode(), SHOP_CODE_LENGTH],
+      [generateMemberId(), MEMBER_ID_LENGTH],
+    ] as const) {
+      expect(code).toHaveLength(length);
+      for (const ch of code) expect(CODE_ALPHABET).toContain(ch);
+    }
+  });
+
+  it("[P1-18] a typed shop code or member ID is normalised as stored, or null", () => {
+    expect(normaliseShopCode(" k7q-42m ")).toBe("K7Q42M");
+    expect(normaliseShopCode("K7Q4")).toBeNull();
+    expect(normaliseMemberId("k7q 42m")).toBe("K7Q42M");
+    expect(normaliseMemberId("K7Q42O")).toBeNull(); // O is never emitted
+  });
+
+  it("[P1-18] a bad code length says what it needs", () => {
+    expect(() => generateCode(3)).toThrow(
+      new RangeError("code length must be an integer between 4 and 32"),
+    );
   });
 });
