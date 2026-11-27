@@ -124,7 +124,7 @@ Details: [`docs/phases/P1.md`](phases/P1.md)
 - [x] P1-16 · Rewards and redemption
 - [x] P1-17 · Data-integrity reconciliation
 - [ ] P1-18 · Phase hardening
-- [ ] P1-D closed with `/subphase-complete`
+- [x] P1-D closed with `/subphase-complete` — closed 27 Nov (C-92/93/94 human side-by-side moved to the P1 phase close, H-54; C-110 → P1-18)
 - [ ] P1 closed with `/phase-complete`
 - [ ] P1 definition of done met and demo delivered
 

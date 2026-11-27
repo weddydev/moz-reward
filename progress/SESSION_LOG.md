@@ -1164,3 +1164,12 @@ Done: migration 0035 (integrity_issues, ref key `ingots`); pure `replayLedger` (
 Commits: 86fcf85 (wip/P1-17) → main (ff).
 Tests: gate:task PASS (unit 2313/0, int 1898/0/1); integrity int 11/0; coverage 4211/0; CI 45904334444 green (perf job red first on C-106 gilded-gate @perf, green on re-run).
 Left off: the P1-D close next (review stop, Cadence).
+
+## 2026-11-27 — P1 — P1-D closed, talha.syed (Mac)
+CI: f07def4 45916814961 green; 2972bc7 45920008983 green; main ff to 2972bc7. `pnpm ci:usage` checked. Staging smoke (P1-D area) OK; Sentry deferred (H-48b).
+Reviews: code APPROVE WITH FIXES (1 HIGH bind-param overflow + 5 MEDIUM fixed: readSnapshot, batched upsert, lock renew, redeem index 0036, timedSweep audit); security PASS (4 MEDIUM fixed: staff lock window, redeem retry); design PASS WITH FIXES (1 HIGH + 3 MEDIUM fixed; D-M4 kept, DECISIONS).
+QA: 2 MAJOR fixed (New code contrast on obsidian ≥ 4.5; celebration layout shift 0.189 → ≤ 0.05, Chromium CLS spec); 5 MINOR → FOLLOWUPS.
+J1 confirmed flake root-caused (KI-10, WebKit frame starvation): gate wait 15 s + 60 s test budget; spec-repeat on wip/dbg-J1 green.
+Tests: gate:task PASS (unit 2315/0, int 1904/0/1, sast); integrity int incl. 66k issues, lost lock, read-only snapshot, RLS wall; redemptions int (lock doubling).
+Docker tidy: 27 volumes + 122.6 MB images freed. C-92/93/94 → P1 phase close (H-54); C-110 → P1-18.
+code-review done 2972bc7
