@@ -54,4 +54,17 @@ describe("[P1-18] focus after a client navigation (P1-B close QA L4)", () => {
     await Promise.resolve();
     expect(document.activeElement).toBe(document.body);
   });
+
+  it("[P1-18] content still inert from a Wallet card's wipe: the heading gets focus once the wipe lifts inert, not before", async () => {
+    // CI 45952507494 (WebKit iphone14): focus() on an inert heading is ignored, and the wipe lifts inert only after
+    // focusNewPage ran, so focus stayed on <body> whenever the shop rendered without its skeleton.
+    (document.activeElement as HTMLElement | null)?.blur();
+    content().setAttribute("inert", "");
+    const stop = focusNewPage(content());
+    expect(document.activeElement, "no focus into an inert page").toBe(document.body);
+    content().removeAttribute("inert"); // openWipe → unsink
+    await Promise.resolve();
+    expect(document.activeElement).toBe(document.getElementById("title"));
+    stop();
+  });
 });

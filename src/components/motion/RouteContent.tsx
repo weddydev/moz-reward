@@ -136,7 +136,8 @@ export const FOCUS_HEADING_WAIT_MS = 5_000;
 /**
  * Moves focus to the page's `h1` (focusable from script only) when focus was lost with the old page. A page that
  * streams in after its loading skeleton (which has no `h1`) gets it when the heading arrives, if focus is still
- * lost then. Returns the function that stops waiting (the next navigation).
+ * lost then; content left inert by a Wallet card's wipe gets it when the wipe lifts inert. Returns the function
+ * that stops waiting (the next navigation).
  */
 export function focusNewPage(content: HTMLElement): () => void {
   const lost = (): boolean => {
@@ -146,6 +147,9 @@ export function focusNewPage(content: HTMLElement): () => void {
   const tryFocus = (): boolean => {
     const heading = content.querySelector<HTMLElement>("h1");
     if (!heading) return false;
+    // A Wallet card's wipe keeps the content inert until `openWipe` lifts it, which runs after this: focus() on an
+    // inert element is ignored, so wait for the lift (CI 45952507494, WebKit).
+    if (heading.closest("[inert]")) return false;
     if (lost()) {
       if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
       heading.focus({ preventScroll: true });
@@ -161,7 +165,12 @@ export function focusNewPage(content: HTMLElement): () => void {
     watch.disconnect();
     window.clearTimeout(timer);
   }
-  watch.observe(content, { childList: true, subtree: true });
+  watch.observe(content, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["inert"],
+  });
   return stop;
 }
 
