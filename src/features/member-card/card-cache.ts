@@ -8,12 +8,7 @@ import { type CardToken, cardKept } from "./qr-state";
 export const CARD_CACHE = "moz-card-token";
 export const CARD_URL = "/api/me/member-qr";
 export const RECEIVED_HEADER = "x-moz-received-at";
-/**
- * The offline shell marks its `<main>` with this so the card guard leaves the cached card alone there (the shell
- * always renders signed out). Kept here, not in a "use client" file: a server page importing a value from one
- * gets a client reference, not the string.
- */
-export const OFFLINE_SHELL_ATTR = "data-offline-shell";
+export { OFFLINE_SHELL_ATTR } from "./offline-shell";
 
 /** The full payload as the route sends it (qr-state's CardToken plus the cache fields). */
 export type CardPayload = CardToken & { cacheUntil: number; owner: string };

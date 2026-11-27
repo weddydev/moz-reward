@@ -1,6 +1,5 @@
 "use client";
 
-import { CircleAlert } from "lucide-react";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -38,7 +37,7 @@ export function RouteError({
       className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-4 px-5 py-16 text-center"
     >
       <div role="alert" className="flex flex-col items-center gap-4">
-        <StateMark icon={CircleAlert} tone="danger" />
+        <StateMark icon="alert" tone="danger" />
         <h1 className="text-h1">Something went wrong</h1>
         <p className="text-body text-ink-2">
           Please try again. If it keeps happening, get in touch and we&apos;ll put it right.
