@@ -7,6 +7,7 @@ Baton: held by talha.syed since 2026-11-27 (resume)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
+- **Demo rehearsal fixes 27 Nov (human; `wip/demo-fixes` → main):** coins on every Button (destructive never; `/dev/molten` keeps the reference's quiet buttons quiet), every Overlay has its own FX canvas (sparks above pop-ups), reward rows/cards/celebration show the shop's logo, photos for Patel's and Glow (CC0, rawpixel), offline request retries + "Send now" (KI-88). DECISIONS 27 Nov ×2. Staging: deploy from main, then `seed-reset` again so the new shop photos land.
 - **P1 closed 27 Nov (human: "close it fast"; talha.syed, Mac).** On main: C-91 (human-accepted JS ceilings 161.5 / 193.3 / 219.0 KB), C-112, the iPhone14 CI fixes (KI-85), the celebration @fps loop fix (KI-87, scheduled 45988427357 timed out). Staging demo data reset 27 Nov 11:58 (`seed-reset staging: done`, as `talha@`; root login is off).
 - **With the human (not blocking P2 work; P2-16 can't tick while open):** H-55 Demo 2 walkthrough (C-49 demo half), H-54 side-by-side (C-92/93/94). Rows in CARRIED_LATER.
 - **Watch:** FOLLOWUPS P2-16: a 229 ms idle long task right after a celebration at 4× CPU (outside the moment's window); Lighthouse LCP flips under lantern (KI-86); the undone `getImageProps` trim.
@@ -16,7 +17,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **Current sub-phase:** none open: P2 starts with its brief review. **P1 closed 27 Nov** (P1-18 closed fast 27 Nov; P1-D, P1-C 26–27 Nov; P1-B 25 Nov). PD-C closed 25 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-27, talha.syed (P1 closed; P2 next)
+- **Last updated:** 2026-11-27, talha.syed (demo rehearsal fixes on main; P2 next)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -46,6 +47,7 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (27 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
+- Demo fixes: gate:task PASS (unit 2366/0, int 1908/0, build, sast); E2E redemption/point-requests/celebrations/ui-gallery/fx chromium+webkit+iphone14 118/0 (+1 KI-77 load flake, 3/3 alone); CI 46019463277 green (parity, perf); Wallet rail 1440 + redeem sheet 390 screenshots inspected.
 - P1 close: celebration @fps + @perf (FPS=1 PERF=1, chromium) 2/2 after KI-87 (each sample ends with the moment, ~3.9 s, was 12 s cap); staging `seed-reset staging: done` 11:58 + demo sign-in check ok; KI-87 spec fix CI 45995805698 green, on main; staging deployed `20252fb` (main CI 45994270566 green on re-run, C-106 flake).
 - P1 close (main): CI on rebased `3a87a43` 45992063576 green (f6ba211 45989769059 green); celebrations focus ×10 + skip ×10 green on CI iPhone14; overlay unit 43/0; E2E landing/shop-page/ui-states/member-card chromium+webkit+iphone14 107/0; Lighthouse JS 161.5 / 193.3 / 219.0 KB (accepted ceilings), LCP observed 0.15–0.2 s (lantern varies, KI-86).
 - P1 close (wip `d1bc003`): unit 321/0 (rewards + components/ui), E2E celebrations/redemption/vault/wallet/shop-page chromium+webkit+iphone14 113/0 + 15/0 + 3/0; receipt 320 screenshots inspected (words whole); Lighthouse: landing LCP 0.77–0.80 s ×6, JS 164.8 KB (fail), wallet 196.4 KB (fail), shop page LCP 1.06 s / JS 221.4 KB (fail). NOT VERIFIED: CI on `d1bc003`.

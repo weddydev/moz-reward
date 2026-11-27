@@ -1208,3 +1208,10 @@ Human: demo walkthrough is theirs (H-55), so it doesn't block the close; Claude 
 Scheduled 45988427357 red: celebration @fps timed out (30 s): reward card's infinite `m-flow` shimmer held the measuring loop to its 12 s cap ×3 (KI-87). Fix in the spec; @fps + @perf 2/2 locally. Found on the way: a 229 ms idle long task ~0.2 s after the moment (FOLLOWUPS P2-16).
 C-49 demo half → H-55, C-92/93/94 → H-54 (CARRIED_LATER, P2-16 can't tick while open). KI-87 spec fix on `wip/P1-close` `55f44ab` (CI 45995805698 running; lands on main after it is green).
 
+
+## 2026-11-27 — post-P1 — demo rehearsal fixes, talha.syed (Mac)
+Done: coins on every Button; per-Overlay FX canvas + particle hand-over (sparks above pop-ups); reward photos (shop logo) on cards/rows/celebration, narrow-rail reflow; Patel's + Glow photos (CC0 rawpixel); offline request retries on page show / Send now / 3-10-30 s backoff (KI-88). Staging demo reset 14:39.
+Commits: 2e98a2d, abe68b0, 64b72ec (wip/demo-fixes)
+Tests: gate:task PASS (unit 2366/0, int 1908/0); E2E 5 specs × 3 browsers 118/0 (+KI-77 load flake, 3/3 alone); CI 46019463277 green.
+Left off: P2 start (brief review of docs/phases/P2.md).
+Notes: after the deploy, run `seed-reset` on staging again so Patel's and Glow get their photos.
