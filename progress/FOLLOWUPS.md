@@ -125,3 +125,8 @@ _CLAUDE.md §4 findings policy: LOW findings and nits get one line here, are not
 - [P1-18, P1-D close code review LOW, 27 Nov] A code voided by leaving the shop tells staff "replaced by a newer one" (`redemptions.ts:198`): tell `void_reason='left'` apart (same not-recognised wording).
 - [P1-18, P1-D close code review LOW, 27 Nov] The three point_requests integrity checks each run the same keyset pass (`repos/integrity.ts`): one pass that sorts each row into all three.
 - [P1-18, P1-D close code review LOW, 27 Nov] `public/sw.js:19` casts `self` to `any`: `/** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self))`.
+- [P1-18, P1-D close QA MINOR 3, 27 Nov] Two tabs: tab A keeps a voided code live (ring counting) after tab B's Redeem: `createRedemptionCode` voids the old code without a realtime hint; publish one (or re-check status on `visibilitychange`).
+- [P1-18, P1-D close QA MINOR 4, 27 Nov] Session expired mid-action: Redeem and staff Confirm say "Please sign in to continue." with no way on: add a Sign in link with a return path.
+- [P1-18, P1-D close QA MINOR 5, 27 Nov] Slow 3G: Redeem in a rewards list gives no feedback for 4–5 s while the sheet's chunk loads: preload `RedeemSheet` when the list is visible/idle, or show the row busy.
+- [P1-18, P1-D close QA MINOR 6, 27 Nov] Receipt card at 320: a long shop name breaks mid-word with no hyphen: `hyphens: auto` on the receipt title (the shop header already does).
+- [P1-18, P1-D close QA MINOR 7, 27 Nov] After the celebration's Done/Escape, focus lands on `<body>`: return it to the page's main heading (or the opener).

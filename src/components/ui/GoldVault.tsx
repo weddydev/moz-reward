@@ -33,6 +33,7 @@ export function GoldVault({
   onFull,
   onLanded,
   reward,
+  rewardPlaceholder,
   children,
   parity,
   parityReward,
@@ -58,6 +59,12 @@ export function GoldVault({
   /** Each time a pour lands, with the gold it shows. */
   onLanded?: (gold: number) => void;
   reward?: ReactNode;
+  /**
+   * Holds the reward card's place, hidden and inert, until `unlocked` (P1-D close QA: in a bottom sheet the card
+   * chaining in 2.4 s after opening grew the sheet upwards, a layout shift with no input, CLS 0.2 at 390). A still
+   * copy of the card: same size, no motion, nothing focusable.
+   */
+  rewardPlaceholder?: ReactNode;
   children?: ReactNode;
   /** `data-parity` names for /dev/molten (the vault, and the reward card's slot). */
   parity?: string;
@@ -135,6 +142,15 @@ export function GoldVault({
       {unlocked && reward ? (
         <div className="m-reward" data-parity={parityReward}>
           {reward}
+        </div>
+      ) : rewardPlaceholder ? (
+        <div
+          className="m-reward invisible"
+          aria-hidden="true"
+          inert
+          data-testid="reward-placeholder"
+        >
+          {rewardPlaceholder}
         </div>
       ) : null}
       <GildedEdge />

@@ -71,6 +71,11 @@ export default function CelebrationMoment({
   // A fill pours to the top and stays there, lifted, with the reward: the next ingot's level is in the text.
   const target = filled ? ingot.size : Math.min(ingot.size, ingot.to);
   const reward = moment.rewards.find((r) => r.kind === "main") ?? moment.rewards[0] ?? null;
+  const rewardDetail = reward
+    ? moment.rewards.length > 1
+      ? `${reward.label} and ${String(moment.rewards.length - 1)} more · ${shop.name}`
+      : `${reward.label} · ${shop.name}`
+    : "";
 
   const [open, setOpen] = useState(true);
   const [gold, setGold] = useState(Math.min(ingot.size, ingot.from));
@@ -267,16 +272,27 @@ export default function CelebrationMoment({
           onLanded={(g) => {
             if (g >= target) unlock();
           }}
+          rewardPlaceholder={
+            reward ? (
+              <RewardUnlocked
+                celebrate={false}
+                detail={rewardDetail}
+                imageUrl={null}
+                testId="reward-card-placeholder"
+              >
+                {/* The Redeem slot's idle height (a 46 px button in `.m-code`). */}
+                <div className="m-code">
+                  <span className="block h-[46px]" />
+                </div>
+              </RewardUnlocked>
+            ) : null
+          }
           reward={
             reward ? (
               <RewardUnlocked
                 // Skipped before it arrived: the card simply shows, without the flip and the leaves.
                 celebrate={skipKey === 0}
-                detail={
-                  moment.rewards.length > 1
-                    ? `${reward.label} and ${String(moment.rewards.length - 1)} more · ${shop.name}`
-                    : `${reward.label} · ${shop.name}`
-                }
+                detail={rewardDetail}
                 imageUrl={null}
               >
                 {/* C-108: Redeem right here opens the same redeem flow as the Wallet and the Vault. */}

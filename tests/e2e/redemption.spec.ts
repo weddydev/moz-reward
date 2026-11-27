@@ -368,4 +368,50 @@ test.describe("redeem by keyboard, and with no connection", () => {
     await expect(page.getByTestId("redeem-confirm-submit")).toBeEnabled();
     await expect(field).toHaveValue("K7Q42M");
   });
+
+  test("[J3][P1-16] an expired code offers New code, readable on the obsidian card (axe), and it gives another code", async ({
+    page,
+    signInAs,
+  }) => {
+    // P1-D close QA MAJOR: the ghost "New code" was ink on obsidian (1.05:1). The guard's axe pass at the end of
+    // the test checks the expired state's contrast.
+    test.setTimeout(90_000);
+    await page.clock.install();
+    const me = await signInAs("customer");
+    const { shopId } = await seedReward(page.request, me.userId);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/vault/${shopId}`);
+    await page
+      .getByTestId("vault-rewards")
+      .getByTestId("reward-ready")
+      .first()
+      .getByTestId("reward-redeem")
+      .click();
+    const sheet = page.getByTestId("redeem-sheet");
+    await sheet.getByTestId("redeem-button").click();
+    const first = await shownCode(page);
+    await page.clock.fastForward("15:05");
+    const again = sheet.getByTestId("redeem-new-code");
+    await expect(again).toBeVisible();
+    await expect(sheet.getByRole("timer")).toHaveAttribute("aria-label", "Code expired");
+    const contrast = await again.evaluate((el) => {
+      const lum = (c: string): number => {
+        const [r, g, b] = (c.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map((v) => {
+          const x = Number(v) / 255;
+          return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
+      };
+      const fg = lum(getComputedStyle(el).color);
+      const bg = lum(
+        getComputedStyle(el.closest(".m-reward-card") ?? document.body).backgroundColor,
+      );
+      return (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
+    });
+    expect(contrast, "New code on the obsidian card").toBeGreaterThanOrEqual(4.5);
+    await again.click();
+    await page.clock.runFor(1_000);
+    const second = await shownCode(page);
+    expect(second).not.toBe(first);
+  });
 });

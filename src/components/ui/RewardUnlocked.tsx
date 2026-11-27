@@ -19,6 +19,7 @@ export function RewardUnlocked({
   detail,
   imageUrl,
   celebrate = false,
+  testId = "reward-card",
   toastText,
   unoptimized = false,
   children,
@@ -27,6 +28,8 @@ export function RewardUnlocked({
   detail: string;
   imageUrl: string | null;
   celebrate?: boolean;
+  /** A still placeholder copy names itself apart (the celebration's reserved slot, P1-D close). */
+  testId?: string;
   /** The toast when it arrives ("Reward unlocked: free coffee & cake"). */
   toastText?: string;
   unoptimized?: boolean;
@@ -61,7 +64,7 @@ export function RewardUnlocked({
   }, []);
 
   return (
-    <div className="m-reward-card" ref={card} data-testid="reward-card">
+    <div className="m-reward-card" ref={card} data-testid={testId}>
       <div className="m-r-left">
         {imageUrl ? (
           <ShopImage src={imageUrl} size={56} className="m-r-img" unoptimized={unoptimized} eager />

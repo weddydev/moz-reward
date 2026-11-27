@@ -219,6 +219,51 @@ test("[P1-15] a filled ingot chains into the reward unlocked; reward chime state
   }
 });
 
+test("[P1-15] the reward card chaining in moves nothing: its place is held from the start (CLS ≤ 0.05)", async ({
+  page,
+  signInAs,
+  browserName,
+}) => {
+  // P1-D close QA MAJOR: in the bottom sheet the card arriving 2.4 s after opening grew it upwards with no input
+  // (CLS 0.215 at 390). The layout-shift API is Chromium's only.
+  test.skip(browserName !== "chromium", "layout-shift entries are Chromium-only");
+  test.setTimeout(60_000);
+  await page.addInitScript(() => {
+    const w = window as unknown as { __cls: number };
+    w.__cls = 0;
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries() as (PerformanceEntry & {
+        value: number;
+        hadRecentInput: boolean;
+      })[])
+        if (!e.hadRecentInput) w.__cls += e.value;
+    }).observe({ type: "layout-shift", buffered: true });
+  });
+  const me = await signInAs("customer");
+  await seedShop(page.request, me.userId, { progressGold: 950, visits: 1, celebrate: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/wallet");
+  const m = moment(page);
+  await expect(m).toBeVisible({ timeout: SERVER_MS });
+  const before = await page.evaluate(() => (window as unknown as { __cls: number }).__cls);
+  await expect(m).toHaveAttribute("data-state", "unlocked", { timeout: 8_000 });
+  const card = m.getByTestId("reward-card");
+  await expect(card).toContainText("Your reward is ready");
+  await expect(m.getByTestId("reward-card-placeholder")).toHaveCount(0);
+  await expect
+    .poll(() =>
+      card.evaluate((el) =>
+        el
+          .getAnimations({ subtree: true })
+          .every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity),
+      ),
+    )
+    .toBe(true);
+  const during =
+    (await page.evaluate(() => (window as unknown as { __cls: number }).__cls)) - before;
+  expect(during, "layout shift while the moment played").toBeLessThanOrEqual(0.05);
+});
+
 test("[P1-15] a tap skips to the end state at once", async ({ page }) => {
   await page.goto("/dev/motion");
   await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");

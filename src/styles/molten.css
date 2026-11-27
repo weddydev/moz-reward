@@ -3048,6 +3048,11 @@ html:root.rm .m-cover > .m-cover-back {
   color: var(--on-obsidian-2);
   font-weight: 600;
 }
+/* P1-16: "New code" (a ghost button) on the obsidian card: the ghost's ink would be 1.05:1 there (P1-D close QA,
+   axe color-contrast); the card's gold-light, as its title. */
+.m-reward-card .m-btn-ghost {
+  color: var(--gold-light);
+}
 /* P1-16: a refused or failed Redeem reads as an alert, not as the muted note (design review M3, P1-D close). */
 .m-reward-card .m-redeem-note[role="alert"] {
   color: var(--gold-light);
