@@ -33,7 +33,8 @@ export const SWEEPS = {
     everySec: 86_400,
     graceSec: 2 * 3_600,
     maxRunSec: 15 * 60,
-    audit: { entity: "integrity_issues", changes: ["newIssues"] },
+    // A run that only resolves issues changed rows too (P1-D close review).
+    audit: { entity: "integrity_issues", changes: ["newIssues", "resolved"] },
   },
   /** P1-11: every 5 minutes. */
   "requests-expire": {

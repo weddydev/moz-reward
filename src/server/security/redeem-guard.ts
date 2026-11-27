@@ -13,8 +13,8 @@ import type { Redis } from "ioredis";
  * 1,000,000. One attempt against a shop with L live codes hits with probability L / 30^6, so the guard keeps, per
  * shop, the sum of each attempt's weight w = max(L, 1) + 1 over a sliding 24 h within `REDEEM.shopGuessBudget`
  * (700 < 729 = 1e-6 × 30^6; union bound). The +1 covers a code made between the count and the lookup, and the
- * floor of 1 makes every wrong code count even when nothing is live. Per team member: after 5 attempts a lock of
- * 1 min doubling to 1 h, and at most a third of the shop's budget, so one person can't use up the shop's day
+ * floor of 1 makes every wrong code count even when nothing is live. Per team member: after 5 attempts that were
+ * not right within 24 h, a lock of 1 min doubling to 1 h (counted from the latest; correct confirms don't count), and at most a third of the shop's budget, so one person can't use up the shop's day
  * (insider DoS; the owner is told when the shop's budget runs out).
  *
  * Every attempt is reserved before the lookup, in one Lua script (lock check, both budgets, reservation), on
@@ -49,9 +49,12 @@ export class RedeemGuardUnavailable extends Error {
   }
 }
 
-// KEYS[1] staff hash {count,last}, KEYS[2] staff zset, KEYS[3] shop zset, KEYS[4] shop "told the owner" flag.
-// zset members are "<uuid>:<weight>", scored by time. ARGV: now ('' = Redis TIME), weight, budget, share,
-// lockAfter, baseMs, maxMs, windowMs, uuid. Returns {decision, retryMs, first}.
+// KEYS[1] staff zset, KEYS[2] shop zset, KEYS[3] shop "told the owner" flag. zset members are "<uuid>:<weight>",
+// scored by time; a committed confirm removes its member, so the staff zset holds exactly the attempts that were
+// not right (or are in flight) in the last 24 h. The lock counts those: after `lockAfter`, locked until the latest
+// one + min(max, base × 2^(n − lockAfter)). A correct confirm never moves the lock (code review M6, P1-D close).
+// ARGV: now ('' = Redis TIME), weight, budget, share, lockAfter, baseMs, maxMs, windowMs, uuid.
+// Returns {decision, retryMs, first}.
 const RESERVE = `
 local now = tonumber(ARGV[1])
 if not now then
@@ -65,10 +68,11 @@ local after = tonumber(ARGV[5])
 local base = tonumber(ARGV[6])
 local maxMs = tonumber(ARGV[7])
 local window = tonumber(ARGV[8])
-local v = redis.call('HMGET', KEYS[1], 'count', 'last')
-local count = tonumber(v[1]) or 0
+redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now - window)
+local count = redis.call('ZCARD', KEYS[1])
 if count >= after then
-  local untilMs = (tonumber(v[2]) or 0) + math.min(maxMs, base * 2 ^ (count - after))
+  local latest = tonumber(redis.call('ZRANGE', KEYS[1], -1, -1, 'WITHSCORES')[2]) or 0
+  local untilMs = latest + math.min(maxMs, base * 2 ^ (count - after))
   if now < untilMs then return {'staff_locked', untilMs - now, 0} end
 end
 local function total(key)
@@ -83,32 +87,28 @@ local function freesIn(key)
   local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')[2]
   return oldest and (tonumber(oldest) + window - now) or window
 end
-if total(KEYS[3]) + w > budget then
-  local first = redis.call('SET', KEYS[4], '1', 'NX', 'PX', window) and 1 or 0
-  return {'shop_exhausted', freesIn(KEYS[3]), first}
+if total(KEYS[2]) + w > budget then
+  local first = redis.call('SET', KEYS[3], '1', 'NX', 'PX', window) and 1 or 0
+  return {'shop_exhausted', freesIn(KEYS[2]), first}
 end
-if total(KEYS[2]) + w > share then return {'staff_share', freesIn(KEYS[2]), 0} end
+if total(KEYS[1]) + w > share then return {'staff_share', freesIn(KEYS[1]), 0} end
 local member = ARGV[9] .. ':' .. ARGV[2]
-redis.call('ZADD', KEYS[3], now, member)
 redis.call('ZADD', KEYS[2], now, member)
-redis.call('HINCRBY', KEYS[1], 'count', 1)
-redis.call('HSET', KEYS[1], 'last', now)
-for i = 1, 3 do redis.call('PEXPIRE', KEYS[i], window) end
+redis.call('ZADD', KEYS[1], now, member)
+for i = 1, 2 do redis.call('PEXPIRE', KEYS[i], window) end
 return {'ok', 0, 0}
 `;
 
-// A committed confirm: drop its weight from both budgets and give back its lock count (never below zero).
+// A committed confirm: drop its weight from both budgets, which also takes it out of the lock count.
 const RELEASE = `
+redis.call('ZREM', KEYS[1], ARGV[1])
 redis.call('ZREM', KEYS[2], ARGV[1])
-redis.call('ZREM', KEYS[3], ARGV[1])
-if (tonumber(redis.call('HGET', KEYS[1], 'count')) or 0) > 0 then redis.call('HINCRBY', KEYS[1], 'count', -1) end
 return 1
 `;
 
 const keysFor = (shopId: string, staffId: string): string[] => {
   const p = `${env().REDIS_KEY_PREFIX}redeem:`;
   return [
-    `${p}staff:${shopId}:${staffId}:lock`,
     `${p}staff:${shopId}:${staffId}:spent`,
     `${p}shop:${shopId}:spent`,
     `${p}shop:${shopId}:told`,
@@ -159,7 +159,7 @@ export async function reserveRedeemAttempt(opts: {
     default:
       return {
         kind: "reserved",
-        reservation: { keys: keys.slice(0, 3), member: `${id}:${String(weight)}` },
+        reservation: { keys: keys.slice(0, 2), member: `${id}:${String(weight)}` },
       };
   }
 }

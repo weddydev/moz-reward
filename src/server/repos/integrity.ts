@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, gt, inArray, isNull, notInArray, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 import type { ProgrammeVersion } from "@/lib/loyalty/programme";
 import type { LedgerRowForReplay } from "@/lib/loyalty/replay";
 import type { SystemScope } from "@/server/authz/scope";
@@ -10,12 +10,13 @@ import {
   loyaltyPrograms,
   memberships,
 } from "@/server/db/schema";
-import { withScope } from "./_base";
+import { readSnapshot, transaction, withScope } from "./_base";
 import { toVersion } from "./loyalty";
 
 /**
  * P1-17 data-integrity reconciliation reads and the issue table (TESTING §10; ARCHITECTURE §4, §6). Read-only on
- * the business tables: these statements never change a membership, ledger, receipt or reward. Every sweep pages
+ * the business tables: every check page runs in `readSnapshot` (one REPEATABLE READ, READ ONLY transaction), so
+ * a membership and its ledger are read from one snapshot and the database refuses any write. Every sweep pages
  * by key (`id > $last ORDER BY id LIMIT n`), never OFFSET, under the worker role (SystemScope).
  */
 
@@ -48,7 +49,8 @@ export async function counterPage(
   after: string,
   limit: number,
 ): Promise<CounterPage> {
-  return withScope(scope, async (q) => {
+  // One snapshot: an approval committing between the two reads would otherwise look like a counter mismatch.
+  return readSnapshot(scope, async (q) => {
     const members = await q
       .select({
         id: memberships.id,
@@ -117,7 +119,7 @@ export async function receiptNumberIssues(
   after: string,
   limit: number,
 ): Promise<{ issues: FoundIssue[]; last: string | null }> {
-  return withScope(scope, async (q) => {
+  return readSnapshot(scope, async (q) => {
     const res = await q.execute(sql`
       WITH page AS (
         SELECT DISTINCT shop_id FROM receipts WHERE shop_id > ${after}::uuid ORDER BY shop_id LIMIT ${limit}
@@ -164,13 +166,15 @@ export async function rowIssues(
   after: string,
   limit: number,
 ): Promise<{ issues: FoundIssue[]; last: string | null }> {
-  return withScope(scope, async (q) => {
+  return readSnapshot(scope, async (q) => {
     const page = (driving: ReturnType<typeof sql>) => q.execute(driving);
     let res: unknown;
     let entity: string;
     switch (check) {
       case "reward_redeemed_twice":
         entity = "rewards";
+        // The redeem count goes through the partial index on `ref->>'rewardId'` (drizzle/concurrent/0036): one
+        // index probe per reward, not a ledger scan per reward (P1-D close review HIGH).
         res = await page(sql`
           WITH page AS (SELECT id, shop_id FROM rewards WHERE id > ${after}::uuid ORDER BY id LIMIT ${limit})
           SELECT p.id, p.shop_id, (SELECT count(*) FROM redemption_codes c WHERE c.reward_id = p.id
@@ -181,9 +185,10 @@ export async function rowIssues(
         break;
       case "redeem_not_zero":
         entity = "ledger_entries";
+        // Only the bad rows come back: a healthy ledger is one pass with an empty page.
         res = await page(sql`
-          SELECT id, shop_id, points, (type = 'redeem' AND points <> 0) AS bad
-            FROM ledger_entries WHERE id > ${after}::uuid ORDER BY id LIMIT ${limit}`);
+          SELECT id, shop_id, points, true AS bad FROM ledger_entries
+           WHERE id > ${after}::uuid AND type = 'redeem' AND points <> 0 ORDER BY id LIMIT ${limit}`);
         break;
       case "request_approved_twice":
       case "approved_without_ledger":
@@ -231,51 +236,68 @@ export async function rowIssues(
   });
 }
 
+/** Rows per upsert statement: 5 parameters each, far below Postgres's 65,535 bind parameters. */
+const RECORD_BATCH = 1_000;
+
 /**
- * Records a run's findings for one check: a new issue gets a row; one still open keeps its `detected_at` (only
- * `last_seen_at` and the numbers move); an open issue of this check the run no longer found is resolved.
- * Returns the issues that are new (for the alert).
+ * Records a run's findings for one check, in one transaction: a new issue gets a row; one still open keeps its
+ * `detected_at` (only `last_seen_at` and the numbers move); an open issue of this check the run no longer found
+ * is resolved. Upserts go in batches and every row they touch gets `last_seen_at = now()` (the transaction's
+ * start), so "no longer found" is `last_seen_at < now()`: no list of ids, whatever the count (P1-D close review).
+ * Returns the issues that are new (for the alert) and how many were resolved (for the sweep's audit row).
  */
 export async function recordIssues(
   scope: SystemScope,
   check: IntegrityCheck,
   found: readonly FoundIssue[],
-): Promise<FoundIssue[]> {
-  return withScope(scope, async (q) => {
+): Promise<{ fresh: FoundIssue[]; resolved: number }> {
+  // One row per entity: a statement may not upsert the same row twice.
+  const unique = [...new Map(found.map((f) => [f.entityId, f])).values()];
+  // A real transaction (the system scope's withScope would run each statement on its own): `now()` must be the
+  // same instant for the upserts and the resolve.
+  return transaction(scope, async (q) => {
     const fresh: FoundIssue[] = [];
-    for (const f of found) {
-      const [row] = await q
+    for (let i = 0; i < unique.length; i += RECORD_BATCH) {
+      const batch = unique.slice(i, i + RECORD_BATCH);
+      const rows = await q
         .insert(integrityIssues)
-        .values({
-          check: f.check,
-          entity: f.entity,
-          entityId: f.entityId,
-          shopId: f.shopId,
-          details: f.details,
-        })
+        .values(
+          batch.map((f) => ({
+            check: f.check,
+            entity: f.entity,
+            entityId: f.entityId,
+            shopId: f.shopId,
+            details: f.details,
+          })),
+        )
         .onConflictDoUpdate({
           target: [integrityIssues.check, integrityIssues.entityId],
           targetWhere: isNull(integrityIssues.resolvedAt),
-          set: { lastSeenAt: sql`now()`, details: f.details },
+          set: { lastSeenAt: sql`now()`, details: sql`excluded.details` },
         })
         .returning({
+          entityId: integrityIssues.entityId,
           detectedAt: integrityIssues.detectedAt,
           lastSeenAt: integrityIssues.lastSeenAt,
         });
-      if (row && row.detectedAt.getTime() === row.lastSeenAt.getTime()) fresh.push(f);
+      const byId = new Map(batch.map((f) => [f.entityId, f]));
+      for (const row of rows) {
+        const f = byId.get(row.entityId);
+        if (f && row.detectedAt.getTime() === row.lastSeenAt.getTime()) fresh.push(f);
+      }
     }
-    const stillOpen = found.map((f) => f.entityId);
-    await q
+    const resolved = await q
       .update(integrityIssues)
       .set({ resolvedAt: sql`now()` })
       .where(
         and(
           eq(integrityIssues.check, check),
           isNull(integrityIssues.resolvedAt),
-          stillOpen.length > 0 ? notInArray(integrityIssues.entityId, stillOpen) : undefined,
+          lt(integrityIssues.lastSeenAt, sql`now()`),
         ),
-      );
-    return fresh;
+      )
+      .returning({ id: integrityIssues.id });
+    return { fresh, resolved: resolved.length };
   });
 }
 

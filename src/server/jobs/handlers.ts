@@ -115,7 +115,8 @@ export const HANDLERS: Handlers = {
       // Only an admin owner may start a run (the action checked it; this re-checks the queued scope).
       if (scope.kind !== "admin" || scope.role !== "owner")
         throw new Error("integrity-check-requested: not an admin owner's request");
-      await runIntegrityCheck(JOBS_SCOPE);
+      // The same timed sweep as the nightly run: its heartbeat, its runtime alarm and its system.sweep audit row.
+      await timedSweep("integrity-check", () => runIntegrityCheck(JOBS_SCOPE));
     },
   },
 };

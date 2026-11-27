@@ -214,7 +214,7 @@ test("[J3][P1-16] Wallet at 1440: rewards ready with Redeem; a second code voids
     await member.page.setViewportSize({ width: 1440, height: 900 });
     await member.page.goto("/wallet");
     const ready = member.page.getByTestId("wallet-rewards-ready");
-    await expect(ready).toContainText("Rewards ready (4)");
+    await expect(ready.getByRole("heading")).toHaveText("Rewards ready");
     const rows = ready.getByTestId("reward-ready");
     await expect(rows).toHaveCount(4);
     await expect(rows.first()).toContainText(SHOP);
@@ -296,4 +296,76 @@ test("[J3][P1-16] the celebration's reward card carries Redeem and shows the cod
     .toBe(true);
   await noHorizontalScroll(page);
   await shoot("celebration-redeem-390", { fullPage: false });
+});
+
+test.describe("redeem by keyboard, and with no connection", () => {
+  // The aborted Redeem round trip is the point of this test (the guard still fails on anything else).
+  test.use({
+    // One pattern: a two-item array would read as Playwright's [value, options] fixture form.
+    guardAllow: [
+      /^(requestfailed: POST http:\/\/localhost:\d+\/(vault\/[0-9a-f-]{36}|dashboard\/requests) |console: Failed to load resource: net::ERR_INTERNET_DISCONNECTED$)/,
+    ],
+  });
+
+  test("[J3][P1-16] Redeem by keyboard keeps focus in the card and says the code; no connection offers a retry", async ({
+    page,
+    signInAs,
+  }) => {
+    // Design review HIGH + code review M5 (P1-D close): the pressed button is replaced by the code, so focus
+    // moves to it and one live region says it; a failed round trip is an error with Redeem again, not a spinner.
+    test.setTimeout(90_000);
+    const me = await signInAs("customer");
+    const { shopId } = await seedReward(page.request, me.userId);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/vault/${shopId}`);
+    const list = page.getByTestId("vault-rewards").getByTestId("reward-ready");
+    await expect(list).toHaveCount(4);
+    await list.first().getByTestId("reward-redeem").click();
+    const sheet = page.getByTestId("redeem-sheet");
+    await expect(sheet).toBeVisible();
+    await page.route(`**/vault/${shopId}`, (route) =>
+      route.request().method() === "POST" && route.request().headers()["next-action"]
+        ? route.abort("internetdisconnected")
+        : route.fallback(),
+    );
+    const redeem = sheet.getByTestId("redeem-button");
+    await redeem.focus();
+    await page.keyboard.press("Enter");
+    await expect(sheet.getByTestId("redeem-error")).toHaveText("No connection. Try again.", {
+      timeout: SERVER_MS,
+    });
+    await expect(redeem).toBeEnabled();
+    await expect(redeem).toBeFocused();
+    await page.unrouteAll({ behavior: "wait" });
+    await page.keyboard.press("Enter");
+    const code = await shownCode(page);
+    await expect(sheet.getByTestId("redeem-flow").locator("[data-focus-target]")).toBeFocused();
+    await expect(sheet.getByTestId("redeem-live")).toHaveText(
+      `Your code is ${code.split("").join(" ")}. Show it at the till. It works once.`,
+    );
+  });
+
+  test("[J3][P1-16] staff Confirm with no connection says so and keeps the code to try again", async ({
+    page,
+    signInAs,
+  }) => {
+    test.setTimeout(90_000);
+    const me = await signInAs("customer");
+    const { shopId } = await seedReward(page.request, me.userId);
+    await signInAs("staff", { shopId });
+    await page.goto("/dashboard/requests");
+    await expect(page.getByTestId("redeem-confirm")).toBeVisible();
+    await page.route("**/dashboard/requests", (route) =>
+      route.request().method() === "POST" && route.request().headers()["next-action"]
+        ? route.abort("internetdisconnected")
+        : route.fallback(),
+    );
+    await confirm(page, "K7Q42M");
+    const field = page.getByTestId("redeem-confirm-code");
+    await expect(page.getByTestId("redeem-confirm")).toContainText("No connection. Try again.", {
+      timeout: SERVER_MS,
+    });
+    await expect(page.getByTestId("redeem-confirm-submit")).toBeEnabled();
+    await expect(field).toHaveValue("K7Q42M");
+  });
 });

@@ -3048,6 +3048,11 @@ html:root.rm .m-cover > .m-cover-back {
   color: var(--on-obsidian-2);
   font-weight: 600;
 }
+/* P1-16: a refused or failed Redeem reads as an alert, not as the muted note (design review M3, P1-D close). */
+.m-reward-card .m-redeem-note[role="alert"] {
+  color: var(--gold-light);
+  font-size: 14px;
+}
 /* P1-16: the shop confirmed the code (the redeem slot's last state). */
 .m-reward-card .m-redeem-done {
   margin: 0;
@@ -3087,6 +3092,10 @@ html:root.rm .m-cover > .m-cover-back {
 @media (max-width: 339px) {
   .m-digits {
     gap: 2px;
+  }
+  /* The ring wraps under the digits: centred, like the note below it (design review LOW, P1-D close). */
+  .m-code {
+    justify-content: center;
   }
 }
 .m-digits span {

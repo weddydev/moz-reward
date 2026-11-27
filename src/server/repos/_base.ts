@@ -115,6 +115,18 @@ export async function withScope<T>(
 }
 
 /**
+ * A system sweep's consistent read (P1-17; P1-D close review): one `REPEATABLE READ, READ ONLY` transaction, so
+ * every statement inside sees the same snapshot (a commit between two reads can't make them disagree) and the
+ * database itself refuses any write (SQLSTATE 25006), not only the code's convention.
+ */
+export function readSnapshot<T>(scope: SystemScope, fn: (q: Executor) => Promise<T>): Promise<T> {
+  return dbAs(roleFor(scope)).transaction((tx) => fn(tx), {
+    isolationLevel: "repeatable read",
+    accessMode: "read only",
+  });
+}
+
+/**
  * Cross-shop admin read (SECURITY §3): runs `fn` under the admin scope (RLS `app_is_admin()` checks an active
  * admin_members row) and writes one `admin.read` audit row in the same transaction, so a read that returns
  * data is always on record. Admin repositories read other shops' rows only through this.

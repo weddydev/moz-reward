@@ -97,7 +97,8 @@ export function WalletPage({
             <Card className="flex flex-col gap-2 p-5" data-testid="wallet-rewards-ready">
               <h2 className="text-h3 flex items-center gap-2">
                 <Icon icon={Gift} className="text-gold-deep" />
-                Rewards ready ({summary.rewardsReady})
+                {/* No count here: the summary tile above already says how many (design review M1, P1-D close). */}
+                Rewards ready
               </h2>
               {rewards.length === 0 ? (
                 <p className="text-small text-ink-2">

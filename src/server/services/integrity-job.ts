@@ -34,7 +34,11 @@ import type { Redis } from "ioredis";
  * missed run.
  */
 export const INTEGRITY_BATCH = { members: 500, rows: 2_000 } as const;
-/** The lock outlives any healthy run (the sweep alarm is at 15 min) and frees itself if a worker dies. */
+/**
+ * The lock outlives any healthy run (the sweep alarm is at 15 min) and frees itself if a worker dies. The run
+ * renews it after each check; a run whose lock lapsed and was taken stops before it records anything, so two
+ * runs never resolve each other's issues (P1-D close review).
+ */
 const LOCK_MS = 30 * 60_000;
 
 export type IntegrityRun = {
@@ -42,6 +46,8 @@ export type IntegrityRun = {
   checkedMemberships: number;
   issues: number;
   newIssues: number;
+  /** Open issues this run no longer found (the sweep's audit counts these too). */
+  resolved: number;
 };
 
 const ROW_CHECKS = [
@@ -54,6 +60,7 @@ const ROW_CHECKS = [
 
 const lockKey = (): string => `${env().REDIS_KEY_PREFIX}lock:integrity-check`;
 const RELEASE = `if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0`;
+const RENEW = `if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('PEXPIRE', KEYS[1], ARGV[2]) end return 0`;
 
 async function counterIssues(
   scope: SystemScope,
@@ -133,32 +140,48 @@ export async function runIntegrityCheck(
   const got = await redis.set(lockKey(), token, "PX", LOCK_MS, "NX");
   if (got !== "OK") {
     log().info({ job: "integrity-check" }, "integrity check skipped: another run is in progress");
-    return { skipped: true, checkedMemberships: 0, issues: 0, newIssues: 0 };
+    return { skipped: true, checkedMemberships: 0, issues: 0, newIssues: 0, resolved: 0 };
   }
+  const renew = async (): Promise<void> => {
+    if (Number(await redis.eval(RENEW, 1, lockKey(), token, LOCK_MS)) !== 1)
+      throw new Error("integrity check lock lost: another run may hold it; nothing recorded");
+  };
   try {
     const found = new Map<IntegrityCheck, FoundIssue[]>();
     const counters = await counterIssues(scope, batch.members);
     found.set("membership_counters", counters.issues);
+    await renew();
     found.set(
       "receipt_numbers",
       await pagedIssues((after) => receiptNumberIssues(scope, after, batch.rows)),
     );
-    for (const check of ROW_CHECKS)
+    for (const check of ROW_CHECKS) {
+      await renew();
       found.set(check, await pagedIssues((after) => rowIssues(scope, check, after, batch.rows)));
+    }
 
     let total = 0;
+    let resolved = 0;
     const fresh: Record<string, number> = {};
     for (const [check, issues] of found) {
+      await renew();
       total += issues.length;
-      const added = await recordIssues(scope, check, issues);
-      if (added.length > 0) fresh[check] = added.length;
+      const recorded = await recordIssues(scope, check, issues);
+      resolved += recorded.resolved;
+      if (recorded.fresh.length > 0) fresh[check] = recorded.fresh.length;
     }
     const newIssues = Object.values(fresh).reduce((a, b) => a + b, 0);
     if (newIssues > 0) {
       opsAlert("integrity.issue", { new: newIssues, open: total, ...fresh });
       captureIntegrityIssues(fresh);
     }
-    return { skipped: false, checkedMemberships: counters.checked, issues: total, newIssues };
+    return {
+      skipped: false,
+      checkedMemberships: counters.checked,
+      issues: total,
+      newIssues,
+      resolved,
+    };
   } finally {
     await redis.eval(RELEASE, 1, lockKey(), token).catch((err: unknown) => {
       log().error({ err }, "integrity check lock release failed");

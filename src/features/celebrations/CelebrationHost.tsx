@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Component, lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { Celebration } from "@/lib/celebration";
 
 /** The moment itself is its own chunk, fetched only when there is one to play (DESIGN §7, §12). */
@@ -17,6 +17,48 @@ export function preloadCelebration(): void {
   };
   if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(load);
   else window.setTimeout(load, 1_000);
+}
+
+/**
+ * The chunk, loaded at an idle moment before the first claim (a module that failed to load is asked for again
+ * at the next claim). The server marks an approval seen as it hands it out, so the host claims only what it can
+ * play: a chunk a deploy removed leaves the approval unseen for the next open (code review M4, P1-D close).
+ */
+let ready: Promise<unknown> | null = null;
+function momentReady(): Promise<unknown> {
+  ready ??= new Promise<void>((resolve) => {
+    if (typeof window.requestIdleCallback === "function")
+      window.requestIdleCallback(
+        () => {
+          resolve();
+        },
+        { timeout: 1_000 },
+      );
+    else window.setTimeout(resolve, 200);
+  })
+    .then(loadMoment)
+    .catch((err: unknown) => {
+      ready = null;
+      throw err;
+    });
+  return ready;
+}
+
+/** A moment that throws ends quietly: the Wallet already shows the gold; the layout must not go down with it. */
+class MomentBoundary extends Component<
+  { onError: () => void; children: React.ReactNode },
+  { failed: boolean }
+> {
+  override state = { failed: false };
+  static getDerivedStateFromError(): { failed: boolean } {
+    return { failed: true };
+  }
+  override componentDidCatch(): void {
+    this.props.onError();
+  }
+  override render(): React.ReactNode {
+    return this.state.failed ? null : this.props.children;
+  }
 }
 
 /** One claim (`POST /api/me/celebration`): the moment, or null (none, signed out, refused, offline). */
@@ -43,7 +85,8 @@ export const requestCelebrationClaim = (): void => {
 
 /**
  * Plays the customer's "points credited" moments (P1-15, DESIGN §8.2). Claims when the app opens and whenever
- * the stream hints that gold arrived (or reconnects after missing events). The server marks an approval seen as
+ * the stream hints that gold arrived (or reconnects after missing events), once the moment's chunk is loaded
+ * (`momentReady`). The server marks an approval seen as
  * it hands it out, so it plays once, in one tab. One claim at a time and one moment at a time: a hint while
  * either is in flight is remembered and claimed once that ends. A failed claim (offline, rate-limited) waits for
  * the next hint; the Wallet already shows the gold.
@@ -69,6 +112,7 @@ export function CelebrationHost(): React.JSX.Element {
       busy = true;
       again.current = false;
       try {
+        await momentReady();
         const data = await claimOnce();
         if (alive && data) {
           showing.current = true;
@@ -87,7 +131,6 @@ export function CelebrationHost(): React.JSX.Element {
     };
     claimRef.current = onHint;
     onHint();
-    preloadCelebration();
     window.addEventListener(CLAIM_EVENT, onHint);
     return () => {
       alive = false;
@@ -95,21 +138,21 @@ export function CelebrationHost(): React.JSX.Element {
     };
   }, []);
 
+  const done = (): void => {
+    showing.current = false;
+    setMoment(null);
+    if (again.current) claimRef.current();
+  };
+
   return (
     <>
       <span hidden data-testid="celebration-host" data-claims={claims} />
       {moment ? (
-        <Suspense fallback={null}>
-          <CelebrationMoment
-            key={moment.requestId}
-            moment={moment}
-            onDone={() => {
-              showing.current = false;
-              setMoment(null);
-              if (again.current) claimRef.current();
-            }}
-          />
-        </Suspense>
+        <MomentBoundary key={moment.requestId} onError={done}>
+          <Suspense fallback={null}>
+            <CelebrationMoment moment={moment} onDone={done} />
+          </Suspense>
+        </MomentBoundary>
       ) : null}
     </>
   );

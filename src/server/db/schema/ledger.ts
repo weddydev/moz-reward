@@ -83,6 +83,10 @@ export const ledgerEntries = pgTable(
     index("ledger_entries_shop_created_idx").on(t.shopId, t.createdAt),
     index("ledger_entries_request_idx").on(t.requestId),
     index("ledger_entries_receipt_idx").on(t.receiptId),
+    // P1-17 integrity check "reward redeemed twice": a reward's redeem rows by one index probe (P1-D close review).
+    index("ledger_entries_redeem_reward_idx")
+      .on(sql`(${t.ref}->>'rewardId')`)
+      .where(sql`${t.type} = 'redeem'`),
     check(
       "ledger_entries_points_by_type",
       sql`CASE ${t.type}

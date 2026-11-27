@@ -5,6 +5,7 @@ import { mintCustomerScope, mintShopScope, systemScope } from "@/server/authz/sc
 import { dbAs, testOwnerDb as db } from "@/server/db/client";
 import { DEMO_SHOPS, type DemoSeedConfig, runDemoSeed } from "@/server/db/demo-seed";
 import {
+  auditLogs,
   integrityIssues,
   ledgerEntries,
   memberships,
@@ -12,7 +13,8 @@ import {
   receipts,
 } from "@/server/db/schema";
 import { env } from "@/server/env";
-import { transaction } from "@/server/repos/_base";
+import { readSnapshot, transaction, withScope } from "@/server/repos/_base";
+import { type FoundIssue, recordIssues } from "@/server/repos/integrity";
 import { purposeKey } from "@/server/security/keys";
 import { limiterRedis } from "@/server/security/rate-limit";
 import { reverseAward } from "@/server/services/approvals";
@@ -61,6 +63,12 @@ async function world() {
     owner: mintShopScope({ userId: ownerUser.id, shopId: shop.id, role: "owner" }),
   };
 }
+
+/** The SQLSTATE of a refused statement (drizzle wraps the driver's error in `cause`). */
+const sqlState = (err: unknown): string | undefined => {
+  const e = err as { code?: string; cause?: { code?: string } };
+  return e.cause?.code ?? e.code;
+};
 
 let w: Awaited<ReturnType<typeof world>>;
 beforeEach(async () => {
@@ -299,7 +307,119 @@ describe("[P1-17] issue lifecycle and runs", () => {
   });
 });
 
+describe("[P1-17] runs at scale and under contention (P1-D close review)", () => {
+  it("[P1-17] more issues of one check than Postgres has bind parameters are recorded, then resolved", async () => {
+    // A systematic fault touching > 65,535 entities: batched upserts and a resolve by last_seen_at, no NOT IN list.
+    const found: FoundIssue[] = Array.from({ length: 66_000 }, () => ({
+      check: "approved_without_receipt",
+      entity: "point_requests",
+      entityId: newId(),
+      shopId: null,
+      details: { receipts: 0 },
+    }));
+    const first = await recordIssues(JOBS, "approved_without_receipt", found);
+    expect(first.fresh).toHaveLength(66_000);
+    const again = await recordIssues(JOBS, "approved_without_receipt", found.slice(0, 10));
+    expect(again.fresh).toHaveLength(0);
+    expect(again.resolved).toBeGreaterThanOrEqual(65_990);
+    expect(await openIssues(found.slice(0, 10).map((f) => f.entityId))).toHaveLength(10);
+    const done = await recordIssues(JOBS, "approved_without_receipt", []);
+    expect(done.resolved).toBeGreaterThanOrEqual(10);
+    expect(await openIssues(found.slice(0, 10).map((f) => f.entityId))).toEqual([]);
+  }, 120_000);
+
+  it("[P1-17] a run that lost its lock records nothing", async () => {
+    await db().update(memberships).set({ progressGold: 55 }).where(eq(memberships.id, w.member.id));
+    const real = limiterRedis();
+    // The lock lapsed and another run took it: every renewal finds a token that isn't ours.
+    const lost = new Proxy(real, {
+      get(target, prop, receiver) {
+        if (prop === "eval")
+          return async (script: string, ...rest: unknown[]) =>
+            script.includes("PEXPIRE")
+              ? 0
+              : (target.eval as (...a: unknown[]) => unknown)(script, ...rest);
+        return Reflect.get(target, prop, receiver) as unknown;
+      },
+    });
+    await expect(runIntegrityCheck(JOBS, { redis: lost })).rejects.toThrow(/lock lost/);
+    expect(await openIssues([w.member.id])).toEqual([]);
+  });
+
+  it("[P1-17] the check reads run in one read-only snapshot: a write there is refused by the database", async () => {
+    const code = await readSnapshot(JOBS, (q) =>
+      q.execute(
+        sql`UPDATE memberships SET progress_gold = progress_gold WHERE id = ${w.member.id}`,
+      ),
+    ).then(
+      () => undefined,
+      (err: unknown) => sqlState(err),
+    );
+    expect(code).toBe("25006"); // read_only_sql_transaction
+    const iso = await readSnapshot(JOBS, (q) => q.execute(sql`SHOW transaction_isolation`));
+    expect(JSON.stringify([...(iso as unknown as Iterable<unknown>)])).toContain("repeatable read");
+  });
+});
+
+describe("[P1-17] integrity_issues behind the database wall", () => {
+  it("[P1-17] customer and shop scopes read no issue, even of their own shop; moz_app can't write one", async () => {
+    await db().update(memberships).set({ progressGold: 66 }).where(eq(memberships.id, w.member.id));
+    await runIntegrityCheck(JOBS);
+    expect(await openIssues([w.member.id])).toHaveLength(1);
+    for (const scope of [w.customer, w.owner]) {
+      const rows = await withScope(scope, (q) =>
+        q.select().from(integrityIssues).where(eq(integrityIssues.shopId, w.shop.id)),
+      );
+      expect(rows, scope.kind).toEqual([]);
+    }
+    const code = (run: () => Promise<unknown>) =>
+      run().then(
+        () => undefined,
+        (err: unknown) => sqlState(err),
+      );
+    expect(
+      await code(() =>
+        withScope(w.owner, (q) =>
+          q.execute(sql`INSERT INTO integrity_issues (id, "check", entity, entity_id, shop_id)
+            VALUES (${newId()}, 'receipt_numbers', 'shops', ${w.shop.id}, ${w.shop.id})`),
+        ),
+      ),
+    ).toBe("42501");
+    expect(
+      await code(() =>
+        withScope(w.owner, (q) =>
+          q.execute(
+            sql`UPDATE integrity_issues SET resolved_at = now() WHERE shop_id = ${w.shop.id}`,
+          ),
+        ),
+      ),
+    ).toBe("42501");
+    expect(await openIssues([w.member.id])).toHaveLength(1);
+  });
+});
+
 describe("[P1-17] the admin's on-demand run (worker side)", () => {
+  it("[P1-17] an admin's run and a run that only resolves are timed sweeps with a system.sweep audit row", async () => {
+    const { HANDLERS } = await import("@/server/jobs/handlers");
+    const { mintAdminScope } = await import("@/server/authz/scope");
+    const sweeps = async () =>
+      (await db().select().from(auditLogs).where(eq(auditLogs.action, "system.sweep"))).filter(
+        (a) => (a.meta as { job?: string } | null)?.job === "integrity-check",
+      ).length;
+    const before = await sweeps();
+    await db().update(memberships).set({ progressGold: 88 }).where(eq(memberships.id, w.member.id));
+    const job = {} as Parameters<(typeof HANDLERS.scheduled)["integrity-check-requested"]>[1];
+    await HANDLERS.scheduled["integrity-check-requested"]({}, job, {
+      scope: mintAdminScope({ userId: newId(), role: "owner" }),
+    });
+    expect(await sweeps()).toBe(before + 1);
+    // Fixed since: the nightly run only resolves it, and that change is on record too.
+    await db().update(memberships).set({ progressGold: 0 }).where(eq(memberships.id, w.member.id));
+    await HANDLERS.scheduled["integrity-check"]({}, job, { scope: null });
+    expect(await openIssues([w.member.id])).toEqual([]);
+    expect(await sweeps()).toBe(before + 2);
+  });
+
   it("[P1-17] runs for an admin owner's queued scope and refuses any other", async () => {
     const { HANDLERS } = await import("@/server/jobs/handlers");
     const { mintAdminScope } = await import("@/server/authz/scope");

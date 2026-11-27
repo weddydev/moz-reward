@@ -253,6 +253,13 @@
       "when": 1795731009678,
       "tag": "0035_integrity_issues",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795738032192,
+      "tag": "0036_integrity_redeem_index",
+      "breakpoints": true
     }
   ]
 }

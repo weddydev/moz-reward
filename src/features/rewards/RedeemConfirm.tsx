@@ -40,9 +40,14 @@ export function RedeemConfirm({ shopId }: { shopId: string }): React.JSX.Element
       return;
     }
     setBusy(true);
-    const res = await confirmRedeemCodeAction({ shopId, code });
+    // No connection: an error with the field kept, never a Confirm that spins for ever (code review M5).
+    const res = await confirmRedeemCodeAction({ shopId, code }).catch(() => null);
     setBusy(false);
-    if (res.ok) {
+    if (!res) {
+      setOutcome({ kind: "error", message: "No connection. Try again." });
+      setTries((n) => n + 1);
+      field.current?.focus();
+    } else if (res.ok) {
       setOutcome({ kind: "done", label: res.data.rewardLabel });
       setCode("");
       haptic("reward");
@@ -63,12 +68,17 @@ export function RedeemConfirm({ shopId }: { shopId: string }): React.JSX.Element
         <Icon icon={Gift} className="text-gold-deep" />
         Redeem a reward
       </h2>
-      <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => void submit(e)} noValidate>
+      {/* The 46 px Confirm centred on the 58 px field, not on its hint; the field sized for 6 characters. */}
+      <form
+        className="flex flex-wrap items-start gap-3"
+        onSubmit={(e) => void submit(e)}
+        noValidate
+      >
         <TextField
           ref={field}
           label="Customer's code"
           hint="6 characters, on the customer's screen."
-          className="min-w-0 flex-1 basis-48"
+          className="max-w-xs min-w-0 flex-1 basis-48"
           value={code}
           maxLength={9}
           disabled={!hydrated}
@@ -89,6 +99,7 @@ export function RedeemConfirm({ shopId }: { shopId: string }): React.JSX.Element
           size={46}
           loading={busy}
           disabled={!hydrated}
+          className="mt-1.5"
           data-testid="redeem-confirm-submit"
         >
           Confirm

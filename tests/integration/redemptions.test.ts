@@ -641,6 +641,30 @@ describe("[P1-16] the guessing guard (SECURITY §6)", () => {
     ).toBe("reserved");
   });
 
+  it("[P1-16] after a lock has passed, correct confirms back to back aren't locked (only misses count)", async () => {
+    // Code review M6 (P1-D close): a committed confirm must not re-arm the lock for the next one at a busy till.
+    const shopId = (await makeShop({ status: "active" })).id;
+    for (let i = 0; i < REDEEM_GUARD.staffLockAfter; i++)
+      await reserveRedeemAttempt({ shopId, staffId: "a", liveCodes: 1, now: T + i });
+    for (const at of [T + 61_000, T + 61_500, T + 62_000]) {
+      const d = await reserveRedeemAttempt({ shopId, staffId: "a", liveCodes: 1, now: at });
+      expect(d.kind, `confirm at +${String(at - T)} ms`).toBe("reserved");
+      if (d.kind === "reserved") await releaseRedeemAttempt(d.reservation);
+    }
+    // A sixth miss still doubles the lock (2 min from that miss).
+    expect(
+      (await reserveRedeemAttempt({ shopId, staffId: "a", liveCodes: 1, now: T + 63_000 })).kind,
+    ).toBe("reserved");
+    const locked = await reserveRedeemAttempt({
+      shopId,
+      staffId: "a",
+      liveCodes: 1,
+      now: T + 64_000,
+    });
+    expect(locked).toMatchObject({ kind: "staff_locked" });
+    expect(locked.kind === "staff_locked" && locked.retryAfterSec).toBeGreaterThan(60);
+  });
+
   it("[P1-16] Redis down: the guard fails closed", async () => {
     const dead = new Redis({
       port: 1,

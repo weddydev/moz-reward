@@ -225,7 +225,11 @@ test("[P1-12] wallet right column: recent activity and rewards ready from approv
     await expect(row).toContainText("Brew & Bloom Café");
     await expect(row).toContainText("+100 gold");
   }
-  await expect(page.getByTestId("wallet-rewards-ready")).toContainText("Rewards ready (2)");
+  // The count is the summary tile's alone (design review M1, P1-D close): the card's title has none.
+  await expect(page.getByTestId("wallet-rewards-ready").getByRole("heading")).toHaveText(
+    "Rewards ready",
+  );
+  await expect(page.getByTestId("summary-rewards")).toContainText("2");
   // P1-16 (C-65): each one listed with Redeem.
   await expect(page.getByTestId("wallet-rewards-ready").getByTestId("reward-redeem")).toHaveCount(
     2,
