@@ -106,7 +106,7 @@ describe.each(Object.keys(KINDS) as Kind[])("[P0-09] %s overlay", (kind) => {
     expect(dialog.dataset.state).toBe("open");
   });
 
-  it("[demo-fixes] carries its own particle canvas, so a press's sparks inside it draw above it", () => {
+  it("[P0-09] carries its own particle canvas, so a press's sparks inside it draw above it", () => {
     render(<Harness kind={kind} />);
     openWith();
     const dialog = screen.getByRole("dialog", { name: "Edit reward" });

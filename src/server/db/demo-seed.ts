@@ -60,7 +60,10 @@ export type DemoShop = {
   town: string;
   postcode: string;
   location: LngLat;
-  /** Self-hosted demo photos (`public/demo/shops/`, the Molten reference's; PD-08) or none (the fallback coin). */
+  /**
+   * Self-hosted demo photos (`public/demo/shops/`: the Molten reference's, PD-08; Patel's and Glow's are CC0 photos
+   * from rawpixel, 27 Nov 2026, human: no placeholders in the demo). null would show the fallback coin.
+   */
   logoUrl: string | null;
   coverUrl: string | null;
 };
@@ -69,7 +72,6 @@ const photos = (key: string): { logoUrl: string; coverUrl: string } => ({
   logoUrl: `/demo/shops/${key}-logo.jpg`,
   coverUrl: `/demo/shops/${key}-cover.jpg`,
 });
-const NO_PHOTOS = { logoUrl: null, coverUrl: null };
 
 /** Invented addresses in real towns (never a real business's details). */
 export const DEMO_SHOPS = [
@@ -97,7 +99,7 @@ export const DEMO_SHOPS = [
     town: "Leicester",
     postcode: "LE1 6AA",
     location: { lng: -1.1332, lat: 52.6344 },
-    ...NO_PHOTOS,
+    ...photos("patel"),
   },
   {
     id: fixedShopId("0199d3e0-0000-7000-8000-000000000013"),
@@ -110,10 +112,10 @@ export const DEMO_SHOPS = [
     town: "Manchester",
     postcode: "M4 1AA",
     location: { lng: -2.2361, lat: 53.4839 },
-    ...NO_PHOTOS,
+    ...photos("glow"),
   },
   // The Molten reference's other two shops, with its photos (human, 23 Nov 2026; DECISIONS "PD-08 demo shops"):
-  // the demo Wallet shows the photo cards, the fallback coin (Patel's, Glow) and "Show all" (five shops).
+  // the demo Wallet shows the photo cards and "Show all" (five shops). Every demo shop has photos (human, 27 Nov).
   {
     id: fixedShopId("0199d3e0-0000-7000-8000-000000000014"),
     slug: "camden-bakehouse",

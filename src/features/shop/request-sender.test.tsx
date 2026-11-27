@@ -45,8 +45,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("[demo-fixes] the saved request is sent once the phone is back online (human, 27 Nov: stuck on 'offline')", () => {
-  it("[demo-fixes] the first send after `online` fails (the line isn't really back yet): it retries by itself", async () => {
+describe("[P1-11] the saved request is sent once the phone is back online (human, 27 Nov: stuck on 'offline')", () => {
+  it("[P1-11] the first send after `online` fails (the line isn't really back yet): it retries by itself", async () => {
     const { QueuedRequestSender, REQUEST_RETRY_MS } = await import("./RequestPoints");
     online = false;
     queueOne();
@@ -71,7 +71,7 @@ describe("[demo-fixes] the saved request is sent once the phone is back online (
     expect(toast).toHaveBeenCalledWith("Your saved request was sent.", "success");
   });
 
-  it("[demo-fixes] the `online` event was missed (the phone was in Settings): coming back to the page sends it", async () => {
+  it("[P1-11] the `online` event was missed (the phone was in Settings): coming back to the page sends it", async () => {
     const { QueuedRequestSender } = await import("./RequestPoints");
     online = false;
     queueOne();
@@ -87,7 +87,7 @@ describe("[demo-fixes] the saved request is sent once the phone is back online (
     expect(left()).toBe(0);
   });
 
-  it("[demo-fixes] still offline: no send and no retry timer until the phone is back", async () => {
+  it("[P1-11] still offline: no send and no retry timer until the phone is back", async () => {
     const { QueuedRequestSender, REQUEST_RETRY_MS } = await import("./RequestPoints");
     online = false;
     queueOne();
@@ -101,8 +101,8 @@ describe("[demo-fixes] the saved request is sent once the phone is back online (
   });
 });
 
-describe("[demo-fixes] the queued card says what is happening", () => {
-  it("[demo-fixes] offline: 'You're offline'; back online: 'Sending' and a Send now button that sends at once", async () => {
+describe("[P1-11] the queued card says what is happening", () => {
+  it("[P1-11] offline: 'You're offline'; back online: 'Sending' and a Send now button that sends at once", async () => {
     const { QueuedRequestSender, RequestPoints, REQUEST_QUEUED_TEXT, REQUEST_SENDING_TEXT } =
       await import("./RequestPoints");
     online = false;

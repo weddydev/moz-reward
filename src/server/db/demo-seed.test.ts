@@ -31,18 +31,17 @@ describe("[P0-16] demo dataset plan", () => {
     }
   });
 
-  it("[PD-08] the Molten reference shops carry its photos (self-hosted, cover ≤ 120 KB); the others have none (fallback coin)", () => {
+  it("[PD-08] every demo shop carries photos (self-hosted, cover ≤ 120 KB): no fallback coin in the demo (human, 27 Nov)", () => {
     const photos = DEMO_SHOPS.map((s) => [s.name, s.logoUrl, s.coverUrl]);
     expect(photos).toEqual([
       ["Brew & Bloom Café", "/demo/shops/brew-logo.jpg", "/demo/shops/brew-cover.jpg"],
-      ["Patel's Corner Store", null, null],
-      ["Glow Studio", null, null],
+      ["Patel's Corner Store", "/demo/shops/patel-logo.jpg", "/demo/shops/patel-cover.jpg"],
+      ["Glow Studio", "/demo/shops/glow-logo.jpg", "/demo/shops/glow-cover.jpg"],
       ["Camden Bakehouse", "/demo/shops/bake-logo.jpg", "/demo/shops/bake-cover.jpg"],
       ["Pedal & Co.", "/demo/shops/pedal-logo.jpg", "/demo/shops/pedal-cover.jpg"],
     ]);
     for (const shop of DEMO_SHOPS) {
       for (const url of [shop.logoUrl, shop.coverUrl]) {
-        if (url === null) continue;
         const file = path.join(process.cwd(), "public", url);
         expect(existsSync(file), url).toBe(true);
         if (url.endsWith("-cover.jpg")) expect(statSync(file).size).toBeLessThanOrEqual(120 * 1024);

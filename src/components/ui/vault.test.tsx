@@ -402,7 +402,7 @@ describe("[PD-10] Reward unlocked", () => {
     expect(fx.toast).not.toHaveBeenCalled();
   });
 
-  it("[demo-fixes] the card shows the reward's photo; without one, the shop's metal coin (never an empty slot)", () => {
+  it("[P1-16] the card shows the reward's photo; without one, the shop's metal coin (never an empty slot)", () => {
     const { container, unmount } = render(
       <RewardUnlocked
         detail="d"

@@ -103,7 +103,7 @@ describe("[P1-18] Rewards ready: the redeem sheet's chunk on a slow line", () =>
     expect(chunk.state.loads).toBe(1);
   });
 
-  it("[demo-fixes] each row shows the reward's photo, or the shop's coin when there is none", async () => {
+  it("[P1-16] each row shows the reward's photo, or the shop's coin when there is none", async () => {
     const { RewardsReady } = await load();
     render(<RewardsReady rewards={REWARDS} showShop />);
     const rows = screen.getAllByTestId("reward-ready");

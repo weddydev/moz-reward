@@ -264,8 +264,8 @@ describe("[P1-15] FX engine: a canvas inside a modal dialog takes over, then han
   });
 });
 
-describe("[demo-fixes] FX engine: a dialog's canvas carries on the sparks already flying", () => {
-  it("[demo-fixes] a burst on the page, then a sheet opens over it: its particles move to the sheet's canvas", async () => {
+describe("[PD-03] FX engine: a dialog's canvas carries on the sparks already flying", () => {
+  it("[PD-03] a burst on the page, then a sheet opens over it: its particles move to the sheet's canvas", async () => {
     const { mountFx } = await import("./fx");
     const noop = (): undefined => undefined;
     const ctx = new Proxy(

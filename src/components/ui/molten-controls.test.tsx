@@ -176,7 +176,7 @@ describe("[PD-04] Molten button", () => {
     expect(ref.btn).not.toHaveClass("ok");
   });
 
-  it("[demo-fixes] every button throws sparks and coins on a successful click by default (human, 27 Nov); celebrate={false} opts out", () => {
+  it("[PD-04] every button throws sparks and coins on a successful click by default (human, 27 Nov); celebrate={false} opts out", () => {
     render(
       <>
         <Button>Molten</Button>
