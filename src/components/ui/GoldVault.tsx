@@ -30,6 +30,7 @@ export function GoldVault({
   unlocked = false,
   still = false,
   skipKey = 0,
+  quiet = false,
   onFull,
   onLanded,
   reward,
@@ -55,6 +56,8 @@ export function GoldVault({
   still?: boolean;
   /** P1-15: a change lands the running pour at once (`IngotPour`). */
   skipKey?: number;
+  /** P1-18: unlocking shows the lifted end state with no ring pulse or bursts (the moment was skipped). */
+  quiet?: boolean;
   onFull?: () => void;
   /** Each time a pour lands, with the gold it shows. */
   onLanded?: (gold: number) => void;
@@ -131,6 +134,7 @@ export function GoldVault({
         unlocked={unlocked}
         still={still}
         skipKey={skipKey}
+        quiet={quiet}
         onFull={onFull}
         onLanded={(g) => {
           setLanded(g);

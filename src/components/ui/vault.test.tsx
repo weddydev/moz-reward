@@ -366,6 +366,24 @@ describe("[PD-10] Gold Vault", () => {
     rerender(<GoldVault {...props} unlocked />);
     expect(started.filter((a) => a.target.classList.contains("m-vring"))).toHaveLength(1);
   });
+  it("[P1-18] quiet (a skip before the unlock): the lifted end state with no ring pulse and no coin or spark burst", () => {
+    // P1-15 design review LOW 13: a skip landed the card's flip and leaves but the ingot still burst on unlock.
+    const props = { shop: SHOP, title: "t", gold: 1_000, size: 1_000, seenKey: "t-quiet-unlock" };
+    const { rerender } = render(<GoldVault {...props} quiet />);
+    started = [];
+    rerender(<GoldVault {...props} quiet unlocked />);
+    expect(started.filter((a) => a.target.classList.contains("m-vring"))).toHaveLength(0);
+    expect(fx.burst).not.toHaveBeenCalled();
+    expect(screen.getByTestId("gold-vault")).toHaveAttribute("data-unlocked", "");
+    // Not quiet, the same unlock pulses the ring and bursts coins and sparks.
+    rerender(<GoldVault {...props} />);
+    rerender(<GoldVault {...props} unlocked />);
+    expect(started.filter((a) => a.target.classList.contains("m-vring"))).toHaveLength(1);
+    expect(fx.burst.mock.calls.map((c) => (c as unknown[])[2] as { type: string })).toEqual([
+      expect.objectContaining({ type: "coin" }),
+      expect.objectContaining({ type: "spark" }),
+    ]);
+  });
 });
 
 describe("[PD-10] Reward unlocked", () => {

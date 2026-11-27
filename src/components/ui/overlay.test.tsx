@@ -216,6 +216,77 @@ describe("[P0-09] stacked overlays", () => {
   });
 });
 
+describe.each(Object.keys(KINDS) as Kind[])("[P1-18] %s overlay fallback focus", (kind) => {
+  it("[P1-18] no trigger to return to: closing focuses `fallbackFocus` (a moment that opened by itself)", async () => {
+    // P1-D close QA MINOR 7: the celebration opens with nothing focused, so Done/Esc left focus on <body>.
+    const Overlay = KINDS[kind];
+    function Moment() {
+      const [open, setOpen] = useState(true);
+      return (
+        <>
+          <h1 id="page-title">Brew &amp; Bloom</h1>
+          <Overlay
+            open={open}
+            onClose={() => {
+              setOpen(false);
+            }}
+            title="Gold added"
+            fallbackFocus={() => document.getElementById("page-title")}
+          >
+            <button type="button">Done</button>
+          </Overlay>
+        </>
+      );
+    }
+    (document.activeElement as HTMLElement | null)?.blur();
+    render(<Moment />);
+    expect(dialogs()).toHaveLength(1);
+    key("Escape");
+    await settle();
+    expect(dialogs()).toHaveLength(0);
+    const heading = screen.getByRole("heading", { name: "Brew & Bloom" });
+    expect(document.activeElement).toBe(heading);
+    expect(heading.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("[P1-18] a trigger to return to wins over `fallbackFocus`", async () => {
+    const Overlay = KINDS[kind];
+    const fallback = vi.fn(() => document.getElementById("page-title"));
+    function WithTrigger() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <h1 id="page-title">Brew &amp; Bloom</h1>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(true);
+            }}
+          >
+            Open
+          </button>
+          <Overlay
+            open={open}
+            onClose={() => {
+              setOpen(false);
+            }}
+            title="Gold added"
+            fallbackFocus={fallback}
+          >
+            <button type="button">Done</button>
+          </Overlay>
+        </>
+      );
+    }
+    render(<WithTrigger />);
+    openWith();
+    key("Escape");
+    await settle();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Open" }));
+    expect(fallback).not.toHaveBeenCalled();
+  });
+});
+
 describe("[P0-09] overlay edge cases", () => {
   it("a trigger clicked but never focused (Safari) still gets focus back", async () => {
     render(<Harness />);

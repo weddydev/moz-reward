@@ -31,6 +31,10 @@ import "./celebration.css";
 /** After the exit transition (≤ 300 ms, globals.css), the host unmounts the moment. */
 const EXIT_MS = 360;
 
+/** The page's main heading: where focus lands after Done/Esc, since the moment opened with no trigger (P1-D QA). */
+const pageHeading = (): HTMLElement | null =>
+  document.querySelector<HTMLElement>("[data-route-content] h1");
+
 /** Finishes every finite animation inside `root` (an infinite loop can't be finished; it keeps playing). */
 function finishAll(root: Element | null): void {
   if (!root || typeof root.getAnimations !== "function") return;
@@ -196,6 +200,7 @@ export default function CelebrationMoment({
     <Overlay
       open={open}
       onClose={close}
+      fallbackFocus={pageHeading}
       title="Gold added"
       description={purchaseLine(shop.name, moment.amountPence)}
       className="m-celebrate"
@@ -267,6 +272,7 @@ export default function CelebrationMoment({
           seenKey={`celebration:${moment.requestId}`}
           still
           skipKey={skipKey}
+          quiet={skipKey > 0}
           unlocked={unlocked}
           onFull={unlock}
           onLanded={(g) => {

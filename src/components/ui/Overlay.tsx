@@ -36,10 +36,21 @@ export type OverlayProps = {
   footer?: ReactNode;
   /** Focused on open. Default: the dialog itself, so a screen reader reads its name first and Tab starts at the top. */
   initialFocus?: RefObject<HTMLElement | null>;
+  /**
+   * Where focus goes on close when there is no trigger to return to (an overlay that opened by itself, like a
+   * celebration) and the browser left it on `<body>`. Made focusable (`tabindex="-1"`) if it isn't.
+   */
+  fallbackFocus?: () => HTMLElement | null;
   className?: string;
 };
 
 type Phase = "closed" | "open" | "closing";
+
+/** Focus is nowhere useful after a close: on `<body>`, or still inside the dialog that is leaving. */
+function lostFocus(dialog: HTMLDialogElement | null): boolean {
+  const active = document.activeElement;
+  return !active || active === document.body || !!dialog?.contains(active);
+}
 /** A backdrop press this soon after opening is the tail of a double-click on the trigger, not a dismissal. */
 const BACKDROP_GUARD_MS = 300;
 
@@ -61,6 +72,7 @@ export function Overlay({
   children,
   footer,
   initialFocus,
+  fallbackFocus,
   className,
 }: OverlayProps & { kind: OverlayKind }): React.JSX.Element | null {
   const [phase, setPhase] = useState<Phase>(open ? "open" : "closed");
@@ -72,6 +84,7 @@ export function Overlay({
   const returnFocus = useRef<HTMLElement | null>(null);
   const releaseScroll = useRef<(() => void) | null>(null);
   const onCloseRef = useRef(onClose);
+  const fallbackRef = useRef(fallbackFocus);
   const openedAt = useRef(0);
   const hydrated = useHydrated();
   const titleId = useId();
@@ -79,6 +92,7 @@ export function Overlay({
 
   useEffect(() => {
     onCloseRef.current = onClose;
+    fallbackRef.current = fallbackFocus;
   });
   useEffect(trackTriggers, []);
   const requestClose = useCallback(() => {
@@ -96,8 +110,16 @@ export function Overlay({
     releaseScroll.current = null;
     const target = returnFocus.current;
     returnFocus.current = null;
-    // Trigger removed while open: focus stays on the page (the browser falls back to <body>), no error.
+    // Trigger removed while open: focus stays on the page (the browser falls back to <body>), no error, unless
+    // the overlay names a fallback (P1-D close QA MINOR 7).
     if (target?.isConnected) target.focus({ preventScroll: true });
+    else if (lostFocus(dialog)) {
+      const fallback = fallbackRef.current?.();
+      if (fallback?.isConnected) {
+        if (!fallback.hasAttribute("tabindex")) fallback.setAttribute("tabindex", "-1");
+        fallback.focus({ preventScroll: true });
+      }
+    }
     setPhase("closed");
   }, []);
 

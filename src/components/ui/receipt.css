@@ -24,7 +24,10 @@
 .m-receipt-shop {
   margin: 6px 0 0;
   font: 600 20px/1.15 var(--font-display);
+  /* A word too long for the line breaks with a hyphen (en-GB, root `lang`), like the shop header's title;
+     `anywhere` stays the last resort and keeps the card from growing to the word (P1-D close QA MINOR 6). */
   overflow-wrap: anywhere;
+  hyphens: auto;
 }
 .m-receipt-meta {
   margin: 2px 0 0;

@@ -11,7 +11,7 @@ declare global {
   }
 }
 
-/** Mounted on /dev/molten and /dev/ui: every particle burst on the page can be read back by a test. */
+/** Mounted on /dev/molten, /dev/ui and /dev/motion: every particle burst on the page can be read back by a test. */
 export function FxBurstLog(): null {
   useEffect(() => {
     window.__mozFxBursts = { list: fxBursts, clear: clearFxBursts };
