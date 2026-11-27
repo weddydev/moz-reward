@@ -43,6 +43,12 @@ ENV APP_ENV=$APP_ENV \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0
+# Debian security fixes the upstream digest doesn't carry yet (27 Nov: libpam CVE-2025-6020 HIGH, Trivy on main):
+# Trivy fails only on HIGH/CRITICAL with a fixed version, so taking Debian's fixed packages keeps the gate green
+# without skips (DECISIONS 27 Nov). Lists removed so the layer stays small.
+RUN apt-get update -qq \
+ && DEBIAN_FRONTEND=noninteractive apt-get -y -qq upgrade --no-install-recommends \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
 # The runtime only runs `node`: drop the base image's package managers (npm carries HIGH CVEs; corepack, yarn).
 RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
            /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*

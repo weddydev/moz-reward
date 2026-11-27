@@ -1362,3 +1362,8 @@ Consequence / revisit when: a constant whose change no test notices would not sh
 Decision: `cached()` keeps its plain GET → load → SET. A load that started before an owner's edit can SET the old value just after the edit's invalidating DEL, and the landing then shows it for at most the 60 s TTL. No generation key or compare-and-set.
 Why: P1-01..03 security review LOW: display only (the landing never decides anything; actions read the database), bounded by the TTL; a generation check would add a Redis round trip to every miss.
 Consequence / revisit when: a cached value starts feeding a decision, or an owner reports an edit not showing after a minute.
+
+## 2026-11-27 — Runtime image takes Debian security updates at build time
+Decision: the Dockerfile runtime stage runs `apt-get upgrade` (no recommends, lists removed) on top of the digest-pinned `node:24-bookworm-slim`.
+Why: Trivy on main (run 45931424080) failed on libpam CVE-2025-6020 (HIGH, fixed in `deb12u3`); the newest upstream digest (27 Nov) still ships `deb12u2`. Skipping the CVE would weaken the no-skips gate (C-21).
+Consequence / revisit when: builds are no longer byte-reproducible across days (the base stays pinned; only Debian's fixed packages move). Drop the step if a future base digest carries the fixes and image size matters.
