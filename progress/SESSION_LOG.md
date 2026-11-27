@@ -1196,3 +1196,10 @@ CI 45957402977 on `a49a316`: green, 0 failed, 0 flaky (WebKit focus + shine acti
 `wip/P1-close` `d1bc003`: C-112 done test-first (104 quiet unlock, 108 sheet preload/busy/toast + production-build E2E holding/aborting the chunk, 109 receipt title fits its longest word (Chromium had no hyphenation), 110 Overlay `fallbackFocus`); E2E chromium/webkit/iphone14 green. Main `141b136` CI 45959632024 + deploy 45961551766 green (Trivy fix verified).
 Reviews of `2972bc7..0662ac5`: code/security/design no BLOCK/HIGH; MEDIUMs fixed (Show all `Button`, 108 E2E); LOWs → FOLLOWUPS (10 lines); KI-84 (`test.use` two-item array).
 C-91: landing LCP 0.77–0.80 s ×6 (pass; 4.21 s of 25 Nov not reproducible); JS gzip over band: landing 164.8, wallet 196.4, shop page 221.4 KB (new route in the spec). Staging `seed-reset` over SSH refused by the auto-mode classifier → human.
+
+## 2026-11-27 — P1 — C-91 + C-112 landed, talha.syed (Mac)
+CI 45962514589 red on iPhone14: skip spec's click landed after the unlock (in-page tap, 10/10 on CI) and focus fell to <body> when the host unmounted the moment mid-exit (KI-85; unit red → green; 10/10 on CI, was 4/10).
+C-91 (Turbopack analyzer, `next analyze export`): Lucide runtime ×3 on the landing (error boundaries), FX/sound/press in the root chunk, `next/image` client code. Trims: inline alert glyph, card-cache lazy. `getImageProps` trim undone (Linux parity stills without photos, CI 45982038954).
+Human accepted landing 161.5 / wallet 193.3 / shop page 219.0 KB (DECISIONS, ceilings in the spec). LCP 4.66 s readings = lantern (observed 0.15–0.2 s; KI-86).
+E2E touched screens 107/0 (3 projects); CI f6ba211 45989769059 green; rebased onto main, CI on the rebased commit green.
+
