@@ -56,8 +56,10 @@ test("[J1][P1-04] scan → gate → Collect points → email link → profile �
   const { shopId, shopCode } = await seedShop(page.request, { status: "active", name: shopName });
 
   await page.goto(`/s/${shopCode}?src=qr`);
-  // The gate ends itself (≈ 1.4 s); the CTA underneath is the same one a returning visitor sees.
-  await expect(page.getByTestId("gilded-gate")).toBeHidden({ timeout: 5000 });
+  // The gate ends itself on its own 3.28 s animation (PD-09, gateTimeline(14)); on Linux WebKit, frame-starved
+  // after a load (KI-10), that wall-clock time stretches past 5 s, so this waits like the other frame-needing end
+  // states (15 s; P1-D close, J1 confirmed flake on iphone14). The CTA underneath is the returning visitor's.
+  await expect(page.getByTestId("gilded-gate")).toBeHidden({ timeout: 15_000 });
   await page.getByTestId("landing-collect").click();
   await expect(page).toHaveURL(`/sign-in?returnTo=${encodeURIComponent(`/s/${shopCode}?join=1`)}`);
 
