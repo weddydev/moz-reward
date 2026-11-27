@@ -588,7 +588,14 @@ async function celebrationRun(page: Page, info: TestInfo) {
         card &&
         times.length > 10 &&
         !document.documentElement.hasAttribute("data-fx-live") &&
-        card.getAnimations({ subtree: true }).every((a) => a.playState !== "running")
+        // Infinite loops (the Redeem button's `m-flow` shimmer) never finish and aren't the moment: waiting for
+        // them ran every sample to the 12 s cap, and the @fps median of 3 past the test's 30 s (scheduled 45988427357).
+        card
+          .getAnimations({ subtree: true })
+          .every(
+            (a) =>
+              a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity,
+          )
       )
         break;
     }
