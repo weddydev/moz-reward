@@ -1242,3 +1242,9 @@ Tests: gate:task P2-01 PASS on 480e779 (= f089691 before the rebase): unit 2390/
 Tests: EXPLAIN ANALYZE (app role, RLS, 50k rows for the shop + 50k in 9 others): ledger read 2.07 ms, Index Scan ledger_entries_shop_created_idx; joins read 0.40 ms, Index Scan memberships_shop_id_idx; no seq scan (`.artifacts/p2-01-dashboard-explain.txt`).
 Left off: land 441e3cb on main when CI 46124522801 + 46124676339 are green (merge main in, push); P2-01 waits for H-48b (C-88) and CI 46124658901.
 Notes: CI 46121459459 attempt 1 perf job red 3/3 on gilded-gate (KI-48, slow runner), green on re-run.
+
+## 2026-11-28 09:30 — P2 — KI-90 on main; wallet flake quarantined (C-113); P2-01 CI green; P2-02 step A
+Done: KI-90 fix on main `1795e5e`; P2-01 rebased (`871bbe5`, owner baselines darwin+linux), CI 46127051817 green; main CI 46126763689 red on wallet Enter flake → quarantined on desktop1440 (`wip/wallet-quarantine` `3af74b5`, C-113, KI-83); P2-02 step A scan awards (`wip/P2-02` `5f5ee28`, migration 0038).
+Tests: int + authz 81/0 (scan-awards 13 incl. 0038 walls, approvals, point-requests, authz matrix + cross-shop scan); spec-repeat 46128861729 wallet Enter ×20 green (no repro).
+Moved from Last verified: KI-89 `994daed` CI 46033221996 green, staging deploy 46033819447; demo fixes gate:task PASS; P1 close @fps/@perf 2/2, CI 45995805698/45992063576 green, Lighthouse JS 161.5/193.3/219.0 KB.
+Left off: land `3af74b5` on main when its CI is green; then P2-02 step B (Requests tabs + approve panel). P2-01 waits on H-48b (C-88).
