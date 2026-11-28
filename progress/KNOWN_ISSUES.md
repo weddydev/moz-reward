@@ -43,6 +43,8 @@ _Human's standing rule (23 Nov 2026): before debugging a failure, search this fi
 
 **KI-94 · A `getUserMedia` mock set in `addInitScript` works on Chromium but WebKit still calls the real one (scanner "denied", mock never called)** — P2-02, 28 Nov. WebKit replaces `navigator.mediaDevices` after the init script runs, so an own-property assignment on it is lost (a "denied" test passes either way: the real camera refuses too). Fix: define the mock on `MediaDevices.prototype` (`tests/e2e/scan.spec.ts` `fakeCamera`). Playwright's `worker` event can arrive after the page already reports the worker: `expect.poll` it.
 
+**KI-95 · scan.spec on CI WebKit/iPhone: the scanner stays "starting", or the award panel never opens after `showQr` (5 s)** — P2-02, CI 46138390685, 28 Nov. Frame starvation (KI-10): `video.play()` only settles on the first drawn frame, and the scanner waited for it before going live; decoding also needs drawn frames. Fix: the scanner doesn't await `play()` (a missing frame decodes as nothing), and the frame-driven steps wait `FRAMES_MS` (15 s).
+
 **KI-10 · WebKit-only E2E failure: an animated value reads wrong / "still animating" / opacity 0 or 0.98 after the animation reports done** — C-77, 23 Nov.
 - Cause: Linux WebKit (CI and the container) runs ~1 frame a second, for 1–2 s after a load; the computed style holds the last frame drawn, and a 90 ms window can pass with no frame.
 - Fix: poll settled values to their end state (`expect.poll`, default timeout), never read once after `running == 0`; judge drawn motion by frames; never wall-clock bounds alone. A product bug only if host (macOS) WebKit also fails. DECISIONS 12 Nov, 21 Nov, 23 Nov "Linux WebKit E2E".

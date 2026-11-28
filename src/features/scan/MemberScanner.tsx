@@ -112,7 +112,9 @@ export function MemberScanner({
     const v = video.current;
     if (v) {
       v.srcObject = started.stream;
-      await v.play().catch(() => undefined);
+      // Not awaited: `play()` settles on the first frame, which a busy device can be slow to draw. Reading
+      // starts anyway; a frame that isn't there yet decodes as nothing (KI-95).
+      void v.play().catch(() => undefined);
     }
     if (!decoder.current) {
       const { createDecoder } = await import("./decoder");

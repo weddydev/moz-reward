@@ -11,6 +11,8 @@ import type { APIRequestContext, Browser, BrowserContext, Page } from "@playwrig
 
 const NAME = "Aisha Khan"; // makeCustomerProfile's default name
 const DECIDE_MS = 15_000;
+/** Steps that wait on drawn camera frames: CI's Linux WebKit can draw none for seconds (KI-10, KI-95). */
+const FRAMES_MS = 15_000;
 const toasts = (page: Page) => page.getByRole("region", { name: "Notifications" });
 
 type Camera = { decoder: "worker" | "native"; deny?: boolean };
@@ -136,7 +138,9 @@ async function openScanner(page: Page): Promise<void> {
 
 async function startCamera(page: Page): Promise<void> {
   await page.getByTestId("scanner-start").click();
-  await expect(page.getByTestId("scanner-view")).toHaveAttribute("data-state", "live");
+  await expect(page.getByTestId("scanner-view")).toHaveAttribute("data-state", "live", {
+    timeout: FRAMES_MS,
+  });
 }
 
 async function noHorizontalScroll(page: Page): Promise<void> {
@@ -186,7 +190,7 @@ test("[P2-02] J4: staff scan a member QR (jsQR worker), award gold, and the same
     const { token } = await member.card();
     await showQr(page, token);
     const form = page.getByTestId("approve-form");
-    await expect(form).toBeVisible();
+    await expect(form).toBeVisible({ timeout: FRAMES_MS });
     const dialog = page.getByRole("dialog", { name: "Award gold" });
     await expect(dialog).toContainText(NAME);
     await expect(form.getByTestId("approve-member")).toContainText("5 visits");
@@ -204,10 +208,14 @@ test("[P2-02] J4: staff scan a member QR (jsQR worker), award gold, and the same
     await expect(form).toHaveCount(0);
 
     // Still in front of the camera: it never reopens the panel.
-    await expect(page.getByTestId("scanner-message")).toContainText("Gold was just awarded");
+    await expect(page.getByTestId("scanner-message")).toContainText("Gold was just awarded", {
+      timeout: FRAMES_MS,
+    });
     await expect(page.getByTestId("approve-form")).toHaveCount(0);
 
     // The award is a scan request, already approved, on today's tab.
+    // Let the award's page refresh finish first: a navigation cutting it off is a WebKit "Load failed" page error.
+    await page.waitForLoadState("networkidle");
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/dashboard/requests?tab=approved");
     const row = page.getByTestId("request-row");
@@ -241,7 +249,7 @@ test("[P2-02] J4: with BarcodeDetector no worker loads; shop, forged and expired
 
     const message = page.getByTestId("scanner-message");
     await showQr(page, `${baseURL ?? "http://localhost:3100"}/s/BREW42?src=qr`);
-    await expect(message).toContainText("That's your shop's QR");
+    await expect(message).toContainText("That's your shop's QR", { timeout: FRAMES_MS });
 
     // Well-shaped but not signed by us: the server says invalid, the scanner says what to do.
     await showQr(page, `MQ1.${"A".repeat(58)}`);
@@ -261,7 +269,7 @@ test("[P2-02] J4: with BarcodeDetector no worker loads; shop, forged and expired
     // A good one opens the side panel (desktop) with the typed-amount box, no number pad.
     await showQr(page, (await member.card()).token);
     const form = page.getByTestId("approve-form");
-    await expect(form).toBeVisible();
+    await expect(form).toBeVisible({ timeout: FRAMES_MS });
     await expect(form.getByTestId("approve-pad")).toHaveCount(0);
     await shoot("scan-award-1440", { fullPage: false });
     expect(workers).toEqual([]);
@@ -332,8 +340,10 @@ test("[P2-02] J4: a member with a request waiting is sent to that request's appr
     const { shopId } = await seedShop(page.request, member.userId);
     const phone = await member.context.newPage();
     await phone.goto(`/shops/${shopId}`);
+    // A tap before hydration does nothing (no handler yet).
+    await expect(phone.locator("html")).toHaveAttribute("data-hydrated", "true");
     await phone.getByTestId("request-points").click();
-    await expect(phone.getByTestId("request-pending")).toBeVisible();
+    await expect(phone.getByTestId("request-pending")).toBeVisible({ timeout: DECIDE_MS });
 
     await fakeCamera(page, { decoder: "native" });
     await signInAs("staff", { shopId });
@@ -342,7 +352,7 @@ test("[P2-02] J4: a member with a request waiting is sent to that request's appr
     await startCamera(page);
     await showQr(page, (await member.card()).token);
     const waiting = page.getByTestId("scanner-open-request");
-    await expect(waiting).toContainText(`${NAME} already asked for gold`);
+    await expect(waiting).toContainText(`${NAME} already asked for gold`, { timeout: FRAMES_MS });
     await waiting.getByTestId("scanner-open-request-link").click();
     await expect(page).toHaveURL(/\/dashboard\/requests\?approve=/);
     await expect(page.getByRole("dialog", { name: "Process request" })).toContainText(NAME);
