@@ -199,6 +199,9 @@ importers:
       ioredis:
         specifier: 6.0.0
         version: 6.0.0(supports-color@7.2.0)
+      jsqr:
+        specifier: 1.4.0
+        version: 1.4.0
       libphonenumber-js:
         specifier: ^1.13.16
         version: 1.13.16
@@ -320,9 +323,6 @@ importers:
       jsdom:
         specifier: ^31.0.0
         version: 31.0.0(@noble/hashes@2.4.0)
-      jsqr:
-        specifier: 1.4.0
-        version: 1.4.0
       lefthook:
         specifier: ^2.2.2
         version: 2.2.2

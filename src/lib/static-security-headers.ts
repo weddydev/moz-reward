@@ -5,7 +5,7 @@
  */
 
 /** Pages that may use the camera (member QR scanner, customer shop-code scan). */
-export const CAMERA_PATHS = ["/scan", "/staff/scan"] as const;
+export const CAMERA_PATHS = ["/scan", "/dashboard/scan"] as const;
 
 export function permissionsPolicy(pathname: string): string {
   const camera = CAMERA_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));

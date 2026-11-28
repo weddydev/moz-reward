@@ -11,6 +11,8 @@ import { toast } from "@/components/ui/Toast";
 import { cx } from "@/lib/cx";
 import type { StreakState } from "@/lib/loyalty/engine";
 import type { ProgrammeVersion } from "@/lib/loyalty/programme";
+import type { ActionResult } from "@/server/actionTemplate";
+import type { ScanAwardResult } from "@/server/services/scan-awards";
 import { approveRequestAction, ownerApproveAction } from "./actions";
 import {
   type GoldPreview,
@@ -35,6 +37,12 @@ export type PreviewInputs = {
   cap: { pence: number; gold: number };
   limit: number | null;
 };
+
+/** A scan award's submit (P2-02): the scanner sends the member, its idempotency key, and this form's amount and items. */
+export type AwardSubmit = (input: {
+  amountPence: number | null;
+  items: string[];
+}) => Promise<ActionResult<ScanAwardResult>>;
 
 /** One decision at a time: a second press while the first is on its way does nothing (the server refuses a repeat). */
 export function useOnce(): (work: () => Promise<boolean>) => Promise<boolean> {
@@ -98,7 +106,8 @@ function previewNote(p: GoldPreview): string {
  * loyalty engine. On a phone (`pad`) the amount comes from a large number pad; the box stays a text field
  * without the system keyboard (`inputMode="none"`), so a hardware keyboard and assistive tech still type in it.
  * An award waiting for the owner shows its proposal; the owner may change the amount. The server prices and
- * guards the award again; the preview is a guide.
+ * guards the award again; the preview is a guide. With `award` (the member scanner, P2-02) the same form awards a
+ * scanned member directly: a request is created and decided in one step on the server.
  */
 export function ApproveForm({
   shopId,
@@ -107,6 +116,8 @@ export function ApproveForm({
   preview,
   pad,
   onDone,
+  award,
+  onOpenRequest,
 }: {
   shopId: string;
   row: QueueRow;
@@ -114,6 +125,9 @@ export function ApproveForm({
   preview?: PreviewInputs;
   pad: boolean;
   onDone: () => void;
+  award?: AwardSubmit;
+  /** A scan award found the member's waiting request instead (one open request per member). */
+  onOpenRequest?: (requestId: string) => void;
 }): React.JSX.Element {
   const router = useRouter();
   const once = useOnce();
@@ -175,8 +189,9 @@ export function ApproveForm({
       setPending(true);
       try {
         const input = { shopId, requestId: row.id, amountPence: pounds.pence, items: all };
-        const res =
-          row.status === "awaiting_owner"
+        const res: ActionResult<ScanAwardResult> = award
+          ? await award({ amountPence: pounds.pence, items: all })
+          : row.status === "awaiting_owner"
             ? await ownerApproveAction(input)
             : await approveRequestAction(input);
         if (!res.ok) {
@@ -194,10 +209,16 @@ export function ApproveForm({
           return false;
         }
         const d = res.data;
+        if (d.outcome === "open_request") {
+          onOpenRequest?.(d.requestId);
+          return false;
+        }
         toast(
           d.outcome === "approved"
             ? `Approved: ${goldText(d.gold)} for ${row.name}. Receipt ${d.receiptNumber.toLocaleString("en-GB")}.`
-            : `${goldText(d.gold)} is over your limit, so the owner will approve it.`,
+            : d.outcome === "awaiting_owner"
+              ? `${goldText(d.gold)} is over your limit, so the owner will approve it.`
+              : `That award for ${row.name} was already recorded.`,
           "success",
         );
         onDone();

@@ -146,6 +146,7 @@ export function RequestsBoard({
   older,
   paged,
   preview,
+  openId = null,
 }: {
   shopId: string;
   tab: RequestTab;
@@ -156,6 +157,8 @@ export function RequestsBoard({
   /** True when this is an older page (no live arrivals there). */
   paged: boolean;
   preview: PreviewInputs;
+  /** `?approve=<id>` (the member scanner found this member's waiting request): its approve panel opens at once. */
+  openId?: string | null;
 }): React.JSX.Element {
   const router = useRouter();
   const pathname = usePathname();
@@ -167,7 +170,10 @@ export function RequestsBoard({
     setLastTab(tab);
     setShown(tab);
   }
-  const [panel, setPanel] = useState<Panel>(null);
+  const [panel, setPanel] = useState<Panel>(() => {
+    const row = openId ? rows.find((r) => r.id === openId && r.canDecide) : undefined;
+    return row ? { kind: "approve", row } : null;
+  });
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const Overlay = desktop ? SidePanel : BottomSheet;
   const arrived = useArrivals(rows, tab, !paged && (tab === "pending" || tab === "awaiting"));

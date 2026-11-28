@@ -16,14 +16,18 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Requests" };
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 /**
  * The shop's Requests page (P2-02, PRODUCT §5, §14; DESIGN §15 screen 18): owner and staff. Tabs Pending /
  * Awaiting owner / Approved today / Expired, newest first, keyset pages (`?tab=…&before=…`, parsed as untrusted
  * text). Approve opens a side panel from 1024 px and a number-pad sheet on phones, with the shop's quick-picks
- * and a live gold preview from the loyalty engine; the server prices and guards the award again. The shop's
- * realtime stream (shop layout) refreshes the page when a request arrives or is decided elsewhere.
+ * and a live gold preview from the loyalty engine; the server prices and guards the award again.
+ * `?approve=<id>` (from the member scanner) opens that request's approve panel when it is on this tab and the
+ * caller may decide it; anything else in it is ignored. The shop's realtime stream (shop layout) refreshes the
+ * page when a request arrives or is decided elsewhere.
  */
 export default async function ShopRequestsPage({
   searchParams,
@@ -34,6 +38,8 @@ export default async function ShopRequestsPage({
   const query = await searchParams;
   const tab = parseTab(query["tab"]);
   const before = decodeCursor(query["before"]);
+  const approve = query["approve"];
+  const openId = typeof approve === "string" && UUID.test(approve) ? approve.toLowerCase() : null;
   const now = new Date();
   const span = {
     requestedAfter: new Date(now.getTime() - REQUEST_TTL_MS),
@@ -63,6 +69,7 @@ export default async function ShopRequestsPage({
         older={page.next ? encodeCursor(page.next) : null}
         paged={before !== null}
         preview={{ versions, quickPicks, cap: limits.cap, limit: limits.limit }}
+        openId={openId}
       />
     </div>
   );

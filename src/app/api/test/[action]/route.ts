@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { parseShopId } from "@/lib/brand";
+import { normaliseMemberId } from "@/lib/codes";
 import { addDays, londonDate, londonWeekStart } from "@/lib/time";
 import { getAuth } from "@/server/auth/auth";
 import { beginStaffLogin } from "@/server/auth/staff-login";
@@ -10,6 +11,7 @@ import { fakePushSink } from "@/server/integrations/push";
 import { realtimeHub } from "@/server/realtime/process-hub";
 import { deliverRealtime } from "@/server/realtime/publish";
 import { deleteUserSessions } from "@/server/repos/sessions";
+import { MEMBER_QR_LIFETIME_MS, memberQrKeys, signMemberQr } from "@/server/security/member-qr";
 import {
   ACTOR_ROLES,
   ageUserSessions,
@@ -209,6 +211,9 @@ const expireRequestInput = z.object({ userId: z.uuid(), shopId: z.uuid() }).stri
 /** P1-11: a user's points requests (ids and statuses only). */
 const pointRequestsInput = z.object({ userId: z.uuid() }).strict();
 
+/** P2-02: an EXPIRED member-QR token for a member ID (the scanner's "expired" answer; a live one comes from /api/me/member-qr). */
+const expiredMemberQrInput = z.object({ memberId: z.string().min(6).max(7) }).strict();
+
 /** P1-16: a shop's live redeem codes moved past their 15 minutes. */
 const expireRedeemCodesInput = z.object({ shopId: z.uuid() }).strict();
 
@@ -292,6 +297,17 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
         receiptNumber: approved.receiptNumber,
         gold: approved.gold,
       });
+    }
+    case "expired-member-qr": {
+      const parsed = expiredMemberQrInput.safeParse(body);
+      const memberId = parsed.success ? normaliseMemberId(parsed.data.memberId) : null;
+      if (!memberId) return invalid();
+      const { token } = signMemberQr(
+        memberId,
+        Date.now() - MEMBER_QR_LIFETIME_MS - 60_000,
+        memberQrKeys(),
+      );
+      return NextResponse.json({ token });
     }
     case "point-requests": {
       const parsed = pointRequestsInput.safeParse(body);

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { GET as memberQrRoute } from "@/app/api/me/member-qr/route";
@@ -8,6 +9,7 @@ import { formatMemberId } from "@/lib/codes";
 import type { ActionResult } from "@/server/actionTemplate";
 import { loadPrincipal, runAsPrincipal } from "@/server/authz/principal";
 import { testOwnerDb as db } from "@/server/db/client";
+import { pointRequests } from "@/server/db/schema";
 import { MEMBER_QR_LIFETIME_MS, memberQrKeys, signMemberQr } from "@/server/security/member-qr";
 import { limit, limiterKey, limiterRedis } from "@/server/security/rate-limit";
 import {
@@ -106,7 +108,15 @@ describe("[P1-14] member QR verify: whose card a token reveals", () => {
     );
     expect(own).toEqual({
       ok: true,
-      data: { status: "ok", memberId: formatMemberId(ana.memberId), name: "Ana Pereira" },
+      data: {
+        status: "ok",
+        memberId: formatMemberId(ana.memberId),
+        name: "Ana Pereira",
+        purchaseCount: 0,
+        lastVisitIso: null,
+        streak: { weeks: 0, lastWeekStart: null },
+        openRequest: null,
+      },
     });
 
     // Another shop's staff, naming their own shop: the customer isn't their member.
@@ -225,5 +235,128 @@ describe("[P1-14] member QR verify: whose card a token reveals", () => {
       { column_name: "shop_id", privilege_type: "SELECT" },
       { column_name: "user_id", privilege_type: "SELECT" },
     ]);
+  });
+});
+
+describe("[P2-02] member verify for the scanner: typed member IDs, own card, award panel fields", () => {
+  it("[P2-02] a typed member ID (any case, with or without the dash) finds a current member; others learn nothing", async () => {
+    const t = await team();
+    const ana = await customer("Ana Pereira");
+    const lastVisitAt = new Date("2026-11-20T10:00:00Z");
+    await makeMembership(ana.userId, t.shopA.id, {
+      purchaseCount: 4,
+      lastVisitAt,
+      streakWeeks: 2,
+      streakLastWeekStart: "2026-11-16",
+    });
+    for (const typed of [
+      ana.memberId,
+      formatMemberId(ana.memberId),
+      ` ${ana.memberId.toLowerCase()} `,
+    ]) {
+      const res = await runAsPrincipal(t.staffA, () =>
+        verifyMemberQrAction({ shopId: t.shopA.id, memberId: typed }),
+      );
+      expect(res, typed).toEqual({
+        ok: true,
+        data: {
+          status: "ok",
+          memberId: formatMemberId(ana.memberId),
+          name: "Ana Pereira",
+          purchaseCount: 4,
+          lastVisitIso: lastVisitAt.toISOString(),
+          streak: { weeks: 2, lastWeekStart: "2026-11-16" },
+          openRequest: null,
+        },
+      });
+    }
+    // Another shop's staff typing the same ID, an unknown ID and a malformed one.
+    const other = await runAsPrincipal(t.staffB, () =>
+      verifyMemberQrAction({ shopId: t.shopB.id, memberId: ana.memberId }),
+    );
+    expect(other).toEqual({ ok: true, data: { status: "not_member" } });
+    const unknown = await runAsPrincipal(t.staffA, () =>
+      verifyMemberQrAction({ shopId: t.shopA.id, memberId: "ZZZZZZ" }),
+    );
+    expect(unknown).toEqual({ ok: true, data: { status: "not_member" } });
+    for (const bad of ["K7Q-42", "K7Q42M1", "I0O-1LL"]) {
+      const res = await runAsPrincipal(t.staffA, () =>
+        verifyMemberQrAction({ shopId: t.shopA.id, memberId: bad }),
+      );
+      expect(res, bad).toEqual({ ok: true, data: { status: "invalid" } });
+    }
+  });
+
+  it("[P2-02] the input is a token or a member ID, never both, never neither", async () => {
+    const t = await team();
+    const both = await runAsPrincipal(t.staffA, () =>
+      verifyMemberQrAction({ shopId: t.shopA.id, token: "MQ1.junk", memberId: "K7Q42M" }),
+    );
+    expect(both).toMatchObject({ ok: false, error: { code: "VALIDATION" } });
+    const neither = await runAsPrincipal(t.staffA, () =>
+      verifyMemberQrAction({ shopId: t.shopA.id }),
+    );
+    expect(neither).toMatchObject({ ok: false, error: { code: "VALIDATION" } });
+    const long = await runAsPrincipal(t.staffA, () =>
+      verifyMemberQrAction({ shopId: t.shopA.id, memberId: "K".repeat(17) }),
+    );
+    expect(long).toMatchObject({ ok: false, error: { code: "VALIDATION" } });
+  });
+
+  it("[P2-02] a team member's own card is `self` (no award possible), by QR and by typed ID", async () => {
+    const t = await team();
+    const profile = await makeCustomerProfile(t.staffA.userId, { fullName: "Sam Staff" });
+    await makeMembership(t.staffA.userId, t.shopA.id);
+    const byQr = await runAsPrincipal(t.staffA, () =>
+      verifyMemberQrAction({ shopId: t.shopA.id, token: token(profile.memberId) }),
+    );
+    expect(byQr).toEqual({ ok: true, data: { status: "self" } });
+    const byId = await runAsPrincipal(t.staffA, () =>
+      verifyMemberQrAction({ shopId: t.shopA.id, memberId: profile.memberId }),
+    );
+    expect(byId).toEqual({ ok: true, data: { status: "self" } });
+  });
+
+  it("[P2-02] a member's open request in this shop is named, so the scanner approves that one", async () => {
+    const t = await team();
+    const dee = await customer("Dee Hart");
+    const m = await makeMembership(dee.userId, t.shopA.id);
+    const [req] = await db()
+      .insert(pointRequests)
+      .values({
+        shopId: t.shopA.id,
+        membershipId: m.id,
+        userId: dee.userId,
+        idempotencyKey: randomUUID(),
+      })
+      .returning({ id: pointRequests.id });
+    const res = await runAsPrincipal(t.staffA, () =>
+      verifyMemberQrAction({ shopId: t.shopA.id, memberId: dee.memberId }),
+    );
+    expect(res).toMatchObject({
+      ok: true,
+      data: { status: "ok", openRequest: { id: req?.id, awaitingOwner: false } },
+    });
+
+    // Sent to the owner (a staff member's over-limit award): the scanner says so instead of opening it.
+    const eli = await customer("Eli Moss");
+    const em = await makeMembership(eli.userId, t.shopA.id);
+    const [waiting] = await db()
+      .insert(pointRequests)
+      .values({
+        shopId: t.shopA.id,
+        membershipId: em.id,
+        userId: eli.userId,
+        idempotencyKey: randomUUID(),
+        status: "awaiting_owner",
+      })
+      .returning({ id: pointRequests.id });
+    const toOwner = await runAsPrincipal(t.staffA, () =>
+      verifyMemberQrAction({ shopId: t.shopA.id, memberId: eli.memberId }),
+    );
+    expect(toOwner).toMatchObject({
+      ok: true,
+      data: { status: "ok", openRequest: { id: waiting?.id, awaitingOwner: true } },
+    });
   });
 });

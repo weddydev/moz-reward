@@ -1,0 +1,78 @@
+/* Member scanner (P2-02). The viewfinder is a dark rounded frame with gold corner brackets; while the camera
+   reads, a soft gold line sweeps down it (transform only, 2.4 s, like the dock's radar pulse). The line stops
+   when a code is being checked and is never drawn under reduced motion. Tokens only (css-hex lint). */
+.m-scan-view {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--ink);
+  isolation: isolate;
+  container-type: size;
+}
+.m-scan-view video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.m-scan-frame {
+  position: absolute;
+  inset: 14%;
+  pointer-events: none;
+  border-radius: 14px;
+  background:
+    linear-gradient(var(--gold), var(--gold)) top left / 28px 3px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) top left / 3px 28px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) top right / 28px 3px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) top right / 3px 28px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) bottom left / 28px 3px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) bottom left / 3px 28px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) bottom right / 28px 3px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) bottom right / 3px 28px no-repeat;
+}
+@keyframes m-scan-sweep {
+  from {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  to {
+    /* The frame is 72% of the viewfinder's height (inset 14%). */
+    transform: translateY(72cqh);
+    opacity: 0;
+  }
+}
+.m-scan-line {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold-bright), transparent);
+  box-shadow: 0 0 12px color-mix(in oklab, var(--gold) 60%, transparent);
+  animation: m-scan-sweep 2.4s var(--ease-out) infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .m-scan-line {
+    display: none;
+  }
+}
+.m-scan-note {
+  position: absolute;
+  inset: auto 12px 12px;
+  z-index: 1;
+  border-radius: 12px;
+  padding: 8px 12px;
+  background: color-mix(in oklab, var(--ink) 78%, transparent);
+  color: var(--ivory);
+  text-align: center;
+}

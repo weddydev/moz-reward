@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 import { toast } from "@/components/ui/Toast";
 import { newId } from "@/lib/id";
 import { BUTTON } from "@/lib/motion/controls";
+import { useOnline } from "@/lib/use-online";
 import { requestPointsAction } from "./actions";
 import {
   afterSend,
@@ -37,24 +38,6 @@ export const QUEUE_FLUSH_EVENT = "moz:request-queue-flush";
  * nothing else would retry until the next `online` event (human, 27 Nov 2026: stuck on "You're offline").
  */
 export const REQUEST_RETRY_MS = [3_000, 10_000, 30_000] as const;
-
-/** `navigator.onLine`, kept current (true on the server and before hydration). */
-function useOnline(): boolean {
-  const [online, setOnline] = useState(true);
-  useEffect(() => {
-    const read = (): void => {
-      setOnline(navigator.onLine);
-    };
-    read();
-    window.addEventListener("online", read);
-    window.addEventListener("offline", read);
-    return () => {
-      window.removeEventListener("online", read);
-      window.removeEventListener("offline", read);
-    };
-  }, []);
-  return online;
-}
 
 export type OpenRequestView = { status: "pending" | "awaiting_owner"; requestedAt: string };
 

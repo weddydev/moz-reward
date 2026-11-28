@@ -74,11 +74,16 @@ describe("[P0-05] security headers (SECURITY §5)", () => {
       securityHeaders({ nonce: NONCE, appEnv: "production", isDev: false, pathname })
         ["Permissions-Policy"]?.split(", ")
         .find((p) => p.startsWith("camera="));
-    expect(camera("/staff/scan")).toBe("camera=(self)");
+    expect(camera("/dashboard/scan")).toBe("camera=(self)");
     expect(camera("/scan")).toBe("camera=(self)");
-    expect(camera("/staff/scan/anything")).toBe("camera=(self)");
+    expect(camera("/dashboard/scan/anything")).toBe("camera=(self)");
     expect(camera("/scanner-lookalike")).toBe("camera=()");
     expect(camera("/wallet")).toBe("camera=()");
+    // P2-02: the staff scanner lives under the dashboard; the rest of the dashboard never gets the camera.
+    expect(camera("/staff/scan")).toBe("camera=()");
+    expect(camera("/dashboard")).toBe("camera=()");
+    expect(camera("/dashboard/requests")).toBe("camera=()");
+    expect(camera("/dashboard/scanner")).toBe("camera=()");
   });
 
   it("a nonce is required and must be base64", () => {
