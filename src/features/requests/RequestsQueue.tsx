@@ -2,7 +2,7 @@
 
 import { Check, Clock, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
@@ -11,20 +11,19 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { RadioGroup } from "@/components/ui/Radio";
 import { SidePanel } from "@/components/ui/SidePanel";
-import { TextArea, TextField } from "@/components/ui/TextField";
+import { TextArea } from "@/components/ui/TextField";
 import { toast } from "@/components/ui/Toast";
 import { REJECT_NOTE_MAX, REJECT_REASONS, type RejectReason } from "@/lib/requests";
 import { DESKTOP_QUERY, useMediaQuery } from "@/lib/use-media-query";
-import { approveRequestAction, ownerApproveAction, rejectRequestAction } from "./actions";
-import { parseItems, parsePounds, type QueueRow, REJECT_REASON_LABELS } from "./view";
+import { rejectRequestAction } from "./actions";
+import { ApproveForm, STALE_CODES, useOnce } from "./ApproveForm";
+import { type QueueRow, REJECT_REASON_LABELS } from "./view";
 
 export const QUEUE_EMPTY_TITLE = "No open requests";
 export const QUEUE_EMPTY_TEXT =
   "When a customer asks for gold, their request shows here straight away.";
-/** A decision the queue no longer allows (decided by someone else, expired, left): the page refreshes. */
-const STALE_CODES = new Set(["CONFLICT", "NOT_FOUND", "FORBIDDEN"]);
 
-const REASON_OPTIONS = REJECT_REASONS.map((value) => ({
+export const REASON_OPTIONS = REJECT_REASONS.map((value) => ({
   value,
   label: REJECT_REASON_LABELS[value],
 }));
@@ -83,7 +82,13 @@ export function RequestsQueue({
         description={panel ? who(panel.row) : undefined}
       >
         {panel?.kind === "approve" ? (
-          <ApproveForm key={panel.row.id} shopId={shopId} row={panel.row} onDone={close} />
+          <ApproveForm
+            key={panel.row.id}
+            shopId={shopId}
+            row={panel.row}
+            pad={!desktop}
+            onDone={close}
+          />
         ) : null}
       </Overlay>
       <Overlay
@@ -100,7 +105,7 @@ export function RequestsQueue({
   );
 }
 
-const who = (row: QueueRow): string =>
+export const who = (row: QueueRow): string =>
   [row.name, row.memberId, `asked at ${row.requestedAt}`].filter(Boolean).join(" · ");
 
 function RequestRow({
@@ -176,152 +181,7 @@ function RequestRow({
   );
 }
 
-/** One decision at a time: a second press while the first is on its way does nothing (the server refuses a repeat). */
-function useOnce(): (work: () => Promise<boolean>) => Promise<boolean> {
-  const busy = useRef(false);
-  return async (work) => {
-    if (busy.current) return false;
-    busy.current = true;
-    try {
-      return await work();
-    } finally {
-      busy.current = false;
-    }
-  };
-}
-
-function ApproveForm({
-  shopId,
-  row,
-  onDone,
-}: {
-  shopId: string;
-  row: QueueRow;
-  onDone: () => void;
-}): React.JSX.Element {
-  const router = useRouter();
-  const once = useOnce();
-  const [amount, setAmount] = useState(
-    row.proposal?.amountPence == null ? "" : (row.proposal.amountPence / 100).toFixed(2),
-  );
-  const [items, setItems] = useState(row.proposal?.items.join(", ") ?? "");
-  const [amountError, setAmountError] = useState<string | undefined>();
-  const [itemsError, setItemsError] = useState<string | undefined>();
-  const [tries, setTries] = useState(0);
-  const [pending, setPending] = useState(false);
-
-  const submit = (): Promise<boolean> =>
-    once(async () => {
-      const pounds = parsePounds(amount);
-      const list = parseItems(items);
-      const missing = pounds.ok && pounds.pence === null && row.amountRequired;
-      setAmountError(
-        !pounds.ok
-          ? pounds.message
-          : missing
-            ? "Enter the amount spent. This shop gives gold per £1."
-            : undefined,
-      );
-      setItemsError(list.ok ? undefined : list.message);
-      if (!pounds.ok || !list.ok || missing) {
-        setTries((n) => n + 1);
-        return false;
-      }
-      setPending(true);
-      try {
-        const input = {
-          shopId,
-          requestId: row.id,
-          amountPence: pounds.pence,
-          items: list.items,
-        };
-        const res =
-          row.status === "awaiting_owner"
-            ? await ownerApproveAction(input)
-            : await approveRequestAction(input);
-        if (!res.ok) {
-          const field = res.error.fieldErrors?.["amountPence"]?.[0];
-          if (field) {
-            setAmountError(field);
-            setTries((n) => n + 1);
-          } else {
-            toast(res.error.message, "error");
-          }
-          if (STALE_CODES.has(res.error.code)) {
-            onDone();
-            router.refresh();
-          }
-          return false;
-        }
-        const d = res.data;
-        toast(
-          d.outcome === "approved"
-            ? `Approved: +${d.gold.toLocaleString("en-GB")} gold for ${row.name}. Receipt ${d.receiptNumber.toLocaleString("en-GB")}.`
-            : `+${d.gold.toLocaleString("en-GB")} gold is over your limit, so the owner will approve it.`,
-          "success",
-        );
-        onDone();
-        router.refresh();
-        return true;
-      } finally {
-        setPending(false);
-      }
-    });
-
-  return (
-    <form
-      className="flex flex-col gap-4"
-      data-testid="approve-form"
-      onSubmit={(e) => {
-        e.preventDefault();
-        void submit();
-      }}
-    >
-      {row.proposal ? (
-        <p className="text-body" data-testid="approve-proposal">
-          Your team proposed {row.proposal.text}. You can change the amount.
-        </p>
-      ) : null}
-      <TextField
-        label="Amount spent (£)"
-        name="amount"
-        inputMode="decimal"
-        autoComplete="off"
-        placeholder="12.50"
-        value={amount}
-        onChange={(e) => {
-          setAmount(e.target.value);
-        }}
-        hint={
-          row.amountRequired
-            ? "Required: this shop gives gold per £1."
-            : "Optional for a visit-based programme."
-        }
-        error={amountError}
-        errorKey={tries}
-        required={row.amountRequired}
-      />
-      <TextField
-        label="Items (optional)"
-        name="items"
-        autoComplete="off"
-        placeholder="Flat white, Croissant"
-        value={items}
-        onChange={(e) => {
-          setItems(e.target.value);
-        }}
-        hint="Separate items with commas. They show on the receipt."
-        error={itemsError}
-        errorKey={tries}
-      />
-      <Button type="submit" block loading={pending} data-testid="approve-submit">
-        {row.status === "awaiting_owner" ? "Approve award" : "Approve and award gold"}
-      </Button>
-    </form>
-  );
-}
-
-function RejectForm({
+export function RejectForm({
   shopId,
   row,
   onDone,

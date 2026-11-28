@@ -1,0 +1,41 @@
+/* Requests page (P2-02; DESIGN §8.7 "Dashboard live request arrival"): a request that arrives while the page is
+   open slides in from the top (expressive tier, 380 ms) with a 1.2 s soft gold highlight that fades out. One row
+   paints its background for 1.2 s (a small area); the slide is transform + opacity only. Reduced motion: the
+   global safety net (globals.css) runs both once, briefly, to their end state. Tokens only (css-hex lint). */
+@keyframes m-req-arrive {
+  from {
+    transform: translateY(-12px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes m-req-glow {
+  from {
+    background-color: color-mix(in oklab, var(--gold) 26%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+[data-arrived] {
+  animation:
+    m-req-arrive var(--dur-expressive) var(--ease-out) both,
+    m-req-glow 1200ms ease-out both;
+}
+/* Phone cards paint their own surface, so a card glows with a soft gold ring instead of a background. */
+@keyframes m-req-ring {
+  from {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--gold) 55%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 3px transparent;
+  }
+}
+li[data-arrived] {
+  animation:
+    m-req-arrive var(--dur-expressive) var(--ease-out) both,
+    m-req-ring 1200ms ease-out both;
+}

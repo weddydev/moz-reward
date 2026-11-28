@@ -18,6 +18,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import type { MemberId, ShopCode, ShopId } from "@/lib/brand";
+import type { QuickPick } from "@/lib/requests";
 import { geographyPoint, id, timestamps, tz } from "./_columns";
 import { users } from "./auth";
 
@@ -101,6 +102,11 @@ export const shops = pgTable(
     status: shopStatus().notNull().default("pending"),
     /** When the shop last became `closed` (set by trigger, 0034): rewards still redeem for 30 days (PRODUCT §15). */
     closedAt: tz(),
+    /**
+     * Item quick-picks on the approve form (P2-02; the owner edits them in Settings, P2-05): `[{ label,
+     * pricePence }]`, at most QUICK_PICKS.max. The shape is checked by the writing action; the CHECK bounds it.
+     */
+    quickPicks: jsonb().$type<QuickPick[]>().notNull().default([]),
     ...timestamps(),
   },
   (t) => [
@@ -109,6 +115,11 @@ export const shops = pgTable(
     check("shops_shop_code_format", sql`${t.shopCode} ~ '^[2-9A-HJKMNP-TV-Z]{6}$'`),
     // P1-01: the Call button dials this (src/lib/shop-links.ts). Added NOT VALID in 0015 (locking rules).
     check("shops_phone_e164", sql`${t.phone} ~ '^\\+[1-9][0-9]{6,14}$'`),
+    // P2-02: added NOT VALID in 0039 (locking rules); every existing row holds the default `[]`.
+    check(
+      "shops_quick_picks_shape",
+      sql`jsonb_typeof(${t.quickPicks}) = 'array' AND jsonb_array_length(${t.quickPicks}) <= 8`,
+    ),
   ],
 );
 

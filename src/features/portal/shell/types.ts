@@ -18,4 +18,6 @@ export type ShellProps = {
   role: string | null;
   /** Counts on nav items, by route path (the owner's awaiting-approval requests, P1-12); absent = none. */
   counts: Readonly<Record<string, number>>;
+  /** Where a nav item leads instead of its path while it shows a count (P2-02: Requests → the Awaiting owner tab). */
+  targets?: Readonly<Record<string, string>>;
 };

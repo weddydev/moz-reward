@@ -1,6 +1,7 @@
 import "server-only";
 import { and, asc, eq, gt, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import type { ProgrammeVersion } from "@/lib/loyalty/programme";
+import type { QuickPick } from "@/lib/requests";
 import type { CustomerScope, ShopScope, SystemScope } from "@/server/authz/scope";
 import type { Transaction } from "@/server/db/client";
 import {
@@ -467,4 +468,168 @@ export async function memberCards(
     tx,
   );
   return new Map([...rows].map((r) => [r.user_id, { name: r.full_name, memberId: r.member_id }]));
+}
+
+// ---- The full Requests page (P2-02, PRODUCT §14): four tabs, keyset pages ----
+
+/** The Requests page's tabs (mirrors `REQUEST_TABS` in src/features/requests/tabs.ts). */
+export type RequestsTab = "pending" | "awaiting" | "approved" | "expired";
+
+/** One row of a Requests tab: the queue row plus what the approve panel and the decided tabs show. */
+export type TeamRequestRow = Omit<TeamRequest, "status"> & {
+  status: PointRequestStatus;
+  source: "request" | "scan";
+  decidedAt: Date | null;
+  /** The member's streak now (the approve panel's live gold preview; the server prices again under a lock). */
+  streak: { weeks: number; lastWeekStart: string | null };
+};
+
+export type TeamRequestsPage = {
+  rows: TeamRequestRow[];
+  /** The last row's sort time as Postgres prints it (microseconds kept) and id; null on the last page. */
+  next: { at: string; id: string } | null;
+};
+
+/**
+ * Which rows a tab holds at `now` (`dayStart` = the start of today in London) and the column it pages on:
+ *  - pending / awaiting: open requests inside their 24 h, newest first (a new request appears at the top);
+ *  - approved: approved since the start of today (UK), by decision time (index point_requests_shop_approved_idx);
+ *  - expired: `expired`, plus open requests past their 24 h that the 5-minute expiry job hasn't reached yet.
+ */
+function tabFilter(tab: RequestsTab, opts: { requestedAfter: Date; dayStart: Date }) {
+  switch (tab) {
+    case "pending":
+      return {
+        where: and(
+          eq(pointRequests.status, "pending"),
+          gt(pointRequests.requestedAt, opts.requestedAfter),
+        ),
+        sortAt: pointRequests.requestedAt,
+      };
+    case "awaiting":
+      return {
+        where: and(
+          eq(pointRequests.status, "awaiting_owner"),
+          gt(pointRequests.requestedAt, opts.requestedAfter),
+        ),
+        sortAt: pointRequests.requestedAt,
+      };
+    case "approved":
+      return {
+        where: and(
+          eq(pointRequests.status, "approved"),
+          gte(pointRequests.decidedAt, opts.dayStart),
+        ),
+        sortAt: pointRequests.decidedAt,
+      };
+    case "expired":
+      return {
+        where: sql`(${pointRequests.status} = 'expired' OR (${pointRequests.status} IN ('pending', 'awaiting_owner') AND ${pointRequests.requestedAt} <= ${opts.requestedAfter.toISOString()}::timestamptz))`,
+        sortAt: pointRequests.requestedAt,
+      };
+    default: {
+      const never: never = tab;
+      throw new Error(`unknown tab ${String(never)}`);
+    }
+  }
+}
+
+/**
+ * One page of a Requests tab for the scoped shop (owner and staff; RLS point_requests team read is the second
+ * wall), newest first, keyset-paged on (sort time, id) so a request arriving between pages never shifts or
+ * repeats a row. Member names and IDs come from `shop_member_cards` (0030), ≤ 100 per call.
+ */
+export async function listTeamRequestsPage(
+  scope: ShopScope,
+  opts: {
+    tab: RequestsTab;
+    requestedAfter: Date;
+    dayStart: Date;
+    before: { at: string; id: string } | null;
+    limit: number;
+  },
+): Promise<TeamRequestsPage> {
+  const limit = Math.min(Math.max(1, Math.trunc(opts.limit)), TEAM_QUEUE_LIMIT);
+  const { where, sortAt } = tabFilter(opts.tab, opts);
+  return transaction(scope, async (tx) => {
+    const rows = await withScope(
+      scope,
+      (q) =>
+        q
+          .select({
+            id: pointRequests.id,
+            status: pointRequests.status,
+            source: pointRequests.source,
+            requestedAt: pointRequests.requestedAt,
+            decidedAt: pointRequests.decidedAt,
+            amountPence: pointRequests.amountPence,
+            items: pointRequests.items,
+            awardGold: pointRequests.awardGold,
+            userId: pointRequests.userId,
+            purchaseCount: memberships.purchaseCount,
+            lastVisitAt: memberships.lastVisitAt,
+            streakWeeks: memberships.streakWeeks,
+            streakLastWeekStart: memberships.streakLastWeekStart,
+            sortText: sql<string>`${sortAt}::text`,
+          })
+          .from(pointRequests)
+          .innerJoin(memberships, eq(memberships.id, pointRequests.membershipId))
+          .where(
+            inShop(
+              pointRequests.shopId,
+              scope,
+              where,
+              opts.before
+                ? sql`(${sortAt}, ${pointRequests.id}) < (${opts.before.at}::timestamptz, ${opts.before.id}::uuid)`
+                : undefined,
+            ),
+          )
+          .orderBy(sql`${sortAt} DESC`, sql`${pointRequests.id} DESC`)
+          .limit(limit + 1),
+      tx,
+    );
+    const page = rows.slice(0, limit);
+    const cards = await memberCards(scope, tx, [...new Set(page.map((r) => r.userId))]);
+    const last = page.at(-1);
+    return {
+      rows: page.map(({ userId, sortText: _s, streakWeeks, streakLastWeekStart, ...r }) => ({
+        ...r,
+        streak: { weeks: streakWeeks, lastWeekStart: streakLastWeekStart },
+        member: cards.get(userId) ?? null,
+      })),
+      next: rows.length > limit && last ? { at: last.sortText, id: last.id } : null,
+    };
+  });
+}
+
+/** Badge counts for the Requests tabs (Expired has none): the same filters as `listTeamRequestsPage`. */
+export async function countRequestTabs(
+  scope: ShopScope,
+  opts: { requestedAfter: Date; dayStart: Date },
+): Promise<{ pending: number; awaiting: number; approved: number }> {
+  const [row] = await withScope(scope, (q) =>
+    q
+      .select({
+        pending: sql<number>`count(*) FILTER (WHERE ${pointRequests.status} = 'pending' AND ${pointRequests.requestedAt} > ${opts.requestedAfter.toISOString()}::timestamptz)::int`,
+        awaiting: sql<number>`count(*) FILTER (WHERE ${pointRequests.status} = 'awaiting_owner' AND ${pointRequests.requestedAt} > ${opts.requestedAfter.toISOString()}::timestamptz)::int`,
+        approved: sql<number>`count(*) FILTER (WHERE ${pointRequests.status} = 'approved' AND ${pointRequests.decidedAt} >= ${opts.dayStart.toISOString()}::timestamptz)::int`,
+      })
+      .from(pointRequests)
+      .where(
+        inShop(
+          pointRequests.shopId,
+          scope,
+          sql`(${pointRequests.requestedAt} > ${opts.requestedAfter.toISOString()}::timestamptz OR ${pointRequests.decidedAt} >= ${opts.dayStart.toISOString()}::timestamptz)`,
+        ),
+      ),
+  );
+  return { pending: row?.pending ?? 0, awaiting: row?.awaiting ?? 0, approved: row?.approved ?? 0 };
+}
+
+/** The shop's approve-form quick-picks (P2-02; edited in Settings, P2-05). */
+export async function readQuickPicks(scope: ShopScope): Promise<QuickPick[]> {
+  const [row] = await withScope(scope, (q) =>
+    q.select({ quickPicks: shops.quickPicks }).from(shops).where(inShop(shops.id, scope)).limit(1),
+  );
+  return row?.quickPicks ?? [];
 }

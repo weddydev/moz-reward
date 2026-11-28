@@ -19,3 +19,11 @@ export const REQUEST_ITEMS = { max: 10, maxLength: 40 } as const;
 export const REJECT_NOTE_MAX = 200;
 /** Absurd-number bound on an amount spent (£100,000); the platform cap is checked by the service and the DB. */
 export const AMOUNT_PENCE_MAX = 10_000_000;
+
+/** An owner-configured quick-pick on the approve form (shop settings, P2-05): an item and, when set, its usual price. */
+export type QuickPick = { label: string; pricePence: number | null };
+/** At most this many quick-picks per shop, each label as long as an award's item may be (REQUEST_ITEMS). */
+export const QUICK_PICKS = { max: 8, labelMax: REQUEST_ITEMS.maxLength } as const;
+
+/** A request expires 24 h after the server received it (PRODUCT §5); the expiry job marks it within 5 minutes. */
+export const REQUEST_TTL_MS = 24 * 60 * 60 * 1000;

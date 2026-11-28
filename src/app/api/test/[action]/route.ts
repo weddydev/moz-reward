@@ -182,7 +182,19 @@ const shopInput = z
      * P1-07: a loyalty programme (Café classic template, ingot 1,000 gold), version 1, owned by nobody real.
      * P1-08: "sample" = the DESIGN §15 sample rewards (milestones 25/50 and a mystery at 75).
      */
-    programme: z.union([z.boolean(), z.literal("sample")]).default(false),
+    programme: z.union([z.boolean(), z.literal("sample"), z.literal("per_pound")]).default(false),
+    /** P2-02: the approve form's quick-picks (`shops.quick_picks`). */
+    quickPicks: z
+      .array(
+        z
+          .object({
+            label: z.string().min(1).max(40),
+            pricePence: z.number().int().min(1).max(10_000_000).nullable(),
+          })
+          .strict(),
+      )
+      .max(8)
+      .optional(),
   })
   .strict();
 
@@ -337,12 +349,14 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
         closureInDays,
         visits,
         celebrate,
+        quickPicks,
       } = parsed.data;
       if (visits > 0 && (!memberUserId || !programme)) return invalid();
       const shop = await makeShop({
         status,
         ...(name ? { name } : {}),
         ...(cover ? { coverUrl: E2E_COVER_PATH } : {}),
+        ...(quickPicks ? { quickPicks } : {}),
         ...(details
           ? {
               description: "Small-batch coffee, fresh bakes and a warm welcome on the high street.",
@@ -368,7 +382,16 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
         );
       }
       if (programme) {
-        await makeProgramme(shop.id, 1_000, programme === "sample" ? SAMPLE_PROGRAMME : {});
+        await makeProgramme(
+          shop.id,
+          1_000,
+          programme === "sample"
+            ? SAMPLE_PROGRAMME
+            : // P2-02: 2 gold per £1 spent (the live gold preview follows the amount).
+              programme === "per_pound"
+              ? { earnMode: "per_pound", earnRate: 2 }
+              : {},
+        );
       }
       if (memberUserId) {
         const { lastVisitDaysAgo, streakWeeks, ...counters } = member ?? {};

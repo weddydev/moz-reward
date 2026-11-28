@@ -6,6 +6,7 @@ import { type MemberId, type ShopCode, type ShopId, parseShopId } from "@/lib/br
 import { normaliseMemberId, normaliseShopCode } from "@/lib/codes";
 import type { LngLat } from "@/lib/geo";
 import { TEMPLATES } from "@/lib/loyalty/programme";
+import type { QuickPick } from "@/lib/requests";
 import { hashPassword } from "@/server/auth/password";
 import { sealField } from "@/server/security/field-crypto";
 import { fieldKeyring, phoneBlindIndex, profilePhoneContext } from "@/server/security/field-keys";
@@ -157,6 +158,21 @@ type DemoAccount = {
 
 const BREW = DEMO_SHOPS[0].id;
 const BAKE = DEMO_SHOPS[3].id;
+
+/** Approve-form quick-picks (P2-02) for the demo café and bakery; the others show none (their owner adds them). */
+export const DEMO_QUICK_PICKS: Readonly<Record<string, readonly QuickPick[]>> = {
+  [DEMO_SHOPS[0].id]: [
+    { label: "Flat white", pricePence: 340 },
+    { label: "Croissant", pricePence: 295 },
+    { label: "Brunch plate", pricePence: 1250 },
+    { label: "Flowers", pricePence: 1800 },
+  ],
+  [DEMO_SHOPS[3].id]: [
+    { label: "Sourdough loaf", pricePence: 450 },
+    { label: "Cinnamon bun", pricePence: 325 },
+    { label: "Celebration cake", pricePence: 2400 },
+  ],
+};
 const PEDAL = DEMO_SHOPS[4].id;
 /** Brew & Bloom's demo owner (Maya Bloom in DEMO_ACCOUNTS). */
 const DEMO_OWNER = "0199d3e0-0000-7000-8000-000000000003";
@@ -394,7 +410,13 @@ export async function runDemoSeed(
 
     const insertedShops = await tx
       .insert(shops)
-      .values(DEMO_SHOPS.map((shop) => ({ ...shop, status: "active" as const })))
+      .values(
+        DEMO_SHOPS.map((shop) => ({
+          ...shop,
+          status: "active" as const,
+          quickPicks: [...(DEMO_QUICK_PICKS[shop.id] ?? [])],
+        })),
+      )
       .onConflictDoNothing({ target: shops.id })
       .returning({ id: shops.id });
     result.shops = insertedShops.length;

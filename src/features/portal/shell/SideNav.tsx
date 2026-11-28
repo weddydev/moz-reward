@@ -97,7 +97,7 @@ export function SideNav({
           return (
             <li key={r.path}>
               <TransitionLink
-                href={r.path}
+                href={chrome.targets?.[r.path] ?? r.path}
                 aria-current={current ? "page" : undefined}
                 className={cx(
                   "m-side-item text-small flex min-h-11 items-center gap-3 rounded-md px-3 font-semibold",

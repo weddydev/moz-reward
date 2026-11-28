@@ -30,7 +30,8 @@ const DENIED = "42501";
  *  the shop owner may change it, added to `owner_writable` in the trigger). */
 const CLASSIFIED = {
   // closed_at (P1-16): stamped by the shops_closed_at trigger from status; a value the web role sends is replaced.
-  adminOnly: ["id", "slug", "shop_code", "status", "created_at", "closed_at"],
+  // quick_picks (P2-02): admin-only until P2-05 ships the owner's editor and adds it to owner_writable (FOLLOWUPS).
+  adminOnly: ["id", "slug", "shop_code", "status", "created_at", "closed_at", "quick_picks"],
   ownerWritable: [
     "name",
     "trading_name",

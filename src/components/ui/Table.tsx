@@ -72,6 +72,7 @@ export function Table<Row>({
   empty,
   loading = false,
   loadingRows = 5,
+  rowAttrs,
 }: {
   caption: string;
   columns: ReadonlyArray<Column<Row>>;
@@ -83,6 +84,8 @@ export function Table<Row>({
   empty?: ReactNode;
   loading?: boolean;
   loadingRows?: number;
+  /** Data attributes for a row (state hooks for CSS and tests, e.g. `data-arrived`). */
+  rowAttrs?: (row: Row) => Readonly<Record<`data-${string}`, string | undefined>>;
 }): React.JSX.Element {
   const hydrated = useHydrated();
   const [density, setDensity] = useState<Density>("comfortable");
@@ -205,6 +208,7 @@ export function Table<Row>({
                 rows.map((row) => (
                   <tr
                     key={rowKey(row)}
+                    {...rowAttrs?.(row)}
                     onClick={
                       action
                         ? (e) => {

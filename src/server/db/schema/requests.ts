@@ -105,6 +105,10 @@ export const pointRequests = pgTable(
     index("point_requests_open_requested_idx")
       .on(t.requestedAt)
       .where(sql`${t.status} IN ('pending', 'awaiting_owner')`),
+    // P2-02 Requests "Approved today" tab: the shop's approvals by decision time (keyset pages).
+    index("point_requests_shop_approved_idx")
+      .on(t.shopId, t.decidedAt.desc(), t.id.desc())
+      .where(sql`${t.status} = 'approved'`),
     index("point_requests_unseen_idx")
       .on(t.userId, t.decidedAt.desc())
       .where(sql`${t.status} = 'approved' AND ${t.seenAt} IS NULL`),

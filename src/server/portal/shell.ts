@@ -71,6 +71,10 @@ export async function shellChrome(
     portals: principal ? portalLinks(principal) : [],
     shops,
     counts,
+    // P2-02: the owner's count is the Awaiting owner tab, so the item opens that tab.
+    targets: counts["/dashboard/requests"]
+      ? { "/dashboard/requests": "/dashboard/requests?tab=awaiting" }
+      : {},
     activeShopId: gate.shopId ?? null,
     role: portal === "customer" ? null : (gate.role ?? null),
   };

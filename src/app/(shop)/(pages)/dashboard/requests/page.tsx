@@ -1,28 +1,51 @@
-import { RequestsQueue } from "@/features/requests/RequestsQueue";
-import { queueRows } from "@/features/requests/view";
+import { RequestsBoard } from "@/features/requests/RequestsBoard";
+import { decodeCursor, encodeCursor, parseTab, REQUESTS_PAGE_SIZE } from "@/features/requests/tabs";
+import { boardRows } from "@/features/requests/view";
 import { RedeemConfirm } from "@/features/rewards/RedeemConfirm";
+import { REQUEST_TTL_MS } from "@/lib/requests";
+import { londonDayStart } from "@/lib/time";
 import { gateShopRoute } from "@/server/portal/gate";
+import { readApproveLimits } from "@/server/repos/approvals";
 import { listProgrammeVersions } from "@/server/repos/loyalty";
-import { listTeamOpenRequests } from "@/server/repos/point-requests";
-import { REQUEST_TTL_MS } from "@/server/services/point-request-jobs";
+import {
+  countRequestTabs,
+  listTeamRequestsPage,
+  readQuickPicks,
+} from "@/server/repos/point-requests";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Requests" };
 
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
 /**
- * The shop's open points requests (P1-12, PRODUCT §5): owner and staff. Requests still inside their 24 h (the
- * expiry job may not have run yet), oldest first, with each member's name and member ID from the staff
- * member-card read (0030). The full Requests page (tabs, search, history) is P2. The shop's realtime stream is
- * in the shop layout, so the queue stays live.
+ * The shop's Requests page (P2-02, PRODUCT §5, §14; DESIGN §15 screen 18): owner and staff. Tabs Pending /
+ * Awaiting owner / Approved today / Expired, newest first, keyset pages (`?tab=…&before=…`, parsed as untrusted
+ * text). Approve opens a side panel from 1024 px and a number-pad sheet on phones, with the shop's quick-picks
+ * and a live gold preview from the loyalty engine; the server prices and guards the award again. The shop's
+ * realtime stream (shop layout) refreshes the page when a request arrives or is decided elsewhere.
  */
-export default async function ShopRequestsPage(): Promise<React.JSX.Element> {
+export default async function ShopRequestsPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}): Promise<React.JSX.Element> {
   const { shopId, scope, role } = await gateShopRoute("/dashboard/requests");
+  const query = await searchParams;
+  const tab = parseTab(query["tab"]);
+  const before = decodeCursor(query["before"]);
   const now = new Date();
-  const [requests, versions] = await Promise.all([
-    listTeamOpenRequests(scope, { requestedAfter: new Date(now.getTime() - REQUEST_TTL_MS) }),
+  const span = {
+    requestedAfter: new Date(now.getTime() - REQUEST_TTL_MS),
+    dayStart: londonDayStart(now),
+  };
+  const [page, counts, versions, quickPicks, limits] = await Promise.all([
+    listTeamRequestsPage(scope, { ...span, tab, before, limit: REQUESTS_PAGE_SIZE }),
+    countRequestTabs(scope, span),
     listProgrammeVersions(scope),
+    readQuickPicks(scope),
+    readApproveLimits(scope),
   ]);
-  const rows = queueRows(requests, { versions, role, now });
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8">
       <div className="flex flex-col gap-1">
@@ -32,7 +55,15 @@ export default async function ShopRequestsPage(): Promise<React.JSX.Element> {
         </p>
       </div>
       <RedeemConfirm shopId={shopId} />
-      <RequestsQueue shopId={shopId} rows={rows} />
+      <RequestsBoard
+        shopId={shopId}
+        tab={tab}
+        counts={counts}
+        rows={boardRows(page.rows, { versions, role, now })}
+        older={page.next ? encodeCursor(page.next) : null}
+        paged={before !== null}
+        preview={{ versions, quickPicks, cap: limits.cap, limit: limits.limit }}
+      />
     </div>
   );
 }

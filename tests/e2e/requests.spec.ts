@@ -75,10 +75,16 @@ async function askForGold(member: Page, shopId: string): Promise<void> {
   await expect(member.getByTestId("request-pending")).toBeVisible();
 }
 
-async function openQueue(page: Page): Promise<void> {
-  await page.goto("/dashboard/requests");
+async function openQueue(page: Page, tab?: "awaiting"): Promise<void> {
+  await page.goto(tab ? `/dashboard/requests?tab=${tab}` : "/dashboard/requests");
   await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
   await expect(page.getByTestId("shop-realtime")).toHaveAttribute("data-realtime", "open");
+}
+
+/** P2-02: the Requests page's tabs change the URL; the board follows once the server answers. */
+async function openTab(page: Page, name: string, tab: string): Promise<void> {
+  await page.getByRole("tab", { name: new RegExp(`^${name}`) }).click();
+  await expect(page.getByTestId("requests-board")).toHaveAttribute("data-tab", tab);
 }
 
 async function noHorizontalScroll(page: Page): Promise<void> {
@@ -216,6 +222,9 @@ test("[P1-12] over the staff limit the owner approves; a reject needs a preset r
     await expect(toasts(page)).toContainText(
       "+100 gold is over your limit, so the owner will approve it.",
     );
+    // P2-02: the request leaves Pending for the Awaiting owner tab.
+    await expect(page.getByTestId("requests-empty")).toBeVisible();
+    await openTab(page, "Awaiting owner", "awaiting");
     const row = page.getByTestId("request-row");
     await expect(row).toHaveAttribute("data-status", "awaiting_owner");
     await expect(row).toContainText("Needs the owner");
@@ -228,7 +237,7 @@ test("[P1-12] over the staff limit the owner approves; a reject needs a preset r
 
     const owner = await device(browser, baseURL ?? "", { role: "owner", shopId });
     try {
-      await openQueue(owner.page);
+      await openQueue(owner.page, "awaiting");
       const ownerRow = owner.page.getByTestId("request-row");
       await expect(ownerRow.getByTestId("request-proposal")).toHaveText("Proposed: +100 gold");
       await ownerRow.getByRole("button", { name: `Approve ${NAME}` }).click();
@@ -252,6 +261,7 @@ test("[P1-12] over the staff limit the owner approves; a reject needs a preset r
     await expect(page.getByTestId("requests-empty")).toBeVisible();
 
     // A second visit, rejected: the reason is required, the note stays with the team.
+    await openTab(page, "Pending", "pending");
     await askForGold(member.page, shopId);
     expect(await relay(page.request, shopId)).toBeGreaterThanOrEqual(1);
     await page.getByRole("button", { name: `Reject ${NAME}` }).click();
@@ -304,11 +314,12 @@ test("[P1-12] the owner's Requests nav counts the requests awaiting them, live; 
       await openQueue(staff.page);
       await staff.page.getByRole("button", { name: `Approve ${NAME}` }).click();
       await staff.page.getByTestId("approve-submit").click();
-      await expect(staff.page.getByTestId("request-row")).toHaveAttribute(
-        "data-status",
-        "awaiting_owner",
+      // P2-02: routed to the owner, it leaves the Pending tab.
+      await expect(toasts(staff.page)).toContainText(
+        "+100 gold is over your limit, so the owner will approve it.",
         { timeout: DECIDE_MS },
       );
+      await expect(staff.page.getByTestId("requests-empty")).toBeVisible();
       expect(await relay(page.request, shopId)).toBeGreaterThanOrEqual(1);
       // Staff can't approve it, so their nav shows no count.
       await expect(staff.page.getByTestId("nav-count")).toHaveCount(0);
@@ -329,9 +340,10 @@ test("[P1-12] the owner's Requests nav counts the requests awaiting them, live; 
     await expect(side.getByRole("link", { name: "Requests (1 awaiting you)" })).toBeVisible();
     await shoot("requests-owner-count-1440", { fullPage: false });
 
-    // The owner approves it: the count goes.
+    // The owner approves it: the count goes. P2-02: the item opens the Awaiting owner tab.
     await side.getByRole("link", { name: "Requests (1 awaiting you)" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
+    await expect(page.getByTestId("requests-board")).toHaveAttribute("data-tab", "awaiting");
     await page.getByRole("button", { name: `Approve ${NAME}` }).click();
     await page.getByTestId("approve-submit").click();
     await expect(toasts(page)).toContainText(`Approved: +100 gold for ${NAME}. Receipt 1.`, {
@@ -339,6 +351,151 @@ test("[P1-12] the owner's Requests nav counts the requests awaiting them, live; 
     });
     await relay(page.request, shopId);
     await expect(page.getByTestId("nav-count")).toHaveCount(0);
+  } finally {
+    await member.context.close();
+  }
+});
+
+/** P2-02: a shop giving 2 gold per £1, with quick-picks, and the customer as a member (5 visits). */
+async function seedPerPoundShop(
+  request: APIRequestContext,
+  userId: string,
+): Promise<{ shopId: string }> {
+  const res = await request.post("/api/test/shop", {
+    data: {
+      status: "active",
+      name: "Brew & Bloom Café",
+      details: true,
+      programme: "per_pound",
+      memberUserId: userId,
+      member: { purchaseCount: 5, progressGold: 120, lastVisitDaysAgo: 3 },
+      quickPicks: [
+        { label: "Flat white", pricePence: 340 },
+        { label: "Croissant", pricePence: 295 },
+        { label: "Loyalty stamp", pricePence: null },
+      ],
+    },
+    headers: testApiHeaders(),
+  });
+  expect(res.ok()).toBe(true);
+  return (await res.json()) as { shopId: string };
+}
+
+test("[P2-02] Requests tabs: a live arrival slides in, quick-picks and the live gold preview, then Approved today", async ({
+  page,
+  browser,
+  baseURL,
+  signInAs,
+  shoot,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const member = await device(browser, baseURL ?? "", { role: "customer" });
+  try {
+    const { shopId } = await seedPerPoundShop(page.request, member.userId);
+    await signInAs("owner", { shopId });
+    await openQueue(page);
+    await expect(page.getByTestId("requests-board")).toHaveAttribute("data-tab", "pending");
+    await expect(page.getByRole("tab", { name: /^Pending/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByTestId("requests-empty")).toContainText("No open requests");
+
+    await askForGold(member.page, shopId);
+    expect(await relay(page.request, shopId)).toBeGreaterThanOrEqual(1);
+    const row = page.getByTestId("request-row");
+    await expect(row).toHaveCount(1);
+    // DESIGN §8.7: it arrived while the page was open, so it slides in with the gold highlight.
+    await expect(row).toHaveAttribute("data-arrived", "");
+    await expect(page.getByRole("tab", { name: /^Pending/ })).toContainText("1");
+
+    await row.getByRole("button", { name: `Approve ${NAME}` }).click();
+    const form = page.getByTestId("approve-form");
+    await expect(form).toBeVisible();
+    await expect(form.getByTestId("approve-pad")).toHaveCount(0); // desktop: a text field
+    const amount = form.getByLabel("Amount spent (£)");
+    await expect(amount).toHaveAttribute("required", "");
+    await expect(form.getByTestId("approve-gold")).toHaveAttribute("data-kind", "needs-amount");
+
+    // A quick-pick adds the item and its price; two add up; the gold follows (2 per £1, rounded down).
+    await form.getByRole("button", { name: "Flat white £3.40" }).click();
+    await expect(amount).toHaveValue("3.40");
+    await expect(form.getByTestId("approve-gold-value")).toHaveText("+6 gold");
+    await form.getByRole("button", { name: "Croissant £2.95" }).click();
+    await expect(amount).toHaveValue("6.35");
+    await expect(form.getByTestId("approve-gold-value")).toHaveText("+12 gold");
+
+    // A typed amount wins over the picks from then on.
+    await amount.fill("42");
+    await expect(form.getByTestId("approve-gold-value")).toHaveText("+84 gold");
+    await form.getByRole("button", { name: "Loyalty stamp" }).click();
+    await expect(amount).toHaveValue("42");
+    await expect(form.getByTestId("approve-submit")).toHaveText("Confirm and issue +84 gold");
+    await shoot("requests-approve-panel-1440", { fullPage: false });
+
+    await form.getByTestId("approve-submit").click();
+    await expect(toasts(page)).toContainText(`Approved: +84 gold for ${NAME}. Receipt 1.`, {
+      timeout: DECIDE_MS,
+    });
+    await expect(page.getByTestId("requests-empty")).toBeVisible();
+
+    await openTab(page, "Approved today", "approved");
+    await expect(page).toHaveURL(/\?tab=approved$/);
+    const done = page.getByTestId("request-row");
+    await expect(done).toHaveCount(1);
+    await expect(done).toHaveAttribute("data-status", "approved");
+    await expect(done.getByTestId("request-outcome")).toHaveText(/^\+84 gold at \d{2}:\d{2}$/);
+    await expect(page.getByRole("tab", { name: /^Approved today/ })).toContainText("1");
+    await shoot("requests-approved-today-1440");
+
+    await openTab(page, "Expired", "expired");
+    await expect(page.getByTestId("requests-empty")).toContainText("No expired requests");
+  } finally {
+    await member.context.close();
+  }
+});
+
+test("[P2-02] on a phone Approve opens a number pad; the amount and gold follow the keys", async ({
+  page,
+  browser,
+  baseURL,
+  signInAs,
+  shoot,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const member = await device(browser, baseURL ?? "", { role: "customer" });
+  try {
+    const { shopId } = await seedPerPoundShop(page.request, member.userId);
+    await signInAs("staff", { shopId });
+    await askForGold(member.page, shopId);
+    await openQueue(page);
+    await page.getByRole("button", { name: `Approve ${NAME}` }).click();
+    const form = page.getByTestId("approve-form");
+    const pad = form.getByTestId("approve-pad");
+    await expect(pad).toBeVisible();
+    const amount = form.getByLabel("Amount spent (£)");
+    await expect(amount).toHaveAttribute("inputmode", "none");
+
+    for (const key of ["1", "2", "Decimal point", "5", "0", "9"]) {
+      await pad.getByRole("button", { name: key, exact: true }).click();
+    }
+    await expect(amount).toHaveValue("12.50"); // a third decimal is ignored
+    await expect(form.getByTestId("approve-gold-value")).toHaveText("+25 gold");
+    await pad.getByRole("button", { name: "Delete" }).click();
+    await expect(amount).toHaveValue("12.5");
+    await expect(form.getByTestId("approve-submit")).toHaveText("Confirm and issue +25 gold");
+    await noHorizontalScroll(page);
+    await shoot("requests-number-pad-390", { fullPage: false });
+    await page.setViewportSize({ width: 320, height: 640 });
+    await noHorizontalScroll(page);
+    await shoot("requests-number-pad-320", { fullPage: false });
+
+    await form.getByTestId("approve-submit").click();
+    await expect(toasts(page)).toContainText(`Approved: +25 gold for ${NAME}. Receipt 1.`, {
+      timeout: DECIDE_MS,
+    });
   } finally {
     await member.context.close();
   }

@@ -90,7 +90,7 @@ export function BottomNav({
           return r.raised ? (
             <TransitionLink
               key={r.path}
-              href={r.path}
+              href={chrome.targets?.[r.path] ?? r.path}
               {...tab}
               aria-current={isActive ? "page" : undefined}
               data-raised
@@ -106,7 +106,7 @@ export function BottomNav({
           ) : (
             <TransitionLink
               key={r.path}
-              href={r.path}
+              href={chrome.targets?.[r.path] ?? r.path}
               {...tab}
               aria-current={isActive ? "page" : undefined}
               data-liq

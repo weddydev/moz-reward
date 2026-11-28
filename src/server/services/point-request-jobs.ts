@@ -1,4 +1,5 @@
 import "server-only";
+import { REQUEST_TTL_MS } from "@/lib/requests";
 import type { SystemScope } from "@/server/authz/scope";
 import { notify } from "@/server/notifications/notify";
 import { publishRealtime } from "@/server/realtime/publish";
@@ -6,7 +7,8 @@ import { transaction } from "@/server/repos/_base";
 import { activeTeamIds, expireDueRequests, remindDueRequests } from "@/server/repos/point-requests";
 
 /** An open request expires this long after `requested_at` (PRODUCT §5), `awaiting_owner` included. */
-export const REQUEST_TTL_MS = 24 * 60 * 60 * 1000;
+
+export { REQUEST_TTL_MS };
 /** The shop is reminded once when a request has been pending this long (PRODUCT §19). */
 export const REMIND_AFTER_MS = 30 * 60 * 1000;
 /** Requests closed (or reminded) per transaction, and transactions per run (bounds one run's work). */

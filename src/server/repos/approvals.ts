@@ -17,7 +17,7 @@ import {
   shopStaff,
   users,
 } from "@/server/db/schema";
-import { inShop, withScope } from "./_base";
+import { inShop, transaction, withScope } from "./_base";
 
 /**
  * Approvals, rejections and reversals (P1-12, PRODUCT §5, §11). Everything runs as the shop's team (moz_app in a
@@ -577,4 +577,19 @@ export async function findTeamReceipt(
     tx,
   );
   return row ?? null;
+}
+
+/**
+ * What the approve panel's live preview needs (P2-02): the platform cap per award and the caller's own per-award
+ * limit (null for owners and for staff without one). A guide only: `approveRequest` reads both again under its
+ * locks and decides.
+ */
+export async function readApproveLimits(
+  scope: ShopScope,
+): Promise<{ cap: { pence: number; gold: number }; limit: number | null }> {
+  return transaction(scope, async (tx) => {
+    const cap = await readAwardCap(scope, tx);
+    const own = await readOwnStaffRow(scope, tx);
+    return { cap, limit: own?.role === "staff" ? own.perAwardLimit : null };
+  });
 }
