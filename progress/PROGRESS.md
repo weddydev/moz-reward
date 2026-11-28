@@ -7,18 +7,17 @@ Baton: held by talha.syed since 2026-11-28 12:44 IST (07:14 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint 28 Nov 2026 07:35 UTC, talha.syed (Mac), baton held.** Done this session: P2 brief review on main (`dab5db2`); H-54, H-55 done (C-49 demo half, C-92/93/94 closed); P2-A CARRIED rows moved here.
-- **Two wip branches (neither on main yet):**
-  1. **`wip/apt-refresh`, HEAD `fba3d91`**: fixes main's red CI 46119536513 (Trivy HIGH libzstd1 CVE-2026-124851: the `apt-get upgrade` layer came from the build cache; KI-90). Dispatched CI 46121459459 (incl. the image job). **Next:** when it is green, push `fba3d91` to main (hook checks CI), then re-check main's image job.
-  2. **`wip/P2-01`, HEAD `adcc91a`** (starts from `dab5db2`): P2-01 step A = `src/lib/dashboard/kpis.ts` (UK-day buckets, DST-safe), `src/server/repos/dashboard.ts` `readDailyTotals`, `src/features/dashboard/overview.ts` view model (KPIs, chart bars, owner-only plan banner); unit 19/0, integration `tests/integration/dashboard.test.ts` 4/0; DECISIONS 28 Nov "P2-01 dashboard KPIs" (definitions, staff view, in-house SVG charts, no library). CI 46121238677 running.
-- **P2-01 next steps (step B):** the page `src/app/(shop)/(pages)/dashboard/page.tsx` (now a placeholder): Scan member QR button → `/dashboard/scan`; 4 `KpiCard`s (existing `src/components/ui/KpiCard.tsx` + `Sparkline`; add an icon prop if wanted); live queue = `RequestsQueue` (top 5 + "View all requests"; `ShopRealtime` in the shop layout already refreshes); suggestions, happy hour and latest feedback empty states (P3); weekly visits SVG bar chart (server component, value labels, sr-only table); plan banner from `shopSummary(scope).status`. Then: `ledger 50k` seed + EXPLAIN ANALYZE (< 50 ms each; consider a `memberships (shop_id, joined_at)` index), authz entries, E2E (live row appears; inline approve removes it; staff sees no banner), screenshots 320/390/1440, `pnpm gate:task`. C-88 needs H-48b (human) before the tick.
-- **Half-done:** P2-01 (step A only). **Not yet tested:** CI 46121238677 (`wip/P2-01`), CI 46121459459 (`wip/apt-refresh`); main stays red until `fba3d91` lands.
+- **Checkpoint 28 Nov 2026 08:25 UTC, talha.syed (Mac), baton held.** P2-01 step B built, gate:task PASS on it; KI-90 fix rebased onto main. Two wip branches, stacked, neither on main yet:
+  1. **`wip/apt-refresh`, HEAD `441e3cb`** (= `fba3d91` rebased onto `2aa1f1b`): KI-90 fix (Trivy HIGH libzstd1; main CI red since 46119536513). `fba3d91`'s CI went green on a re-run (46121459459 attempt 2; attempt 1's perf job hit KI-48 on a slow runner, 3/3). CI on `441e3cb`: push 46124522801 + dispatch 46124676339 (image + Trivy). **Next:** when both are green, `git switch wip/apt-refresh && git merge origin/main` (only progress files differ, so the hook accepts it via the green ancestor) and push it to main; then check main's CI image job.
+  2. **`wip/P2-01`, HEAD `f089691`** (on `441e3cb`): step A `b8a085f` + step B `f089691` = Overview page (KPIs with icons + sparklines, live queue top 5 via `RequestsQueue`, suggestions/happy hour/feedback placeholders, HTML-bar weekly chart `VisitsChart`, owner-only plan banner), `KpiCard` icon prop, `observeQueries` now passes params, scale test `tests/scale/dashboard.scale.test.ts`, E2E `tests/e2e/dashboard.spec.ts`, KI-91 (molten `display` beats Tailwind `lg:hidden`) + KI-48 note. CI 46124658901 running.
+- **P2-01 left before the tick:** (a) **C-88 needs H-48b (human)**: Sentry review, then SESSION_LOG line; (b) CI green on `f089691`; (c) owner shell visual baselines (`shell-owner-390/1440`, darwin + linux; chart + greeting now masked) regenerate with `pnpm e2e:visual --update-snapshots` for that test (gate:phase runs @visual); (d) closing commit on main: PHASES tick, PROGRESS, SESSION_LOG (after rebasing P2-01 onto main once apt-refresh lands: needs its own CI). Every acceptance criterion except C-88 has evidence (SESSION_LOG 28 Nov).
+- **Half-done:** P2-01 (built and gated; waiting on H-48b + CI). **Not yet tested:** CI 46124522801, 46124676339 (`441e3cb`), 46124658901 (`f089691`); WebKit for the dashboard spec runs only on CI. Main stays red until `441e3cb` lands.
 ## Status
 - **Phase:** **P2 next.** P1 — Core loyalty **closed 27 Nov** (human; demo walkthrough H-55 and side-by-side H-54 with the human). PD closed 25 Nov. P0 closed 17 Nov (human).
 - **Current sub-phase:** **P2-A · Shop operations** (brief review done 28 Nov; P2-A CARRIED rows moved here; P2-B/P2-C rows stay in CARRIED_LATER until their sub-phase starts, DECISIONS 28 Nov). **P1 closed 27 Nov** (P1-18 closed fast 27 Nov; P1-D, P1-C 26–27 Nov; P1-B 25 Nov). PD-C closed 25 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-28, talha.syed (checkpoint: P2-01 step A on wip; KI-90 fix on wip)
+- **Last updated:** 2026-11-28, talha.syed (checkpoint: P2-01 steps A+B on wip, gate PASS; KI-90 fix rebased, CI running)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -29,7 +28,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. Land `wip/apt-refresh` on main (main CI red, KI-90). P2-01 step B (page, chart, EXPLAIN, E2E, gate); C-88 needs H-48b before its tick. Then P2-02, P2-03, P2-04.
+1. Land `wip/apt-refresh` (`441e3cb`) on main (main CI red, KI-90). P2-01 close once H-48b is done (C-88) and CI is green on `f089691`. Then P2-02 (note: C-96 receipt photo needs the P2-05 upload pipeline), P2-03, P2-04.
 2. Human any time: H-45 (🟠), H-53 (🟢 rotate staging password before launch), H-38 (branches, list updated 26 Nov), H-51 (b), H-08b (buckets: receipt PDFs + uploads, needed by P2-05); **H-48b now** (Sentry review, C-88 blocks the P2-01 tick).
 
 ## CARRIED (a task can't be ticked while a row targets it)

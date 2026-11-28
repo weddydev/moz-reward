@@ -1234,3 +1234,11 @@ Brief review of `docs/phases/P2.md`: every task now has measurable AC, Edge case
 CARRIED: P2-A rows moved to PROGRESS; C-90 retargeted to P2-13 (DECISIONS 28 Nov). `pnpm check` green (unit 2366/0). Main CI 46119536513 on `994daed` still running.
 P2-01 step A on `wip/P2-01` `adcc91a`: KPI maths (UK days, DST), `readDailyTotals` (scoped), Overview view model; unit 19/0, int 4/0 (DST day, midnight, cross-shop, staff = owner, empty shop). CI 46121238677 running.
 Main CI 46119536513 red: Trivy HIGH libzstd1 CVE-2026-124851, the apt upgrade layer was cached (KI-90). Fix `wip/apt-refresh` `fba3d91` (daily APT_REFRESH build arg); dispatched CI 46121459459.
+
+## 2026-11-28 08:25 — P2 — P2-01 step B: Overview page; KI-90 fix rebased
+Done: Overview page (KPIs, live queue top 5, placeholders, HTML-bar weekly chart, owner-only plan banner); 50k-ledger EXPLAIN scale test; KI-91; KI-90 fix rebased onto main; P2-01 stacked on it.
+Commits: wip/P2-01 b8a085f f089691 · wip/apt-refresh 441e3cb (main unchanged at 2aa1f1b + this checkpoint)
+Tests: gate:task P2-01 PASS on 480e779 (= f089691 before the rebase): unit 2390/0, int 1912/0, build, sast, E2E dashboard Linux Chromium 6/0; dashboard spec chromium + desktop1440 4/0 after the KI-91 fix; screenshots 320/390/1440 + plan banner 390 inspected (1440 header: one Scan pill).
+Tests: EXPLAIN ANALYZE (app role, RLS, 50k rows for the shop + 50k in 9 others): ledger read 2.07 ms, Index Scan ledger_entries_shop_created_idx; joins read 0.40 ms, Index Scan memberships_shop_id_idx; no seq scan (`.artifacts/p2-01-dashboard-explain.txt`).
+Left off: land 441e3cb on main when CI 46124522801 + 46124676339 are green (merge main in, push); P2-01 waits for H-48b (C-88) and CI 46124658901.
+Notes: CI 46121459459 attempt 1 perf job red 3/3 on gilded-gate (KI-48, slow runner), green on re-run.
