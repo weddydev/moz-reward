@@ -1387,3 +1387,8 @@ Consequence / revisit when: P2-05 adds a reward photo (FOLLOWUPS); if a button's
 Decision: Patel's Corner Store and Glow Studio get self-hosted CC0 photos from rawpixel via Openverse (Patel's: produce stall cover rawpixel 5913527, produce basket logo 3302993; Glow: make-up brushes cover 5906913, nail polish logo 5906601), cropped to 800×500 / 240×240, covers ≤ 120 KB. No shop name, price or brand identity is legible in them (the demo shops are invented). This replaces "PD-08 demo shops" (two shops left without photos to show the fallback coin); the coin stays for real shops without uploads and in `/dev/molten`.
 Why: human feedback after the 27 Nov demo rehearsal. Unsplash refuses automated downloads, so Openverse's CC0 filter was used instead (no attribution needed).
 Consequence / revisit when: real shops' photos come from uploads (P2-05).
+
+## 2026-11-28 — P2 start: CARRIED rows move per sub-phase; C-90 to P2-13; brief review
+Decision: from P2 on, CARRIED_LATER rows move into PROGRESS's CARRIED table when their target's sub-phase starts (P2-A rows C-07, C-25, C-61, C-88, C-96, C-107 moved now), not the whole phase at once. C-90 (notifications partition retention) is retargeted from P2-12 to P2-13, which builds the retention purge job. C-49 (demo half), C-92, C-93, C-94 closed: the human confirmed H-55 and H-54 done at `/resume` on 28 Nov.
+Why: all 27 P2 rows (~9 KB) on top of PROGRESS (~8 KB) break its 12 KB cap (CLAUDE.md §4); the sub-phase is the unit a session works in. P2-12 can't meet C-90 without the job P2-13 builds.
+Consequence / revisit when: every sub-phase start (P2-B, P2-C) moves its rows; a task still reads CARRIED_LATER when it starts (CLAUDE.md §3), so no row is missed.

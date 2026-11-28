@@ -1227,3 +1227,8 @@ Last verified lines rotated out of PROGRESS (28 Nov):
 - P1-17 closed: gate:task PASS (unit 2313/0, int 1898/0/1, sast; no UI); integrity int 11/0 (each check clean + corrupted, demo seed clean, open issue kept, fixed resolved, overlap skip, keyset pages, read-only sums); authz 1 matrix + trigger test; coverage 4211/0; CI 45904334444 green (perf on re-run, C-106).
 - P1-16 closed: gate:task PASS (unit 2307/0, int 1873/0/1, sast, e2e P1-16/J3 Linux Chromium 9/0); coverage 4180/0; redemption.spec chromium/webkit/iphone14/pixel7 green (+ ×2 locally), spec-repeat ×5 webkit/iphone14 after the hydration fix; security design check (2 HIGH + 5 MEDIUM taken) + final review OK (4 LOW → FOLLOWUPS); screenshots 320/390/1440 + staff 320/1440 inspected; CI 45900700721 green.
 - P1-15 closed: gate:task PASS (unit 2299/0, int 1799/0/1, sast, e2e P1-15 Linux Chromium 21/0, perf 3/0); celebrations.spec ×3 chromium+webkit 39/0, pixel7 green; @perf/@fps celebration + vault reward ×3 18/18 with real taps (C-86); coverage 4097/0; design review: 4 HIGH + 7 MEDIUM fixed, LOWs fixed or logged; screenshots 320/390/1440 inspected; CI 45886425001 green.
+
+## 2026-11-28 — P2 start — brief review, talha.syed (Mac)
+Human at `/resume`: H-55 (Demo 2 walkthrough) and H-54 (side-by-side C-92/93/94) done → HUMAN_TASKS_DONE; C-49 demo half, C-92, C-93, C-94 closed.
+Brief review of `docs/phases/P2.md`: every task now has measurable AC, Edge cases, Tests and Verify; missing carried rows written into their tasks (C-88 P2-01, C-07 P2-04, C-89 P2-11, C-109 P2-12, C-57/C-90/C-103 P2-13); P2-13's duplicated AC line removed.
+CARRIED: P2-A rows moved to PROGRESS; C-90 retargeted to P2-13 (DECISIONS 28 Nov). `pnpm check` green (unit 2366/0). Main CI 46119536513 on `994daed` still running.

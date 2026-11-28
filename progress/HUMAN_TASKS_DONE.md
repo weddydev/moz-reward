@@ -48,10 +48,14 @@ Finished human tasks, moved out of `progress/HUMAN_TASKS.md` on 23 Nov 2026 so t
 | H-48 | Real staging Sentry DSN | 21–22 Nov 2026 | H-48b (confirm the probe in Sentry) |
 | H-49 | Molten parity approved (human sign-off) | 25 Nov 2026 | — |
 | H-50 | Windows Defender exclusions | 21 Nov 2026 | — |
+| H-54 | Side-by-side check of C-92/C-93/C-94 (Button coin, fluid-tabs spark, /dev/ui) against the Molten reference | 28 Nov 2026 | — |
+| H-55 | Demo 2 walkthrough on staging (P0 + P1), C-49 demo half | 28 Nov 2026 | — |
 
 ## Log
 
 | ID | Task | Done by | Date |
+| H-55 | Demo 2 walkthrough (P0 + P1) on staging, after the 27 Nov 16:31 UTC `seed-reset` (release `36ac629`): the human confirmed it done at `/resume` on 28 Nov, no findings reported. Closes C-49 (demo half). | talha.syed (human) | 28 Nov 2026 |
+| H-54 | Side-by-side of C-92 (Button coin), C-93 (fluid-tabs spark, every variant and direction) and C-94 (/dev/ui components and states) on staging against `design/reference/molten/index.html`: the human confirmed OK at `/resume` on 28 Nov. Closes C-92, C-93, C-94. | talha.syed (human) | 28 Nov 2026 |
 |---|---|---|---|
 | H-49 | Molten parity sign-off: the human checked `/dev/ui` ("perfect, no issues whatsoever") and `/dev/motion` (motion "perfect"); `/dev/motion` shows the animations on plain placeholder controls, which is expected for the motion lab (the real Molten components are on `/dev/ui` and in the app, seen in demo 1), so not a finding. Approved. Set available in `.artifacts/parity-set/` (parity `PARITY_SET=1` 186/0, Chromium + WebKit, C-84). Closes C-85. | human (talha.syed) | 25 Nov 2026 |
 | H-48 | Staging Sentry DSN: `SENTRY_DSN_STAGING` = the real DSN (ingest.de, project `4512396703694928`), set 13:49 UTC by Claude from the DSN shown on the Client Keys page (the earlier clipboard runs most likely stored the command text, as on 12 Nov). Claude part done 22 Nov (talha.syed, Mac, `talha@`): DSN URL-shaped (length 95) in web-1, web-2, worker; probe event `bdc54839dbbb40f3924fc1b968cc5ce8` accepted (HTTP 200) → human confirmation H-48b | Syedbadeshah76 + Claude | 21 Nov 2026 |
