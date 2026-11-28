@@ -45,8 +45,11 @@ ENV APP_ENV=$APP_ENV \
     HOSTNAME=0.0.0.0
 # Debian security fixes the upstream digest doesn't carry yet (27 Nov: libpam CVE-2025-6020 HIGH, Trivy on main):
 # Trivy fails only on HIGH/CRITICAL with a fixed version, so taking Debian's fixed packages keeps the gate green
-# without skips (DECISIONS 27 Nov). Lists removed so the layer stays small.
-RUN apt-get update -qq \
+# without skips (DECISIONS 27 Nov). Lists removed so the layer stays small. `APT_REFRESH` (the UTC date, from CI
+# and deploy) makes this layer rebuild once a day: a cached layer kept a fixed CVE out (KI-90, libzstd1 28 Nov).
+ARG APT_REFRESH=unset
+RUN echo "apt refresh: ${APT_REFRESH}" \
+ && apt-get update -qq \
  && DEBIAN_FRONTEND=noninteractive apt-get -y -qq upgrade --no-install-recommends \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 # The runtime only runs `node`: drop the base image's package managers (npm carries HIGH CVEs; corepack, yarn).
