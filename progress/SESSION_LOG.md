@@ -1254,3 +1254,9 @@ Done: `wip/wallet-quarantine` merged with main → main `f9a7cc2` (CI 4612935129
 Tests: gate:task PASS on `3237a36` (unit 2410/0, int 1945/0, Linux Chromium E2E 30/0); requests.spec 6/6 Chromium + WebKit; first gate run hit a load timeout (orphaned E2E server, KI-77) and an unclassified `shops.quick_picks` (fixed).
 Process: `/resume` step 1 rebased the stacked `wip/P2-02` onto main (restored to `5f5ee28`); resume.md now pulls main only on main (KI-92).
 Left off: CI 46136151221 on `3237a36` running; next P2-02 step C (scanner page).
+
+## 2026-11-28 11:10 UTC — P2 — P2-02 step C: member scanner, talha.syed (Mac)
+Done: `/dashboard/scan` scanner (BarcodeDetector or jsQR worker, torch, poor-light hint, manual member ID, offline off), verify by token or typed ID with award-panel fields, scan award through ApproveForm, `?approve=<id>` on Requests, camera policy moved to `/dashboard/scan`; KI-93, KI-94; DECISIONS "P2-02 member scanner".
+Commits: wip/P2-02 aab29a0 (on 3237a36). CI 46136151221 on 3237a36 green; CI 46138390685 on aab29a0 running.
+Tests: pnpm check unit 2416/0; member-qr authz 37/0; scan.spec 8/8 Chromium + WebKit; requests spec flake under load passed 3/3 alone.
+Next: CI 46138390685, then step D (keyboard-only approve E2E, C-107 receipt print, gate:task P2-02).
