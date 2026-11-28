@@ -1248,3 +1248,9 @@ Done: KI-90 fix on main `1795e5e`; P2-01 rebased (`871bbe5`, owner baselines dar
 Tests: int + authz 81/0 (scan-awards 13 incl. 0038 walls, approvals, point-requests, authz matrix + cross-shop scan); spec-repeat 46128861729 wallet Enter ×20 green (no repro).
 Moved from Last verified: KI-89 `994daed` CI 46033221996 green, staging deploy 46033819447; demo fixes gate:task PASS; P1 close @fps/@perf 2/2, CI 45995805698/45992063576 green, Lighthouse JS 161.5/193.3/219.0 KB.
 Left off: land `3af74b5` on main when its CI is green; then P2-02 step B (Requests tabs + approve panel). P2-01 waits on H-48b (C-88).
+
+## 2026-11-28 10:45 — P2 — C-113 on main; P2-02 step B (Requests page)
+Done: `wip/wallet-quarantine` merged with main → main `f9a7cc2` (CI 46129351292 verdict); scratch worktree `../moz-dbg-wallet` removed. P2-02 step B `3237a36`: URL tabs + keyset pages, number pad, quick-picks (0039), live gold, arrivals, nav `targets`; DECISIONS + FOLLOWUPS (P2-05: guard + VALIDATE).
+Tests: gate:task PASS on `3237a36` (unit 2410/0, int 1945/0, Linux Chromium E2E 30/0); requests.spec 6/6 Chromium + WebKit; first gate run hit a load timeout (orphaned E2E server, KI-77) and an unclassified `shops.quick_picks` (fixed).
+Process: `/resume` step 1 rebased the stacked `wip/P2-02` onto main (restored to `5f5ee28`); resume.md now pulls main only on main (KI-92).
+Left off: CI 46136151221 on `3237a36` running; next P2-02 step C (scanner page).
