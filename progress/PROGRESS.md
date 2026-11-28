@@ -3,22 +3,25 @@
 _Current state only, ≤ 120 lines. History goes to SESSION_LOG.md. AUDIT.md is frozen history (open items live here)._
 
 ## Baton
-Baton: held by talha.syed since 2026-11-28 12:44 IST (07:14 UTC)
+Baton: free — last held by talha.syed, 2026-11-28 17:45 IST (12:15 UTC)
 
 ## Handoff note
 _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
-- **Checkpoint 28 Nov 2026 ~11:10 UTC, talha.syed (Mac), baton held.** Two wip branches:
-  1. **`wip/P2-01`, HEAD `871bbe5`** (on `1795e5e`): CI 46127051817 green. Only C-88 left: **H-48b not done yet**. Then closing commit on main (merge main in, PHASES tick, PROGRESS, SESSION_LOG).
-  2. **`wip/P2-02`, HEAD `aab29a0`** (stacked on `wip/P2-01` `871bbe5`): step A `5f5ee28`, step B `3237a36` (CI 46136151221 green), **step C `aab29a0` done**: `/dashboard/scan` member scanner (explainer, start on tap, stops when hidden, off offline; `BarcodeDetector` else jsQR in a Web Worker; torch only where supported; poor-light hint; manual member-ID entry), `verifyMemberQrAction` takes `{token}` or `{memberId}` and returns visits/streak/open request (`self` for own card), award panel = `ApproveForm` with `award` → `scanAwardAction`, refused/awarded QRs never resent, waiting request → `/dashboard/requests?approve=<id>`, camera policy on `/dashboard/scan`. DECISIONS 28 Nov "P2-02 member scanner"; KI-93, KI-94. **CI 46138390685 running (not seen).**
-- **P2-02 next step: D**: keyboard-only approve recorded in an E2E (Requests page, desktop), C-107 (`ReceiptCard print="dashboard"` shown 400 ms after an approval, E2E asserts keyframes + 400 ms, both Requests page and scanner), then `pnpm gate:task P2-02`, screenshots m/d already taken for scanner (`.artifacts/screens/P2-02/scan-*`, inspected). At the P2-02 close: move C-96 row + criterion to P2-05; FOLLOWUPS P2-02 close lines (sticky bar padding, scan pill on scan page, viewfinder cap). P2-02 lands on main only after P2-01 (H-48b).
-- **Not yet tested:** CI 46138390685 on `aab29a0`. Local: scan.spec 8/8 Chromium + WebKit; member-qr authz 37/0; `pnpm check` unit 2416/0; requests.spec + point-requests Chromium 11/12 in a parallel run, the 1 failure ("Requests nav counts", member's pending never showed) passed 3/3 alone (load: orphan next-server still at 100% CPU).
-- **Human (this session):** an orphaned E2E server (`next-server`, PID 31036 + parent 31035, `next start --port 3100`) still spins at ~100% CPU on the Mac; stop it (`kill 31036 31035`) or tell Claude it may (KI-77).
+- **Handoff 28 Nov 2026 12:15 UTC (17:45 IST), handed over by talha.syed (Mac). Baton free.** `main` = `f793517` + this handoff; main CI 46136540730 on `e510c00` green (only progress files since). Nothing uncommitted; both wip branches pushed.
+- **Finished this session:** P2-02 step C (member scanner) `aab29a0` + CI fix `83bfefd` (KI-95).
+- **Half-done, two stacked wip branches:**
+  1. **`wip/P2-01`, HEAD `871bbe5`** (on `1795e5e`): CI 46127051817 green. Only C-88 left: **H-48b not done yet**. Then the closing commit on main (merge main in, PHASES tick, PROGRESS, SESSION_LOG).
+  2. **`wip/P2-02`, HEAD `83bfefd`** (on `wip/P2-01` `871bbe5`): A `5f5ee28` scan awards; B `3237a36` Requests page (CI 46136151221 green); **C `aab29a0`** `/dashboard/scan` scanner: explainer, camera on tap, stops when hidden, off offline; `BarcodeDetector` else jsQR in a Web Worker; torch only where supported; poor-light hint; manual member ID; `verifyMemberQrAction` takes `{token}` or `{memberId}` and returns visits/streak/open request (`self` for own card); award panel = `ApproveForm` + `award` → `scanAwardAction`; refused/awarded QRs never resent; waiting request → `/dashboard/requests?approve=<id>`; camera policy on `/dashboard/scan`. CI 46138390685 on `aab29a0` was red (scan.spec on WebKit/iPhone, frame starvation + spec races); **fixed in `83bfefd`** (KI-95).
+- **How to continue:** (1) check CI 46143740470 on `83bfefd` (red → fix first; scan.spec failures: KI-94/95 first). (2) P2-02 step D on `wip/P2-02`: keyboard-only approve recorded in an E2E (Requests page, desktop), C-107 (`ReceiptCard print="dashboard"` after an approval on the Requests page and the scanner; E2E asserts keyframes + 400 ms), then `pnpm gate:task P2-02`. (3) At the P2-02 close: move C-96 row + criterion to P2-05; the three "P2-02 close" FOLLOWUPS lines. P2-02 reaches main only after P2-01 (H-48b), rebased onto main.
+- **Tested:** `pnpm check` green (unit 2416/0); member-qr authz 37/0 (typed IDs, self, open request incl. awaiting owner); scan-awards + test-api int 22/0; scan.spec on the prod build 24/24 (Chromium, WebKit, iPhone 14, ×2) after the fix; scanner screenshots idle/award 320/390/1440 + refused 1440 inspected.
+- **Not yet tested:** CI 46143740470 on `83bfefd` (queued at handoff); `gate:task P2-02` not re-run since step B (runs at the task close); Linux container run of scan.spec only through CI.
+- **First for the next person:** no new env vars, migrations or seeds (`jsqr` moved to dependencies: `pnpm install --frozen-lockfile`). Human: an orphaned E2E server (`next-server` PID 31036 + 31035, port 3100) spins at ~100% CPU on the Mac and makes local parallel E2E flaky; stop it (`kill 31036 31035`) or let Claude (KI-77).
 ## Status
 - **Phase:** **P2 next.** P1 — Core loyalty **closed 27 Nov** (human; demo walkthrough H-55 and side-by-side H-54 with the human). PD closed 25 Nov. P0 closed 17 Nov (human).
 - **Current sub-phase:** **P2-A · Shop operations** (brief review done 28 Nov; P2-A CARRIED rows moved here; P2-B/P2-C rows stay in CARRIED_LATER until their sub-phase starts, DECISIONS 28 Nov). **P1 closed 27 Nov** (P1-18 closed fast 27 Nov; P1-D, P1-C 26–27 Nov; P1-B 25 Nov). PD-C closed 25 Nov.
 - **GITHUB_MODE:** `free` (H-25, 9 Nov; ENGINEERING §16).
 - **Target:** none: no deadline (human, 20 Nov 2026; CLAUDE.md "Pace").
-- **Last updated:** 2026-11-28, talha.syed (checkpoint: P2-02 step C scanner on wip `aab29a0`, CI running; P2-01 waits H-48b)
+- **Last updated:** 2026-11-28, talha.syed (handoff: P2-02 step C on wip `83bfefd`, CI queued; P2-01 waits H-48b)
 - **Staging and production:** one Hostinger VPS 72.61.17.208; staging live since 15 Nov (origin lock via Cloudflare proxy + firewall + AOP until launch, T-5). Production not deployed.
 
 ## Now
@@ -29,7 +32,7 @@ _Overwritten by `/handoff` or `/checkpoint`. The next session reads this first._
 - **PD (Molten design):** PD-A closed 22 Nov; PD-B closed 23 Nov; **PD-C closed 25 Nov** (PD-11 closed fast, human; leftovers C-78, C-79, C-83 → P1-18, C-84, C-85 → P1-B close).
 
 ## Next (top 3)
-1. Check CI 46138390685 on `wip/P2-02` `aab29a0`; red is fixed first.
+1. Check CI 46143740470 on `wip/P2-02` `83bfefd`; red is fixed first.
 2. P2-02 step D on `wip/P2-02`: keyboard-only approve E2E, C-107 receipt print, `pnpm gate:task P2-02`.
 3. P2-01 close as soon as H-48b is done (C-88; CI already green on `871bbe5`), then P2-02 rebased onto main. Human any time: H-48b (🟠, now), H-45, H-53, H-38, H-51 (b), H-08b (needed by P2-05).
 
@@ -56,7 +59,7 @@ In **`progress/MAP.md`** (read when you need to locate code; add new important p
 
 ## Last verified (28 Nov 2026)
 _Latest evidence only (≤ 5 lines); older lines move to SESSION_LOG._
-- P2-02 step C `aab29a0`: `pnpm check` green (unit 2416/0); member-qr authz 37/0 (typed IDs, self, open request incl. awaiting owner); scan-awards + test-api int 22/0; scan.spec 8/8 Chromium + WebKit (prod build); screenshots scan idle 320/390/1440, award 320/390/1440, refused 1440 inspected. NOT VERIFIED: CI 46138390685.
+- P2-02 step C `aab29a0` + fix `83bfefd`: `pnpm check` green (unit 2416/0); member-qr authz 37/0; scan-awards + test-api int 22/0; scan.spec 24/24 Chromium + WebKit + iPhone 14 ×2 (prod build); screenshots inspected. CI 46138390685 on `aab29a0` red (KI-95, fixed). NOT VERIFIED: CI 46143740470.
 - P2-02 step B `3237a36`: CI 46136151221 green (all jobs); gate:task PASS earlier.
 - P2-02 step A `5f5ee28`: CI 46129504550 green (all jobs).
 - P2-01 `871bbe5`: CI 46127051817 green (all jobs); owner shell baselines regenerated darwin + linux, 4 screenshots inspected.

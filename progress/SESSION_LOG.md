@@ -1260,3 +1260,8 @@ Done: `/dashboard/scan` scanner (BarcodeDetector or jsQR worker, torch, poor-lig
 Commits: wip/P2-02 aab29a0 (on 3237a36). CI 46136151221 on 3237a36 green; CI 46138390685 on aab29a0 running.
 Tests: pnpm check unit 2416/0; member-qr authz 37/0; scan.spec 8/8 Chromium + WebKit; requests spec flake under load passed 3/3 alone.
 Next: CI 46138390685, then step D (keyboard-only approve E2E, C-107 receipt print, gate:task P2-02).
+
+## 2026-11-28 12:15 UTC — P2 — handoff by talha.syed (Mac)
+CI 46138390685 on `aab29a0` red: scan.spec on CI WebKit/iPhone (scanner stuck "starting", award panel late; tap before hydration; refresh cut by a navigation). Root cause frame starvation (KI-10) + spec races → KI-95; fix `83bfefd` (no await on `video.play()`, 15 s frame waits, hydration + networkidle waits).
+Tests: scan.spec 24/24 Chromium + WebKit + iPhone 14 ×2 locally. CI 46143740470 on `83bfefd` queued at handoff.
+Next: CI 46143740470, then P2-02 step D (keyboard-only approve E2E, C-107 receipt print, gate:task P2-02). Baton free.
