@@ -37,3 +37,21 @@ export const reverseInput = z
     reason: z.enum(REVERSAL_REASONS),
   })
   .strict();
+
+/**
+ * P2-02 scan award: the scanned member-QR token or the member ID typed from an offline card (exactly one), the
+ * client's key for this award, and the approve form's amount and items. The token's length bound is the verify
+ * action's (P1-14); the member ID is normalised by the service (dash and case are forgiven).
+ */
+export const scanAwardInput = z
+  .object({
+    shopId: uuid,
+    member: z.union([
+      z.object({ token: z.string().min(1).max(128) }).strict(),
+      z.object({ memberId: z.string().trim().min(1).max(16) }).strict(),
+    ]),
+    idempotencyKey: uuid,
+    amountPence: amountPence.optional(),
+    items: items.optional(),
+  })
+  .strict();

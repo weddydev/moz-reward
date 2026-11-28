@@ -267,6 +267,13 @@
       "when": 1795749093140,
       "tag": "0037_validate_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1795855473806,
+      "tag": "0038_p2_02_scan_awards",
+      "breakpoints": true
     }
   ]
 }

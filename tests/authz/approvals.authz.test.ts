@@ -5,12 +5,19 @@ import {
   ownerApproveAction,
   rejectRequestAction,
   reverseAwardAction,
+  scanAwardAction,
 } from "@/features/requests/actions";
 import { newId } from "@/lib/id";
 import { runAsPrincipal } from "@/server/authz/principal";
 import { testOwnerDb as db } from "@/server/db/client";
-import { ledgerEntries, pointRequests } from "@/server/db/schema";
-import { makeMembership, makeProgramme, makeUser } from "@/server/testing/factories";
+import { ledgerEntries, loyaltyPrograms, pointRequests } from "@/server/db/schema";
+import { memberQrKeys, signMemberQr } from "@/server/security/member-qr";
+import {
+  makeCustomerProfile,
+  makeMembership,
+  makeProgramme,
+  makeUser,
+} from "@/server/testing/factories";
 import { authzMatrix, type Role, world } from "./harness";
 
 // Request decisions (P1-12): the shop's active team (staff and owner, with TOTP); the owner alone for an award
@@ -34,6 +41,19 @@ authzMatrix("rejectRequestAction", {
   allowCodes: ["NOT_FOUND"],
   run: (w) =>
     rejectRequestAction({ shopId: w.shopA.id, requestId: newId(), reason: "no_purchase" }),
+});
+
+// P2-02 scan award: the shop's active team. An unknown member ID gets NOT_FOUND ("not a member yet").
+authzMatrix("scanAwardAction", {
+  allow: TEAM,
+  allowCodes: ["NOT_FOUND"],
+  run: (w) =>
+    scanAwardAction({
+      shopId: w.shopA.id,
+      member: { memberId: "ZZZ-ZZZ" },
+      idempotencyKey: newId(),
+      amountPence: 500,
+    }),
 });
 
 authzMatrix("reverseAwardAction", {
@@ -114,4 +134,37 @@ it("[P1-12] decisions take no gold, member, status or approver from the input", 
     );
     expect(res, JSON.stringify(input)).toMatchObject({ ok: false, error: { code: "VALIDATION" } });
   }
+});
+
+it("[P2-02] another shop's team can't award shop A's member by scanning their QR in its own shop", async () => {
+  const w = await world();
+  // The world is shared by this file: shop A's programme may already exist (the P1-12 test above).
+  const programmes = await db()
+    .select({ id: loyaltyPrograms.id })
+    .from(loyaltyPrograms)
+    .where(eq(loyaltyPrograms.shopId, w.shopA.id));
+  if (programmes.length === 0) await makeProgramme(w.shopA.id);
+  const customer = await makeUser();
+  const [card, m] = await Promise.all([
+    makeCustomerProfile(customer.id),
+    makeMembership(customer.id, w.shopA.id),
+  ]);
+  const token = signMemberQr(card.memberId, Date.now(), memberQrKeys()).token;
+  for (const role of ["staff_other_shop", "owner_other_shop"] as const) {
+    const res = await runAsPrincipal(w.principals[role], () =>
+      scanAwardAction({ shopId: w.shopB.id, member: { token }, idempotencyKey: newId() }),
+    );
+    expect(res).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
+  }
+  expect(
+    await db().select().from(pointRequests).where(eq(pointRequests.membershipId, m.id)),
+  ).toEqual([]);
+
+  // The shop's own staff can, with the same token.
+  const ok = await runAsPrincipal(w.principals.staff_own_shop, () =>
+    scanAwardAction({ shopId: w.shopA.id, member: { token }, idempotencyKey: newId() }),
+  );
+  expect(ok).toMatchObject({ ok: true, data: { outcome: "approved", gold: 100 } });
+  const [row] = await db().select().from(pointRequests).where(eq(pointRequests.membershipId, m.id));
+  expect(row).toMatchObject({ source: "scan", status: "approved" });
 });

@@ -1,5 +1,6 @@
 "use server";
 
+import { VERIFY_LIMITS } from "@/features/member-card/limits";
 import { defineAction } from "@/server/actionTemplate";
 import { requireShopRole } from "@/server/authz";
 import type { ShopScope } from "@/server/authz/scope";
@@ -13,7 +14,14 @@ import {
   reverseAward,
   type ReverseResult,
 } from "@/server/services/approvals";
-import { approveInput, ownerApproveInput, rejectInput, reverseInput } from "./input";
+import { scanAward, type ScanAwardResult } from "@/server/services/scan-awards";
+import {
+  approveInput,
+  ownerApproveInput,
+  rejectInput,
+  reverseInput,
+  scanAwardInput,
+} from "./input";
 
 /**
  * The shop's decisions on points requests (P1-12, PRODUCT §5): approve, owner approval, reject, reverse. The
@@ -100,5 +108,37 @@ export const reverseAwardAction = defineAction({
   handler: async (input, scope, { tx }): Promise<ReverseResult> => {
     if (!tx) throw new Error("requests.reverse runs in a transaction");
     return contentionAsConflict(() => reverseAward(scope, input, tx));
+  },
+});
+
+/**
+ * P2-02: award gold to a scanned member QR, or a member ID typed from an offline card (PRODUCT §5). The service
+ * re-verifies the token and the current membership (design check M5). A typed member ID is a lookup that could be
+ * used to probe IDs, so the award also has its own buckets sized like the member-QR verify limits (per team member
+ * per shop, then per shop; both fail closed, P1-14 M4); they are separate from the verify's, as each scan calls
+ * both. The member limit is spent before the shop's, so one account can't use up the counter's allowance.
+ */
+export const scanAwardAction = defineAction({
+  name: "requests.scan-award",
+  input: scanAwardInput,
+  authorize: ({ shopId }, p) => teamScope(shopId, ["owner", "staff"], p),
+  rateLimit: { ...MEMBER_CALLS, failMode: "closed", key: memberKey },
+  transaction: true,
+  handler: async (input, scope, { tx }): Promise<ScanAwardResult> => {
+    if (!tx) throw new Error("requests.scan-award runs in a transaction");
+    await limitOrThrow({
+      key: `action:requests.scan-award:lookup:${input.shopId}:${scope.userId}`,
+      ...VERIFY_LIMITS.member,
+      onError: "closed",
+    });
+    await limitOrThrow({
+      key: `action:requests.scan-award:lookup:shop:${input.shopId}`,
+      ...VERIFY_LIMITS.shop,
+      onError: "closed",
+    });
+    const { member, idempotencyKey, amountPence, items } = input;
+    return contentionAsConflict(() =>
+      scanAward(scope, { member, idempotencyKey, amountPence, items }, tx),
+    );
   },
 });
