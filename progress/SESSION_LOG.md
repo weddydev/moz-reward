@@ -1215,3 +1215,15 @@ Commits: 2e98a2d, abe68b0, 64b72ec (wip/demo-fixes)
 Tests: gate:task PASS (unit 2366/0, int 1908/0); E2E 5 specs × 3 browsers 118/0 (+KI-77 load flake, 3/3 alone); CI 46019463277 green.
 Left off: P2 start (brief review of docs/phases/P2.md).
 Notes: after the deploy, run `seed-reset` on staging again so Patel's and Glow get their photos.
+
+## 2026-11-28 — post-P1 — KI-89 + handoff, talha.syed (Mac)
+Main CI 46025672484 red on iPhone14 WebKit shard 4/4 (redeem sheet didn't close on Escape; leave-confirm never stable); re-run green → deploy 46033819447 `36ac629` success, staging `seed-reset` done 27 Nov 16:31 UTC, client demo given.
+Root cause (KI-89): the page's coins were handed over into the dialog's canvas and kept Linux WebKit busy. Fix `994daed`: the dialog canvas starts empty, page particles cleared. CI 46033221996 green; on main 28 Nov.
+Client doc "How We Build Moz Rewards": https://claude.ai/artifact/XMxVQurcYyr6KJjyDHb6zz.
+Left off: P2 start (brief review of docs/phases/P2.md). Main CI + deploy of `994daed` running at handoff.
+Last verified lines rotated out of PROGRESS (28 Nov):
+- P1-18 (wip, not ticked): `pnpm test:mutation` 93.22% (break 80; engine 94.97, redeem 90.32, replay 90.63, codes 92.06, return-to 88.57, policies 93.75); C-17 survivors reviewed; `pnpm check` 2336 unit (gallery fix after); int redemptions+alerts 48/0, approvals 24/0; E2E wallet/vault/member-card/redemption chromium+webkit+iphone14 green locally; CI `99493c4` red (shine spec on lite CI, fixed). NOT VERIFIED: full 5-project E2E (local run void), CI on `3424140`.
+- P1-D closed: `2972bc7` CI 45920008983 green (f07def4 CI 45916814961 green); gate:task PASS (unit 2315/0, int 1904/0/1, sast); reviews code/security/design all HIGH+MEDIUM fixed; QA 2 MAJOR fixed (New code contrast ≥ 4.5, celebration CLS 0.189 → ≤ 0.05), 5 MINOR logged; staging smoke OK; Sentry deferred (H-48b).
+- P1-17 closed: gate:task PASS (unit 2313/0, int 1898/0/1, sast; no UI); integrity int 11/0 (each check clean + corrupted, demo seed clean, open issue kept, fixed resolved, overlap skip, keyset pages, read-only sums); authz 1 matrix + trigger test; coverage 4211/0; CI 45904334444 green (perf on re-run, C-106).
+- P1-16 closed: gate:task PASS (unit 2307/0, int 1873/0/1, sast, e2e P1-16/J3 Linux Chromium 9/0); coverage 4180/0; redemption.spec chromium/webkit/iphone14/pixel7 green (+ ×2 locally), spec-repeat ×5 webkit/iphone14 after the hydration fix; security design check (2 HIGH + 5 MEDIUM taken) + final review OK (4 LOW → FOLLOWUPS); screenshots 320/390/1440 + staff 320/1440 inspected; CI 45900700721 green.
+- P1-15 closed: gate:task PASS (unit 2299/0, int 1799/0/1, sast, e2e P1-15 Linux Chromium 21/0, perf 3/0); celebrations.spec ×3 chromium+webkit 39/0, pixel7 green; @perf/@fps celebration + vault reward ×3 18/18 with real taps (C-86); coverage 4097/0; design review: 4 HIGH + 7 MEDIUM fixed, LOWs fixed or logged; screenshots 320/390/1440 inspected; CI 45886425001 green.
