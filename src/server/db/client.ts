@@ -43,14 +43,16 @@ const URL_NAME = {
   system: "DATABASE_URL_WORKER",
 } as const;
 
-const globalForQueries = globalThis as unknown as { __mozQueryObserver?: (sql: string) => void };
+type QueryObserver = (sql: string, params: readonly unknown[]) => void;
+const globalForQueries = globalThis as unknown as { __mozQueryObserver?: QueryObserver };
 
 /**
  * Tests only (APP_ENV=test): calls `observer` with every SQL statement the role pools send until the returned
- * function is called, so an integration test can assert a read's query count (P1-07 "fixed number of queries").
+ * function is called, so an integration test can assert a read's query count (P1-07 "fixed number of queries"),
+ * or a scale test can EXPLAIN the exact statement a repo sends (P2-01).
  * Outside tests the pools have no logger at all, so this costs nothing in production.
  */
-export function observeQueries(observer: (sql: string) => void): () => void {
+export function observeQueries(observer: QueryObserver): () => void {
   if (env().APP_ENV !== "test") throw new Error("observeQueries() is only available in tests");
   globalForQueries.__mozQueryObserver = observer;
   return () => {
@@ -59,7 +61,8 @@ export function observeQueries(observer: (sql: string) => void): () => void {
 }
 
 const testQueryLogger = {
-  logQuery: (sql: string): void => globalForQueries.__mozQueryObserver?.(sql),
+  logQuery: (sql: string, params: unknown[]): void =>
+    globalForQueries.__mozQueryObserver?.(sql, params),
 };
 
 function createDb(url: string, kind: DbProcess, max: number, observable = true) {

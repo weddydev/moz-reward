@@ -409,7 +409,13 @@ test.describe("[P0-12] portal shell visual snapshots", { tag: "@visual" }, () =>
           animations: "disabled",
           caret: "hide",
           maxDiffPixelRatio: 0.002,
-          mask: [page.locator("[data-shop-switcher]"), page.locator("[data-active-shop]")],
+          // The Overview's chart and greeting carry today's weekdays and the shop name (P2-01).
+          mask: [
+            page.locator("[data-shop-switcher]"),
+            page.locator("[data-active-shop]"),
+            page.getByTestId("visits-chart"),
+            page.locator("main header p"),
+          ],
         });
       });
     }
