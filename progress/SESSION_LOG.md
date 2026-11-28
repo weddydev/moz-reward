@@ -1232,3 +1232,5 @@ Last verified lines rotated out of PROGRESS (28 Nov):
 Human at `/resume`: H-55 (Demo 2 walkthrough) and H-54 (side-by-side C-92/93/94) done → HUMAN_TASKS_DONE; C-49 demo half, C-92, C-93, C-94 closed.
 Brief review of `docs/phases/P2.md`: every task now has measurable AC, Edge cases, Tests and Verify; missing carried rows written into their tasks (C-88 P2-01, C-07 P2-04, C-89 P2-11, C-109 P2-12, C-57/C-90/C-103 P2-13); P2-13's duplicated AC line removed.
 CARRIED: P2-A rows moved to PROGRESS; C-90 retargeted to P2-13 (DECISIONS 28 Nov). `pnpm check` green (unit 2366/0). Main CI 46119536513 on `994daed` still running.
+P2-01 step A on `wip/P2-01` `adcc91a`: KPI maths (UK days, DST), `readDailyTotals` (scoped), Overview view model; unit 19/0, int 4/0 (DST day, midnight, cross-shop, staff = owner, empty shop). CI 46121238677 running.
+Main CI 46119536513 red: Trivy HIGH libzstd1 CVE-2026-124851, the apt upgrade layer was cached (KI-90). Fix `wip/apt-refresh` `fba3d91` (daily APT_REFRESH build arg); dispatched CI 46121459459.
